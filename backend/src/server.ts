@@ -11,6 +11,7 @@ import uploadInventoryImagesRoutes from './routes/upload-inventory-images';
 import uploadMediaRoutes from './routes/upload-media';
 import authenticatedMessagesStreamRoutes from './routes/authenticated-messages-stream';
 import addAgentRoutes from './routes/add-agent';
+import getAgentsRoutes from "./routes/get-agents";
 import getWhatsappConfigRoutes from './routes/get-whatsapp-config';
 import addCreditsRoutes from './routes/add-credits';
 import deleteAgentRoutes from './routes/delete-agent';
@@ -24,6 +25,13 @@ import setupWhatsappConfigRoutes from './routes/setup-whatsapp-config';
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
+
+// Register CORS plugin
+server.register(require('@fastify/cors'), {
+  origin: true, // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+});
 
 // Register multipart plugin
 server.register(require('@fastify/multipart'));
@@ -80,6 +88,7 @@ async function registerRoutes() {
   await uploadMediaRoutes(server, supabaseClient);
   await authenticatedMessagesStreamRoutes(server, supabaseClient);
   await addAgentRoutes(server, supabaseClient);
+  await getAgentsRoutes(server, supabaseClient);
   await getWhatsappConfigRoutes(server, supabaseClient);
   await addCreditsRoutes(server, supabaseClient);
   await deleteAgentRoutes(server, supabaseClient);
