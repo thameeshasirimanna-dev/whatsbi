@@ -432,9 +432,20 @@ export async function processMessageStatus(supabaseClient: any, status: any) {
       `📨 Message ${status.id} status: "${status.status}" at ${statusTimestamp}`
     );
 
-    console.log(
-      '✅ Status update logged (full tracking available with optional migration)'
-    );
+    // Update the status in whatsapp_message_logs
+    const { error: updateError } = await supabaseClient
+      .from('whatsapp_message_logs')
+      .update({
+        status: status.status,
+        timestamp: statusTimestamp,
+      })
+      .eq('whatsapp_message_id', status.id);
+
+    if (updateError) {
+      console.error('Error updating message status in logs:', updateError);
+    } else {
+      console.log(`✅ Updated status for message ${status.id} to ${status.status}`);
+    }
   } catch (error) {
     console.error('Status processing error:', error);
   }

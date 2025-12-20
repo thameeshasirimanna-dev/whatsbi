@@ -620,6 +620,30 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
       // Send to WhatsApp and store messages logic
       // ... (sending and storage logic)
 
+      // Log sent messages to whatsapp_message_logs
+      if (allMessageIds.length > 0) {
+        const messageType = useTemplate ? 'template' : type;
+        const logInserts = allMessageIds.map((messageId: string) => ({
+          user_id: user_id,
+          agent_id: agent.id,
+          customer_phone: customer_phone,
+          message_type: messageType,
+          category: category,
+          status: 'sent',
+          whatsapp_message_id: messageId,
+        }));
+
+        const { error: logError } = await supabaseClient
+          .from('whatsapp_message_logs')
+          .insert(logInserts);
+
+        if (logError) {
+          console.error('Error logging sent messages:', logError);
+        } else {
+          console.log(`Logged ${allMessageIds.length} sent messages`);
+        }
+      }
+
       return reply.code(200).send({
         success: true,
         message_ids: allMessageIds,
