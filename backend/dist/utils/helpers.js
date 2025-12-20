@@ -68,7 +68,7 @@ export async function uploadMediaToStorage(supabaseClient, agentPrefix, mediaBuf
     // Use R2 instead of Supabase Storage
     return uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename, contentType, 'incoming');
 }
-export async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName, emitNewMessage) {
+export async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName, emitNewMessage, cacheService) {
     try {
         console.log('Processing message:', message.id, message.type);
         const { data: whatsappConfig } = await supabaseClient
@@ -247,6 +247,12 @@ export async function processIncomingMessage(supabaseClient, message, phoneNumbe
                 mediaType,
                 hasMediaUrl: !!mediaUrl,
             });
+            // Invalidate cache for chat list and recent messages
+            if (cacheService) {
+                await cacheService.invalidateChatList(agent.id);
+                await cacheService.invalidateRecentMessages(agent.id, customerId);
+                console.log('Cache invalidated for agent', agent.id, 'customer', customerId);
+            }
             // Emit socket event for new message
             if (emitNewMessage) {
                 const messageDataForSocket = {

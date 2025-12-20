@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import fastify from 'fastify';
 import { createClient } from "@supabase/supabase-js";
+import Redis from "ioredis";
+import { CacheService } from './utils/cache';
 import whatsappWebhookRoutes from './routes/whatsapp-webhook';
 import sendWhatsappMessageRoutes from './routes/send-whatsapp-message';
 import getMediaPreviewRoutes from './routes/get-media-preview';
@@ -11,6 +13,9 @@ import addAgentRoutes from './routes/add-agent';
 import getWhatsappConfigRoutes from './routes/get-whatsapp-config';
 import addCreditsRoutes from './routes/add-credits';
 import deleteAgentRoutes from './routes/delete-agent';
+import getConversationsRoutes from './routes/get-conversations';
+import getConversationMessagesRoutes from './routes/get-conversation-messages';
+import getBotContextRoutes from './routes/get-bot-context';
 import fastifySocketIO from "fastify-socket.io";
 const server = fastify();
 // Register multipart plugin
@@ -27,15 +32,16 @@ const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
 const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET ?? "";
+const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 // CORS headers
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELET E, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELET E, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 // Helper function
 function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 // Supabase client
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
@@ -44,9 +50,15 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
         persistSession: false,
     },
 });
+// Redis client
+const redisClient = new Redis(REDIS_URL);
+redisClient.on("error", (err) => console.error("Redis Client Error", err));
+redisClient.on("connect", () => console.log("Connected to Redis"));
+// Cache service
+const cacheService = new CacheService(redisClient);
 // Register routes
 async function registerRoutes() {
-    await whatsappWebhookRoutes(server, supabaseClient);
+    await whatsappWebhookRoutes(server, supabaseClient, cacheService);
     await sendWhatsappMessageRoutes(server, supabaseClient);
     await getMediaPreviewRoutes(server, supabaseClient);
     await uploadInventoryImagesRoutes(server, supabaseClient);
@@ -56,6 +68,9 @@ async function registerRoutes() {
     await getWhatsappConfigRoutes(server, supabaseClient);
     await addCreditsRoutes(server, supabaseClient);
     await deleteAgentRoutes(server, supabaseClient);
+    await getConversationsRoutes(server, supabaseClient, cacheService);
+    await getConversationMessagesRoutes(server, supabaseClient, cacheService);
+    await getBotContextRoutes(server, supabaseClient, cacheService);
 }
 // Socket.IO connection handling
 server.ready().then(() => {

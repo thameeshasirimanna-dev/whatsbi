@@ -14,7 +14,7 @@ function emitAgentStatusUpdate(agentId: number, statusData: any) {
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? '';
 const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET ?? '';
 
-export default async function whatsappWebhookRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function whatsappWebhookRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: any) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers':
@@ -339,7 +339,8 @@ export default async function whatsappWebhookRoutes(fastify: FastifyInstance, su
                 message,
                 value.metadata?.phone_number_id,
                 value.contacts?.[0]?.profile?.name,
-                emitNewMessage
+                emitNewMessage,
+                cacheService
               );
             }
           }

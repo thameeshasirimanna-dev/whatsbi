@@ -9,7 +9,7 @@ function emitAgentStatusUpdate(agentId, statusData) {
 }
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? '';
 const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET ?? '';
-export default async function whatsappWebhookRoutes(fastify, supabaseClient) {
+export default async function whatsappWebhookRoutes(fastify, supabaseClient, cacheService) {
     const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hub-signature-256',
@@ -245,7 +245,7 @@ export default async function whatsappWebhookRoutes(fastify, supabaseClient) {
                     if (value.messages && value.messages.length > 0) {
                         console.log(`Processing ${value.messages.length} message(s)`);
                         for (const message of value.messages) {
-                            await processIncomingMessage(supabaseClient, message, value.metadata?.phone_number_id, value.contacts?.[0]?.profile?.name, emitNewMessage);
+                            await processIncomingMessage(supabaseClient, message, value.metadata?.phone_number_id, value.contacts?.[0]?.profile?.name, emitNewMessage, cacheService);
                         }
                     }
                     if (value.statuses && value.statuses.length > 0) {

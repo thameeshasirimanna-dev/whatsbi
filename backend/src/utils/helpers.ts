@@ -106,7 +106,8 @@ export async function processIncomingMessage(
   message: any,
   phoneNumberId: string,
   contactName: string,
-  emitNewMessage?: (agentId: number, messageData: any) => void
+  emitNewMessage?: (agentId: number, messageData: any) => void,
+  cacheService?: any
 ) {
   try {
     console.log('Processing message:', message.id, message.type);
@@ -341,6 +342,13 @@ export async function processIncomingMessage(
         mediaType,
         hasMediaUrl: !!mediaUrl,
       });
+
+      // Invalidate cache for chat list and recent messages
+      if (cacheService) {
+        await cacheService.invalidateChatList(agent.id);
+        await cacheService.invalidateRecentMessages(agent.id, customerId);
+        console.log('Cache invalidated for agent', agent.id, 'customer', customerId);
+      }
 
       // Emit socket event for new message
       if (emitNewMessage) {
