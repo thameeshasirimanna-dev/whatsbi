@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../../../lib/supabase";
 import jsPDF from "jspdf";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+
 const SettingsContent: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [agent, setAgent] = useState<{
@@ -311,19 +313,34 @@ const SettingsContent: React.FC = () => {
 
     try {
       setCreditsMessage("");
-      const { data, error } = await supabase.functions.invoke('add-credits', {
-        body: {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setCreditsMessage("Please log in to continue");
+        return;
+      }
+
+      const response = await fetch(`${backendUrl}/add-credits`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           agent_id: agent.id,
-          amount: amount
-        }
+          amount: amount,
+        }),
       });
 
-      if (error) {
-        setCreditsMessage(`Error: ${error.message}`);
-        console.error(error);
-      } else if (data && data.message === 'Credits added successfully') {
+      const data = await response.json();
+
+      if (response.ok && data.message === "Credits added successfully") {
         setAgent({ ...agent, credits: data.credits });
-        setCreditsMessage(`Added ${amount} credits successfully! New balance: ${data.credits}`);
+        setCreditsMessage(
+          `Added ${amount} credits successfully! New balance: ${data.credits}`
+        );
         setNewAmount("");
         setEditingCredits(false);
       } else {

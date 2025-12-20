@@ -9,6 +9,7 @@ import { WhatsAppSetupModal } from './WhatsAppSetupModal';
 // Supabase client with service key (same as AdminLoginPage)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Types - Updated for new structure
@@ -207,24 +208,21 @@ const AdminDashboard: React.FC = () => {
             // Fetch WhatsApp config separately - always fresh data
             let whatsappConfig = null;
             try {
-              const { data: responseData, error: fetchError } = await supabase.functions.invoke('get-whatsapp-config', {
-                body: { user_id: agent.user_id }
-              });
-              
-              if (fetchError) {
-                whatsappConfig = null;
-              } else if (responseData) {
-                // RPC returns array with {config: row_to_json(...)} structure
+              const response = await fetch(`${backendUrl}/get-whatsapp-config?user_id=${agent.user_id}`);
+              const responseData = await response.json();
+
+              if (response.ok && responseData.success) {
+                // Backend returns array directly
                 const configArray = responseData.whatsapp_config;
                 let actualConfig = null;
-                
+
                 if (Array.isArray(configArray) && configArray.length > 0) {
                   const configItem = configArray[0];
                   actualConfig = configItem.config || configItem;
                 } else if (configArray && typeof configArray === 'object') {
                   actualConfig = configArray.config || configArray;
                 }
-                
+
                 if (actualConfig && typeof actualConfig === 'object') {
                   whatsappConfig = {
                     whatsapp_number: actualConfig.whatsapp_number || '',
@@ -331,19 +329,28 @@ const AdminDashboard: React.FC = () => {
     
     try {
       setLoading(true);
-      // Call the delete-agent Edge Function
-      const { data, error } = await supabase.functions.invoke('delete-agent', {
-        body: { agent_id: id }
-      });
-      
-      if (error) {
-        throw new Error(`Failed to delete agent: ${error.message}`);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setError('Please log in to continue');
+        return;
       }
-      
-      if (!data.success) {
+
+      const response = await fetch(`${backendUrl}/delete-agent`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ agent_id: id })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to delete agent');
       }
-      
+
       fetchAgents();
       fetchAnalytics();
       setError(null);
@@ -666,29 +673,23 @@ const AdminDashboard: React.FC = () => {
 
   const fetchWhatsAppConfig = async (userId: string) => {
     if (!userId) return null;
-    
+
     try {
-      const { data: responseData, error: fetchError } = await supabase.functions.invoke('get-whatsapp-config', {
-        body: { user_id: userId }
-      });
-      
-      if (fetchError) {
-        console.warn('Failed to fetch WhatsApp config:', fetchError);
-        return null;
-      }
-      
-      if (responseData && responseData.success) {
-        // Edge function returns full config object, map to expected interface
+      const response = await fetch(`${backendUrl}/get-whatsapp-config?user_id=${userId}`);
+      const responseData = await response.json();
+
+      if (response.ok && responseData.success) {
+        // Backend returns full config object, map to expected interface
         const configArray = responseData.whatsapp_config;
         let actualConfig = null;
-        
+
         if (Array.isArray(configArray) && configArray.length > 0) {
           const configItem = configArray[0];
           actualConfig = configItem.config || configItem;
         } else if (configArray && typeof configArray === 'object') {
           actualConfig = configArray.config || configArray;
         }
-        
+
         if (actualConfig && typeof actualConfig === 'object') {
           return {
             whatsapp_number: actualConfig.whatsapp_number || '',
@@ -701,7 +702,7 @@ const AdminDashboard: React.FC = () => {
         }
         return null;
       }
-      
+
       return null;
     } catch (err) {
       console.error('Error fetching WhatsApp config:', err);

@@ -1,5 +1,18 @@
 # Edge Function Classification Report
 
+## Classification Rule
+
+KEEP EDGE FUNCTIONS WHERE THEY MAKE SENSE
+
+DO NOT MIGRATE Edge Functions that:
+
+- Are auth-related
+- Run rarely
+- Return tiny payloads
+- Are Supabase-native (e.g., auth hooks)
+
+These are cheap & safe.
+
 ## 🔵 KEEP (low egress, auth-only, light logic)
 
 ### add-agent

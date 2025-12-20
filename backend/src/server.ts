@@ -8,6 +8,10 @@ import getMediaPreviewRoutes from './routes/get-media-preview';
 import uploadInventoryImagesRoutes from './routes/upload-inventory-images';
 import uploadMediaRoutes from './routes/upload-media';
 import authenticatedMessagesStreamRoutes from './routes/authenticated-messages-stream';
+import addAgentRoutes from './routes/add-agent';
+import getWhatsappConfigRoutes from './routes/get-whatsapp-config';
+import addCreditsRoutes from './routes/add-credits';
+import deleteAgentRoutes from './routes/delete-agent';
 
 const server = fastify();
 
@@ -48,6 +52,10 @@ async function registerRoutes() {
   await uploadInventoryImagesRoutes(server, supabaseClient);
   await uploadMediaRoutes(server, supabaseClient);
   await authenticatedMessagesStreamRoutes(server, supabaseClient);
+  await addAgentRoutes(server, supabaseClient);
+  await getWhatsappConfigRoutes(server, supabaseClient);
+  await addCreditsRoutes(server, supabaseClient);
+  await deleteAgentRoutes(server, supabaseClient);
 }
 
 // Helper functions (ported from Edge Function)
