@@ -1,4 +1,5 @@
 import 'dotenv/config';
+console.log("🚀 Server starting...");
 import fastify from 'fastify';
 import { createClient } from "@supabase/supabase-js";
 import Redis from "ioredis";
@@ -34,6 +35,13 @@ import getUsersRoutes from "./routes/users/get-users";
 import addUserRoutes from "./routes/users/add-user";
 import updateUserRoutes from "./routes/users/update-user";
 import deleteUserRoutes from "./routes/users/delete-user";
+import updatePasswordRoutes from "./routes/users/update-password";
+import manageOrdersRoutes from "./routes/orders/manage-orders";
+import manageAppointmentsRoutes from "./routes/appointments/manage-appointments";
+import manageTemplatesRoutes from "./routes/templates/manage-templates";
+import getAgentProfileRoutes from "./routes/agents/get-agent-profile";
+import uploadInvoiceTemplateRoutes from "./routes/upload-invoice-template";
+import getAdminInfoRoutes from "./routes/admin/get-admin-info";
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
@@ -84,6 +92,7 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 });
 
 // Redis client
+console.log("Attempting to connect to Redis at:", REDIS_URL);
 const redisClient = new Redis(REDIS_URL);
 redisClient.on("error", (err) => console.error("Redis Client Error", err));
 redisClient.on("connect", () => console.log("Connected to Redis"));
@@ -123,14 +132,21 @@ async function registerRoutes() {
   await addUserRoutes(server, supabaseClient);
   await updateUserRoutes(server, supabaseClient);
   await deleteUserRoutes(server, supabaseClient);
+  await updatePasswordRoutes(server, supabaseClient);
+  await manageOrdersRoutes(server, supabaseClient);
+  await manageAppointmentsRoutes(server, supabaseClient);
+  await manageTemplatesRoutes(server, supabaseClient);
+  await getAgentProfileRoutes(server, supabaseClient);
+  await uploadInvoiceTemplateRoutes(server, supabaseClient);
+  await getAdminInfoRoutes(server, supabaseClient);
 }
 
 // Socket.IO connection handling
 server.ready().then(() => {
-  (server as any).io.on('connection', (socket: any) => {
-    console.log('Client connected:', socket.id);
+  (server as any).io.on("connection", (socket: any) => {
+    console.log("Client connected:", socket.id);
 
-    socket.on('join-agent-room', (data: any) => {
+    socket.on("join-agent-room", (data: any) => {
       const { agentId, token } = data;
       if (agentId && token) {
         // Verify JWT token
@@ -140,8 +156,8 @@ server.ready().then(() => {
       }
     });
 
-    socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
+    socket.on("disconnect", () => {
+      console.log("Client disconnected:", socket.id);
     });
   });
 });
@@ -215,8 +231,6 @@ async function downloadWhatsAppMedia(
   }
 }
 
-
-
 async function processMessageStatus(supabase: any, status: any) {
   try {
     console.log(
@@ -246,31 +260,40 @@ async function processMessageStatus(supabase: any, status: any) {
   }
 }
 
-
-
 // Upload inventory images route
-server.get('/health', async (request, reply) => {
-  return { status: 'ok' };
+server.get("/health", async (request, reply) => {
+  return { status: "ok" };
 });
 
 // Socket.IO utility functions
 function emitNewMessage(agentId: number, messageData: any) {
-  (server as any).io.to(`agent-${agentId}`).emit('new-message', messageData);
+  (server as any).io.to(`agent-${agentId}`).emit("new-message", messageData);
 }
 
 function emitAgentStatusUpdate(agentId: number, statusData: any) {
-  (server as any).io.to(`agent-${agentId}`).emit('agent-status-update', statusData);
+  (server as any).io
+    .to(`agent-${agentId}`)
+    .emit("agent-status-update", statusData);
 }
 
 const start = async () => {
   try {
     await registerRoutes();
-    await server.listen({ port: 8080, host: '0.0.0.0' });
-    console.log('Server running on http://localhost:8080');
+    await server.listen({ port: 8080, host: "0.0.0.0" });
+    console.log("Server running on http://localhost:8080");
   } catch (err) {
     server.log.error(err);
     process.exit(1);
   }
 };
+
+// Handle unhandled errors without terminating
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
 
 start();

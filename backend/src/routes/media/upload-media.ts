@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 export default async function uploadMediaRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/upload-media', async (request, reply) => {

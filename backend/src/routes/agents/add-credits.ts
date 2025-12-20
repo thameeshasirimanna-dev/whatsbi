@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 // Socket.IO utility functions
 function emitAgentStatusUpdate(agentId: number, statusData: any) {

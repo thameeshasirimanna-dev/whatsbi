@@ -1,25 +1,13 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 export default async function addUserRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/add-user', async (request, reply) => {
     try {
-      // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
-
       const body = request.body as any;
       console.log('=== ADD-USER FUNCTION START ===');
       console.log('Method:', request.method);
       console.log('Headers:', request.headers);
-      console.log('Authenticated User:', authenticatedUser.id);
-
-      // Check if user is admin
-      if (authenticatedUser.role !== 'admin') {
-        return reply.code(403).send({
-          success: false,
-          message: 'Access denied. Admin role required.'
-        });
-      }
 
       const {
         name,
@@ -42,6 +30,38 @@ export default async function addUserRoutes(fastify: FastifyInstance, supabaseCl
           success: false,
           message: "role must be 'admin', 'agent', or 'user'"
         });
+      }
+
+      // Check if trying to create first admin (no existing admins)
+      let isFirstAdmin = false;
+      if (role === 'admin') {
+        const { count: adminCount } = await supabaseClient
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'admin');
+
+        isFirstAdmin = adminCount === 0;
+      }
+
+      // If not creating first admin, verify JWT and check admin role
+      if (!isFirstAdmin) {
+        // Verify JWT and get authenticated user
+        const authenticatedUser = await verifyJWT(request, supabaseClient);
+        console.log('Authenticated User:', authenticatedUser.id);
+
+        // Get user role from database
+        const { data: userData } = await supabaseClient
+          .from('users')
+          .select('role')
+          .eq('id', authenticatedUser.id)
+          .single();
+
+        if (!userData || userData.role !== 'admin') {
+          return reply.code(403).send({
+            success: false,
+            message: 'Access denied. Admin role required.'
+          });
+        }
       }
 
       // 1️⃣ Create Auth user

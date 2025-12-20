@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
-import { CacheService } from '../utils/cache';
+import { verifyJWT } from '../../utils/helpers';
+import { CacheService } from '../../utils/cache';
 
 export default async function getConversationMessagesRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: CacheService) {
   fastify.get('/conversations/:customerId/messages', async (request, reply) => {

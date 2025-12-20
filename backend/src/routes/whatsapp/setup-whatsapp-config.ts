@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/setup-whatsapp-config', async (request, reply) => {

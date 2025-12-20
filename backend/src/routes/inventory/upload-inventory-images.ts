@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
-import { escapeRegExp, verifyJWT } from '../utils/helpers';
-import { uploadMediaToR2 } from "../utils/s3";
+import { escapeRegExp, verifyJWT } from '../../utils/helpers';
+import { uploadMediaToR2 } from "../../utils/s3";
 
 export default async function uploadInventoryImagesRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/upload-inventory-images', async (request, reply) => {

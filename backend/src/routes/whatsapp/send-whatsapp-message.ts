@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
-import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } from '../utils/helpers';
-import { uploadMediaToR2 } from "../utils/s3";
+import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } from '../../utils/helpers';
+import { uploadMediaToR2 } from "../../utils/s3";
 
 export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/send-whatsapp-message', async (request, reply) => {

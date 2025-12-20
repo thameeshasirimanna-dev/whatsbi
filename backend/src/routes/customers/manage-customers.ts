@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 export default async function manageCustomersRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.all('/manage-customers', async (request, reply) => {

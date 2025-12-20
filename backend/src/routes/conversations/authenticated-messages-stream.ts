@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 export default async function authenticatedMessagesStreamRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.get('/authenticated-messages-stream', async (request, reply) => {

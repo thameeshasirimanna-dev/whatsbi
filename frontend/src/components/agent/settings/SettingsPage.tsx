@@ -50,73 +50,47 @@ const SettingsContent: React.FC = () => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
+
+        // Get session token for API calls
         const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser();
-        if (!authUser) {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.access_token) {
           setError("User not authenticated");
           return;
         }
 
-        setUser(authUser);
+        // Fetch agent profile data from backend
+        const response = await fetch(`${backendUrl}/get-agent-profile`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        });
 
-        // Fetch agent data to validate agent exists and get id
-        const { data: agentData, error: agentError } = await supabase
-          .from("agents")
-          .select(
-            "id, address, business_email, contact_number, website, invoice_template_path, credits"
-          )
-          .eq("user_id", authUser.id)
-          .single();
+        const data = await response.json();
 
-        if (agentError) {
-          setError("Failed to fetch agent data");
-          console.error(agentError);
+        if (!response.ok) {
+          setError(data.message || "Failed to fetch agent profile");
+          console.error(data);
           return;
         }
 
-        // Fetch user name
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("name")
-          .eq("id", authUser.id)
-          .single();
+        const agentData = data.agent;
+        setUser({
+          id: agentData.id,
+          email: agentData.email,
+        });
 
-        if (userError) {
-          setError("Failed to fetch user data");
-          console.error(userError);
-          return;
-        }
-
-        // Fetch whatsapp configuration
-        const { data: whatsappData, error: whatsappError } = await supabase
-          .from("whatsapp_configuration")
-          .select("whatsapp_number")
-          .eq("user_id", authUser.id)
-          .single();
-
-        if (whatsappError) {
-          setError("Failed to fetch whatsapp configuration");
-          console.error(whatsappError);
-        } else {
-          setAgent({
-            id: agentData.id,
-            name: userData?.name || "Agent",
-            whatsapp_number: whatsappData?.whatsapp_number || "",
-            address: agentData.address || "",
-            business_email: agentData.business_email || "",
-            contact_number: agentData.contact_number || "",
-            website: agentData.website || "",
-            invoice_template_path: agentData.invoice_template_path,
-            credits: agentData.credits || 0,
-          });
-          setNewName(userData?.name || "Agent");
-          setNewAddress(agentData.address || "");
-          setNewBusinessEmail(agentData.business_email || "");
-          setNewContactNumber(agentData.contact_number || "");
-          setNewWebsite(agentData.website || "");
-          setCurrentTemplate(agentData.invoice_template_path || null);
-        }
+        setAgent(agentData);
+        setNewName(agentData.name);
+        setNewAddress(agentData.address || "");
+        setNewBusinessEmail(agentData.business_email || "");
+        setNewContactNumber(agentData.contact_number || "");
+        setNewWebsite(agentData.website || "");
+        setCurrentTemplate(agentData.invoice_template_path || null);
       } catch (err) {
         setError("Failed to load user data");
         console.error(err);
@@ -371,21 +345,41 @@ const SettingsContent: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
+      // Get session token for API call
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setPasswordMessage("Please log in to continue");
+        setChangingPassword(false);
+        return;
+      }
+
+      const response = await fetch(`${backendUrl}/update-password`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          new_password: newPassword,
+        }),
       });
 
-      if (error) {
-        setPasswordMessage(`Error: ${error.message}`);
-        console.error(error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPasswordMessage(data.message || "Failed to update password");
+        console.error(data);
       } else {
         setPasswordMessage("Password updated successfully!");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       }
-    } catch (err) {
-      setPasswordMessage("Failed to update password");
+    } catch (err: any) {
+      setPasswordMessage(`Failed to update password: ${err.message}`);
       console.error(err);
     } finally {
       setChangingPassword(false);
@@ -420,9 +414,14 @@ const SettingsContent: React.FC = () => {
       const fileBase64 = (base64 as string).split(",")[1];
       const fileType = selectedFile.type;
 
+      // Create form data
+      const formData = new FormData();
+      formData.append("agentId", agent.id.toString());
+      formData.append("file", selectedFile);
+
       // Call backend
       const response = await fetch(
-        "http://localhost:8080/upload-invoice-template",
+        `${backendUrl}/upload-invoice-template`,
         {
           method: "POST",
           body: formData,

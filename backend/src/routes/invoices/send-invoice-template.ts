@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/send-invoice-template', async (request, reply) => {

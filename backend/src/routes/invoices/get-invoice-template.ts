@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { CacheService } from '../utils/cache';
+import { CacheService } from '../../utils/cache';
 
 export default async function getInvoiceTemplateRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: CacheService) {
   fastify.get('/get-invoice-template', async (request, reply) => {

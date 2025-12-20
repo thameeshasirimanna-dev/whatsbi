@@ -70,82 +70,51 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         navigate('/login?error=no-session');
         return;
       }
-      
+
       setCurrentUser(session.user);
-      
-      // Verify admin role using the exact same simple query as AdminLoginPage
-      const { data: roleData, error: roleError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('email', session.user.email)
-        .single();
-      
-      if (roleError || !roleData || roleData.role !== 'admin') {
-        console.error('Admin role verification failed:', roleError);
-        await supabase.auth.signOut();
-        navigate('/login?error=unauthorized');
-        return;
-      }
-      
-      // Now get the user ID for agent creation (query by email)
-      let userData = null;
-      
+
+      // Verify admin role and get user info via backend
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', session.user.email)
-          .single();
-        
-        if (error) {
-          console.error('User ID query failed:', error);
-          setError('Failed to retrieve admin user ID. Please check your account setup.');
+        const response = await fetch(`${backendUrl}/get-admin-info`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          console.error('Admin verification failed:', data.message);
           await supabase.auth.signOut();
-          navigate('/login?error=user-not-found');
+          navigate('/login?error=unauthorized');
           return;
         }
-        
-        userData = data;
-      } catch (err) {
-        console.error('Unexpected error getting user ID:', err);
+
+        // Store the admin's UUID users table ID for agent creation
+        setAdminUserId(data.user.id);
+        setCustomUser(data.user);
+        setAnalytics(data.analytics);
+
+      } catch (err: any) {
+        console.error('Admin verification error:', err);
         setError('Database connection error during authentication.');
         await supabase.auth.signOut();
         navigate('/login');
         return;
       }
-      
-      if (!userData) {
-        console.error('No user data found:', userData);
-        setError('Admin user not found in database. Please check your account setup.');
-        await supabase.auth.signOut();
-        navigate('/login?error=admin-not-found');
-        return;
-      }
-        
-      // Store the admin's UUID users table ID for agent creation
-      setAdminUserId(userData.id);
-      // Create minimal User object for TypeScript compliance
-      setCustomUser({
-        id: userData.id,
-        name: session.user.email || 'Admin',
-        email: session.user.email || '',
-        role: 'admin',
-        created_at: new Date().toISOString()
-      });
     };
     checkAdmin();
   }, [navigate]);
 
-  // Fetch agents - Updated to use edge function
+  // Fetch agents - Updated to use backend
   useEffect(() => {
     if (currentUser && adminUserId) {
       fetchAgents();
-      fetchAnalytics();
     }
   }, [currentUser, adminUserId]);
 
@@ -194,33 +163,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const fetchAnalytics = async () => {
-    if (!currentUser || !adminUserId) {
-      setAnalytics({ total_agents: 0, total_messages: 0 });
-      return;
-    }
-
-    try {
-      // Total agents count
-      const { count: total, error: totalError } = await supabase
-        .from('agents')
-        .select('*', { count: 'exact', head: true });
-      if (totalError) {
-        throw totalError;
-      }
-
-      // Total messages placeholder (expand with actual messages table)
-      const totalMessages = 0;
-
-      setAnalytics({
-        total_agents: total || 0,
-        total_messages: totalMessages,
-      });
-      
-    } catch (err: any) {
-      setAnalytics({ total_agents: 0, total_messages: 0 });
-    }
-  };
 
   // Modal handles its own submission - this is now unused but kept for potential edit functionality
   const handleSubmit = async () => {
@@ -271,7 +213,6 @@ const AdminDashboard: React.FC = () => {
       }
 
       fetchAgents();
-      fetchAnalytics();
       setError(null);
     } catch (err: any) {
       console.error('Delete agent error:', err);
@@ -536,7 +477,6 @@ const AdminDashboard: React.FC = () => {
   const handleAgentAdded = () => {
     setActiveTab('agents');
     fetchAgents();
-    fetchAnalytics();
     setShowAddModal(false);
     setEditingAgent(null);
     setError(null);
@@ -545,7 +485,6 @@ const AdminDashboard: React.FC = () => {
   const handleAgentUpdated = () => {
     setActiveTab('agents');
     fetchAgents();
-    fetchAnalytics();
     setShowEditModal(false);
     setEditingAgent(null);
     setError(null);
@@ -556,7 +495,6 @@ const AdminDashboard: React.FC = () => {
     // Clear agents cache to force refetch of WhatsApp configs
     setAgents([]);
     fetchAgents();
-    fetchAnalytics();
     setShowWhatsAppModal(false);
     setSelectedAgentForSetup(null);
     setCurrentConfig(null);

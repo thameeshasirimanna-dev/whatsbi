@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
-import { processIncomingMessage, processMessageStatus } from '../utils/helpers';
+import { processIncomingMessage, processMessageStatus } from '../../utils/helpers';
 
 // Socket.IO utility functions (imported from server.ts)
 function emitNewMessage(agentId: number, messageData: any) {

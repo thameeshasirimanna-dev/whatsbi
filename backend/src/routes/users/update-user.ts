@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
+import { verifyJWT } from '../../utils/helpers';
 
 export default async function updateUserRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.put('/update-user/:id', async (request, reply) => {
