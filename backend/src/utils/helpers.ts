@@ -379,6 +379,8 @@ export async function processIncomingMessage(
             agent_prefix: agent.agent_prefix,
             agent_user_id: whatsappConfig.user_id,
             phone_number_id: phoneNumberId,
+            chatbot_secret: process.env.CHATBOT_SECRET ?? 'default-secret-change-in-prod',
+            chatbot_reply_url: `${process.env.BACKEND_URL ?? 'http://localhost:8080'}/chatbot-reply`,
           },
         };
         try {

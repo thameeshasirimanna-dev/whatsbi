@@ -17,6 +17,7 @@ import deleteAgentRoutes from './routes/delete-agent';
 import getConversationsRoutes from './routes/get-conversations';
 import getConversationMessagesRoutes from './routes/get-conversation-messages';
 import getBotContextRoutes from './routes/get-bot-context';
+import chatbotReplyRoutes from './routes/chatbot-reply';
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
@@ -82,6 +83,7 @@ async function registerRoutes() {
   await getConversationsRoutes(server, supabaseClient, cacheService);
   await getConversationMessagesRoutes(server, supabaseClient, cacheService);
   await getBotContextRoutes(server, supabaseClient, cacheService);
+  await chatbotReplyRoutes(server, supabaseClient);
 }
 
 // Socket.IO connection handling
