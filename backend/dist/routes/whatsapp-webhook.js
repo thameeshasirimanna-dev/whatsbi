@@ -1,14 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = whatsappWebhookRoutes;
-const crypto_1 = __importDefault(require("crypto"));
-const helpers_1 = require("../utils/helpers");
+import crypto from 'crypto';
+import { processIncomingMessage, processMessageStatus } from '../utils/helpers';
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? '';
 const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET ?? '';
-async function whatsappWebhookRoutes(fastify, supabaseClient) {
+export default async function whatsappWebhookRoutes(fastify, supabaseClient) {
     const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hub-signature-256',
@@ -184,7 +178,7 @@ async function whatsappWebhookRoutes(fastify, supabaseClient) {
                         }
                         if (verificationSecret) {
                             try {
-                                const hmac = crypto_1.default.createHmac('sha256', verificationSecret);
+                                const hmac = crypto.createHmac('sha256', verificationSecret);
                                 hmac.update(body);
                                 const expectedSignature = 'sha256=' + hmac.digest('hex');
                                 console.log('Computed signature:', expectedSignature.substring(0, 20) + '...');
@@ -244,13 +238,13 @@ async function whatsappWebhookRoutes(fastify, supabaseClient) {
                     if (value.messages && value.messages.length > 0) {
                         console.log(`Processing ${value.messages.length} message(s)`);
                         for (const message of value.messages) {
-                            await (0, helpers_1.processIncomingMessage)(supabaseClient, message, value.metadata?.phone_number_id, value.contacts?.[0]?.profile?.name);
+                            await processIncomingMessage(supabaseClient, message, value.metadata?.phone_number_id, value.contacts?.[0]?.profile?.name);
                         }
                     }
                     if (value.statuses && value.statuses.length > 0) {
                         console.log(`Processing ${value.statuses.length} status update(s)`);
                         for (const status of value.statuses) {
-                            await (0, helpers_1.processMessageStatus)(supabaseClient, status);
+                            await processMessageStatus(supabaseClient, status);
                         }
                     }
                     console.log('Message processing completed');

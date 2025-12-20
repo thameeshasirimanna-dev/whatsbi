@@ -1,11 +1,5 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = uploadInventoryImagesRoutes;
-const crypto_1 = __importDefault(require("crypto"));
-async function uploadInventoryImagesRoutes(fastify, supabaseClient) {
+import crypto from 'crypto';
+export default async function uploadInventoryImagesRoutes(fastify, supabaseClient) {
     fastify.post('/upload-inventory-images', async (request, reply) => {
         try {
             const body = request.body;
@@ -48,7 +42,7 @@ async function uploadInventoryImagesRoutes(fastify, supabaseClient) {
                     // TODO: Add image resizing/compression using sharp or similar
                     // For now, upload as is
                     const processedFileType = image.fileType;
-                    const uniqueId = crypto_1.default.randomUUID();
+                    const uniqueId = crypto.randomUUID();
                     const extension = image.fileName.split('.').pop() || 'jpg';
                     const filePath = `${productId}/${uniqueId}.${extension}`;
                     // Upload to storage

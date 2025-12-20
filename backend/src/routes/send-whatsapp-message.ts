@@ -489,8 +489,8 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
       }
 
       let whatsappPayload;
-      let allResults = [];
-      let allMessageIds = [];
+      let allResults: any[] = [];
+      let allMessageIds: any[] = [];
 
       let templateStoredMediaUrl: string | null = null;
       let templateMediaType: string | null = null;

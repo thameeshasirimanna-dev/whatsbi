@@ -1,19 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.escapeRegExp = escapeRegExp;
-exports.getMediaTypeFromWhatsApp = getMediaTypeFromWhatsApp;
-exports.downloadWhatsAppMedia = downloadWhatsAppMedia;
-exports.uploadMediaToStorage = uploadMediaToStorage;
-exports.processIncomingMessage = processIncomingMessage;
-exports.processMessageStatus = processMessageStatus;
-const crypto_1 = __importDefault(require("crypto"));
-function escapeRegExp(string) {
+import crypto from 'crypto';
+export function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-function getMediaTypeFromWhatsApp(messageType, mimeType) {
+export function getMediaTypeFromWhatsApp(messageType, mimeType) {
     switch (messageType) {
         case 'image':
             return 'image';
@@ -29,7 +18,7 @@ function getMediaTypeFromWhatsApp(messageType, mimeType) {
             return 'none';
     }
 }
-async function downloadWhatsAppMedia(mediaId, accessToken) {
+export async function downloadWhatsAppMedia(mediaId, accessToken) {
     try {
         const response = await fetch(`https://graph.facebook.com/v23.0/${mediaId}`, {
             headers: {
@@ -62,11 +51,11 @@ async function downloadWhatsAppMedia(mediaId, accessToken) {
         return null;
     }
 }
-async function uploadMediaToStorage(supabaseClient, agentPrefix, mediaBuffer, originalFilename, contentType) {
+export async function uploadMediaToStorage(supabaseClient, agentPrefix, mediaBuffer, originalFilename, contentType) {
     try {
         const timestamp = Date.now();
         const fileExt = originalFilename.split('.').pop()?.toLowerCase() || 'bin';
-        const fileName = `${timestamp}_${crypto_1.default.randomUUID()}.${fileExt}`;
+        const fileName = `${timestamp}_${crypto.randomUUID()}.${fileExt}`;
         const filePath = `${agentPrefix}/incoming/${fileName}`;
         console.log(`Uploading media to storage: ${filePath}`);
         const { data, error } = await supabaseClient.storage
@@ -91,7 +80,7 @@ async function uploadMediaToStorage(supabaseClient, agentPrefix, mediaBuffer, or
         return null;
     }
 }
-async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName) {
+export async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName) {
     try {
         console.log('Processing message:', message.id, message.type);
         const { data: whatsappConfig } = await supabaseClient
@@ -310,7 +299,7 @@ async function processIncomingMessage(supabaseClient, message, phoneNumberId, co
         console.error('Message processing error:', error);
     }
 }
-async function processMessageStatus(supabaseClient, status) {
+export async function processMessageStatus(supabaseClient, status) {
     try {
         console.log('📨 Processing message status update:', status.id, status.status);
         const statusDate = new Date(status.timestamp * 1000);

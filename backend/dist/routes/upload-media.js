@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = uploadMediaRoutes;
-async function uploadMediaRoutes(fastify, supabaseClient) {
+export default async function uploadMediaRoutes(fastify, supabaseClient) {
     fastify.post('/upload-media', async (request, reply) => {
         console.log(`🚀 Upload-media function invoked - Method: ${request.method}`);
         console.log('📋 Request headers:', request.headers);

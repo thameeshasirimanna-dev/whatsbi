@@ -1,11 +1,5 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = sendWhatsappMessageRoutes;
-const crypto_1 = __importDefault(require("crypto"));
-async function sendWhatsappMessageRoutes(fastify, supabaseClient) {
+import crypto from 'crypto';
+export default async function sendWhatsappMessageRoutes(fastify, supabaseClient) {
     fastify.post('/send-whatsapp-message', async (request, reply) => {
         try {
             const body = request.body;
@@ -321,7 +315,7 @@ async function sendWhatsappMessageRoutes(fastify, supabaseClient) {
                         try {
                             const timestamp = Date.now();
                             const fileExt = mimeType.split('/')[1] || 'bin';
-                            const fileName = `outgoing_${timestamp}_${crypto_1.default.randomUUID()}.${fileExt}`;
+                            const fileName = `outgoing_${timestamp}_${crypto.randomUUID()}.${fileExt}`;
                             const filePath = `${agent.agent_prefix}/outgoing/${fileName}`;
                             console.log(`[DEBUG] Uploading outgoing media ${index + 1} to Supabase storage: ${filePath}`);
                             const { data: uploadData, error: uploadError } = await supabaseClient.storage

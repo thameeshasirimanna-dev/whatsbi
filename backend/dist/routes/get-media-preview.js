@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = getMediaPreviewRoutes;
-async function getMediaPreviewRoutes(fastify, supabaseClient) {
+export default async function getMediaPreviewRoutes(fastify, supabaseClient) {
     fastify.post('/get-media-preview', async (request, reply) => {
         try {
             const body = request.body;
