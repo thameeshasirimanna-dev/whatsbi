@@ -1,7 +1,10 @@
 import crypto from 'crypto';
+import { verifyJWT } from '../utils/helpers';
 export default async function sendWhatsappMessageRoutes(fastify, supabaseClient) {
     fastify.post('/send-whatsapp-message', async (request, reply) => {
         try {
+            // Verify JWT and get authenticated user
+            const authenticatedUser = await verifyJWT(request, supabaseClient);
             const body = request.body;
             console.log('Incoming request body:', JSON.stringify(body, null, 2));
             const { user_id, customer_phone, message, type = 'text', category = 'utility', is_promotional = false, template_name, template_params = [], header_params = [], template_buttons = [], media_id, media_ids, caption, filename, } = body;

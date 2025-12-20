@@ -1,8 +1,12 @@
 import { FastifyInstance } from 'fastify';
+import { verifyJWT } from '../utils/helpers';
 
 export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.get('/get-whatsapp-config', async (request, reply) => {
     try {
+      // Verify JWT and get authenticated user
+      const authenticatedUser = await verifyJWT(request, supabaseClient);
+
       const query = request.query as any;
       let userId = query.user_id;
 

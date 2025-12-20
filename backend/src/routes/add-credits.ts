@@ -1,8 +1,12 @@
 import { FastifyInstance } from 'fastify';
+import { verifyJWT } from '../utils/helpers';
 
 export default async function addCreditsRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/add-credits', async (request, reply) => {
     try {
+      // Verify JWT and get authenticated user
+      const authenticatedUser = await verifyJWT(request, supabaseClient);
+
       const { agent_id, amount } = request.body as any;
 
       // Validate input

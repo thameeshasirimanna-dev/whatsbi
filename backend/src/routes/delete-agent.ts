@@ -1,15 +1,19 @@
 import { FastifyInstance } from 'fastify';
+import { verifyJWT } from "../utils/helpers";
 
 export default async function deleteAgentRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/delete-agent', async (request, reply) => {
     try {
+      // Verify JWT and get authenticated user
+      const authenticatedUser = await verifyJWT(request, supabaseClient);
+
       const body = request.body as any;
       const { agent_id } = body;
 
       if (!agent_id) {
         return reply.code(400).send({
           success: false,
-          message: "Agent ID is required"
+          message: "Agent ID is required",
         });
       }
 
@@ -23,7 +27,7 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
       if (agentError || !agent) {
         return reply.code(404).send({
           success: false,
-          message: "Agent not found: " + agentError?.message
+          message: "Agent not found: " + agentError?.message,
         });
       }
 
@@ -31,26 +35,29 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
       if (agent.agent_prefix) {
         const prefix = agent.agent_prefix.toLowerCase();
         try {
-          const { data, error } = await supabaseClient.rpc('drop_agent_tables', {
-            p_agent_prefix: prefix
-          });
+          const { data, error } = await supabaseClient.rpc(
+            "drop_agent_tables",
+            {
+              p_agent_prefix: prefix,
+            }
+          );
 
           if (error) {
-            console.error('RPC error dropping agent tables:', error);
+            console.error("RPC error dropping agent tables:", error);
           } else {
             const droppedTables = data?.dropped_tables || [];
             const errors = data?.errors || [];
 
             console.log(`Table cleanup for prefix ${prefix}:`);
-            console.log(`- Dropped tables: [${droppedTables.join(', ')}]`);
+            console.log(`- Dropped tables: [${droppedTables.join(", ")}]`);
             if (errors.length > 0) {
-              console.log(`- Errors: [${errors.join(', ')}]`);
+              console.log(`- Errors: [${errors.join(", ")}]`);
             } else {
-              console.log('- No errors');
+              console.log("- No errors");
             }
           }
         } catch (rpcError) {
-          console.error('Exception during table cleanup RPC:', rpcError);
+          console.error("Exception during table cleanup RPC:", rpcError);
           // Continue with other deletion steps - table cleanup is best-effort
         }
       }
@@ -65,7 +72,7 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
       if (userError || !user) {
         return reply.code(404).send({
           success: false,
-          message: "User not found for agent: " + userError?.message
+          message: "User not found for agent: " + userError?.message,
         });
       }
 
@@ -79,7 +86,7 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
         console.error("Error deleting agent:", agentDeleteError);
         return reply.code(500).send({
           success: false,
-          message: "Failed to delete agent: " + agentDeleteError.message
+          message: "Failed to delete agent: " + agentDeleteError.message,
         });
       }
 
@@ -96,7 +103,10 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
           customerIds = agentCustomers.map((ac: any) => ac.customer_id);
         }
       } catch (acErr) {
-        console.log("Could not fetch agent_customers (likely already cascaded):", acErr);
+        console.log(
+          "Could not fetch agent_customers (likely already cascaded):",
+          acErr
+        );
         // Try to find customers by looking at central customers table if needed
       }
 
@@ -111,7 +121,9 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
           console.error("Error deleting customers:", customerDeleteError);
           // Continue - customer deletion is important but shouldn't block agent deletion
         } else {
-          console.log(`Deleted ${customerIds.length} customers and their messages`);
+          console.log(
+            `Deleted ${customerIds.length} customers and their messages`
+          );
         }
       }
 
@@ -125,22 +137,25 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
         console.error("Error deleting user:", usersDeleteError);
         return reply.code(500).send({
           success: false,
-          message: "Failed to delete user: " + usersDeleteError.message
+          message: "Failed to delete user: " + usersDeleteError.message,
         });
       }
 
       // 7️⃣ Delete auth user
-      const { error: authDeleteError } = await supabaseClient.auth.admin.deleteUser(user.id);
+      const { error: authDeleteError } =
+        await supabaseClient.auth.admin.deleteUser(user.id);
 
       if (authDeleteError) {
         console.error("Error deleting auth user:", authDeleteError);
         return reply.code(500).send({
           success: false,
-          message: "Failed to delete auth user: " + authDeleteError.message
+          message: "Failed to delete auth user: " + authDeleteError.message,
         });
       }
 
-      console.log(`Agent ${agent_id} deleted successfully, including user ${user.id} and ${customerIds.length} customers`);
+      console.log(
+        `Agent ${agent_id} deleted successfully, including user ${user.id} and ${customerIds.length} customers`
+      );
 
       return reply.code(200).send({
         success: true,
@@ -148,10 +163,9 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
         deleted: {
           agent_id,
           user_id: user.id,
-          customers_count: customerIds.length
-        }
+          customers_count: customerIds.length,
+        },
       });
-
     } catch (err) {
       console.error("Delete agent error:", err);
       return reply.code(500).send({

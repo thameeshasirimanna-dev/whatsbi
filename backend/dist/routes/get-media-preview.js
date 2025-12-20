@@ -1,47 +1,14 @@
+import { verifyJWT } from '../utils/helpers';
 export default async function getMediaPreviewRoutes(fastify, supabaseClient) {
     fastify.post('/get-media-preview', async (request, reply) => {
         try {
+            // Verify JWT and get authenticated user
+            const authenticatedUser = await verifyJWT(request, supabaseClient);
+            const userId = authenticatedUser.id;
             const body = request.body;
             const { media_id } = body;
             if (!media_id) {
                 return reply.code(400).send({ error: 'media_id is required' });
-            }
-            // Get auth token from Authorization header
-            const authHeader = request.headers.authorization;
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                return reply
-                    .code(401)
-                    .send({ error: 'Authorization header missing or invalid' });
-            }
-            const token = authHeader.slice(7);
-            // Extract user ID from JWT payload
-            let userId;
-            try {
-                const parts = token.split('.');
-                if (parts.length !== 3) {
-                    throw new Error('Invalid JWT format');
-                }
-                let payload = parts[1];
-                payload = payload.replace(/-/g, '+').replace(/_/g, '/');
-                while (payload.length % 4) {
-                    payload += '=';
-                }
-                const decodedPayload = Buffer.from(payload, 'base64').toString();
-                const userData = JSON.parse(decodedPayload);
-                if (!userData.sub) {
-                    throw new Error('No user ID in JWT payload');
-                }
-                const currentTime = Math.floor(Date.now() / 1000);
-                if (userData.exp && userData.exp < currentTime) {
-                    throw new Error('JWT token expired');
-                }
-                userId = userData.sub;
-            }
-            catch (jwtError) {
-                return reply.code(401).send({
-                    error: 'Invalid authentication token',
-                    details: jwtError.message,
-                });
             }
             // Get agent info
             const { data: agent, error: agentError } = await supabaseClient

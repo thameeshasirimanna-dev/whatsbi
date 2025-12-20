@@ -1,7 +1,10 @@
 import crypto from 'crypto';
+import { verifyJWT } from '../utils/helpers';
 export default async function uploadInventoryImagesRoutes(fastify, supabaseClient) {
     fastify.post('/upload-inventory-images', async (request, reply) => {
         try {
+            // Verify JWT and get authenticated user
+            const authenticatedUser = await verifyJWT(request, supabaseClient);
             const body = request.body;
             const { agentId, productId, images } = body;
             if (!agentId) {

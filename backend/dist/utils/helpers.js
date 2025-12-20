@@ -2,6 +2,19 @@ import crypto from 'crypto';
 export function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+export async function verifyJWT(request, supabaseClient) {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new Error('Authorization header required');
+    }
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    if (authError || !user) {
+        console.error('Auth error:', authError);
+        throw new Error('Invalid or expired token');
+    }
+    return user;
+}
 export function getMediaTypeFromWhatsApp(messageType, mimeType) {
     switch (messageType) {
         case 'image':

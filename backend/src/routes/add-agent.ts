@@ -1,12 +1,17 @@
 import { FastifyInstance } from 'fastify';
+import { verifyJWT } from '../utils/helpers';
 
 export default async function addAgentRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/add-agent', async (request, reply) => {
     try {
+      // Verify JWT and get authenticated user
+      const authenticatedUser = await verifyJWT(request, supabaseClient);
+
       const body = request.body as any;
       console.log('=== ADD-AGENT FUNCTION START ===');
       console.log('Method:', request.method);
       console.log('Headers:', request.headers);
+      console.log('Authenticated User:', authenticatedUser.id);
 
       const {
         agent_name,

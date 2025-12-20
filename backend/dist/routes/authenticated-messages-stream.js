@@ -1,18 +1,9 @@
+import { verifyJWT } from '../utils/helpers';
 export default async function authenticatedMessagesStreamRoutes(fastify, supabaseClient) {
     fastify.get('/authenticated-messages-stream', async (request, reply) => {
         try {
-            // Get authorization header
-            const authHeader = request.headers.authorization;
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                return reply.code(401).send('Authorization header required');
-            }
-            const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-            // Validate JWT token
-            const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-            if (authError || !user) {
-                console.error('Auth error:', authError);
-                return reply.code(401).send('Invalid or expired token');
-            }
+            // Verify JWT and get user
+            const user = await verifyJWT(request, supabaseClient);
             const query = request.query;
             const agentId = query.agentId;
             if (!agentId) {

@@ -208,7 +208,15 @@ const AdminDashboard: React.FC = () => {
             // Fetch WhatsApp config separately - always fresh data
             let whatsappConfig = null;
             try {
-              const response = await fetch(`${backendUrl}/get-whatsapp-config?user_id=${agent.user_id}`);
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.access_token) {
+                throw new Error('No active session');
+              }
+              const response = await fetch(`${backendUrl}/get-whatsapp-config?user_id=${agent.user_id}`, {
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                },
+              });
               const responseData = await response.json();
 
               if (response.ok && responseData.success) {
@@ -675,7 +683,15 @@ const AdminDashboard: React.FC = () => {
     if (!userId) return null;
 
     try {
-      const response = await fetch(`${backendUrl}/get-whatsapp-config?user_id=${userId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No active session');
+      }
+      const response = await fetch(`${backendUrl}/get-whatsapp-config?user_id=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
       const responseData = await response.json();
 
       if (response.ok && responseData.success) {

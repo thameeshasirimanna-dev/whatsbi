@@ -1,58 +1,14 @@
+import { verifyJWT } from '../utils/helpers';
 export default async function uploadMediaRoutes(fastify, supabaseClient) {
     fastify.post('/upload-media', async (request, reply) => {
         console.log(`🚀 Upload-media function invoked - Method: ${request.method}`);
         console.log('📋 Request headers:', request.headers);
         const startTime = Date.now();
         try {
-            // Get auth token from Authorization header
-            const authHeader = request.headers.authorization;
-            console.log('📋 Auth header:', authHeader ? `${authHeader.substring(0, 20)}...` : 'MISSING');
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                console.error('❌ Authorization header missing or invalid');
-                return reply
-                    .code(401)
-                    .send({ error: 'Authorization header missing or invalid' });
-            }
-            const token = authHeader.slice(7);
-            console.log('🔑 Token extracted, length:', token.length);
-            // Extract user ID from JWT
-            let userId;
-            try {
-                const parts = token.split('.');
-                if (parts.length !== 3) {
-                    throw new Error('Invalid JWT format');
-                }
-                let payload = parts[1];
-                payload = payload.replace(/-/g, '+').replace(/_/g, '/');
-                while (payload.length % 4) {
-                    payload += '=';
-                }
-                const decodedPayload = Buffer.from(payload, 'base64').toString();
-                const userData = JSON.parse(decodedPayload);
-                console.log('📊 JWT payload extracted:', {
-                    userId: userData.sub,
-                    email: userData.email,
-                    exp: userData.exp
-                        ? new Date(userData.exp * 1000).toISOString()
-                        : undefined,
-                });
-                if (!userData.sub) {
-                    throw new Error('No user ID in JWT payload');
-                }
-                const currentTime = Math.floor(Date.now() / 1000);
-                if (userData.exp && userData.exp < currentTime) {
-                    throw new Error('JWT token expired');
-                }
-                userId = userData.sub;
-                console.log('✅ User ID extracted from JWT:', userId);
-            }
-            catch (jwtError) {
-                console.error('❌ JWT parsing failed:', jwtError);
-                return reply.code(401).send({
-                    error: 'Invalid authentication token',
-                    details: jwtError.message,
-                });
-            }
+            // Verify JWT and get authenticated user
+            const authenticatedUser = await verifyJWT(request, supabaseClient);
+            const userId = authenticatedUser.id;
+            console.log('✅ User authenticated:', userId);
             // Get agent info
             console.log('🏢 Fetching agent information for user:', userId);
             const { data: agent, error: agentError } = await supabaseClient
