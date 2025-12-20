@@ -397,15 +397,18 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         customer_name: customerName,
       };
 
-      const { data, error } = await supabase.functions.invoke(
-        "send-invoice-template",
-        {
-          body,
-        }
-      );
+      const response = await fetch('http://localhost:8080/send-invoice-template', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
 
-      if (error) {
-        throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send invoice');
       }
 
       if (data && data.success) {

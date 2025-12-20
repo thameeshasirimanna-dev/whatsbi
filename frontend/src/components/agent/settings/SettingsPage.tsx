@@ -420,20 +420,20 @@ const SettingsContent: React.FC = () => {
       const fileBase64 = (base64 as string).split(",")[1];
       const fileType = selectedFile.type;
 
-      // Call edge function
-      const { data, error } = await supabase.functions.invoke(
-        "upload-invoice-template",
+      // Call backend
+      const response = await fetch(
+        "http://localhost:8080/upload-invoice-template",
         {
-          body: {
-            agentId: agent.id,
-            fileName,
-            fileBase64,
-            fileType,
-          },
+          method: "POST",
+          body: formData,
         }
       );
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
 
       if (data && data.success) {
         setAgent({ ...agent, invoice_template_path: filePath });
@@ -496,29 +496,25 @@ const SettingsContent: React.FC = () => {
     try {
       setUpdateMessage("");
 
-      // Read file as base64
-      const reader = new FileReader();
-      const base64 = await new Promise((resolve) => {
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(selectedDocumentFile);
-      });
+      // Create form data
+      const formData = new FormData();
+      formData.append("agentId", agent.id.toString());
+      formData.append("file", selectedDocumentFile);
 
-      const fileBase64 = (base64 as string).split(",")[1];
-      const fileType = selectedDocumentFile.type;
-
-      // Call edge function
-      const { data, error } = await supabase.functions.invoke(
-        "upload-company-overview",
+      // Call backend
+      const response = await fetch(
+        "http://localhost:8080/upload-company-overview",
         {
-          body: {
-            agentId: agent.id,
-            fileBase64,
-            fileType,
-          },
+          method: "POST",
+          body: formData,
         }
       );
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
 
       if (data && data.success) {
         setCurrentDocument(filePath);

@@ -132,12 +132,18 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         phone_number_id: formData.phone_number_id?.trim() || null
       };
 
-      const { data, error } = await supabase.functions.invoke('setup-whatsapp-config', {
-        body: payload
+      const response = await fetch('http://localhost:8080/setup-whatsapp-config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
 
-      if (error) {
-        throw new Error(`Failed to setup WhatsApp: ${error.message}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(`Failed to setup WhatsApp: ${data.message || 'Unknown error'}`);
       }
 
       if (!data.success) {

@@ -878,10 +878,14 @@ const InvoicesPage: React.FC = () => {
       // Send invoice using the unified send-invoice-template function
       // This function now handles both template and free form sending automatically
 
-      const templateResponse = await supabase.functions.invoke(
-        "send-invoice-template",
+      const response = await fetch(
+        "http://localhost:8080/send-invoice-template",
         {
-          body: {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             user_id: userId,
             customer_phone: phone,
             invoice_url: invoice.pdf_url,
@@ -889,13 +893,15 @@ const InvoicesPage: React.FC = () => {
             order_number: orderNumber,
             total_amount: totalAmount.toString(),
             customer_name: customer.name || "Valued Customer",
-          },
+          }),
         }
       );
 
-      if (templateResponse.error) {
+      const data = await response.json();
+
+      if (!response.ok) {
         throw new Error(
-          "Failed to send invoice: " + templateResponse.error.message
+          "Failed to send invoice: " + (data.error || "Unknown error")
         );
       }
 

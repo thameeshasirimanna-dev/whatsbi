@@ -1703,10 +1703,18 @@ const ConversationsPage: React.FC = () => {
           category: "utility",
         };
 
-        const { data: textData, error: textError } =
-          await supabase.functions.invoke("send-whatsapp-message", {
-            body: textPayload,
-          });
+        const textResponse = await fetch(
+          "http://localhost:8080/send-whatsapp-message",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(textPayload),
+          }
+        );
+        const textData = await textResponse.json();
+        const textError = !textResponse.ok ? { message: textData.error } : null;
 
         if (textError || !textData?.success) {
           throw new Error(
@@ -1725,9 +1733,20 @@ const ConversationsPage: React.FC = () => {
               media_url: imageUrl,
               caption: "Product image",
             };
-            await supabase.functions.invoke("send-whatsapp-message", {
-              body: imagePayload,
-            });
+            const imgResponse = await fetch(
+              "http://localhost:8080/send-whatsapp-message",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(imagePayload),
+              }
+            );
+            const imgData = await imgResponse.json();
+            if (!imgResponse.ok || !imgData?.success) {
+              console.error("Failed to send product image", imgData);
+            }
           }
         }
 

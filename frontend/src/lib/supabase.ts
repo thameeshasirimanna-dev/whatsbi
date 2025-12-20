@@ -76,10 +76,16 @@ export const handleSupabaseError = (error: any, defaultMessage: string = 'An err
 // Service Management Helpers
 
 // Manage services - single endpoint for all operations
-export const manageServices = async (operation: 'create' | 'get' | 'update' | 'delete', data: any) => {
+export const manageServices = async (
+  operation: "create" | "get" | "update" | "delete",
+  data: any
+) => {
   try {
     // Ensure fresh session/token before invoke to handle potential expiration
-    const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+    const {
+      data: { session },
+      error: refreshError,
+    } = await supabase.auth.refreshSession();
     if (refreshError) {
       // Fallback to current session
       await supabase.auth.getSession();
@@ -87,40 +93,47 @@ export const manageServices = async (operation: 'create' | 'get' | 'update' | 'd
     }
 
     // DEBUG: Log session state after refresh
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-    const expiresAt = currentSession?.expires_at ? new Date(currentSession.expires_at * 1000).toISOString() : 'N/A';
-    const tokenPreview = currentSession?.access_token ? `${currentSession.access_token.substring(0, 20)}...` : 'MISSING';
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession();
+    const expiresAt = currentSession?.expires_at
+      ? new Date(currentSession.expires_at * 1000).toISOString()
+      : "N/A";
+    const tokenPreview = currentSession?.access_token
+      ? `${currentSession.access_token.substring(0, 20)}...`
+      : "MISSING";
 
     // Check if token is expired after refresh; if so, sign out to force re-login
-    if (currentSession && currentSession.expires_at && currentSession.expires_at * 1000 < Date.now()) {
+    if (
+      currentSession &&
+      currentSession.expires_at &&
+      currentSession.expires_at * 1000 < Date.now()
+    ) {
       await supabase.auth.signOut();
-      throw new Error('Session expired. Please log in again to continue.');
+      throw new Error("Session expired. Please log in again to continue.");
     }
 
-    const invokeResponse = await supabase.functions.invoke('manage-services', {
-      body: { operation, ...data },
+    const response = await fetch("http://localhost:8080/manage-services", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ operation, ...data }),
     });
 
-    // Added log: Full invoke response for debugging (fixed TS: no status/headers on FunctionsResponse)
-    console.log('[DEBUG] supabase.functions.invoke response:', {
-      data: invokeResponse.data,
-      error: invokeResponse.error ? { message: invokeResponse.error.message, status: invokeResponse.error.status } : null
-    });
+    const result = await response.json();
 
-    const { data: result, error } = invokeResponse;
-
-    if (error) {
-      // Enhanced error log
-      console.error('[DEBUG] Invoke error details:', error);
-      throw error;
+    if (!response.ok) {
+      return { data: null, error: result };
     }
-
-    // Log successful result (fixed TS: result may not have status/message directly)
-    console.log('[DEBUG] Successful invoke result:', result ? { data: result.data } : 'No result');
 
     return { data: result.data, error: null };
   } catch (error) {
-    return { data: null, error: handleSupabaseError(error, 'Failed to manage service') };
+    return {
+      data: null,
+      error: handleSupabaseError(error, "Failed to manage service"),
+    };
   }
 };
 
@@ -135,25 +148,37 @@ export const uploadServiceImages = async (
   }>
 ) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
-      throw new Error('No active session');
+      throw new Error("No active session");
     }
 
-    const response = await supabase.functions.invoke('upload-service-images', {
-      body: { agentId, serviceId, images },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
+    const fetchResponse = await fetch(
+      "http://localhost:8080/upload-service-images",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ agentId, serviceId, images }),
+      }
+    );
 
-    if (response.error) {
-      throw response.error;
+    const result = await fetchResponse.json();
+
+    if (!fetchResponse.ok) {
+      return { data: null, error: result };
     }
 
-    return { data: response.data, error: null };
+    return { data: result, error: null };
   } catch (error) {
-    return { data: null, error: handleSupabaseError(error, 'Failed to upload images') };
+    return {
+      data: null,
+      error: handleSupabaseError(error, "Failed to upload images"),
+    };
   }
 };
 

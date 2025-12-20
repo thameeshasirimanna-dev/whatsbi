@@ -426,15 +426,15 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
     mediaFormData.append("file", file);
     mediaFormData.append("media_type", mediaType);
 
-    const { data, error } = await supabase.functions.invoke(
-      "upload-media-to-meta",
-      {
-        body: mediaFormData,
-      }
-    );
+    const response = await fetch('http://localhost:8080/upload-media-to-meta', {
+      method: 'POST',
+      body: mediaFormData,
+    });
 
-    if (error) {
-      throw new Error(`WhatsApp media upload failed: ${error.message}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`WhatsApp media upload failed: ${data.error || 'Unknown error'}`);
     }
 
     if (!data || !data.media_handle) {
