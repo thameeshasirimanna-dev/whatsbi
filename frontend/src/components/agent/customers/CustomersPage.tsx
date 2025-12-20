@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from '../../../lib/supabase';
 import CreateOrderModal from "./CreateOrderModal";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+
 interface ProfileImage {
   phone: string;
   url?: string;
@@ -570,22 +572,17 @@ const CustomersPage: React.FC = () => {
       } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_SUPABASE_URL
-        }/functions/v1/get-whatsapp-profile-pic`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
-          body: JSON.stringify({
-            phone: phone,
-            user_id: currentUserId,
-          }),
-        }
-      );
+      const response = await fetch(`${backendUrl}/get-whatsapp-profile-pic`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          phone: phone,
+          user_id: currentUserId,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();

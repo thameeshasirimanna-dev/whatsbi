@@ -550,7 +550,7 @@ const SettingsContent: React.FC = () => {
 
   const handleDownloadMarginGuide = async () => {
     try {
-      const response = await fetch("https://itvaqysqzdmwhucllktz.supabase.co/storage/v1/object/public/invoices/IDesign%20Invoice%20Template.png");
+      const response = await fetch(`${backendUrl}/get-invoice-template`);
       if (!response.ok) throw new Error("Failed to fetch image");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -565,7 +565,7 @@ const SettingsContent: React.FC = () => {
       console.error("Download failed:", error);
       // Fallback to direct link if fetch fails
       const fallbackLink = document.createElement("a");
-      fallbackLink.href = "https://itvaqysqzdmwhucllktz.supabase.co/storage/v1/object/public/invoices/IDesign%20Invoice%20Template.png";
+      fallbackLink.href = `${backendUrl}/get-invoice-template`;
       fallbackLink.download = "IDesign_Invoice_Template.png";
       document.body.appendChild(fallbackLink);
       fallbackLink.click();

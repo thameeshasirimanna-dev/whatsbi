@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+
 interface EditAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -118,7 +120,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
         return;
       }
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/update-agent`, {
+      const res = await fetch(`${backendUrl}/update-agent`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

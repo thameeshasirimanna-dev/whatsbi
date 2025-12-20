@@ -4,46 +4,56 @@ import { createClient } from "@supabase/supabase-js";
 import Redis from "ioredis";
 import crypto from 'crypto';
 import { CacheService } from './utils/cache';
-import whatsappWebhookRoutes from './routes/whatsapp-webhook';
-import sendWhatsappMessageRoutes from './routes/send-whatsapp-message';
-import getMediaPreviewRoutes from './routes/get-media-preview';
-import uploadInventoryImagesRoutes from './routes/upload-inventory-images';
-import uploadMediaRoutes from './routes/upload-media';
-import authenticatedMessagesStreamRoutes from './routes/authenticated-messages-stream';
-import addAgentRoutes from './routes/add-agent';
-import getAgentsRoutes from "./routes/get-agents";
-import getWhatsappConfigRoutes from './routes/get-whatsapp-config';
-import addCreditsRoutes from './routes/add-credits';
-import deleteAgentRoutes from './routes/delete-agent';
-import getConversationsRoutes from './routes/get-conversations';
-import getConversationMessagesRoutes from './routes/get-conversation-messages';
-import getBotContextRoutes from './routes/get-bot-context';
-import chatbotReplyRoutes from './routes/chatbot-reply';
-import manageServicesRoutes from './routes/manage-services';
-import manageInventoryRoutes from './routes/manage-inventory';
-import getWhatsappProfilePicRoutes from './routes/get-whatsapp-profile-pic';
-import uploadServiceImagesRoutes from './routes/upload-service-images';
-import setupWhatsappConfigRoutes from './routes/setup-whatsapp-config';
+import whatsappWebhookRoutes from './routes/whatsapp/whatsapp-webhook';
+import sendWhatsappMessageRoutes from './routes/whatsapp/send-whatsapp-message';
+import getMediaPreviewRoutes from './routes/media/get-media-preview';
+import uploadInventoryImagesRoutes from './routes/inventory/upload-inventory-images';
+import uploadMediaRoutes from './routes/media/upload-media';
+import authenticatedMessagesStreamRoutes from './routes/conversations/authenticated-messages-stream';
+import addAgentRoutes from './routes/agents/add-agent';
+import getAgentsRoutes from "./routes/agents/get-agents";
+import getWhatsappConfigRoutes from './routes/whatsapp/get-whatsapp-config';
+import updateWhatsappConfigRoutes from './routes/whatsapp/update-whatsapp-config';
+import deleteWhatsappConfigRoutes from './routes/whatsapp/delete-whatsapp-config';
+import addCreditsRoutes from './routes/agents/add-credits';
+import deleteAgentRoutes from './routes/agents/delete-agent';
+import getConversationsRoutes from './routes/conversations/get-conversations';
+import getConversationMessagesRoutes from './routes/conversations/get-conversation-messages';
+import getBotContextRoutes from './routes/bot/get-bot-context';
+import chatbotReplyRoutes from './routes/bot/chatbot-reply';
+import manageServicesRoutes from './routes/services/manage-services';
+import manageInventoryRoutes from './routes/inventory/manage-inventory';
+import manageCustomersRoutes from './routes/customers/manage-customers';
+import getWhatsappProfilePicRoutes from './routes/whatsapp/get-whatsapp-profile-pic';
+import uploadServiceImagesRoutes from './routes/services/upload-service-images';
+import setupWhatsappConfigRoutes from './routes/whatsapp/setup-whatsapp-config';
+import getInvoiceTemplateRoutes from "./routes/invoices/get-invoice-template";
+import updateAgentRoutes from "./routes/agents/update-agent";
+import sendInvoiceTemplateRoutes from "./routes/invoices/send-invoice-template";
+import getUsersRoutes from "./routes/users/get-users";
+import addUserRoutes from "./routes/users/add-user";
+import updateUserRoutes from "./routes/users/update-user";
+import deleteUserRoutes from "./routes/users/delete-user";
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
 
 // Register CORS plugin
-server.register(require('@fastify/cors'), {
+server.register(require("@fastify/cors"), {
   origin: true, // Allow all origins
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 });
 
 // Register multipart plugin
-server.register(require('@fastify/multipart'));
+server.register(require("@fastify/multipart"));
 
 // Register Socket.IO plugin
 server.register(fastifySocketIO, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
 // Environment variables
@@ -92,6 +102,8 @@ async function registerRoutes() {
   await addAgentRoutes(server, supabaseClient);
   await getAgentsRoutes(server, supabaseClient);
   await getWhatsappConfigRoutes(server, supabaseClient);
+  await updateWhatsappConfigRoutes(server, supabaseClient);
+  await deleteWhatsappConfigRoutes(server, supabaseClient);
   await addCreditsRoutes(server, supabaseClient);
   await deleteAgentRoutes(server, supabaseClient);
   await getConversationsRoutes(server, supabaseClient, cacheService);
@@ -100,9 +112,17 @@ async function registerRoutes() {
   await chatbotReplyRoutes(server, supabaseClient);
   await manageServicesRoutes(server, supabaseClient);
   await manageInventoryRoutes(server, supabaseClient);
+  await manageCustomersRoutes(server, supabaseClient);
   await getWhatsappProfilePicRoutes(server, supabaseClient);
   await uploadServiceImagesRoutes(server, supabaseClient);
   await setupWhatsappConfigRoutes(server, supabaseClient);
+  await getInvoiceTemplateRoutes(server, supabaseClient, cacheService);
+  await updateAgentRoutes(server, supabaseClient);
+  await sendInvoiceTemplateRoutes(server, supabaseClient);
+  await getUsersRoutes(server, supabaseClient);
+  await addUserRoutes(server, supabaseClient);
+  await updateUserRoutes(server, supabaseClient);
+  await deleteUserRoutes(server, supabaseClient);
 }
 
 // Socket.IO connection handling
