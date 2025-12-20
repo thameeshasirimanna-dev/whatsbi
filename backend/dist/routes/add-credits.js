@@ -1,4 +1,8 @@
 import { verifyJWT } from '../utils/helpers';
+// Socket.IO utility functions
+function emitAgentStatusUpdate(agentId, statusData) {
+    require('../server').emitAgentStatusUpdate(agentId, statusData);
+}
 export default async function addCreditsRoutes(fastify, supabaseClient) {
     fastify.post('/add-credits', async (request, reply) => {
         try {
@@ -32,6 +36,8 @@ export default async function addCreditsRoutes(fastify, supabaseClient) {
                     error: error.message
                 });
             }
+            // Emit agent status update
+            emitAgentStatusUpdate(agent_id, { type: 'credits_updated', credits: data });
             return reply.code(200).send({
                 message: 'Credits added successfully',
                 credits: data

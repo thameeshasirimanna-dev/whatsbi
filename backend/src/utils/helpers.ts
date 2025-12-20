@@ -105,7 +105,8 @@ export async function processIncomingMessage(
   supabaseClient: any,
   message: any,
   phoneNumberId: string,
-  contactName: string
+  contactName: string,
+  emitNewMessage?: (agentId: number, messageData: any) => void
 ) {
   try {
     console.log('Processing message:', message.id, message.type);
@@ -340,6 +341,21 @@ export async function processIncomingMessage(
         mediaType,
         hasMediaUrl: !!mediaUrl,
       });
+
+      // Emit socket event for new message
+      if (emitNewMessage) {
+        const messageDataForSocket = {
+          id: insertedMessage.id,
+          customer_id: insertedMessage.customer_id,
+          message: insertedMessage.message,
+          sender_type: 'customer',
+          timestamp: insertedMessage.timestamp,
+          media_type: insertedMessage.media_type,
+          media_url: insertedMessage.media_url,
+          caption: insertedMessage.caption,
+        };
+        emitNewMessage(agent.id, messageDataForSocket);
+      }
 
       if (customer.ai_enabled && whatsappConfig?.webhook_url) {
         console.log(

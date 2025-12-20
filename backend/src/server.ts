@@ -12,11 +12,20 @@ import addAgentRoutes from './routes/add-agent';
 import getWhatsappConfigRoutes from './routes/get-whatsapp-config';
 import addCreditsRoutes from './routes/add-credits';
 import deleteAgentRoutes from './routes/delete-agent';
+import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
 
 // Register multipart plugin
 server.register(require('@fastify/multipart'));
+
+// Register Socket.IO plugin
+server.register(fastifySocketIO, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 // Environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
@@ -57,6 +66,27 @@ async function registerRoutes() {
   await addCreditsRoutes(server, supabaseClient);
   await deleteAgentRoutes(server, supabaseClient);
 }
+
+// Socket.IO connection handling
+server.ready().then(() => {
+  (server as any).io.on('connection', (socket: any) => {
+    console.log('Client connected:', socket.id);
+
+    socket.on('join-agent-room', (data: any) => {
+      const { agentId, token } = data;
+      if (agentId && token) {
+        // Verify JWT token
+        // For now, just join the room - proper auth will be added
+        socket.join(`agent-${agentId}`);
+        console.log(`Socket ${socket.id} joined agent room: agent-${agentId}`);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Client disconnected:', socket.id);
+    });
+  });
+});
 
 // Helper functions (ported from Edge Function)
 function getMediaTypeFromWhatsApp(
@@ -164,6 +194,15 @@ async function processMessageStatus(supabase: any, status: any) {
 server.get('/health', async (request, reply) => {
   return { status: 'ok' };
 });
+
+// Socket.IO utility functions
+function emitNewMessage(agentId: number, messageData: any) {
+  (server as any).io.to(`agent-${agentId}`).emit('new-message', messageData);
+}
+
+function emitAgentStatusUpdate(agentId: number, statusData: any) {
+  (server as any).io.to(`agent-${agentId}`).emit('agent-status-update', statusData);
+}
 
 const start = async () => {
   try {

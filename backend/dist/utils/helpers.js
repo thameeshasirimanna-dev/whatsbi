@@ -68,7 +68,7 @@ export async function uploadMediaToStorage(supabaseClient, agentPrefix, mediaBuf
     // Use R2 instead of Supabase Storage
     return uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename, contentType, 'incoming');
 }
-export async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName) {
+export async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName, emitNewMessage) {
     try {
         console.log('Processing message:', message.id, message.type);
         const { data: whatsappConfig } = await supabaseClient
@@ -247,6 +247,20 @@ export async function processIncomingMessage(supabaseClient, message, phoneNumbe
                 mediaType,
                 hasMediaUrl: !!mediaUrl,
             });
+            // Emit socket event for new message
+            if (emitNewMessage) {
+                const messageDataForSocket = {
+                    id: insertedMessage.id,
+                    customer_id: insertedMessage.customer_id,
+                    message: insertedMessage.message,
+                    sender_type: 'customer',
+                    timestamp: insertedMessage.timestamp,
+                    media_type: insertedMessage.media_type,
+                    media_url: insertedMessage.media_url,
+                    caption: insertedMessage.caption,
+                };
+                emitNewMessage(agent.id, messageDataForSocket);
+            }
             if (customer.ai_enabled && whatsappConfig?.webhook_url) {
                 console.log(`Triggering agent webhook for AI-enabled customer ${customer.id}`);
                 const payload = {

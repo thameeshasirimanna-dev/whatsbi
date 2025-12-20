@@ -1,5 +1,12 @@
 import crypto from 'crypto';
 import { processIncomingMessage, processMessageStatus } from '../utils/helpers';
+// Socket.IO utility functions (imported from server.ts)
+function emitNewMessage(agentId, messageData) {
+    require('../server').emitNewMessage(agentId, messageData);
+}
+function emitAgentStatusUpdate(agentId, statusData) {
+    require('../server').emitAgentStatusUpdate(agentId, statusData);
+}
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? '';
 const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET ?? '';
 export default async function whatsappWebhookRoutes(fastify, supabaseClient) {
@@ -238,7 +245,7 @@ export default async function whatsappWebhookRoutes(fastify, supabaseClient) {
                     if (value.messages && value.messages.length > 0) {
                         console.log(`Processing ${value.messages.length} message(s)`);
                         for (const message of value.messages) {
-                            await processIncomingMessage(supabaseClient, message, value.metadata?.phone_number_id, value.contacts?.[0]?.profile?.name);
+                            await processIncomingMessage(supabaseClient, message, value.metadata?.phone_number_id, value.contacts?.[0]?.profile?.name, emitNewMessage);
                         }
                     }
                     if (value.statuses && value.statuses.length > 0) {

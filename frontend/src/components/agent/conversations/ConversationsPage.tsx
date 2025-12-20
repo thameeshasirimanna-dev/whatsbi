@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
+import { io, Socket } from "socket.io-client";
 import ConversationList from "./ConversationList";
 import MessageView from "./MessageView";
 import ContactDetails from "./ContactDetails";
@@ -318,7 +319,9 @@ const ConversationsPage: React.FC = () => {
         },
       });
       const uploadResult = await uploadResponse.json();
-      const uploadError = !uploadResponse.ok ? { message: uploadResult.error } : null;
+      const uploadError = !uploadResponse.ok
+        ? { message: uploadResult.error }
+        : null;
 
       let errMsg;
       if (uploadError) {
@@ -511,9 +514,212 @@ const ConversationsPage: React.FC = () => {
     setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
   }, []);
 
-  // Realtime subscription state
+  // Socket.IO connection
+  useEffect(() => {
+    if (!agentId) return;
+
+    const newSocket = io("http://localhost:8080", {
+      transports: ["websocket", "polling"],
+    });
+
+    newSocket.on("connect", () => {
+      console.log("Connected to Socket.IO server");
+      // Join agent room
+      newSocket.emit("join-agent-room", { agentId, token: "dummy-token" }); // TODO: Add proper JWT token
+    });
+
+    newSocket.on("new-message", (messageData: any) => {
+      console.log("Received new message:", messageData);
+      // Handle new message similar to realtime logic
+      const newMsg: Message = {
+        id: messageData.id,
+        text: processMessageText(
+          messageData.message,
+          messageData.media_type,
+          messageData.caption
+        ),
+        sender: messageData.sender_type,
+        timestamp: new Date(messageData.timestamp).toLocaleString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "numeric",
+          month: "short",
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+        rawTimestamp: new Date(messageData.timestamp).getTime(),
+        isRead: messageData.sender_type === "agent",
+        media_type: messageData.media_type || "none",
+        media_url: messageData.media_url || null,
+        caption: messageData.caption || null,
+      };
+
+      // If inbound and selected conversation, mark as read immediately
+      if (
+        messageData.sender_type === "customer" &&
+        selectedConversationId === messageData.customer_id
+      ) {
+        // Mark as read in database
+        const messagesTable = `${agentPrefix}_messages`;
+        supabase
+          .from(messagesTable)
+          .update({ is_read: true })
+          .eq("id", messageData.id);
+        newMsg.isRead = true;
+      }
+
+      // Find or create conversation
+      const existingConv = conversations.find(
+        (c) => c.customerId === messageData.customer_id
+      );
+
+      if (existingConv) {
+        // Update existing conversation
+        setConversations((prev) => {
+          const existingConvIndex = prev.findIndex(
+            (c) => c.customerId === messageData.customer_id
+          );
+
+          if (existingConvIndex === -1) {
+            return prev;
+          }
+
+          const existingConv = prev[existingConvIndex];
+          let updatedMessages = [...existingConv.messages];
+
+          // Add rawTimestamp to the new message for proper sorting
+          newMsg.rawTimestamp = new Date(messageData.timestamp).getTime();
+
+          // Check for optimistic temp message to replace
+          let tempIndex = -1;
+          for (let i = updatedMessages.length - 1; i >= 0; i--) {
+            const msg = updatedMessages[i];
+            if (
+              typeof msg.id === "string" &&
+              (msg.id.startsWith("temp-") ||
+                msg.id.startsWith("temp-template-")) &&
+              msg.sender === newMsg.sender &&
+              msg.text === newMsg.text
+            ) {
+              tempIndex = i;
+              break;
+            }
+          }
+
+          if (tempIndex !== -1) {
+            // Replace temp with real message
+            updatedMessages[tempIndex] = newMsg;
+          } else {
+            // Add new message
+            updatedMessages.push(newMsg);
+          }
+
+          // Sort messages by rawTimestamp
+          updatedMessages.sort((a, b) => {
+            const aTime = a.rawTimestamp || new Date(a.timestamp).getTime();
+            const bTime = b.rawTimestamp || new Date(b.timestamp).getTime();
+            return aTime - bTime;
+          });
+
+          const unreadCount = updatedMessages.filter(
+            (m) => m.sender === "customer" && !m.isRead
+          ).length;
+
+          const lastMsg = updatedMessages[updatedMessages.length - 1];
+          const lastMessageText = processMessageText(
+            messageData.message,
+            messageData.media_type,
+            messageData.caption
+          );
+          const updatedConv = {
+            ...existingConv,
+            messages: updatedMessages,
+            lastMessage: lastMessageText,
+            lastMessageTime: lastMsg.timestamp,
+            rawLastTimestamp: new Date(messageData.timestamp).getTime(),
+            unreadCount,
+          };
+
+          // Update the conversation in the array
+          const newConversations = [...prev];
+          newConversations[existingConvIndex] = updatedConv;
+
+          // Sort conversations by last message time
+          const sortedConversations = newConversations.sort(
+            (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
+          );
+
+          return sortedConversations;
+        });
+      } else {
+        // Create new conversation - fetch customer
+        const customersTable = `${agentPrefix}_customers`;
+        supabase
+          .from(customersTable)
+          .select(
+            "id, name, phone, last_user_message_time, lead_stage, interest_stage, conversion_stage"
+          )
+          .eq("id", messageData.customer_id)
+          .single()
+          .then(({ data: customerData, error }) => {
+            if (error || !customerData) {
+              return;
+            }
+
+            const newConv: Conversation = {
+              id: customerData.id,
+              customerId: customerData.id,
+              customerName: customerData.name,
+              customerPhone: customerData.phone,
+              lastUserMessageTime: customerData.last_user_message_time || null,
+              leadStage: null,
+              lastMessage: processMessageText(
+                messageData.message,
+                messageData.media_type,
+                messageData.caption
+              ),
+              lastMessageTime: newMsg.timestamp,
+              rawLastTimestamp: new Date(messageData.timestamp).getTime(),
+              unreadCount: newMsg.isRead ? 0 : 1,
+              messages: [newMsg],
+            };
+
+            setConversations((prev) => {
+              const updated = [newConv, ...prev].sort(
+                (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
+              );
+              return updated;
+            });
+          });
+      }
+      setLastRealtimeEvent(Date.now());
+    });
+
+    newSocket.on("agent-status-update", (statusData: any) => {
+      console.log("Received agent status update:", statusData);
+      // Handle agent status updates (e.g., credits changed)
+      // For now, just log - can be extended to update UI
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("Disconnected from Socket.IO server");
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [
+    agentId,
+    agentPrefix,
+    selectedConversationId,
+    conversations,
+    processMessageText,
+  ]);
+
+  // Socket.IO state
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [customerIds, setCustomerIds] = useState<number[]>([]);
-  const [realtimeChannels, setRealtimeChannels] = useState<any[]>([]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -1078,287 +1284,6 @@ const ConversationsPage: React.FC = () => {
     fetchAgentAndConversations(true);
   }, []);
 
-  // Realtime subscriptions - stabilized to prevent frequent re-subscribe
-  useEffect(() => {
-    if (!agentPrefix || !agentId) return;
-
-    const customersTable = `${agentPrefix}_customers`;
-    const messagesTable = `${agentPrefix}_messages`;
-
-    let isCurrent = true; // Flag to check if effect is still current
-
-    // Subscribe to messages
-    const messagesChannel = supabase
-      .channel(`messages-${agentId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: messagesTable,
-          filter:
-            customerIds.length > 0
-              ? `customer_id=in.(${customerIds.join(",")})`
-              : "*",
-        },
-        async (payload) => {
-          if (!isCurrent) return;
-
-          const newMsg = payload.new;
-
-          let message: Message = {
-            id: newMsg.id,
-            text: (() => {
-              const raw = newMsg.message || "";
-              if (raw.trim() && newMsg.direction === "outbound") {
-                try {
-                  const parsed = JSON.parse(raw);
-                  if (parsed.is_template) {
-                    return raw;
-                  }
-                } catch (e) {
-                  // Not template
-                }
-              }
-              return processMessageText(raw, newMsg.media_type, newMsg.caption);
-            })(),
-            sender:
-              newMsg.direction === "inbound" ? "customer" : ("agent" as const),
-            timestamp: new Date(newMsg.timestamp).toLocaleString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "numeric",
-              month: "short",
-              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            }),
-            rawTimestamp: new Date(newMsg.timestamp).getTime(),
-            isRead: newMsg.is_read ?? newMsg.direction === "outbound",
-            media_type: newMsg.media_type || "none",
-            media_url: newMsg.media_url || null,
-            caption: newMsg.caption || null,
-          };
-
-          // If inbound and selected conversation, mark as read immediately
-          if (
-            newMsg.direction === "inbound" &&
-            selectedConversationId === newMsg.customer_id
-          ) {
-            const { error } = await supabase
-              .from(messagesTable)
-              .update({ is_read: true })
-              .eq("id", newMsg.id);
-            if (!error) {
-              message.isRead = true;
-            }
-          }
-
-          // Find or create conversation
-          const existingConv = conversations.find(
-            (c) => c.customerId === newMsg.customer_id
-          );
-
-          if (existingConv) {
-            // Update existing conversation
-            setConversations((prev) => {
-              const existingConvIndex = prev.findIndex(
-                (c) => c.customerId === newMsg.customer_id
-              );
-
-              if (existingConvIndex === -1) {
-                return prev;
-              }
-
-              const existingConv = prev[existingConvIndex];
-              let updatedMessages = [...existingConv.messages];
-
-              // Add rawTimestamp to the new message for proper sorting
-              message.rawTimestamp = new Date(newMsg.timestamp).getTime();
-
-              // Check for optimistic temp message to replace - find the most recent matching temp message
-              let tempIndex = -1;
-              let replacedTemp = false;
-              for (let i = updatedMessages.length - 1; i >= 0; i--) {
-                const msg = updatedMessages[i];
-                if (
-                  typeof msg.id === "string" &&
-                  (msg.id.startsWith("temp-") ||
-                    msg.id.startsWith("temp-template-")) &&
-                  msg.sender === message.sender &&
-                  msg.text === message.text
-                ) {
-                  tempIndex = i;
-                  replacedTemp = true;
-                  break;
-                }
-              }
-
-              if (tempIndex !== -1) {
-                // Replace temp with real message
-                updatedMessages[tempIndex] = message;
-              } else {
-                // Add new message
-                updatedMessages.push(message);
-              }
-
-              // Sort messages by rawTimestamp to ensure proper order
-              updatedMessages.sort((a, b) => {
-                const aTime = a.rawTimestamp || new Date(a.timestamp).getTime();
-                const bTime = b.rawTimestamp || new Date(b.timestamp).getTime();
-                return aTime - bTime;
-              });
-
-              const unreadCount = updatedMessages.filter(
-                (m) => m.sender === "customer" && !m.isRead
-              ).length;
-
-              const lastMsg = updatedMessages[updatedMessages.length - 1];
-              const lastMessageText = processMessageText(
-                newMsg.message,
-                newMsg.media_type,
-                newMsg.caption
-              );
-              const updatedConv = {
-                ...existingConv,
-                messages: updatedMessages,
-                lastMessage: lastMessageText,
-                lastMessageTime: lastMsg.timestamp,
-                rawLastTimestamp: new Date(newMsg.timestamp).getTime(),
-                unreadCount,
-              };
-
-              // Update the conversation in the array
-              const newConversations = [...prev];
-              newConversations[existingConvIndex] = updatedConv;
-
-              // Sort conversations by last message time
-              const sortedConversations = newConversations.sort(
-                (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
-              );
-
-              return sortedConversations;
-            });
-          } else {
-            // Create new conversation - fetch customer
-            const { data: customerData, error } = await supabase
-              .from(customersTable)
-              .select(
-                "id, name, phone, last_user_message_time, lead_stage, interest_stage, conversion_stage"
-              )
-              .eq("id", newMsg.customer_id)
-              .single();
-
-            if (error || !customerData) {
-              return;
-            }
-
-            const newConv: Conversation = {
-              id: customerData.id,
-              customerId: customerData.id,
-              customerName: customerData.name,
-              customerPhone: customerData.phone,
-              lastUserMessageTime: customerData.last_user_message_time || null,
-              leadStage: null,
-              lastMessage: processMessageText(
-                newMsg.message,
-                newMsg.media_type,
-                newMsg.caption
-              ),
-              lastMessageTime: message.timestamp,
-              rawLastTimestamp: new Date(newMsg.timestamp).getTime(),
-              unreadCount: message.isRead ? 0 : 1,
-              messages: [message],
-            };
-
-            setConversations((prev) => {
-              const updated = [newConv, ...prev].sort(
-                (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
-              );
-              return updated;
-            });
-          }
-          setLastRealtimeEvent(Date.now()); // Track last event for poll fallback
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: messagesTable,
-          filter: "is_read=eq.true",
-        },
-        (payload: any) => {
-          const updatedMsg = payload.new;
-          setConversations((prev) => {
-            const updated = prev.map((conv) => {
-              if (conv.customerId === updatedMsg.customer_id) {
-                const updatedMessages = conv.messages.map((m) =>
-                  m.id === updatedMsg.id ? { ...m, isRead: true } : m
-                );
-                const unreadCount = updatedMessages.filter(
-                  (m) => m.sender === "customer" && !m.isRead
-                ).length;
-                return { ...conv, messages: updatedMessages, unreadCount };
-              }
-              return conv;
-            });
-            setLastRealtimeEvent(Date.now());
-            return updated;
-          });
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-        } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-          // Reconnect attempt
-          setTimeout(() => {
-            messagesChannel.subscribe();
-          }, 3000);
-        }
-      });
-
-    // Subscribe to customers table updates for the agent
-    const customersChannel = supabase
-      .channel(`customers-${agentId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: customersTable,
-          filter: `agent_id=eq.${agentId}`,
-        },
-        async (payload) => {
-          const updatedCustomer = payload.new;
-          if (updatedCustomer.last_user_message_time) {
-            const lastTime = new Date(updatedCustomer.last_user_message_time);
-            const hoursSince =
-              (Date.now() - lastTime.getTime()) / (1000 * 60 * 60);
-            if (hoursSince > 24) {
-              // Refetch only if now out of 24h window (status changes to template required)
-              await fetchAgentAndConversations(false);
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-          // Reconnect attempt
-          setTimeout(() => {
-            customersChannel.subscribe();
-          }, 3000);
-        }
-      });
-
-    setRealtimeChannels([messagesChannel, customersChannel]);
-
-    return () => {
-      isCurrent = false;
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(customersChannel);
-      setRealtimeChannels([]);
-    };
-  }, [agentPrefix, agentId]); // Stabilized deps: removed selectedConversationId and conversations
 
   // Set container height to fit viewport minus navbar
   useEffect(() => {
