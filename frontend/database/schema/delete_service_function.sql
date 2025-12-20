@@ -1,0 +1,3 @@
+-- Soft delete function removed: Permanent delete only policy enforced.
+-- Original soft_delete_service function dropped or disabled.
+-- Use hard_delete_service for all deletions.

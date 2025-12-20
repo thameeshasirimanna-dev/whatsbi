@@ -1,0 +1,3 @@
+-- No database migration needed - total_amount is now stored in JSON order_details
+-- The original error was likely from frontend trying to update a non-existent column
+-- The JSON structure now handles all order details including total_amount

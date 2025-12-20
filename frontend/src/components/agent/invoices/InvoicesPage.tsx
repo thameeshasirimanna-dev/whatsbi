@@ -1,0 +1,1514 @@
+import React, { useState, useEffect } from "react";
+import { Dialog, Combobox } from '@headlessui/react';
+import { supabase } from "../../../lib/supabase";
+import jsPDF from "jspdf";
+
+interface InvoiceItem {
+  name: string;
+  quantity: number;
+  price: number;
+  total: number;
+}
+
+interface Invoice {
+  id: number;
+  name: string;
+  pdf_url: string;
+  status: "generated" | "sent" | "paid";
+  generated_at: string;
+  order_id: number;
+}
+
+interface Customer {
+  id: number;
+  name: string;
+}
+
+interface OrderForModal {
+  id: number;
+  customer_id?: number;
+  total_amount: number;
+  status: string;
+  notes?: string;
+  created_at: string;
+  customer_name: string;
+  type?: string;
+}
+
+interface InvoiceWithDetails extends Invoice {
+  customer_name: string;
+  order_number: string;
+  total: number;
+  discount_percentage?: number;
+  customer_id?: number;
+}
+
+const InvoicesPage: React.FC = () => {
+  const [invoices, setInvoices] = useState<InvoiceWithDetails[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerOrders, setCustomerOrders] = useState<
+    Record<number, OrderForModal[]>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<number | null>(null);
+  const [agentPrefix, setAgentPrefix] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCustomerFilter, setSelectedCustomerFilter] = useState<
+    number | null
+  >(null);
+  const [generating, setGenerating] = useState<number | null>(null);
+  const [updating, setUpdating] = useState<number | null>(null);
+  const [invoiceTemplatePath, setInvoiceTemplatePath] = useState<string | null>(
+    null
+  );
+
+  const [agentDetails, setAgentDetails] = useState({
+    name: "",
+    address: "",
+    business_email: "",
+    contact_number: "",
+    website: "",
+  });
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [whatsappConfig, setWhatsappConfig] = useState<{
+    phone_number_id: string;
+    api_key: string;
+  } | null>(null);
+
+  // Modal states
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
+  const [selectedOrder, setSelectedOrder] = useState<OrderForModal | null>(
+    null
+  );
+  const [invoiceName, setInvoiceName] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [query, setQuery] = useState("");
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get authenticated user
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
+
+      // Get agent ID and prefix
+      // Get agent ID and prefix
+      const { data: agentData, error: agentError } = await supabase
+        .from("agents")
+        .select(
+          "id, agent_prefix, invoice_template_path, address, business_email, contact_number, website"
+        )
+        .eq("user_id", user.id)
+        .single();
+
+      if (agentError || !agentData) {
+        setError("Agent not found");
+        console.error("Agent fetch error:", agentError);
+        setLoading(false);
+        return;
+      }
+
+      const currentAgentId = agentData.id;
+      const currentAgentPrefix = agentData.agent_prefix;
+      setAgentId(currentAgentId);
+      setAgentPrefix(currentAgentPrefix);
+      setInvoiceTemplatePath(agentData.invoice_template_path);
+
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+
+      if (userError) {
+        console.warn("Failed to fetch user name:", userError);
+      }
+
+      setAgentDetails({
+        name: userData?.name || "",
+        address: agentData.address || "",
+        business_email: agentData.business_email || "",
+        contact_number: agentData.contact_number || "",
+        website: agentData.website || "",
+      });
+
+      setUserId(user.id);
+
+      const { data: whatsappData } = await supabase
+        .from("whatsapp_configuration")
+        .select("phone_number_id, api_key")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .single();
+
+      setWhatsappConfig(whatsappData || null);
+
+      if (!currentAgentPrefix) {
+        setError("Agent prefix not found");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch customers
+      const customersTable = `${currentAgentPrefix}_customers`;
+      const { data: agentCustomers, error: customersError } = await supabase
+        .from(customersTable)
+        .select("id, name")
+        .eq("agent_id", currentAgentId)
+        .order("name");
+
+      if (customersError) {
+        setError("Failed to fetch customers");
+        console.error("Customers fetch error:", customersError);
+        setLoading(false);
+        return;
+      }
+
+      setCustomers(agentCustomers || []);
+
+      // Fetch all orders for customers
+      const ordersTable = `${currentAgentPrefix}_orders`;
+      const { data: allOrdersData, error: ordersError } = await supabase
+        .from(ordersTable)
+        .select(
+          `
+          id,
+          customer_id,
+          total_amount,
+          status,
+          notes,
+          created_at
+        `
+        )
+        .in(
+          "customer_id",
+          (agentCustomers || []).map((c) => c.id)
+        )
+        .order("created_at", { ascending: false });
+
+      if (ordersError) {
+        setError("Failed to fetch orders");
+        console.error("Orders fetch error:", ordersError);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch customer names for orders
+      const { data: customersData, error: nameError } = await supabase
+        .from(customersTable)
+        .select("id, name")
+        .in("id", allOrdersData?.map((o: any) => o.customer_id) || []);
+
+      if (nameError) {
+        console.warn("Customer names fetch warning:", nameError);
+      }
+
+      const customerMap = new Map();
+      (customersData || []).forEach((customer: any) => {
+        customerMap.set(customer.id, customer.name);
+      });
+
+      // Process orders per customer
+      const ordersByCustomer: Record<number, OrderForModal[]> = {};
+      (allOrdersData || []).forEach((order: any) => {
+        const customerId = order.customer_id;
+        if (!ordersByCustomer[customerId]) {
+          ordersByCustomer[customerId] = [];
+        }
+        ordersByCustomer[customerId].push({
+          id: order.id,
+          customer_id: order.customer_id,
+          customer_name:
+            customerMap.get(order.customer_id) || "Unknown Customer",
+          total_amount: order.total_amount || 0,
+          status: order.status || "pending",
+          notes: order.notes,
+          created_at: order.created_at,
+          type: "order" as const,
+        });
+      });
+
+      setCustomerOrders(ordersByCustomer);
+
+      // Fetch invoices
+      const invoicesTable = `${currentAgentPrefix}_orders_invoices`;
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from(invoicesTable)
+        .select("id, name, pdf_url, status, generated_at, order_id")
+        .order("generated_at", { ascending: false });
+
+      if (invoicesError) {
+        console.warn("Failed to fetch invoices:", invoicesError);
+      } else {
+        // Fetch order and customer details for invoices
+        const invoiceOrderIds = (invoicesData || []).map((inv) => inv.order_id);
+        const { data: invoiceOrdersData, error: orderDetailsError } =
+          await supabase
+            .from(ordersTable)
+            .select("id, customer_id")
+            .in("id", invoiceOrderIds);
+
+        if (orderDetailsError) {
+          console.warn(
+            "Failed to fetch order details for invoices:",
+            orderDetailsError
+          );
+        } else {
+          const orderCustomerMap = new Map();
+          (invoiceOrdersData || []).forEach((ord: any) => {
+            orderCustomerMap.set(ord.id, ord.customer_id);
+          });
+
+          const invoiceCustomerIds = Array.from(orderCustomerMap.values());
+          const { data: invoiceCustomersData, error: customerDetailsError } =
+            await supabase
+              .from(customersTable)
+              .select("id, name")
+              .in("id", invoiceCustomerIds);
+
+          if (customerDetailsError) {
+            console.warn(
+              "Failed to fetch customer details for invoices:",
+              customerDetailsError
+            );
+          } else {
+            const customerNameMap = new Map();
+            (invoiceCustomersData || []).forEach((cust: any) => {
+              customerNameMap.set(cust.id, cust.name);
+            });
+
+            // Fetch order items to calculate totals
+            const itemsTable = `${currentAgentPrefix}_orders_items`;
+            const { data: allItemsData, error: itemsError } = await supabase
+              .from(itemsTable)
+              .select("order_id, total")
+              .in("order_id", invoiceOrderIds);
+
+            if (itemsError) {
+              console.warn(
+                "Failed to fetch order items for invoices:",
+                itemsError
+              );
+            }
+
+            const orderTotals = new Map<number, number>();
+            (allItemsData || []).forEach((item: any) => {
+              const orderId = item.order_id;
+              const itemTotal = item.total || item.quantity * item.price || 0;
+              if (!orderTotals.has(orderId)) {
+                orderTotals.set(orderId, 0);
+              }
+              orderTotals.set(orderId, orderTotals.get(orderId)! + itemTotal);
+            });
+
+            const processedInvoices: InvoiceWithDetails[] = (
+              invoicesData || []
+            ).map((inv: any) => {
+              const orderId = inv.order_id;
+              const customerId = orderCustomerMap.get(orderId);
+              const customerName =
+                customerNameMap.get(customerId) || "Unknown Customer";
+              const subtotal = orderTotals.get(orderId) || 0;
+              const invoiceDiscountPercentage = inv.discount_percentage || 0;
+              const discountAmount =
+                subtotal * (invoiceDiscountPercentage / 100);
+              const calculatedTotal = subtotal - discountAmount;
+
+              return {
+                ...inv,
+                customer_id: customerId,
+                customer_name: customerName,
+                order_number: `#${orderId.toString().padStart(4, "0")}`,
+                total: calculatedTotal,
+                discount_percentage: invoiceDiscountPercentage,
+              };
+            });
+
+            setInvoices(processedInvoices);
+          }
+        }
+      }
+
+      setError(null);
+    } catch (err) {
+      setError("Failed to load data");
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const filteredInvoices = invoices.filter((invoice) => {
+    const matchesCustomer =
+      selectedCustomerFilter === null ||
+      invoice.customer_id === selectedCustomerFilter;
+    const matchesSearch =
+      searchTerm === "" ||
+      invoice.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.order_number.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return matchesCustomer && matchesSearch;
+  });
+
+  const capitalizeFirst = (str: string): string => {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
+  const getInvoiceStatusBadgeClass = (
+    status: "generated" | "sent" | "paid"
+  ) => {
+    switch (status) {
+      case "generated":
+        return "bg-blue-100 text-blue-800";
+      case "sent":
+        return "bg-yellow-100 text-yellow-800";
+      case "paid":
+        return "bg-green-100 text-green-800";
+    }
+  };
+
+  const sanitizeFileName = (name: string): string => {
+    return name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+  };
+
+  const handleGenerateInvoice = async (
+    order: OrderForModal,
+    discountPercentage: number
+  ) => {
+    if (!agentPrefix || !agentId) {
+      setError("Agent configuration missing");
+      return;
+    }
+
+    if (!invoiceName.trim()) {
+      setError("Invoice name is required");
+      return;
+    }
+
+    setGenerating(order.id);
+
+    try {
+      // Refetch latest invoice template path to ensure it's up-to-date
+      const { data: latestAgentData, error: agentRefreshError } = await supabase
+        .from("agents")
+        .select("invoice_template_path")
+        .eq("id", agentId)
+        .single();
+
+      if (agentRefreshError) {
+        console.warn(
+          "Failed to refetch agent template path:",
+          agentRefreshError
+        );
+      } else {
+        setInvoiceTemplatePath(latestAgentData?.invoice_template_path || null);
+      }
+
+      // Fetch order items
+      const itemsTable = `${agentPrefix}_orders_items`;
+      const { data: itemsData, error: itemsError } = await supabase
+        .from(itemsTable)
+        .select("name, quantity, price, total")
+        .eq("order_id", order.id);
+
+      if (itemsError) {
+        throw new Error("Failed to fetch order items: " + itemsError.message);
+      }
+
+      const items: InvoiceItem[] = (itemsData || []).map((item: any) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total || item.quantity * item.price,
+      }));
+
+      // Fetch template if available
+      let templateBase64: string | null = null;
+      if (latestAgentData?.invoice_template_path || invoiceTemplatePath) {
+        const currentPath =
+          latestAgentData?.invoice_template_path || invoiceTemplatePath;
+        try {
+          const { data: templateData, error: templateError } =
+            await supabase.storage
+              .from("agent-templates")
+              .download(currentPath);
+
+          if (templateError) {
+            console.warn("Failed to fetch template:", templateError);
+          } else if (templateData) {
+            const img = new Image();
+            const url = URL.createObjectURL(templateData);
+            img.src = url;
+            await new Promise((resolve, reject) => {
+              img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d")!;
+                const DPI = 150;
+                const a4WidthPt = 595; // A4 width at 72 DPI
+                const a4HeightPt = 842; // A4 height at 72 DPI
+                const scaleFactor = DPI / 72;
+                const canvasWidth = a4WidthPt * scaleFactor;
+                const canvasHeight = a4HeightPt * scaleFactor;
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+
+                // Calculate scale to fit A4 while preserving aspect ratio at high DPI
+                const scaleX = canvasWidth / img.width;
+                const scaleY = canvasHeight / img.height;
+                const scale = Math.min(scaleX, scaleY);
+                const scaledWidth = img.width * scale;
+                const scaledHeight = img.height * scale;
+
+                // Center the image
+                const offsetX = (canvasWidth - scaledWidth) / 2;
+                const offsetY = (canvasHeight - scaledHeight) / 2;
+
+                // Fill canvas with white background for JPEG compatibility
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+                templateBase64 = canvas.toDataURL("image/jpeg", 0.95); // JPEG for better compression while maintaining quality
+                URL.revokeObjectURL(url);
+                resolve(null);
+              };
+              img.onerror = () => {
+                console.error("Failed to load template image");
+                reject(new Error("Image load failed"));
+              };
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching template:", err);
+        }
+      }
+
+      // Create PDF
+      const doc = new jsPDF();
+      const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+        let binary = "";
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+      };
+
+      // Load Poppins fonts (using TTF from GitHub for jsPDF compatibility)
+      const regularFontUrl =
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf";
+      const boldFontUrl =
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Bold.ttf";
+      const [regularFontBuffer, boldFontBuffer] = await Promise.all([
+        fetch(regularFontUrl).then((res) => res.arrayBuffer()),
+        fetch(boldFontUrl).then((res) => res.arrayBuffer()),
+      ]);
+      const regularFontBase64 = arrayBufferToBase64(regularFontBuffer);
+      const boldFontBase64 = arrayBufferToBase64(boldFontBuffer);
+      doc.addFileToVFS("Poppins-Regular.ttf", regularFontBase64);
+      doc.addFont("Poppins-Regular.ttf", "Poppins", "normal");
+      doc.addFileToVFS("Poppins-Bold.ttf", boldFontBase64);
+      doc.addFont("Poppins-Bold.ttf", "Poppins", "bold");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Add background template if available
+      if (templateBase64) {
+        doc.addImage(templateBase64, "JPEG", 0, 0, pageWidth, pageHeight);
+      }
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont("Poppins", "bold");
+      doc.text(invoiceName, pageWidth / 2, 20, { align: "center" });
+
+      // Agent details
+      doc.setFontSize(10);
+      doc.setFont("Poppins", "normal");
+      let currentY = 60;
+      if (agentDetails.name.trim()) {
+        doc.setFont("Poppins", "bold");
+        doc.text(agentDetails.name, 20, currentY);
+        doc.setFont("Poppins", "normal");
+        currentY += 10;
+      }
+      if (agentDetails.address.trim()) {
+        doc.text(agentDetails.address, 20, currentY);
+        currentY += 10;
+      }
+      if (agentDetails.business_email.trim()) {
+        doc.text(`Email: ${agentDetails.business_email}`, 20, currentY);
+        currentY += 10;
+      }
+      if (agentDetails.contact_number.trim()) {
+        doc.text(`Phone: ${agentDetails.contact_number}`, 20, currentY);
+        currentY += 10;
+      }
+      if (agentDetails.website.trim()) {
+        doc.text(`Website: ${agentDetails.website}`, 20, currentY);
+        currentY += 10;
+      }
+
+      // Invoice details (right aligned)
+      const rightX = doc.internal.pageSize.getWidth() - 20;
+      doc.setFont("Poppins", "bold");
+      doc.text("Invoice Details", rightX, 60, { align: "right" });
+      doc.setFont("Poppins", "normal");
+      doc.text(
+        `Date: ${new Date(order.created_at).toLocaleDateString()}`,
+        rightX,
+        80,
+        { align: "right" }
+      );
+      doc.text(
+        `Order #: #${order.id.toString().padStart(4, "0")}`,
+        rightX,
+        90,
+        { align: "right" }
+      );
+      doc.text(`Status: ${capitalizeFirst(order.status)}`, rightX, 100, {
+        align: "right",
+      });
+
+      // Customer details
+      doc.setFont("Poppins", "bold");
+      doc.text("Bill To:", 20, 120);
+      doc.setFont("Poppins", "normal");
+      doc.text(order.customer_name || "Unknown Customer", 20, 130);
+
+      // Items table without borders - reduced width with wrapping
+      let yPosition = 145;
+      const colPositions = { desc: 20, qty: 90, price: 120, total: 150 };
+      const descWidth = 55; // Width for description wrapping with small right padding
+      const rowHeight = 10; // Standard row height
+      const lineSpacing = 6; // Tighter spacing for wrapped text lines
+
+      // Header texts
+      doc.setFontSize(9);
+      doc.setFont("Poppins", "bold");
+      doc.text("Item Description", colPositions.desc, yPosition);
+      doc.text("Qty", colPositions.qty + 5, yPosition);
+      doc.text("Unit Price", colPositions.price, yPosition);
+      doc.text("Total", 190, yPosition, { align: "right" });
+
+      yPosition += rowHeight + 2; // Extra padding after header
+
+      doc.setFont("Poppins", "normal");
+      doc.setFontSize(10);
+      items.forEach((item) => {
+        if (yPosition > 750) {
+          doc.addPage();
+          // Add background to new page
+          if (templateBase64) {
+            doc.addImage(templateBase64, "JPEG", 0, 0, pageWidth, pageHeight);
+          }
+          // Redraw table headers
+          yPosition = 35; // Adjusted for new page, moved up
+          doc.setFont("Poppins", "bold");
+          doc.text("Item Description", colPositions.desc, yPosition);
+          doc.text("Qty", colPositions.qty + 5, yPosition);
+          doc.text("Unit Price", colPositions.price, yPosition);
+          doc.text("Total", 195, yPosition, { align: "right" });
+          yPosition += rowHeight + 2; // Extra padding after header
+          doc.setFont("Poppins", "normal");
+        }
+
+        // Row data with wrapping for description
+        const descLines = doc.splitTextToSize(item.name, descWidth);
+        let currentY = yPosition;
+        descLines.forEach((line: string, index: number) => {
+          doc.text(line, colPositions.desc, currentY);
+          currentY += lineSpacing;
+        });
+        const maxDescLines = Math.max(1, descLines.length);
+        const effectiveRowHeight = Math.max(
+          rowHeight,
+          (maxDescLines - 1) * lineSpacing + rowHeight
+        );
+        const itemY = yPosition + ((maxDescLines - 1) * lineSpacing) / 2; // Align other fields to middle of description height
+        doc.text(item.quantity.toString(), colPositions.qty + 5, itemY);
+        doc.text(`LKR ${item.price.toFixed(2)}`, colPositions.price, itemY);
+        doc.text(
+          `LKR ${(item.total || item.quantity * item.price).toFixed(2)}`,
+          190,
+          itemY,
+          { align: "right" }
+        );
+
+        yPosition += effectiveRowHeight + 2; // Extra padding after row
+      });
+
+      // Horizontal line at bottom of table
+      doc.setLineWidth(0.1);
+      doc.line(20, yPosition, 190, yPosition);
+      yPosition += 5; // Padding after line
+
+      // Calculate subtotal
+      const subtotal = items.reduce(
+        (sum, item) => sum + (item.total || item.quantity * item.price),
+        0
+      );
+
+      const discountAmount = subtotal * (discountPercentage / 100);
+      const total = subtotal - discountAmount;
+
+      // Totals section positioned after table with 5 padding
+      let totalsY = yPosition + 5;
+
+      doc.setFont("Poppins", "bold");
+      doc.setFontSize(10);
+      doc.text("Subtotal:", 120, totalsY);
+      doc.text(`LKR ${subtotal.toFixed(2)}`, 190, totalsY, { align: "right" });
+      totalsY += 10;
+      doc.setFont("Poppins", "normal");
+      doc.setFontSize(9);
+      doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
+      doc.text(`-LKR ${discountAmount.toFixed(2)}`, 190, totalsY, {
+        align: "right",
+      });
+      totalsY += 10;
+      doc.setFont("Poppins", "bold");
+      doc.setFontSize(10);
+      doc.text("Total Amount:", 120, totalsY);
+      doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
+      totalsY += 15;
+
+      yPosition = totalsY + 20; // Update yPosition for notes
+
+      // Notes
+      if (order.notes) {
+        doc.setFont("Poppins", "normal");
+        doc.setFontSize(9);
+        doc.text("Notes:", 20, yPosition);
+        const notesLines = doc.splitTextToSize(order.notes, 170);
+        let notesY = yPosition;
+        notesLines.forEach((line: string) => {
+          doc.text(line, 50, notesY);
+          notesY += 6;
+        });
+        yPosition = notesY + 10;
+      }
+
+      // Footer at bottom
+      const footerY = pageHeight - 20;
+      doc.setFontSize(10);
+      doc.setFont("Poppins", "normal");
+      doc.text("Thank you for your business!", pageWidth / 2, footerY, {
+        align: "center",
+      });
+
+      // Generate blob for upload
+      const pdfBlob = doc.output("blob");
+
+      // Sanitize invoice name for file name
+      const sanitizedFileName = sanitizeFileName(invoiceName);
+      const fileName = `${agentPrefix}/${sanitizedFileName}.pdf`;
+
+      // Upload to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("invoices")
+        .upload(fileName, pdfBlob, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw new Error("Failed to upload invoice: " + uploadError.message);
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("invoices").getPublicUrl(fileName);
+
+      // Insert invoice record
+      const invoicesTable = `${agentPrefix}_orders_invoices`;
+      const { error: insertError } = await supabase.from(invoicesTable).insert({
+        order_id: order.id,
+        name: invoiceName,
+        pdf_url: publicUrl,
+        status: "generated" as const,
+        discount_percentage: discountPercentage,
+      });
+
+      if (insertError) {
+        throw new Error(
+          "Failed to save invoice record: " + insertError.message
+        );
+      }
+
+      // Refresh data
+      await fetchData();
+
+      // Download PDF
+      doc.save(`${sanitizedFileName}.pdf`);
+
+      setError(null);
+      setIsModalOpen(false);
+      setSelectedCustomer(null);
+      setSelectedOrder(null);
+      setInvoiceName("");
+      setDiscountPercentage(0);
+    } catch (err) {
+      setError("Failed to generate invoice: " + (err as Error).message);
+      console.error("Invoice generation error:", err);
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const handleSendInvoice = async (invoiceId: number) => {
+    if (!whatsappConfig) {
+      setError("WhatsApp not configured. Please set up WhatsApp in settings.");
+      return;
+    }
+
+    setUpdating(invoiceId);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || !userId) {
+        throw new Error("User not authenticated");
+      }
+
+      const invoicesTable = `${agentPrefix}_orders_invoices`;
+      const ordersTable = `${agentPrefix}_orders`;
+      const customersTable = `${agentPrefix}_customers`;
+      const itemsTable = `${agentPrefix}_orders_items`;
+
+      // Fetch invoice
+      const { data: invoice, error: invoiceError } = await supabase
+        .from(invoicesTable)
+        .select("id, name, pdf_url, order_id, discount_percentage, status")
+        .eq("id", invoiceId)
+        .single();
+
+      if (invoiceError || !invoice) {
+        throw new Error(
+          "Failed to fetch invoice: " + (invoiceError?.message || "Not found")
+        );
+      }
+
+      // Fetch order
+      const { data: order, error: orderError } = await supabase
+        .from(ordersTable)
+        .select("customer_id")
+        .eq("id", invoice.order_id)
+        .single();
+
+      if (orderError || !order) {
+        throw new Error(
+          "Failed to fetch order: " + (orderError?.message || "Not found")
+        );
+      }
+
+      // Fetch customer (include last_user_message_time for 24h window check)
+      const { data: customer, error: customerError } = await supabase
+        .from(customersTable)
+        .select("id, name, phone, last_user_message_time")
+        .eq("id", order.customer_id)
+        .single();
+
+      if (customerError || !customer) {
+        throw new Error(
+          "Failed to fetch customer: " + (customerError?.message || "Not found")
+        );
+      }
+
+      const phone = customer.phone;
+      if (!phone) {
+        throw new Error("Customer phone number not found");
+      }
+
+      const orderId = invoice.order_id;
+      const orderNumber = `#${orderId.toString().padStart(4, "0")}`;
+
+      // Calculate total
+      const { data: itemsData, error: itemsError } = await supabase
+        .from(itemsTable)
+        .select("total")
+        .eq("order_id", orderId);
+
+      if (itemsError) {
+        throw new Error("Failed to fetch order items: " + itemsError.message);
+      }
+
+      const subtotal = (itemsData || []).reduce(
+        (sum: number, item: any) => sum + (item.total || 0),
+        0
+      );
+      const discount = invoice.discount_percentage || 0;
+      const totalAmount = subtotal * (1 - discount / 100);
+
+      // Check if customer is in free form window (24 hours)
+      const now = new Date();
+      const lastTime = customer.last_user_message_time
+        ? new Date(customer.last_user_message_time)
+        : new Date(0);
+      const hoursSince =
+        (now.getTime() - lastTime.getTime()) / (1000 * 60 * 60);
+
+      // Send invoice using the unified send-invoice-template function
+      // This function now handles both template and free form sending automatically
+
+      const templateResponse = await supabase.functions.invoke(
+        "send-invoice-template",
+        {
+          body: {
+            user_id: userId,
+            customer_phone: phone,
+            invoice_url: invoice.pdf_url,
+            invoice_name: invoice.name,
+            order_number: orderNumber,
+            total_amount: totalAmount.toString(),
+            customer_name: customer.name || "Valued Customer",
+          },
+        }
+      );
+
+      if (templateResponse.error) {
+        throw new Error(
+          "Failed to send invoice: " + templateResponse.error.message
+        );
+      }
+
+      // Update status only if generated
+      if (invoice.status === "generated") {
+        const { error: updateError } = await supabase
+          .from(invoicesTable)
+          .update({
+            status: "sent" as const,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", invoiceId);
+
+        if (updateError) {
+          throw new Error(
+            "Failed to update invoice status: " + updateError.message
+          );
+        }
+      }
+
+      // Refresh data
+      await fetchData();
+
+      setError(null);
+    } catch (err) {
+      setError("Failed to send invoice: " + (err as Error).message);
+      console.error("Send invoice error:", err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleMarkPaid = async (invoiceId: number) => {
+    setUpdating(invoiceId);
+
+    try {
+      const invoicesTable = `${agentPrefix}_orders_invoices`;
+      const { error: updateError } = await supabase
+        .from(invoicesTable)
+        .update({
+          status: "paid" as const,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", invoiceId);
+
+      if (updateError) {
+        throw new Error(
+          "Failed to update invoice status: " + updateError.message
+        );
+      }
+
+      alert("Marked invoice as paid");
+
+      // Refresh data
+      await fetchData();
+
+      setError(null);
+    } catch (err) {
+      setError("Failed to mark as paid: " + (err as Error).message);
+      console.error("Mark paid error:", err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const downloadPDF = async (invoice: InvoiceWithDetails) => {
+    try {
+      const response = await fetch(invoice.pdf_url);
+      if (!response.ok) throw new Error("Failed to fetch PDF");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${sanitizeFileName(invoice.name)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("Failed to download PDF: " + (err as Error).message);
+      console.error("Download PDF error:", err);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoice: InvoiceWithDetails) => {
+    if (
+      !confirm(
+        `Delete invoice "${invoice.name}"? This will remove the PDF from storage and record from database.`
+      )
+    ) {
+      return;
+    }
+
+    if (!agentPrefix) {
+      setError("Agent configuration missing");
+      return;
+    }
+
+    setUpdating(invoice.id);
+
+    try {
+      // Delete from storage
+      const sanitizedFileName = sanitizeFileName(invoice.name);
+      const fileName = `${agentPrefix}/${sanitizedFileName}.pdf`;
+      const { error: deleteError } = await supabase.storage
+        .from("invoices")
+        .remove([fileName]);
+
+      if (deleteError) {
+        throw new Error(
+          "Failed to delete PDF from storage: " + deleteError.message
+        );
+      }
+
+      // Delete from DB
+      const invoicesTable = `${agentPrefix}_orders_invoices`;
+      const { error: dbError } = await supabase
+        .from(invoicesTable)
+        .delete()
+        .eq("id", invoice.id);
+
+      if (dbError) {
+        throw new Error("Failed to delete invoice record: " + dbError.message);
+      }
+
+      // Refresh data
+      await fetchData();
+
+      alert("Invoice deleted successfully");
+
+      setError(null);
+    } catch (err) {
+      setError("Failed to delete invoice: " + (err as Error).message);
+      console.error("Delete invoice error:", err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-6">
+          Error: {error}
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              <svg
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search invoices by customer, name, status..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
+          </div>
+          <div className="flex gap-4 items-center flex-shrink-0">
+            <div className="w-64">
+              <select
+                value={selectedCustomerFilter?.toString() || ""}
+                onChange={(e) =>
+                  setSelectedCustomerFilter(
+                    e.target.value ? parseInt(e.target.value) : null
+                  )
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Customers</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+            >
+              Create Invoice
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Invoices Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {filteredInvoices.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchTerm ? "No invoices found" : "No invoices yet"}
+            </h3>
+            <p className="text-gray-500">
+              {searchTerm
+                ? `No invoices match "${searchTerm}"`
+                : "Create your first invoice using the button above"}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Invoice #
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Order #
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredInvoices.map((invoice) => (
+                  <tr
+                    key={invoice.id}
+                    className="hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {invoice.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {invoice.customer_name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {invoice.order_number}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      LKR {invoice.total.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInvoiceStatusBadgeClass(
+                          invoice.status
+                        )}`}
+                      >
+                        {capitalizeFirst(invoice.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(invoice.generated_at).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        }
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex space-x-2 justify-end">
+                        <button
+                          onClick={() => window.open(invoice.pdf_url, "_blank")}
+                          className="px-3 py-1 rounded-md text-xs transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+                          type="button"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => downloadPDF(invoice)}
+                          className="px-3 py-1 rounded-md text-xs transition-colors bg-green-600 hover:bg-green-700 text-white"
+                          type="button"
+                        >
+                          Download
+                        </button>
+                        {invoice.status !== "paid" && (
+                          <button
+                            onClick={() => handleSendInvoice(invoice.id)}
+                            disabled={updating === invoice.id}
+                            className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                              updating === invoice.id
+                                ? "bg-yellow-400 cursor-not-allowed"
+                                : "bg-yellow-600 hover:bg-yellow-700 text-white"
+                            }`}
+                          >
+                            {updating === invoice.id
+                              ? "Sending..."
+                              : invoice.status === "generated"
+                              ? "Send"
+                              : "Resend"}
+                          </button>
+                        )}
+                        {(invoice.status === "generated" ||
+                          invoice.status === "sent") && (
+                          <button
+                            onClick={() => handleMarkPaid(invoice.id)}
+                            disabled={updating === invoice.id}
+                            className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                              updating === invoice.id
+                                ? "bg-green-400 cursor-not-allowed"
+                                : "bg-green-600 hover:bg-green-700 text-white"
+                            }`}
+                          >
+                            {updating === invoice.id
+                              ? "Updating..."
+                              : "Mark Paid"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteInvoice(invoice)}
+                          disabled={updating === invoice.id}
+                          className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                            updating === invoice.id
+                              ? "bg-red-400 cursor-not-allowed"
+                              : "bg-red-600 hover:bg-red-700 text-white"
+                          }`}
+                        >
+                          {updating === invoice.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Create Invoice Modal - Single Window */}
+      <Dialog
+        open={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedCustomer(null);
+          setSelectedOrder(null);
+          setInvoiceName("");
+          setDiscountPercentage(0);
+          setQuery("");
+        }}
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="max-w-md w-full max-h-[90vh] overflow-y-auto transform rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+            <Dialog.Title
+              as="h3"
+              className="text-lg font-medium leading-6 text-gray-900 mb-4"
+            >
+              Create Invoice
+            </Dialog.Title>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Customer
+                </label>
+                <Combobox
+                  value={selectedCustomer}
+                  onChange={(customer) => {
+                    setSelectedCustomer(customer);
+                    setSelectedOrder(null);
+                    if (customer) {
+                      setInvoiceName(`Invoice for ${customer.name}`);
+                    } else {
+                      setInvoiceName("");
+                    }
+                  }}
+                >
+                  <div className="relative mt-1">
+                    <Combobox.Input
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      displayValue={(customer: Customer) =>
+                        customer ? customer.name : ""
+                      }
+                      onChange={(event) => setQuery(event.target.value)}
+                    />
+                    <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-50">
+                      {(() => {
+                        const filteredCustomers =
+                          query === ""
+                            ? customers
+                            : customers.filter((c) =>
+                                c.name
+                                  .toLowerCase()
+                                  .includes(query.toLowerCase())
+                              );
+                        if (filteredCustomers.length === 0) {
+                          return (
+                            <Combobox.Option
+                              value={null}
+                              className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-900"
+                            >
+                              {query === ""
+                                ? "No customers available."
+                                : "No customers found."}
+                            </Combobox.Option>
+                          );
+                        }
+                        return filteredCustomers.map((customer) => (
+                          <Combobox.Option
+                            key={customer.id}
+                            className={({ active }) =>
+                              `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                active
+                                  ? "bg-green-600 text-white"
+                                  : "text-gray-900"
+                              }`
+                            }
+                            value={customer}
+                          >
+                            {({ selected, active }) => (
+                              <>
+                                <span
+                                  className={`block truncate ${
+                                    selected ? "font-medium" : "font-normal"
+                                  } ${active ? "text-white" : "text-gray-900"}`}
+                                >
+                                  {customer.name}
+                                </span>
+                                {selected ? (
+                                  <span
+                                    className={`absolute inset-y-0 right-0 flex items-center pr-4 ${
+                                      active ? "text-white" : "text-green-600"
+                                    }`}
+                                  >
+                                    <svg
+                                      className="h-5 w-5"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  </span>
+                                ) : null}
+                              </>
+                            )}
+                          </Combobox.Option>
+                        ));
+                      })()}
+                    </Combobox.Options>
+                  </div>
+                </Combobox>
+              </div>
+
+              {selectedCustomer && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Order for {selectedCustomer.name}
+                  </label>
+                  <select
+                    value={selectedOrder?.id || ""}
+                    onChange={(e) => {
+                      const id = parseInt(e.target.value);
+                      const order = customerOrders[selectedCustomer.id]?.find(
+                        (o) => o.id === id
+                      );
+                      setSelectedOrder(order || null);
+                      if (order) {
+                        setInvoiceName(
+                          `Invoice for Order #${order.id
+                            .toString()
+                            .padStart(4, "0")} - ${selectedCustomer.name}`
+                        );
+                      } else {
+                        setInvoiceName(`Invoice for ${selectedCustomer.name}`);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Choose an order</option>
+                    {customerOrders[selectedCustomer.id]?.map((order) => (
+                      <option key={order.id} value={order.id}>
+                        Order #{order.id.toString().padStart(4, "0")} - LKR{" "}
+                        {order.total_amount.toFixed(2)} -{" "}
+                        {capitalizeFirst(order.status)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {selectedCustomer && selectedOrder && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Invoice Name
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceName}
+                    onChange={(e) => setInvoiceName(e.target.value)}
+                    placeholder="Enter custom invoice name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              )}
+
+              {selectedCustomer && selectedOrder && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Discount Percentage (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={discountPercentage}
+                    onChange={(e) =>
+                      setDiscountPercentage(parseFloat(e.target.value) || 0)
+                    }
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              )}
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setSelectedCustomer(null);
+                    setSelectedOrder(null);
+                    setInvoiceName("");
+                    setDiscountPercentage(0);
+                    setQuery("");
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                {selectedCustomer && selectedOrder && (
+                  <button
+                    onClick={() =>
+                      handleGenerateInvoice(selectedOrder, discountPercentage)
+                    }
+                    disabled={
+                      generating === selectedOrder.id || !invoiceName.trim()
+                    }
+                    className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                      generating === selectedOrder.id || !invoiceName.trim()
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700"
+                    }`}
+                  >
+                    {generating === selectedOrder.id
+                      ? "Generating..."
+                      : "Generate Invoice"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default InvoicesPage;
