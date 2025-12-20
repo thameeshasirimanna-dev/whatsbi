@@ -86,7 +86,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-inventory`,
+          `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
           {
             method: 'GET',
             headers: {

@@ -20,6 +20,8 @@ import getConversationMessagesRoutes from './routes/get-conversation-messages';
 import getBotContextRoutes from './routes/get-bot-context';
 import chatbotReplyRoutes from './routes/chatbot-reply';
 import manageServicesRoutes from './routes/manage-services';
+import manageInventoryRoutes from './routes/manage-inventory';
+import getWhatsappProfilePicRoutes from './routes/get-whatsapp-profile-pic';
 import uploadServiceImagesRoutes from './routes/upload-service-images';
 import setupWhatsappConfigRoutes from './routes/setup-whatsapp-config';
 import fastifySocketIO from "fastify-socket.io";
@@ -97,6 +99,8 @@ async function registerRoutes() {
   await getBotContextRoutes(server, supabaseClient, cacheService);
   await chatbotReplyRoutes(server, supabaseClient);
   await manageServicesRoutes(server, supabaseClient);
+  await manageInventoryRoutes(server, supabaseClient);
+  await getWhatsappProfilePicRoutes(server, supabaseClient);
   await uploadServiceImagesRoutes(server, supabaseClient);
   await setupWhatsappConfigRoutes(server, supabaseClient);
 }

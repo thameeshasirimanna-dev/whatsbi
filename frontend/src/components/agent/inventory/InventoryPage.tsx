@@ -78,16 +78,13 @@ const InventoryPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-inventory`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-inventory`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -117,9 +114,7 @@ const InventoryPage: React.FC = () => {
       }
 
       const response = await fetch(
-        `${
-          import.meta.env.VITE_SUPABASE_URL
-        }/functions/v1/manage-inventory?type=categories`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory?type=categories`,
         {
           method: "GET",
           headers: {
@@ -188,27 +183,24 @@ const InventoryPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-inventory`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: createForm.name.trim(),
-            description: createForm.description.trim() || null,
-            quantity: createForm.quantity ? parseInt(createForm.quantity) : 0,
-            price: createForm.price ? parseFloat(createForm.price) : 0,
-            category_id: createForm.category_id
-              ? parseInt(createForm.category_id)
-              : null,
-            sku: createForm.sku.trim() || null,
-            image_urls: null,
-          }),
-        }
-      );
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-inventory`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: createForm.name.trim(),
+          description: createForm.description.trim() || null,
+          quantity: createForm.quantity ? parseInt(createForm.quantity) : 0,
+          price: createForm.price ? parseFloat(createForm.price) : 0,
+          category_id: createForm.category_id
+            ? parseInt(createForm.category_id)
+            : null,
+          sku: createForm.sku.trim() || null,
+          image_urls: null,
+        }),
+      });
 
       const data = await response.json();
       if (data.error) {
@@ -240,7 +232,7 @@ const InventoryPage: React.FC = () => {
 
       if (imageUrls.length > 0) {
         const updateResponse = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-inventory`,
+          `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
           {
             method: "PUT",
             headers: {
@@ -290,7 +282,7 @@ const InventoryPage: React.FC = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-inventory`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
         {
           method: "POST",
           headers: {
@@ -374,29 +366,26 @@ const InventoryPage: React.FC = () => {
         }
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-inventory`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: editingItem.id,
-            name: editForm.name.trim(),
-            description: editForm.description.trim() || null,
-            quantity: editForm.quantity ? parseInt(editForm.quantity) : 0,
-            price: editForm.price ? parseFloat(editForm.price) : 0,
-            category_id: editForm.category_id
-              ? parseInt(editForm.category_id)
-              : null,
-            sku: editForm.sku.trim() || null,
-            image_urls: [...keptImages, ...newImageUrls],
-            removed_image_urls: removedImages,
-          }),
-        }
-      );
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-inventory`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: editingItem.id,
+          name: editForm.name.trim(),
+          description: editForm.description.trim() || null,
+          quantity: editForm.quantity ? parseInt(editForm.quantity) : 0,
+          price: editForm.price ? parseFloat(editForm.price) : 0,
+          category_id: editForm.category_id
+            ? parseInt(editForm.category_id)
+            : null,
+          sku: editForm.sku.trim() || null,
+          image_urls: [...keptImages, ...newImageUrls],
+          removed_image_urls: removedImages,
+        }),
+      });
 
       const data = await response.json();
       if (data.error) {
@@ -439,7 +428,7 @@ const InventoryPage: React.FC = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-inventory`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
         {
           method: "PUT",
           headers: {
@@ -494,9 +483,7 @@ const InventoryPage: React.FC = () => {
       }
 
       const response = await fetch(
-        `${
-          import.meta.env.VITE_SUPABASE_URL
-        }/functions/v1/manage-inventory?id=${item.id}`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory?id=${item.id}`,
         {
           method: "DELETE",
           headers: {
@@ -541,9 +528,7 @@ const InventoryPage: React.FC = () => {
       }
 
       const response = await fetch(
-        `${
-          import.meta.env.VITE_SUPABASE_URL
-        }/functions/v1/manage-inventory?type=category&id=${category.id}`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory?type=category&id=${category.id}`,
         {
           method: "DELETE",
           headers: {
@@ -701,9 +686,7 @@ const InventoryPage: React.FC = () => {
     );
 
     const response = await fetch(
-      `${
-        import.meta.env.VITE_SUPABASE_URL
-      }/functions/v1/upload-inventory-images`,
+      `${import.meta.env.VITE_BACKEND_URL}/upload-inventory-images`,
       {
         method: "POST",
         headers: {
