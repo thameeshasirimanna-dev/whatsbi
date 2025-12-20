@@ -237,15 +237,25 @@ const ConversationsPage: React.FC = () => {
       } catch (webhookError) {}
 
       // Send images directly from our side
-      const { data: imageData, error: imageError } =
-        await supabase.functions.invoke("send-product-images", {
-          body: {
+      const imageResponse = await fetch(
+        "http://localhost:8080/send-product-images",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             user_id: user.id,
             agent_prefix: agentPrefix,
             product_id: parseInt(product.id),
             customer_phone: formattedPhone,
-          },
-        });
+          }),
+        }
+      );
+      const imageData = await imageResponse.json();
+      const imageError = !imageResponse.ok
+        ? { message: imageData.error }
+        : null;
 
       if (imageError || !imageData?.success) {
         setSendError(
@@ -300,32 +310,19 @@ const ConversationsPage: React.FC = () => {
       formData.append("file", file);
       formData.append("caption", ""); // No caption for header
 
-      const { data: uploadResult, error: uploadError } =
-        await supabase.functions.invoke("upload-media", {
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+      const uploadResponse = await fetch("http://localhost:8080/upload-media", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const uploadResult = await uploadResponse.json();
+      const uploadError = !uploadResponse.ok ? { message: uploadResult.error } : null;
 
       let errMsg;
       if (uploadError) {
-        let bodyText = uploadError.body;
-        if (typeof bodyText === "string") {
-          try {
-            const parsed = JSON.parse(bodyText);
-            errMsg = parsed.error || parsed.message || bodyText;
-          } catch {
-            errMsg = bodyText;
-          }
-        } else if (typeof bodyText === "object" && bodyText !== null) {
-          errMsg =
-            (bodyText as any).error ||
-            (bodyText as any).message ||
-            uploadError.message;
-        } else {
-          errMsg = uploadError.message || "Failed to upload media";
-        }
+        errMsg = uploadError.message || "Failed to upload media";
       } else {
         errMsg = uploadResult?.error || "Failed to upload media";
       }
@@ -456,12 +453,20 @@ const ConversationsPage: React.FC = () => {
         };
       }
 
-      const { data, error } = await supabase.functions.invoke(
-        "send-whatsapp-message",
+      const response = await fetch(
+        "http://localhost:8080/send-whatsapp-message",
         {
-          body: payload,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         }
       );
+      const data = await response.json();
+      const error = !response.ok
+        ? { message: data.error || "Failed to send media" }
+        : null;
 
       if (error || !data?.success) {
         const errorMsg =
@@ -1655,32 +1660,21 @@ const ConversationsPage: React.FC = () => {
       const formData = new FormData();
       processedFiles.forEach((file) => formData.append("file", file));
 
-      const { data: uploadResult, error: uploadError } =
-        await supabase.functions.invoke("upload-media", {
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+      const uploadResponse = await fetch("http://localhost:8080/upload-media", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const uploadResult = await uploadResponse.json();
+      const uploadError = !uploadResponse.ok
+        ? { message: uploadResult.error }
+        : null;
 
       let errMsg;
       if (uploadError) {
-        let bodyText = uploadError.body;
-        if (typeof bodyText === "string") {
-          try {
-            const parsed = JSON.parse(bodyText);
-            errMsg = parsed.error || parsed.message || bodyText;
-          } catch {
-            errMsg = bodyText;
-          }
-        } else if (typeof bodyText === "object" && bodyText !== null) {
-          errMsg =
-            (bodyText as any).error ||
-            (bodyText as any).message ||
-            uploadError.message;
-        } else {
-          errMsg = uploadError.message || "Failed to upload media";
-        }
+        errMsg = uploadError.message || "Failed to upload media";
       } else {
         errMsg = uploadResult?.error || "Failed to upload media";
       }
@@ -1916,12 +1910,20 @@ const ConversationsPage: React.FC = () => {
           media_ids: pendingMedia.map((m) => m.id),
         };
 
-        const { data, error } = await supabase.functions.invoke(
-          "send-whatsapp-message",
+        const response = await fetch(
+          "http://localhost:8080/send-whatsapp-message",
           {
-            body: payload,
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
           }
         );
+        const data = await response.json();
+        const error = !response.ok
+          ? { message: data.error || "Failed to send template" }
+          : null;
 
         if (error || !data?.success) {
           const errorMsg =
@@ -2082,19 +2084,27 @@ const ConversationsPage: React.FC = () => {
         // Format phone number for WhatsApp API (remove + and spaces)
         const formattedToPhone = customerPhone.replace(/[\s+]/g, "");
 
-        // Send message via edge function
-        const { data, error } = await supabase.functions.invoke(
-          "send-whatsapp-message",
+        // Send message via Node backend
+        const response = await fetch(
+          "http://localhost:8080/send-whatsapp-message",
           {
-            body: {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
               user_id: user.id,
               customer_phone: formattedToPhone,
               message: messageText,
               type: "text",
               category: "utility",
-            },
+            }),
           }
         );
+        const data = await response.json();
+        const error = !response.ok
+          ? { message: data.error || "Failed to send message" }
+          : null;
 
         if (error || !data?.success) {
           const errorMsg =
