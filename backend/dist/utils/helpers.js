@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import { uploadMediaToR2 } from './s3';
 export function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -65,33 +65,8 @@ export async function downloadWhatsAppMedia(mediaId, accessToken) {
     }
 }
 export async function uploadMediaToStorage(supabaseClient, agentPrefix, mediaBuffer, originalFilename, contentType) {
-    try {
-        const timestamp = Date.now();
-        const fileExt = originalFilename.split('.').pop()?.toLowerCase() || 'bin';
-        const fileName = `${timestamp}_${crypto.randomUUID()}.${fileExt}`;
-        const filePath = `${agentPrefix}/incoming/${fileName}`;
-        console.log(`Uploading media to storage: ${filePath}`);
-        const { data, error } = await supabaseClient.storage
-            .from('whatsapp-media')
-            .upload(filePath, mediaBuffer, {
-            contentType: contentType,
-            cacheControl: '3600',
-            upsert: false,
-        });
-        if (error) {
-            console.error('Storage upload error:', error);
-            return null;
-        }
-        const { data: urlData } = supabaseClient.storage
-            .from('whatsapp-media')
-            .getPublicUrl(filePath);
-        console.log(`Media uploaded successfully: ${urlData.publicUrl}`);
-        return urlData.publicUrl;
-    }
-    catch (error) {
-        console.error('Error uploading media to storage:', error);
-        return null;
-    }
+    // Use R2 instead of Supabase Storage
+    return uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename, contentType, 'incoming');
 }
 export async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName) {
     try {
@@ -323,7 +298,20 @@ export async function processMessageStatus(supabaseClient, status) {
             localString: statusDate.toLocaleString(),
         });
         console.log(`📨 Message ${status.id} status: "${status.status}" at ${statusTimestamp}`);
-        console.log('✅ Status update logged (full tracking available with optional migration)');
+        // Update the status in whatsapp_message_logs
+        const { error: updateError } = await supabaseClient
+            .from('whatsapp_message_logs')
+            .update({
+            status: status.status,
+            timestamp: statusTimestamp,
+        })
+            .eq('whatsapp_message_id', status.id);
+        if (updateError) {
+            console.error('Error updating message status in logs:', updateError);
+        }
+        else {
+            console.log(`✅ Updated status for message ${status.id} to ${status.status}`);
+        }
     }
     catch (error) {
         console.error('Status processing error:', error);

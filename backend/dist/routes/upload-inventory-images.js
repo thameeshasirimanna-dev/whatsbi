@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { verifyJWT } from '../utils/helpers';
+import { uploadMediaToR2 } from "../utils/s3";
 export default async function uploadInventoryImagesRoutes(fastify, supabaseClient) {
     fastify.post('/upload-inventory-images', async (request, reply) => {
         try {
@@ -36,7 +37,7 @@ export default async function uploadInventoryImagesRoutes(fastify, supabaseClien
                 try {
                     // Decode base64 file
                     const prefix = `data:${image.fileType};base64,`;
-                    const base64Data = image.fileBase64.replace(new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), '');
+                    const base64Data = image.fileBase64.replace(new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), "");
                     const binaryString = atob(base64Data);
                     let bytes = Buffer.alloc(binaryString.length);
                     for (let i = 0; i < binaryString.length; i++) {
@@ -46,47 +47,21 @@ export default async function uploadInventoryImagesRoutes(fastify, supabaseClien
                     // For now, upload as is
                     const processedFileType = image.fileType;
                     const uniqueId = crypto.randomUUID();
-                    const extension = image.fileName.split('.').pop() || 'jpg';
+                    const extension = image.fileName.split(".").pop() || "jpg";
                     const filePath = `${productId}/${uniqueId}.${extension}`;
-                    // Upload to storage
-                    const { error: uploadError } = await supabaseClient.storage
-                        .from('inventory-images')
-                        .upload(filePath, bytes, {
-                        contentType: processedFileType,
-                        upsert: false,
-                    });
-                    if (uploadError) {
-                        // Rollback any successfully uploaded images if this fails
-                        for (const uploadedUrl of uploadedUrls) {
-                            const urlObj = new URL(uploadedUrl);
-                            const pathname = urlObj.pathname;
-                            const parts = pathname.split('/').slice(5);
-                            if (parts.length > 1 && parts[0] === 'inventory-images') {
-                                const pathToDelete = parts.slice(1).join('/');
-                                await supabaseClient.storage.from('inventory-images').remove([pathToDelete]);
-                            }
-                        }
-                        return reply.code(500).send({ error: 'Upload failed: ' + uploadError.message });
+                    // Upload to R2
+                    const r2Key = `inventory/${filePath}`;
+                    const uploadedUrl = await uploadMediaToR2("", // No agent prefix for inventory
+                    bytes, image.fileName, processedFileType, "incoming", // default
+                    r2Key);
+                    if (!uploadedUrl) {
+                        return reply.code(500).send({ error: "Upload failed" });
                     }
-                    // Get public URL
-                    const { data: { publicUrl } } = supabaseClient.storage
-                        .from('inventory-images')
-                        .getPublicUrl(filePath);
-                    uploadedUrls.push(publicUrl);
+                    uploadedUrls.push(uploadedUrl);
                 }
                 catch (error) {
-                    // Rollback on any error
-                    for (const uploadedUrl of uploadedUrls) {
-                        const urlObj = new URL(uploadedUrl);
-                        const pathname = urlObj.pathname;
-                        const parts = pathname.split('/').slice(5);
-                        if (parts.length > 1 && parts[0] === 'inventory-images') {
-                            const pathToDelete = parts.slice(1).join('/');
-                            await supabaseClient.storage.from('inventory-images').remove([pathToDelete]);
-                        }
-                    }
                     return reply.code(500).send({
-                        error: 'Upload failed: ' + (error.message || 'Unknown error'),
+                        error: "Upload failed: " + (error.message || "Unknown error"),
                     });
                 }
             }

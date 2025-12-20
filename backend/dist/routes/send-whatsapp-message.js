@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { verifyJWT } from '../utils/helpers';
+import { uploadMediaToR2 } from "../utils/s3";
 export default async function sendWhatsappMessageRoutes(fastify, supabaseClient) {
     fastify.post('/send-whatsapp-message', async (request, reply) => {
         try {
@@ -261,35 +262,35 @@ export default async function sendWhatsappMessageRoutes(fastify, supabaseClient)
                 processedMedia = await Promise.all(mediaIdsToProcess.map(async (mediaId, index) => {
                     console.log(`[DEBUG] Processing media ${index + 1}/${mediaIdsToProcess.length}: ${mediaId}`);
                     const mediaUrlResponse = await fetch(`https://graph.facebook.com/v23.0/${mediaId}`, {
-                        method: 'GET',
+                        method: "GET",
                         headers: {
                             Authorization: `Bearer ${accessToken}`,
                         },
                     });
                     if (!mediaUrlResponse.ok) {
                         const errorText = await mediaUrlResponse.text();
-                        console.error('Failed to fetch media details:', errorText);
+                        console.error("Failed to fetch media details:", errorText);
                         throw new Error(`Invalid media ID - cannot fetch media details: ${errorText}`);
                     }
                     const mediaUrlData = await mediaUrlResponse.json();
                     const media_download_url = mediaUrlData.url;
                     if (!media_download_url) {
-                        throw new Error('No download URL in media response');
+                        throw new Error("No download URL in media response");
                     }
                     const templateMimeType = mediaUrlData.mime_type;
                     let mediaFormat;
-                    if (templateMimeType?.startsWith('image/')) {
-                        mediaFormat = 'image';
+                    if (templateMimeType?.startsWith("image/")) {
+                        mediaFormat = "image";
                     }
-                    else if (templateMimeType?.startsWith('video/')) {
-                        mediaFormat = 'video';
+                    else if (templateMimeType?.startsWith("video/")) {
+                        mediaFormat = "video";
                     }
-                    else if (templateMimeType?.startsWith('audio/')) {
-                        mediaFormat = 'audio';
+                    else if (templateMimeType?.startsWith("audio/")) {
+                        mediaFormat = "audio";
                     }
-                    else if (templateMimeType?.startsWith('application/') ||
-                        templateMimeType?.startsWith('text/')) {
-                        mediaFormat = 'document';
+                    else if (templateMimeType?.startsWith("application/") ||
+                        templateMimeType?.startsWith("text/")) {
+                        mediaFormat = "document";
                     }
                     else {
                         throw new Error(`Unsupported media type: ${templateMimeType}`);
@@ -305,42 +306,33 @@ export default async function sendWhatsappMessageRoutes(fastify, supabaseClient)
                     });
                     if (!mediaResponse.ok) {
                         const dlErrorText = await mediaResponse.text();
-                        console.error('Failed to download media:', dlErrorText);
-                        throw new Error('Failed to download media for storage');
+                        console.error("Failed to download media:", dlErrorText);
+                        throw new Error("Failed to download media for storage");
                     }
                     const mediaBlob = await mediaResponse.blob();
                     const mimeType = templateMimeType ||
-                        mediaResponse.headers.get('content-type') ||
-                        'application/octet-stream';
+                        mediaResponse.headers.get("content-type") ||
+                        "application/octet-stream";
                     let storedMediaUrl = null;
-                    // Upload to Supabase storage for permanent dashboard access
+                    // Upload to R2 for permanent dashboard access
                     if (agent && agent.agent_prefix) {
                         try {
-                            const timestamp = Date.now();
-                            const fileExt = mimeType.split('/')[1] || 'bin';
-                            const fileName = `outgoing_${timestamp}_${crypto.randomUUID()}.${fileExt}`;
-                            const filePath = `${agent.agent_prefix}/outgoing/${fileName}`;
-                            console.log(`[DEBUG] Uploading outgoing media ${index + 1} to Supabase storage: ${filePath}`);
-                            const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                                .from('whatsapp-media')
-                                .upload(filePath, mediaBlob, {
-                                contentType: mimeType,
-                                cacheControl: '3600',
-                                upsert: false,
-                            });
-                            if (!uploadError && uploadData) {
-                                const { data: urlData } = supabaseClient.storage
-                                    .from('whatsapp-media')
-                                    .getPublicUrl(filePath);
-                                storedMediaUrl = urlData.publicUrl;
-                                console.log(`[DEBUG] Outgoing media ${index + 1} uploaded to storage: ${storedMediaUrl}`);
+                            // Convert blob to buffer
+                            const arrayBuffer = await mediaBlob.arrayBuffer();
+                            const mediaBuffer = Buffer.from(arrayBuffer);
+                            const fileExt = mimeType.split("/")[1] || "bin";
+                            const fileName = `outgoing_${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
+                            console.log(`[DEBUG] Uploading outgoing media ${index + 1} to R2: ${agent.agent_prefix}/outgoing/${fileName}`);
+                            storedMediaUrl = await uploadMediaToR2(agent.agent_prefix, mediaBuffer, fileName, mimeType, "outgoing");
+                            if (storedMediaUrl) {
+                                console.log(`[DEBUG] Outgoing media ${index + 1} uploaded to R2: ${storedMediaUrl}`);
                             }
                             else {
-                                console.error(`[DEBUG] Failed to upload outgoing media ${index + 1} to storage:`, uploadError);
+                                console.error(`[DEBUG] Failed to upload outgoing media ${index + 1} to R2`);
                             }
                         }
                         catch (storageError) {
-                            console.error(`[DEBUG] Error uploading media ${index + 1} to Supabase storage:`, storageError);
+                            console.error(`[DEBUG] Error uploading media ${index + 1} to R2:`, storageError);
                         }
                     }
                     const effectiveMediaId = mediaId; // Use original media ID, no re-upload needed
@@ -473,6 +465,28 @@ export default async function sendWhatsappMessageRoutes(fastify, supabaseClient)
             }
             // Send to WhatsApp and store messages logic
             // ... (sending and storage logic)
+            // Log sent messages to whatsapp_message_logs
+            if (allMessageIds.length > 0) {
+                const messageType = useTemplate ? 'template' : type;
+                const logInserts = allMessageIds.map((messageId) => ({
+                    user_id: user_id,
+                    agent_id: agent.id,
+                    customer_phone: customer_phone,
+                    message_type: messageType,
+                    category: category,
+                    status: 'sent',
+                    whatsapp_message_id: messageId,
+                }));
+                const { error: logError } = await supabaseClient
+                    .from('whatsapp_message_logs')
+                    .insert(logInserts);
+                if (logError) {
+                    console.error('Error logging sent messages:', logError);
+                }
+                else {
+                    console.log(`Logged ${allMessageIds.length} sent messages`);
+                }
+            }
             return reply.code(200).send({
                 success: true,
                 message_ids: allMessageIds,

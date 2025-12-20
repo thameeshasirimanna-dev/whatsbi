@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
 import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } from '../utils/helpers';
+import { uploadMediaToR2 } from "../utils/s3";
 
 export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/send-whatsapp-message', async (request, reply) => {
@@ -338,7 +339,7 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
             const mediaUrlResponse = await fetch(
               `https://graph.facebook.com/v23.0/${mediaId}`,
               {
-                method: 'GET',
+                method: "GET",
                 headers: {
                   Authorization: `Bearer ${accessToken}`,
                 },
@@ -346,7 +347,7 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
             );
             if (!mediaUrlResponse.ok) {
               const errorText = await mediaUrlResponse.text();
-              console.error('Failed to fetch media details:', errorText);
+              console.error("Failed to fetch media details:", errorText);
               throw new Error(
                 `Invalid media ID - cannot fetch media details: ${errorText}`
               );
@@ -354,21 +355,21 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
             const mediaUrlData: any = await mediaUrlResponse.json();
             const media_download_url = mediaUrlData.url;
             if (!media_download_url) {
-              throw new Error('No download URL in media response');
+              throw new Error("No download URL in media response");
             }
             const templateMimeType = mediaUrlData.mime_type;
             let mediaFormat: string;
-            if (templateMimeType?.startsWith('image/')) {
-              mediaFormat = 'image';
-            } else if (templateMimeType?.startsWith('video/')) {
-              mediaFormat = 'video';
-            } else if (templateMimeType?.startsWith('audio/')) {
-              mediaFormat = 'audio';
+            if (templateMimeType?.startsWith("image/")) {
+              mediaFormat = "image";
+            } else if (templateMimeType?.startsWith("video/")) {
+              mediaFormat = "video";
+            } else if (templateMimeType?.startsWith("audio/")) {
+              mediaFormat = "audio";
             } else if (
-              templateMimeType?.startsWith('application/') ||
-              templateMimeType?.startsWith('text/')
+              templateMimeType?.startsWith("application/") ||
+              templateMimeType?.startsWith("text/")
             ) {
-              mediaFormat = 'document';
+              mediaFormat = "document";
             } else {
               throw new Error(`Unsupported media type: ${templateMimeType}`);
             }
@@ -393,58 +394,53 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
             });
             if (!mediaResponse.ok) {
               const dlErrorText = await mediaResponse.text();
-              console.error('Failed to download media:', dlErrorText);
-              throw new Error('Failed to download media for storage');
+              console.error("Failed to download media:", dlErrorText);
+              throw new Error("Failed to download media for storage");
             }
             const mediaBlob = await mediaResponse.blob();
             const mimeType =
               templateMimeType ||
-              mediaResponse.headers.get('content-type') ||
-              'application/octet-stream';
+              mediaResponse.headers.get("content-type") ||
+              "application/octet-stream";
             let storedMediaUrl: string | null = null;
-            // Upload to Supabase storage for permanent dashboard access
+            // Upload to R2 for permanent dashboard access
             if (agent && agent.agent_prefix) {
               try {
-                const timestamp = Date.now();
-                const fileExt = mimeType.split('/')[1] || 'bin';
-                const fileName = `outgoing_${timestamp}_${crypto.randomUUID()}.${fileExt}`;
-                const filePath = `${agent.agent_prefix}/outgoing/${fileName}`;
+                // Convert blob to buffer
+                const arrayBuffer = await mediaBlob.arrayBuffer();
+                const mediaBuffer = Buffer.from(arrayBuffer);
+
+                const fileExt = mimeType.split("/")[1] || "bin";
+                const fileName = `outgoing_${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
+
                 console.log(
-                  `[DEBUG] Uploading outgoing media ${
-                    index + 1
-                  } to Supabase storage: ${filePath}`
+                  `[DEBUG] Uploading outgoing media ${index + 1} to R2: ${
+                    agent.agent_prefix
+                  }/outgoing/${fileName}`
                 );
-                const { data: uploadData, error: uploadError } =
-                  await supabaseClient.storage
-                    .from('whatsapp-media')
-                    .upload(filePath, mediaBlob, {
-                      contentType: mimeType,
-                      cacheControl: '3600',
-                      upsert: false,
-                    });
-                if (!uploadError && uploadData) {
-                  const { data: urlData } = supabaseClient.storage
-                    .from('whatsapp-media')
-                    .getPublicUrl(filePath);
-                  storedMediaUrl = urlData.publicUrl;
+
+                storedMediaUrl = await uploadMediaToR2(
+                  agent.agent_prefix,
+                  mediaBuffer,
+                  fileName,
+                  mimeType,
+                  "outgoing"
+                );
+
+                if (storedMediaUrl) {
                   console.log(
                     `[DEBUG] Outgoing media ${
                       index + 1
-                    } uploaded to storage: ${storedMediaUrl}`
+                    } uploaded to R2: ${storedMediaUrl}`
                   );
                 } else {
                   console.error(
-                    `[DEBUG] Failed to upload outgoing media ${
-                      index + 1
-                    } to storage:`,
-                    uploadError
+                    `[DEBUG] Failed to upload outgoing media ${index + 1} to R2`
                   );
                 }
               } catch (storageError) {
                 console.error(
-                  `[DEBUG] Error uploading media ${
-                    index + 1
-                  } to Supabase storage:`,
+                  `[DEBUG] Error uploading media ${index + 1} to R2:`,
                   storageError
                 );
               }
