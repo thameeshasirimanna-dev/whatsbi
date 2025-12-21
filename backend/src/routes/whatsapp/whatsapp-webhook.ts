@@ -12,7 +12,6 @@ function emitAgentStatusUpdate(agentId: number, statusData: any) {
 }
 
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? '';
-const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET ?? '';
 
 export default async function whatsappWebhookRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: any) {
   const corsHeaders = {
@@ -236,18 +235,28 @@ export default async function whatsappWebhookRoutes(fastify: FastifyInstance, su
 
             let verificationSecret: string | null = null;
             if (phoneNumberId) {
-              verificationSecret = WHATSAPP_APP_SECRET;
-              console.log(
-                'App secret lookup:',
-                verificationSecret ? 'found' : 'not found'
-              );
+              try {
+                // Fetch app secret from database based on phone_number_id
+                const { data: config, error } = await supabaseClient
+                  .from('whatsapp_configuration')
+                  .select('whatsapp_app_secret')
+                  .eq('phone_number_id', phoneNumberId)
+                  .eq('is_active', true)
+                  .single();
+
+                if (!error && config?.whatsapp_app_secret) {
+                  verificationSecret = config.whatsapp_app_secret;
+                  console.log('App secret found in database for phone_number_id');
+                } else {
+                  console.log('App secret not found in database for phone_number_id');
+                }
+              } catch (dbError) {
+                console.error('Database lookup for app secret failed:', dbError);
+              }
             }
 
-            if (!verificationSecret && WHATSAPP_APP_SECRET) {
-              verificationSecret = WHATSAPP_APP_SECRET;
-              console.log(
-                'Using WHATSAPP_APP_SECRET env var for signature verification'
-              );
+            if (!verificationSecret) {
+              console.log('No app secret available for signature verification');
             }
 
             if (verificationSecret) {

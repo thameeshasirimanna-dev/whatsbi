@@ -4,6 +4,7 @@
 
 -- Drop existing functions to avoid conflicts
 DROP FUNCTION IF EXISTS create_whatsapp_config(UUID, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS create_whatsapp_config(UUID, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, TEXT) CASCADE;
 DROP FUNCTION IF EXISTS get_whatsapp_config(UUID) CASCADE;
 DROP FUNCTION IF EXISTS update_whatsapp_config(UUID, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, BOOLEAN) CASCADE;
 DROP FUNCTION IF EXISTS delete_whatsapp_config(UUID) CASCADE;
@@ -15,7 +16,8 @@ CREATE OR REPLACE FUNCTION create_whatsapp_config(
     p_webhook_url TEXT,
     p_api_key TEXT DEFAULT NULL,
     p_business_account_id VARCHAR(100) DEFAULT NULL,
-    p_phone_number_id VARCHAR(100) DEFAULT NULL
+    p_phone_number_id VARCHAR(100) DEFAULT NULL,
+    p_whatsapp_app_secret TEXT DEFAULT NULL
 )
 RETURNS TABLE (
     config JSONB,
@@ -37,11 +39,11 @@ BEGIN
     BEGIN
         INSERT INTO whatsapp_configuration (
             user_id, whatsapp_number, webhook_url, api_key,
-            business_account_id, phone_number_id, is_active
+            business_account_id, phone_number_id, whatsapp_app_secret, is_active
         )
         VALUES (
             p_user_id, p_whatsapp_number, p_webhook_url, p_api_key,
-            p_business_account_id, p_phone_number_id, true
+            p_business_account_id, p_phone_number_id, p_whatsapp_app_secret, true
         )
         ON CONFLICT (user_id) DO UPDATE SET
             whatsapp_number = EXCLUDED.whatsapp_number,
@@ -49,6 +51,7 @@ BEGIN
             api_key = EXCLUDED.api_key,
             business_account_id = EXCLUDED.business_account_id,
             phone_number_id = EXCLUDED.phone_number_id,
+            whatsapp_app_secret = EXCLUDED.whatsapp_app_secret,
             is_active = true,
             updated_at = CURRENT_TIMESTAMP
         RETURNING id INTO v_config_id;
@@ -180,7 +183,7 @@ END;
 $$;
 
 -- Grant execute permissions
-GRANT EXECUTE ON FUNCTION create_whatsapp_config(UUID, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR) TO service_role, authenticated;
+GRANT EXECUTE ON FUNCTION create_whatsapp_config(UUID, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, TEXT) TO service_role, authenticated;
 GRANT EXECUTE ON FUNCTION get_whatsapp_config(UUID) TO service_role, authenticated;
 GRANT EXECUTE ON FUNCTION update_whatsapp_config(UUID, VARCHAR, TEXT, TEXT, VARCHAR, VARCHAR, BOOLEAN) TO service_role, authenticated;
 GRANT EXECUTE ON FUNCTION delete_whatsapp_config(UUID) TO service_role, authenticated;

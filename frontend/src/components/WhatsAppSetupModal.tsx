@@ -12,6 +12,7 @@ interface WhatsAppConfig {
   api_key?: string;
   business_account_id?: string;
   phone_number_id?: string;
+  whatsapp_app_secret?: string;
 }
 
 interface WhatsAppSetupModalProps {
@@ -30,6 +31,7 @@ interface WhatsAppSetupModalProps {
     api_key?: string;
     business_account_id?: string;
     phone_number_id?: string;
+    whatsapp_app_secret?: string;
     is_active: boolean;
   } | null;
 }
@@ -41,12 +43,24 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
   selectedAgent,
   initialConfig
 }) => {
+  const [session, setSession] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setSession(session);
+    };
+    getSession();
+  }, []);
   const [formData, setFormData] = useState<WhatsAppConfig>({
-    whatsapp_number: '',
-    webhook_url: '',
-    api_key: '',
-    business_account_id: '',
-    phone_number_id: ''
+    whatsapp_number: "",
+    webhook_url: "",
+    api_key: "",
+    business_account_id: "",
+    phone_number_id: "",
+    whatsapp_app_secret: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,19 +70,21 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
   React.useEffect(() => {
     if (initialConfig) {
       setFormData({
-        whatsapp_number: initialConfig.whatsapp_number || '',
-        webhook_url: initialConfig.webhook_url || '',
-        api_key: initialConfig.api_key || '',
-        business_account_id: initialConfig.business_account_id || '',
-        phone_number_id: initialConfig.phone_number_id || ''
+        whatsapp_number: initialConfig.whatsapp_number || "",
+        webhook_url: initialConfig.webhook_url || "",
+        api_key: initialConfig.api_key || "",
+        business_account_id: initialConfig.business_account_id || "",
+        phone_number_id: initialConfig.phone_number_id || "",
+        whatsapp_app_secret: initialConfig.whatsapp_app_secret || "",
       });
     } else {
       setFormData({
-        whatsapp_number: '',
-        webhook_url: '',
-        api_key: '',
-        business_account_id: '',
-        phone_number_id: ''
+        whatsapp_number: "",
+        webhook_url: "",
+        api_key: "",
+        business_account_id: "",
+        phone_number_id: "",
+        whatsapp_app_secret: "",
       });
     }
   }, [initialConfig]);
@@ -129,13 +145,15 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         webhook_url: formData.webhook_url.trim(),
         api_key: formData.api_key?.trim() || null,
         business_account_id: formData.business_account_id?.trim() || null,
-        phone_number_id: formData.phone_number_id?.trim() || null
+        phone_number_id: formData.phone_number_id?.trim() || null,
+        whatsapp_app_secret: formData.whatsapp_app_secret?.trim() || null,
       };
 
       const response = await fetch('http://localhost:8080/setup-whatsapp-config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -154,11 +172,12 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
       onSuccess(); // Refresh agents list
       // Reset form to initial state
       setFormData({
-        whatsapp_number: initialConfig?.whatsapp_number || '',
-        webhook_url: initialConfig?.webhook_url || '',
-        api_key: initialConfig?.api_key || '',
-        business_account_id: initialConfig?.business_account_id || '',
-        phone_number_id: initialConfig?.phone_number_id || ''
+        whatsapp_number: initialConfig?.whatsapp_number || "",
+        webhook_url: initialConfig?.webhook_url || "",
+        api_key: initialConfig?.api_key || "",
+        business_account_id: initialConfig?.business_account_id || "",
+        phone_number_id: initialConfig?.phone_number_id || "",
+        whatsapp_app_secret: initialConfig?.whatsapp_app_secret || "",
       });
       
       // Close modal after 2 seconds
@@ -179,11 +198,12 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
     setSuccessMessage(null);
     // Reset to initial state or empty if no initial config
     setFormData({
-      whatsapp_number: initialConfig?.whatsapp_number || '',
-      webhook_url: initialConfig?.webhook_url || '',
-      api_key: initialConfig?.api_key || '',
-      business_account_id: initialConfig?.business_account_id || '',
-      phone_number_id: initialConfig?.phone_number_id || ''
+      whatsapp_number: initialConfig?.whatsapp_number || "",
+      webhook_url: initialConfig?.webhook_url || "",
+      api_key: initialConfig?.api_key || "",
+      business_account_id: initialConfig?.business_account_id || "",
+      phone_number_id: initialConfig?.phone_number_id || "",
+      whatsapp_app_secret: initialConfig?.whatsapp_app_secret || "",
     });
     onClose();
   };
@@ -196,14 +216,26 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-900">
-            {selectedAgent ? `Setup WhatsApp for ${selectedAgent.user_name}` : 'Setup WhatsApp'}
+            {selectedAgent
+              ? `Setup WhatsApp for ${selectedAgent.user_name}`
+              : "Setup WhatsApp"}
           </h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -213,15 +245,22 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
           {selectedAgent && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="font-medium text-blue-900 mb-2">Selected Agent</h3>
-              <p className="text-sm text-blue-800"><strong>Name:</strong> {selectedAgent.user_name}</p>
-              <p className="text-sm text-blue-800"><strong>Email:</strong> {selectedAgent.user_email}</p>
+              <p className="text-sm text-blue-800">
+                <strong>Name:</strong> {selectedAgent.user_name}
+              </p>
+              <p className="text-sm text-blue-800">
+                <strong>Email:</strong> {selectedAgent.user_email}
+              </p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* WhatsApp Number */}
             <div>
-              <label htmlFor="whatsapp_number" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="whatsapp_number"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 WhatsApp Number <span className="text-red-500">*</span>
               </label>
               <input
@@ -241,7 +280,10 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
 
             {/* Webhook URL */}
             <div>
-              <label htmlFor="webhook_url" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="webhook_url"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Webhook URL <span className="text-red-500">*</span>
               </label>
               <input
@@ -261,14 +303,20 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
 
             {/* Optional API Credentials */}
             <div className="border-t border-gray-200 pt-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">WhatsApp Business API Credentials (Optional)</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                WhatsApp Business API Credentials (Optional)
+              </h3>
               <p className="text-sm text-gray-600 mb-4">
-                These will be stored securely and used for sending messages. You can add them later if needed.
+                These will be stored securely and used for sending messages. You
+                can add them later if needed.
               </p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="api_key" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="api_key"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     API Key
                   </label>
                   <input
@@ -283,7 +331,10 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor="business_account_id" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="business_account_id"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Business Account ID
                   </label>
                   <input
@@ -298,7 +349,10 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label htmlFor="phone_number_id" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="phone_number_id"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Phone Number ID
                   </label>
                   <input
@@ -308,6 +362,24 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
                     value={formData.phone_number_id}
                     onChange={handleInputChange}
                     placeholder="Your WhatsApp Phone Number ID"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="whatsapp_app_secret"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    WhatsApp App Secret
+                  </label>
+                  <input
+                    type="password"
+                    id="whatsapp_app_secret"
+                    name="whatsapp_app_secret"
+                    value={formData.whatsapp_app_secret}
+                    onChange={handleInputChange}
+                    placeholder="Your WhatsApp App Secret from Meta Developer Console"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -346,7 +418,7 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
             disabled={loading || !selectedAgent}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Setting up...' : 'Setup WhatsApp'}
+            {loading ? "Setting up..." : "Setup WhatsApp"}
           </button>
         </div>
       </div>

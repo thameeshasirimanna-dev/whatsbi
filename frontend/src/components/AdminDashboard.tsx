@@ -37,6 +37,7 @@ interface Agent {
     api_key?: string;
     business_account_id?: string;
     phone_number_id?: string;
+    whatsapp_app_secret?: string;
     is_active: boolean;
   } | null;
 }
@@ -562,6 +563,7 @@ const AdminDashboard: React.FC = () => {
             api_key: actualConfig.api_key || '',
             business_account_id: actualConfig.business_account_id || '',
             phone_number_id: actualConfig.phone_number_id || '',
+            whatsapp_app_secret: actualConfig.whatsapp_app_secret || '',
             is_active: Boolean(actualConfig.is_active)
           };
         }

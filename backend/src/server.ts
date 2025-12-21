@@ -68,7 +68,6 @@ server.register(fastifySocketIO, {
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
-const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET ?? "";
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 
 // CORS headers

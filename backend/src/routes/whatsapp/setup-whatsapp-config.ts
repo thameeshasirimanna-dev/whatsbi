@@ -62,6 +62,7 @@ export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance
           p_api_key: body.api_key || null,
           p_business_account_id: body.business_account_id || null,
           p_phone_number_id: body.phone_number_id || null,
+          p_whatsapp_app_secret: body.whatsapp_app_secret || null,
         }
       );
 
