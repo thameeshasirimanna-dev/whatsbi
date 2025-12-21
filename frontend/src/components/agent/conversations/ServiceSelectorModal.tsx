@@ -50,24 +50,38 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const { data: agentData } = await supabase.auth.getUser();
-      if (!agentData?.user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         console.error("User not authenticated");
         setLoading(false);
         return;
       }
 
-      const { data: agent } = await supabase
-        .from('agents')
-        .select('id, agent_prefix')
-        .eq('user_id', agentData.user.id)
-        .single();
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      if (!agent) {
+      if (!response.ok) {
+        console.error("Failed to fetch agent profile");
+        setLoading(false);
+        return;
+      }
+
+      const agentProfile = await response.json();
+      if (!agentProfile.success || !agentProfile.agent) {
         console.error("Agent not found");
         setLoading(false);
         return;
       }
+
+      const agent = agentProfile.agent;
 
       const servicesTable = `${agent.agent_prefix}_services`;
       const packagesTable = `${agent.agent_prefix}_service_packages`;

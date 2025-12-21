@@ -286,30 +286,46 @@ const CustomersPage: React.FC = () => {
   };
 
   const handleCreateCustomer = async () => {
-    if (
-      !agentPrefix ||
-      !agentId ||
-      !createForm.name.trim() ||
-      !createForm.phone.trim()
-    )
-      return;
+    if (!createForm.name.trim() || !createForm.phone.trim()) return;
 
     const fullPhone = `${selectedCountryCode}${createForm.phone}`.replace(
       "+",
       ""
     );
+
     try {
-      const customersTable = `${agentPrefix}_customers`;
-      const { error } = await supabase.from(customersTable).insert({
-        agent_id: agentId,
-        name: createForm.name.trim(),
-        phone: fullPhone,
-        lead_stage: createForm.lead_stage || "New Lead",
-        interest_stage: createForm.interest_stage || null,
-        conversion_stage: createForm.conversion_stage || null,
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const response = await fetch(`${backendUrl}/manage-customers`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: createForm.name.trim(),
+          phone: fullPhone,
+          lead_stage: createForm.lead_stage || "New Lead",
+          interest_stage: createForm.interest_stage || null,
+          conversion_stage: createForm.conversion_stage || null,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create customer");
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to create customer");
+      }
 
       setShowCreateModal(false);
       setCreateForm({
@@ -322,41 +338,55 @@ const CustomersPage: React.FC = () => {
       setSelectedCountryCode("+94");
       fetchCustomers();
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Create customer error:", err);
-      setError("Failed to create customer");
+      setError(err.message || "Failed to create customer");
     }
   };
 
   const handleUpdateCustomer = async () => {
-    if (
-      !editingCustomer ||
-      !agentPrefix ||
-      !agentId ||
-      !editForm.name.trim() ||
-      !editForm.phone.trim()
-    )
+    if (!editingCustomer || !editForm.name.trim() || !editForm.phone.trim())
       return;
 
     const fullPhone = `${selectedEditCountryCode}${editForm.phone}`.replace(
       "+",
       ""
     );
+
     try {
-      const customersTable = `${agentPrefix}_customers`;
-      const { error } = await supabase
-        .from(customersTable)
-        .update({
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const response = await fetch(`${backendUrl}/manage-customers`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: editingCustomer.id,
           name: editForm.name.trim(),
           phone: fullPhone,
           lead_stage: editForm.lead_stage || "New Lead",
           interest_stage: editForm.interest_stage || null,
           conversion_stage: editForm.conversion_stage || null,
-        })
-        .eq("id", editingCustomer.id)
-        .eq("agent_id", agentId);
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update customer");
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to update customer");
+      }
 
       setEditingCustomer(null);
       setEditForm({
@@ -368,9 +398,10 @@ const CustomersPage: React.FC = () => {
       });
       setSelectedEditCountryCode("+94");
       fetchCustomers();
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       console.error("Update error:", err);
-      setError("Failed to update customer");
+      setError(err.message || "Failed to update customer");
     }
   };
 
@@ -380,28 +411,37 @@ const CustomersPage: React.FC = () => {
       setError(null);
 
       const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
         setError("User not authenticated");
         setLoading(false);
         return;
       }
 
-      const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("id, agent_prefix")
-        .eq("user_id", user.id)
-        .single();
+      // First get agent profile
+      const agentResponse = await fetch(`${backendUrl}/get-agent-profile`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      if (agentError || !agentData) {
-        setError("Agent not found");
-        console.error("Agent fetch error:", agentError);
+      if (!agentResponse.ok) {
+        setError("Failed to fetch agent profile");
         setLoading(false);
         return;
       }
 
+      const agentProfile = await agentResponse.json();
+      if (!agentProfile.success || !agentProfile.agent) {
+        setError("Agent not found");
+        setLoading(false);
+        return;
+      }
+
+      const agentData = agentProfile.agent;
       const currentAgentId = agentData.id;
       const currentAgentPrefix = agentData.agent_prefix;
       setAgentId(currentAgentId);
@@ -413,18 +453,31 @@ const CustomersPage: React.FC = () => {
         return;
       }
 
-      const customersTable = `${currentAgentPrefix}_customers`;
-      const { data: customersData, error: customersError } = await supabase
-        .from(customersTable)
-        .select(
-          "id, name, phone, created_at, profile_image_url, lead_stage, interest_stage, conversion_stage"
-        )
-        .eq("agent_id", currentAgentId)
-        .order("created_at", { ascending: false });
+      // Fetch customers from backend
+      const customersResponse = await fetch(`${backendUrl}/manage-customers`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      // Fetch order counts for each customer
+      if (!customersResponse.ok) {
+        setError("Failed to fetch customers");
+        setLoading(false);
+        return;
+      }
+
+      const customersData = await customersResponse.json();
+      if (!customersData.success) {
+        setError("Failed to fetch customers");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch order counts for each customer (this still needs to be done client-side since we don't have a backend endpoint for this)
       const customersWithOrderCounts = await Promise.all(
-        (customersData || []).map(async (customer) => {
+        (customersData.customers || []).map(async (customer: any) => {
           const ordersTable = `${currentAgentPrefix}_orders`;
           const { count, error: orderError } = await supabase
             .from(ordersTable)
@@ -436,14 +489,12 @@ const CustomersPage: React.FC = () => {
             return {
               ...customer,
               order_count: 0,
-              profile_image_url: customer.profile_image_url,
             };
           }
 
           return {
             ...customer,
             order_count: count || 0,
-            profile_image_url: customer.profile_image_url,
           };
         })
       );
@@ -500,17 +551,8 @@ const CustomersPage: React.FC = () => {
       );
       setProfileImages(initialProfileImages);
 
-      if (customersError) {
-        setError("Failed to fetch customers");
-        console.error("Customers fetch error:", customersError);
-        setLoading(false);
-        return;
-      }
-
       setCustomers(customersWithOrderCounts);
-      setAgentPrefix(currentAgentPrefix);
-      setAgentId(currentAgentId);
-      setCurrentUserId(user.id);
+      setCurrentUserId(agentData.user_id);
     } catch (err) {
       setError("Failed to load customers");
       console.error("Fetch error:", err);

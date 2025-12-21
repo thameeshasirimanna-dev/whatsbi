@@ -49,7 +49,7 @@ export default async function manageOrdersRoutes(fastify: FastifyInstance, supab
             .from(`${agentPrefix}_orders`)
             .select(`
               *,
-              customers (
+              ${agentPrefix}_customers!customer_id (
                 id,
                 name,
                 phone
@@ -63,7 +63,7 @@ export default async function manageOrdersRoutes(fastify: FastifyInstance, supab
 
           if (search) {
             // Search in customer name or order notes
-            query = query.or(`notes.ilike.%${search}%,customers.name.ilike.%${search}%`);
+            query = query.or(`notes.ilike.%${search}%,${agentPrefix}_customers.name.ilike.%${search}%`);
           }
 
           if (limit > 0) {
@@ -198,7 +198,7 @@ export default async function manageOrdersRoutes(fastify: FastifyInstance, supab
             .eq('id', id)
             .select(`
               *,
-              customers (
+              ${agentPrefix}_customers!customer_id (
                 id,
                 name,
                 phone

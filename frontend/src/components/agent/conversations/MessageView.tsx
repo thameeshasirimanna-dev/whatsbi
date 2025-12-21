@@ -327,13 +327,29 @@ const MessageView: React.FC<MessageViewProps> = ({
           .eq("agent_id", agentId)
           .single();
 
-        const { data: agent } = await supabase
-          .from("agents")
-          .select("user_id")
-          .eq("id", agentId)
-          .single();
+        // Get agent profile from backend
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
 
-        if (agent?.user_id) {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) return;
+
+        const agentProfile = await response.json();
+        if (!agentProfile.success || !agentProfile.agent) return;
+
+        const agent = agentProfile.agent;
+
+        if (agent.user_id) {
           const { data: config } = await supabase
             .from("whatsapp_configuration")
             .select("webhook_url, phone_number_id")

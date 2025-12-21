@@ -76,31 +76,41 @@ const OrdersPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Get authenticated user
+      // Get agent profile from backend
       const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
         setError("User not authenticated");
         setLoading(false);
         return;
       }
 
-      // Get agent ID and prefix
-      const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("id, agent_prefix")
-        .eq("user_id", user.id)
-        .single();
+      const agentResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (agentError || !agentData) {
-        setError("Agent not found");
-        console.error("Agent fetch error:", agentError);
+      if (!agentResponse.ok) {
+        setError("Failed to fetch agent profile");
         setLoading(false);
         return;
       }
 
+      const agentProfile = await agentResponse.json();
+      if (!agentProfile.success || !agentProfile.agent) {
+        setError("Agent not found");
+        setLoading(false);
+        return;
+      }
+
+      const agentData = agentProfile.agent;
       const currentAgentId = agentData.id;
       const currentAgentPrefix = agentData.agent_prefix;
       setAgentId(currentAgentId);
@@ -112,62 +122,55 @@ const OrdersPage: React.FC = () => {
         return;
       }
 
-      // First fetch agent-specific customers to get all customers for filtering
-      const customersTable = `${currentAgentPrefix}_customers`;
-      const { data: agentCustomers, error: customersError } = await supabase
-        .from(customersTable)
-        .select("id, name, phone")
-        .eq("agent_id", currentAgentId);
-
-      if (customersError) {
-        setError("Failed to fetch agent customers");
-        console.error("Customers fetch error:", customersError);
-        setLoading(false);
-        return;
-      }
-
-      setCustomerMap(
-        agentCustomers?.reduce((map: any, c: any) => {
-          map[String(c.id)] = c;
-          return map;
-        }, {}) || {}
+      // Fetch orders from backend
+      const ordersResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
       );
 
-      if (!agentCustomers || agentCustomers.length === 0) {
+      if (!ordersResponse.ok) {
+        setError("Failed to fetch orders");
+        setLoading(false);
+        return;
+      }
+
+      const ordersData = await ordersResponse.json();
+      if (!ordersData.success) {
+        setError("Failed to fetch orders");
+        setLoading(false);
+        return;
+      }
+
+      const ordersDataArray = ordersData.orders || [];
+      if (ordersDataArray.length === 0) {
         setOrders([]);
+        setCustomerMap({});
         setLoading(false);
         return;
       }
 
-      const agentCustomerIds = agentCustomers.map((c: any) => c.id);
+      // Build customer map from the joined data
+      const customerKey = `${currentAgentPrefix}_customers`;
+      const customerMapFromOrders = ordersDataArray.reduce(
+        (map: any, order: any) => {
+          if (order[customerKey]) {
+            map[String(order[customerKey].id)] = order[customerKey];
+          }
+          return map;
+        },
+        {}
+      );
 
-      // Fetch orders for agent customers
-      const ordersTable = `${currentAgentPrefix}_orders`;
-      const { data: ordersData, error: ordersError } = await supabase
-        .from(ordersTable)
-        .select(
-          `
-          id,
-          customer_id,
-          total_amount,
-          status,
-          notes,
-          shipping_address,
-          created_at
-        `
-        )
-        .in("customer_id", agentCustomerIds)
-        .order("created_at", { ascending: false });
-
-      if (ordersError) {
-        setError("Failed to fetch orders: " + ordersError.message);
-        console.error("Orders fetch error:", ordersError);
-        setLoading(false);
-        return;
-      }
+      setCustomerMap(customerMapFromOrders);
 
       // Fetch order items for all orders
-      const orderIds = ordersData?.map((o: any) => o.id) || [];
+      const orderIds = ordersDataArray.map((o: any) => o.id);
       const itemsTable = `${currentAgentPrefix}_orders_items`;
       const { data: itemsData, error: itemsError } = await supabase
         .from(itemsTable)
@@ -191,16 +194,9 @@ const OrdersPage: React.FC = () => {
         });
       });
 
-      // Create local customer map for immediate use in order processing (state update is async)
-      const localCustomerMap =
-        agentCustomers?.reduce((map: any, c: any) => {
-          map[String(c.id)] = c;
-          return map;
-        }, {}) || {};
-
-      // Use local customer map for names and phones
+      // Use customer map from orders for names and phones
       const customerMapInstance = new Map<number, any>();
-      Object.entries(localCustomerMap).forEach(([idStr, customer]) => {
+      Object.entries(customerMapFromOrders).forEach(([idStr, customer]) => {
         const idNum = Number(idStr);
         if (!isNaN(idNum)) {
           customerMapInstance.set(idNum, customer);
@@ -208,7 +204,7 @@ const OrdersPage: React.FC = () => {
       });
 
       // Process orders
-      const processedOrders: Order[] = (ordersData || []).map((order: any) => {
+      const processedOrders: Order[] = ordersDataArray.map((order: any) => {
         const totalAmount = order.total_amount || 0;
         const customerIdNum = Number(order.customer_id);
         const customerInfo = customerMapInstance.get(customerIdNum) || {
@@ -343,31 +339,45 @@ const OrdersPage: React.FC = () => {
   };
 
   const updateOrderStatus = async (orderId: number, newStatus: string) => {
-    if (!agentPrefix) {
-      alert("Agent prefix not available");
-      return;
-    }
-
     setUpdatingOrderId(orderId);
 
     try {
-      const ordersTable = `${agentPrefix}_orders`;
-      const { error } = await supabase
-        .from(ordersTable)
-        .update({ status: newStatus })
-        .eq("id", orderId);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        alert("User not authenticated");
+        return;
+      }
 
-      if (error) {
-        console.error("Update error:", error);
-        alert(`Failed to update status: ${error.message}`);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: orderId,
+            status: newStatus,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(
+          `Failed to update status: ${errorData.message || "Unknown error"}`
+        );
         return;
       }
 
       // Refresh the orders list
       await fetchOrders();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Update error:", err);
-      alert("Failed to update status");
+      alert(`Failed to update status: ${err.message || "Unknown error"}`);
     } finally {
       setUpdatingOrderId(null);
     }
@@ -375,7 +385,6 @@ const OrdersPage: React.FC = () => {
 
   const deleteOrder = async (orderId: number) => {
     if (
-      !agentPrefix ||
       !confirm(
         "Are you sure you want to delete this order? This action cannot be undone."
       )
@@ -384,34 +393,39 @@ const OrdersPage: React.FC = () => {
     }
 
     try {
-      // First delete order items
-      const itemsTable = `${agentPrefix}_orders_items`;
-      const { error: itemsError } = await supabase
-        .from(itemsTable)
-        .delete()
-        .eq("order_id", orderId);
-
-      if (itemsError) {
-        throw new Error(`Failed to delete order items: ${itemsError.message}`);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        alert("User not authenticated");
+        return;
       }
 
-      // Then delete the order
-      const ordersTable = `${agentPrefix}_orders`;
-      const { error: orderError } = await supabase
-        .from(ordersTable)
-        .delete()
-        .eq("id", orderId);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders?id=${orderId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (orderError) {
-        throw new Error(`Failed to delete order: ${orderError.message}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(
+          `Failed to delete order: ${errorData.message || "Unknown error"}`
+        );
+        return;
       }
 
       // Refresh the orders list
       await fetchOrders();
       alert("Order deleted successfully");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Delete error:", err);
-      alert(`Failed to delete order: ${(err as Error).message}`);
+      alert(`Failed to delete order: ${err.message || "Unknown error"}`);
     }
   };
 

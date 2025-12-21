@@ -129,19 +129,26 @@ const AppointmentsPage: React.FC = () => {
 
   const fetchAgentInfo = useCallback(async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("id, agent_prefix")
-        .eq("user_id", user.id)
-        .single();
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      if (agentError || !agentData) return;
+      if (!response.ok) return;
 
+      const agentProfile = await response.json();
+      if (!agentProfile.success || !agentProfile.agent) return;
+
+      const agentData = agentProfile.agent;
       setAgentId(Number(agentData.id));
       setAgentPrefix(agentData.agent_prefix);
 

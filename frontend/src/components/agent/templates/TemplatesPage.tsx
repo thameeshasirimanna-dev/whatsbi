@@ -99,20 +99,31 @@ const TemplatesPage: React.FC = () => {
         return;
       }
 
-      const { data: whatsappConfig, error: configError } = await supabase
-        .from("whatsapp_configuration")
-        .select("business_account_id, phone_number_id, api_key")
-        .eq("user_id", session.user.id)
-        .single();
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${session.user.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      if (configError || !whatsappConfig) {
-        setError(
-          "No WhatsApp configuration found. Please set up WhatsApp first."
-        );
+      if (!response.ok) {
+        setError("No WhatsApp configuration found. Please set up WhatsApp first.");
         setLoading(false);
         return;
       }
 
+      const configData = await response.json();
+      if (!configData.success || !configData.whatsapp_config) {
+        setError("No WhatsApp configuration found. Please set up WhatsApp first.");
+        setLoading(false);
+        return;
+      }
+
+      const whatsappConfig = configData.whatsapp_config[0] || configData.whatsapp_config;
       setConfig(whatsappConfig as WhatsAppConfig);
 
       const templatesTable = `${agentPrefix}_templates`;
@@ -148,21 +159,21 @@ const TemplatesPage: React.FC = () => {
       // Step 3: Fetch from Meta API if no cache or cache empty
       const { business_account_id, api_key } = whatsappConfig;
       const metaUrl = `https://graph.facebook.com/v20.0/${business_account_id}/message_templates`;
-      const response = await fetch(metaUrl, {
+      const metaResponse = await fetch(metaUrl, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${api_key}`,
         },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!metaResponse.ok) {
+        const errorData = await metaResponse.json();
         throw new Error(
-          `Meta API error: ${errorData.error?.message || response.statusText}`
+          `Meta API error: ${errorData.error?.message || metaResponse.statusText}`
         );
       }
 
-      const metaData = await response.json();
+      const metaData = await metaResponse.json();
       const apiData = metaData.data;
       const fetchedTemplates = apiData.map((t: any) => ({
         ...t,

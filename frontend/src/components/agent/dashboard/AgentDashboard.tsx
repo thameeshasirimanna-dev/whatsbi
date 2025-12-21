@@ -97,35 +97,41 @@ const DashboardContent: React.FC = () => {
           return;
         }
 
-        // Fetch agent data for welcome message and prefix
-        const { data: agentData, error: agentError } = await supabase
-          .from("agents")
-          .select("id, agent_prefix")
-          .eq("user_id", authUser.id)
-          .single();
+        // Fetch agent profile from backend
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError("User not authenticated");
+          return;
+        }
 
-        if (agentError || !agentData) {
-          console.error('Agent fetch error:', agentError);
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          setError("Failed to fetch agent profile");
+          return;
+        }
+
+        const agentProfile = await response.json();
+        if (!agentProfile.success || !agentProfile.agent) {
           setError("Agent not found");
           return;
         }
 
+        const agentData = agentProfile.agent;
         const agentPrefix = agentData.agent_prefix;
 
-        // Fetch user name
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("name")
-          .eq("id", authUser.id)
-          .single();
-
-        if (userError) {
-          console.error('User fetch error:', userError);
-        } else {
-          setAgent({
-            name: userData?.name || "Agent"
-          });
-        }
+        setAgent({
+          name: agentData.name || "Agent"
+        });
 
         // Use dynamic tables for customers and messages
         const customersTable = `${agentPrefix}_customers`;

@@ -106,41 +106,47 @@ const InvoicesPage: React.FC = () => {
         return;
       }
 
-      // Get agent ID and prefix
-      // Get agent ID and prefix
-      const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select(
-          "id, agent_prefix, invoice_template_path, address, business_email, contact_number, website"
-        )
-        .eq("user_id", user.id)
-        .single();
-
-      if (agentError || !agentData) {
-        setError("Agent not found");
-        console.error("Agent fetch error:", agentError);
+      // Get agent profile from backend
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("User not authenticated");
         setLoading(false);
         return;
       }
 
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        setError("Failed to fetch agent profile");
+        setLoading(false);
+        return;
+      }
+
+      const agentProfile = await response.json();
+      if (!agentProfile.success || !agentProfile.agent) {
+        setError("Agent not found");
+        setLoading(false);
+        return;
+      }
+
+      const agentData = agentProfile.agent;
       const currentAgentId = agentData.id;
       const currentAgentPrefix = agentData.agent_prefix;
       setAgentId(currentAgentId);
       setAgentPrefix(currentAgentPrefix);
       setInvoiceTemplatePath(agentData.invoice_template_path);
 
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("name")
-        .eq("id", user.id)
-        .single();
-
-      if (userError) {
-        console.warn("Failed to fetch user name:", userError);
-      }
-
       setAgentDetails({
-        name: userData?.name || "",
+        name: agentData.name || "",
         address: agentData.address || "",
         business_email: agentData.business_email || "",
         contact_number: agentData.contact_number || "",
@@ -149,14 +155,27 @@ const InvoicesPage: React.FC = () => {
 
       setUserId(user.id);
 
-      const { data: whatsappData } = await supabase
-        .from("whatsapp_configuration")
-        .select("phone_number_id, api_key")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
+      // Get WhatsApp config from backend
+      const whatsappResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      setWhatsappConfig(whatsappData || null);
+      if (whatsappResponse.ok) {
+        const whatsappData = await whatsappResponse.json();
+        if (whatsappData.success && whatsappData.config) {
+          setWhatsappConfig({
+            phone_number_id: whatsappData.config.phone_number_id,
+            api_key: whatsappData.config.api_key
+          });
+        }
+      }
 
       if (!currentAgentPrefix) {
         setError("Agent prefix not found");
@@ -411,19 +430,25 @@ const InvoicesPage: React.FC = () => {
 
     try {
       // Refetch latest invoice template path to ensure it's up-to-date
-      const { data: latestAgentData, error: agentRefreshError } = await supabase
-        .from("agents")
-        .select("invoice_template_path")
-        .eq("id", agentId)
-        .single();
-
-      if (agentRefreshError) {
-        console.warn(
-          "Failed to refetch agent template path:",
-          agentRefreshError
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }
         );
-      } else {
-        setInvoiceTemplatePath(latestAgentData?.invoice_template_path || null);
+
+        if (response.ok) {
+          const agentProfile = await response.json();
+          if (agentProfile.success && agentProfile.agent) {
+            setInvoiceTemplatePath(agentProfile.agent.invoice_template_path || null);
+          }
+        }
       }
 
       // Fetch order items

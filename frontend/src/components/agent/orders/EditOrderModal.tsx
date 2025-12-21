@@ -53,31 +53,40 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   useEffect(() => {
     const fetchBusinessType = async () => {
-      let effectiveAgentId = agentId;
-      if (!effectiveAgentId && order?.agent_id) {
-        effectiveAgentId = order.agent_id;
-      }
-      if (!effectiveAgentId) return;
       try {
-        const { data, error } = await supabase
-          .from('agents')
-          .select('business_type')
-          .eq('id', effectiveAgentId)
-          .single();
-        if (error) {
-          console.error('Failed to fetch business type:', error);
-          return;
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        if (data) {
-          setBusinessType(data.business_type as 'service' | 'product');
+
+        const data = await response.json();
+        if (data.success && data.agent) {
+          setBusinessType(data.agent.business_type as "service" | "product");
+        } else {
+          console.error("Failed to fetch agent profile:", data.message);
         }
       } catch (err) {
-        console.error('Error fetching business type:', err);
+        console.error("Error fetching business type:", err);
       }
     };
 
     fetchBusinessType();
-  }, [agentId, order?.agent_id]);
+  }, []);
 
   useEffect(() => {
     const fetchInventory = async () => {

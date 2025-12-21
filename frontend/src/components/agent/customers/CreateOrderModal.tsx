@@ -52,27 +52,41 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   useEffect(() => {
     const fetchBusinessType = async () => {
-      if (!agentId) return;
       try {
-        const { data, error } = await supabase
-          .from('agents')
-          .select('business_type')
-          .eq('id', agentId)
-          .single();
-        if (error) {
-          console.error('Failed to fetch business type:', error);
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error("Failed to fetch agent profile");
           return;
         }
-        if (data) {
-          setBusinessType(data.business_type as 'service' | 'product');
+
+        const agentProfile = await response.json();
+        if (agentProfile.success && agentProfile.agent) {
+          setBusinessType(
+            agentProfile.agent.business_type as "service" | "product"
+          );
         }
       } catch (err) {
-        console.error('Error fetching business type:', err);
+        console.error("Error fetching business type:", err);
       }
     };
 
     fetchBusinessType();
-  }, [agentId]);
+  }, []);
 
   useEffect(() => {
     const fetchInventory = async () => {

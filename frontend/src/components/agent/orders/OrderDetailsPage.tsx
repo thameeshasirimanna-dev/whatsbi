@@ -56,22 +56,40 @@ const OrderDetailsPage: React.FC = () => {
           return;
         }
 
-        // Get agent ID and prefix
-        const { data: agentData, error: agentError } = await supabase
-          .from('agents')
-          .select('id, agent_prefix')
-          .eq('user_id', user.id)
-          .single();
-
-        if (agentError || !agentData) {
-          setError('Agent not found');
-          console.error('Agent fetch error:', agentError);
+        // Get agent profile from backend
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError('User not authenticated');
           setLoading(false);
           return;
         }
 
-        const currentAgentId = agentData.id;
-        const currentAgentPrefix = agentData.agent_prefix;
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          setError('Failed to fetch agent profile');
+          setLoading(false);
+          return;
+        }
+
+        const agentData = await response.json();
+        if (!agentData.success || !agentData.agent) {
+          setError('Agent not found');
+          setLoading(false);
+          return;
+        }
+
+        const currentAgentId = agentData.agent.id;
+        const currentAgentPrefix = agentData.agent.agent_prefix;
         setAgentId(currentAgentId);
         setAgentPrefix(currentAgentPrefix);
 

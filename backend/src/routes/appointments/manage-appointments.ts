@@ -50,7 +50,7 @@ export default async function manageAppointmentsRoutes(fastify: FastifyInstance,
             .from(`${agentPrefix}_appointments`)
             .select(`
               *,
-              customers (
+              ${agentPrefix}_customers!customer_id (
                 id,
                 name,
                 phone
@@ -68,7 +68,7 @@ export default async function manageAppointmentsRoutes(fastify: FastifyInstance,
 
           if (search) {
             // Search in title, notes, or customer name/phone
-            query = query.or(`title.ilike.%${search}%,notes.ilike.%${search}%,customers.name.ilike.%${search}%,customers.phone.ilike.%${search}%`);
+            query = query.or(`title.ilike.%${search}%,notes.ilike.%${search}%,${agentPrefix}_customers.name.ilike.%${search}%,${agentPrefix}_customers.phone.ilike.%${search}%`);
           }
 
           if (limit > 0) {
@@ -130,7 +130,7 @@ export default async function manageAppointmentsRoutes(fastify: FastifyInstance,
             .insert(appointmentData)
             .select(`
               *,
-              customers (
+              ${agentPrefix}_customers!customer_id (
                 id,
                 name,
                 phone
@@ -188,7 +188,7 @@ export default async function manageAppointmentsRoutes(fastify: FastifyInstance,
             .eq('id', id)
             .select(`
               *,
-              customers (
+              ${agentPrefix}_customers!customer_id (
                 id,
                 name,
                 phone
