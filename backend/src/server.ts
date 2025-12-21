@@ -42,6 +42,7 @@ import manageTemplatesRoutes from "./routes/templates/manage-templates";
 import getAgentProfileRoutes from "./routes/agents/get-agent-profile";
 import uploadInvoiceTemplateRoutes from "./routes/upload-invoice-template";
 import getAdminInfoRoutes from "./routes/admin/get-admin-info";
+import getAnalyticsRoutes from "./routes/analytics/get-analytics";
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
@@ -138,6 +139,7 @@ async function registerRoutes() {
   await getAgentProfileRoutes(server, supabaseClient);
   await uploadInvoiceTemplateRoutes(server, supabaseClient);
   await getAdminInfoRoutes(server, supabaseClient);
+  await getAnalyticsRoutes(server, supabaseClient);
 }
 
 // Socket.IO connection handling
