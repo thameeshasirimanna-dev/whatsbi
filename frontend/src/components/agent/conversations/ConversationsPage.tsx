@@ -560,13 +560,21 @@ const ConversationsPage: React.FC = () => {
     if (!agentId) return;
 
     const newSocket = io("http://localhost:8080", {
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
     });
 
     newSocket.on("connect", () => {
       console.log("Connected to Socket.IO server");
       // Join agent room
       newSocket.emit("join-agent-room", { agentId, token: "dummy-token" }); // TODO: Add proper JWT token
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
+    newSocket.on("error", (error) => {
+      console.error("Socket error:", error);
     });
 
     newSocket.on("new-message", (messageData: any) => {

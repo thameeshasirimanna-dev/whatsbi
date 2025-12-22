@@ -1,19 +1,32 @@
+import jwt from 'jsonwebtoken';
 import { uploadMediaToR2 } from './s3';
 export function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-export async function verifyJWT(request, supabaseClient) {
+export async function verifyJWT(request, pgClient) {
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         throw new Error('Authorization header required');
     }
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    if (authError || !user) {
-        console.error('Auth error:', authError);
+    try {
+        // Decode the JWT without verification first to get the user ID
+        const decoded = jwt.decode(token);
+        if (!decoded || !decoded.sub) {
+            throw new Error('Invalid token structure');
+        }
+        const userId = decoded.sub;
+        // Verify the user exists in the database
+        const { rows } = await pgClient.query('SELECT id, email, role FROM users WHERE id = $1', [userId]);
+        if (rows.length === 0) {
+            throw new Error('User not found');
+        }
+        return { id: userId, email: rows[0].email, role: rows[0].role };
+    }
+    catch (error) {
+        console.error('JWT verification error:', error);
         throw new Error('Invalid or expired token');
     }
-    return user;
 }
 export function getMediaTypeFromWhatsApp(messageType, mimeType) {
     switch (messageType) {
@@ -64,71 +77,45 @@ export async function downloadWhatsAppMedia(mediaId, accessToken) {
         return null;
     }
 }
-export async function uploadMediaToStorage(supabaseClient, agentPrefix, mediaBuffer, originalFilename, contentType) {
+export async function uploadMediaToStorage(pgClient, agentPrefix, mediaBuffer, originalFilename, contentType) {
     // Use R2 instead of Supabase Storage
     return uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename, contentType, 'incoming');
 }
-export async function processIncomingMessage(supabaseClient, message, phoneNumberId, contactName, emitNewMessage, cacheService) {
+export async function processIncomingMessage(pgClient, message, phoneNumberId, contactName, emitNewMessage, cacheService) {
     try {
         console.log('Processing message:', message.id, message.type);
-        const { data: whatsappConfig } = await supabaseClient
-            .from('whatsapp_configuration')
-            .select('user_id, api_key, webhook_url')
-            .eq('phone_number_id', phoneNumberId)
-            .eq('is_active', true)
-            .single();
-        if (!whatsappConfig) {
+        const { rows: whatsappConfigRows } = await pgClient.query('SELECT user_id, api_key, webhook_url FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true', [phoneNumberId]);
+        if (whatsappConfigRows.length === 0) {
             console.log('No config for phone:', phoneNumberId);
             return;
         }
-        const { data: agent } = await supabaseClient
-            .from('agents')
-            .select('id, agent_prefix')
-            .eq('user_id', whatsappConfig.user_id)
-            .single();
-        if (!agent) {
+        const whatsappConfig = whatsappConfigRows[0];
+        const { rows: agentRows } = await pgClient.query('SELECT id, agent_prefix FROM agents WHERE user_id = $1', [whatsappConfig.user_id]);
+        if (agentRows.length === 0) {
             console.log('No agent for user:', whatsappConfig.user_id);
             return;
         }
+        const agent = agentRows[0];
         const customersTable = `${agent.agent_prefix}_customers`;
         const messagesTable = `${agent.agent_prefix}_messages`;
         const fromPhone = message.from;
         let customerId;
-        const { data: existingCustomer } = await supabaseClient
-            .from(customersTable)
-            .select('id')
-            .eq('phone', fromPhone)
-            .single();
-        if (existingCustomer) {
-            customerId = existingCustomer.id;
+        const { rows: existingCustomerRows } = await pgClient.query(`SELECT id FROM ${customersTable} WHERE phone = $1`, [fromPhone]);
+        if (existingCustomerRows.length > 0) {
+            customerId = existingCustomerRows[0].id;
         }
         else {
-            const { data: newCustomer, error: insertError } = await supabaseClient
-                .from(customersTable)
-                .insert({
-                phone: fromPhone,
-                name: contactName || fromPhone,
-                agent_id: agent.id,
-            })
-                .select('id')
-                .single();
-            if (insertError) {
-                console.error('Error inserting new customer:', insertError);
+            const { rows: newCustomerRows, rowCount } = await pgClient.query(`INSERT INTO ${customersTable} (phone, name, agent_id) VALUES ($1, $2, $3) RETURNING id`, [fromPhone, contactName || fromPhone, agent.id]);
+            if (rowCount === 0) {
+                console.error('Error inserting new customer');
                 return;
             }
-            if (!newCustomer || !newCustomer.id) {
-                console.error('Failed to create customer - no ID returned');
-                return;
-            }
-            customerId = newCustomer.id;
+            customerId = newCustomerRows[0].id;
             console.log('New customer created successfully');
         }
-        let { data: customer, error: customerError } = await supabaseClient
-            .from(customersTable)
-            .select('id, name, ai_enabled, language')
-            .eq('id', customerId)
-            .single();
-        if (customerError || !customer) {
+        const { rows: customerRows } = await pgClient.query(`SELECT id, name, ai_enabled, language FROM ${customersTable} WHERE id = $1`, [customerId]);
+        let customer;
+        if (customerRows.length === 0) {
             console.log('Warning: Could not fetch customer ai_enabled, assuming false');
             customer = {
                 id: customerId,
@@ -137,15 +124,15 @@ export async function processIncomingMessage(supabaseClient, message, phoneNumbe
                 language: 'english',
             };
         }
-        const { error: updateError } = await supabaseClient
-            .from(customersTable)
-            .update({ last_user_message_time: new Date().toISOString() })
-            .eq('id', customerId);
-        if (updateError) {
-            console.error('Error updating last_user_message_time:', updateError);
+        else {
+            customer = customerRows[0];
+        }
+        const { rowCount: updateCount } = await pgClient.query(`UPDATE ${customersTable} SET last_user_message_time = $1 WHERE id = $2`, [new Date().toISOString(), customerId]);
+        if (updateCount > 0) {
+            console.log(`Updated last_user_message_time for customer ${customerId}`);
         }
         else {
-            console.log(`Updated last_user_message_time for customer ${customerId}`);
+            console.error('Error updating last_user_message_time');
         }
         const messageDate = new Date(message.timestamp * 1000);
         const messageTimestamp = messageDate.toISOString();
@@ -176,7 +163,7 @@ export async function processIncomingMessage(supabaseClient, message, phoneNumbe
                         const ext = contentType.split('/')[1] || message.type;
                         filename = `media_${Date.now()}.${ext}`;
                     }
-                    mediaUrl = await uploadMediaToStorage(supabaseClient, agent.agent_prefix, mediaBuffer, filename, contentType);
+                    mediaUrl = await uploadMediaToStorage(pgClient, agent.agent_prefix, mediaBuffer, filename, contentType);
                     if (mediaUrl) {
                         console.log(`Media uploaded successfully: ${mediaUrl}`);
                     }
@@ -195,7 +182,7 @@ export async function processIncomingMessage(supabaseClient, message, phoneNumbe
             if (message.sticker?.id && whatsappConfig.api_key) {
                 const mediaBuffer = await downloadWhatsAppMedia(message.sticker.id, whatsappConfig.api_key);
                 if (mediaBuffer && mediaBuffer.length > 0) {
-                    mediaUrl = await uploadMediaToStorage(supabaseClient, agent.agent_prefix, mediaBuffer, `sticker_${Date.now()}.webp`, 'image/webp');
+                    mediaUrl = await uploadMediaToStorage(pgClient, agent.agent_prefix, mediaBuffer, `sticker_${Date.now()}.webp`, 'image/webp');
                 }
             }
         }
@@ -232,15 +219,12 @@ export async function processIncomingMessage(supabaseClient, message, phoneNumbe
             media_url: mediaUrl,
             caption: caption,
         };
-        const { data: insertedMessage, error: insertError } = await supabaseClient
-            .from(messagesTable)
-            .insert(messageData)
-            .select()
-            .single();
-        if (insertError) {
-            console.error('Error storing message:', insertError);
+        const { rows: insertedMessageRows, rowCount } = await pgClient.query(`INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [messageData.customer_id, messageData.message, messageData.direction, messageData.timestamp, messageData.is_read, messageData.media_type, messageData.media_url, messageData.caption]);
+        if (rowCount === 0) {
+            console.error('Error storing message');
         }
         else {
+            const insertedMessage = insertedMessageRows[0];
             console.log('Message stored successfully in dynamic table:', {
                 id: insertedMessage.id,
                 type: message.type,
@@ -309,7 +293,7 @@ export async function processIncomingMessage(supabaseClient, message, phoneNumbe
         console.error('Message processing error:', error);
     }
 }
-export async function processMessageStatus(supabaseClient, status) {
+export async function processMessageStatus(pgClient, status) {
     try {
         console.log('📨 Processing message status update:', status.id, status.status);
         const statusDate = new Date(status.timestamp * 1000);
@@ -321,15 +305,9 @@ export async function processMessageStatus(supabaseClient, status) {
         });
         console.log(`📨 Message ${status.id} status: "${status.status}" at ${statusTimestamp}`);
         // Update the status in whatsapp_message_logs
-        const { error: updateError } = await supabaseClient
-            .from('whatsapp_message_logs')
-            .update({
-            status: status.status,
-            timestamp: statusTimestamp,
-        })
-            .eq('whatsapp_message_id', status.id);
-        if (updateError) {
-            console.error('Error updating message status in logs:', updateError);
+        const { rowCount } = await pgClient.query('UPDATE whatsapp_message_logs SET status = $1, timestamp = $2 WHERE whatsapp_message_id = $3', [status.status, statusTimestamp, status.id]);
+        if (rowCount === 0) {
+            console.error('Error updating message status in logs: no rows affected');
         }
         else {
             console.log(`✅ Updated status for message ${status.id} to ${status.status}`);

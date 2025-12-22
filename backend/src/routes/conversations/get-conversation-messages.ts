@@ -2,11 +2,11 @@ import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 import { CacheService } from '../../utils/cache';
 
-export default async function getConversationMessagesRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: CacheService) {
+export default async function getConversationMessagesRoutes(fastify: FastifyInstance, pgClient: any, cacheService: CacheService) {
   fastify.get('/conversations/:customerId/messages', async (request, reply) => {
     try {
       // Verify JWT and get user
-      const user = await verifyJWT(request, supabaseClient);
+      const user = await verifyJWT(request, pgClient);
 
       const params = request.params as any;
       const customerId = params.customerId;
@@ -18,29 +18,29 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
       }
 
       // Verify agent ownership
-      const { data: agentData, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('agent_prefix, id')
-        .eq('id', parseInt(agentId))
-        .eq('user_id', user.id)
-        .single();
+      const agentQuery = 'SELECT agent_prefix, id FROM agents WHERE id = $1 AND user_id = $2';
+      const agentResult = await pgClient.query(agentQuery, [parseInt(agentId), user.id]);
 
-      if (agentError || !agentData) {
+      if (agentResult.rows.length === 0) {
         return reply.code(403).send('Agent not found or access denied');
       }
 
+      const agentData = agentResult.rows[0];
+
       // Verify customer belongs to agent
       const customersTable = `${agentData.agent_prefix}_customers`;
-      const { data: customer, error: customerError } = await supabaseClient
-        .from(customersTable)
-        .select('id, name, phone, last_user_message_time, ai_enabled, lead_stage, interest_stage, conversion_stage')
-        .eq('id', parseInt(customerId))
-        .eq('agent_id', parseInt(agentId))
-        .single();
+      const customerQuery = `
+        SELECT id, name, phone, last_user_message_time, ai_enabled, lead_stage, interest_stage, conversion_stage
+        FROM ${customersTable}
+        WHERE id = $1 AND agent_id = $2
+      `;
+      const customerResult = await pgClient.query(customerQuery, [parseInt(customerId), parseInt(agentId)]);
 
-      if (customerError || !customer) {
+      if (customerResult.rows.length === 0) {
         return reply.code(404).send('Customer not found');
       }
+
+      const customer = customerResult.rows[0];
 
       const cacheKey = CacheService.recentMessagesKey(parseInt(agentId), parseInt(customerId));
 
@@ -56,15 +56,14 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
 
       const messagesTable = `${agentData.agent_prefix}_messages`;
 
-      const { data: messagesData, error: messagesError } = await supabaseClient
-        .from(messagesTable)
-        .select('*')
-        .eq('customer_id', parseInt(customerId))
-        .order('timestamp', { ascending: true });
-
-      if (messagesError) {
-        return reply.code(500).send('Failed to fetch messages');
-      }
+      const messagesQuery = `
+        SELECT *
+        FROM ${messagesTable}
+        WHERE customer_id = $1
+        ORDER BY timestamp ASC
+      `;
+      const messagesResult = await pgClient.query(messagesQuery, [parseInt(customerId)]);
+      const messagesData = messagesResult.rows;
 
       const processedMessages = messagesData.map((msg: any) => ({
         id: msg.id,

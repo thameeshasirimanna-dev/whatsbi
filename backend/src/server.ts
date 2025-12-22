@@ -1,10 +1,12 @@
 import 'dotenv/config';
 console.log("🚀 Server starting...");
 import fastify from 'fastify';
-import { createClient } from "@supabase/supabase-js";
+import { Pool } from "pg";
 import Redis from "ioredis";
 import crypto from 'crypto';
 import { CacheService } from './utils/cache';
+import fastifyCors from "@fastify/cors";
+import fastifyMultipart from "@fastify/multipart";
 import whatsappWebhookRoutes from './routes/whatsapp/whatsapp-webhook';
 import sendWhatsappMessageRoutes from './routes/whatsapp/send-whatsapp-message';
 import getMediaPreviewRoutes from './routes/media/get-media-preview';
@@ -49,14 +51,14 @@ import fastifySocketIO from "fastify-socket.io";
 const server = fastify();
 
 // Register CORS plugin
-server.register(require("@fastify/cors"), {
+server.register(fastifyCors, {
   origin: true, // Allow all origins
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 
 // Register multipart plugin
-server.register(require("@fastify/multipart"));
+server.register(fastifyMultipart);
 
 // Register Socket.IO plugin
 server.register(fastifySocketIO, {
@@ -67,8 +69,7 @@ server.register(fastifySocketIO, {
 });
 
 // Environment variables
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 
@@ -84,12 +85,9 @@ function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Supabase client
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
+// PostgreSQL client
+const pgClient = new Pool({
+  connectionString: DATABASE_URL,
 });
 
 // Redis client
@@ -103,66 +101,53 @@ const cacheService = new CacheService(redisClient);
 
 // Register routes
 async function registerRoutes() {
-  await whatsappWebhookRoutes(server, supabaseClient, cacheService);
-  await sendWhatsappMessageRoutes(server, supabaseClient);
-  await getMediaPreviewRoutes(server, supabaseClient);
-  await uploadInventoryImagesRoutes(server, supabaseClient);
-  await uploadMediaRoutes(server, supabaseClient);
-  await authenticatedMessagesStreamRoutes(server, supabaseClient);
-  await addAgentRoutes(server, supabaseClient);
-  await getAgentsRoutes(server, supabaseClient);
-  await getWhatsappConfigRoutes(server, supabaseClient);
-  await updateWhatsappConfigRoutes(server, supabaseClient);
-  await deleteWhatsappConfigRoutes(server, supabaseClient);
-  await addCreditsRoutes(server, supabaseClient);
-  await deleteAgentRoutes(server, supabaseClient);
-  await getConversationsRoutes(server, supabaseClient, cacheService);
-  await getConversationMessagesRoutes(server, supabaseClient, cacheService);
-  await getBotContextRoutes(server, supabaseClient, cacheService);
-  await chatbotReplyRoutes(server, supabaseClient);
-  await manageServicesRoutes(server, supabaseClient);
-  await manageInventoryRoutes(server, supabaseClient);
-  await manageCustomersRoutes(server, supabaseClient);
-  await getWhatsappProfilePicRoutes(server, supabaseClient);
-  await uploadServiceImagesRoutes(server, supabaseClient);
-  await setupWhatsappConfigRoutes(server, supabaseClient);
-  await getInvoiceTemplateRoutes(server, supabaseClient, cacheService);
-  await updateAgentRoutes(server, supabaseClient);
-  await sendInvoiceTemplateRoutes(server, supabaseClient);
-  await getUsersRoutes(server, supabaseClient);
-  await addUserRoutes(server, supabaseClient);
-  await updateUserRoutes(server, supabaseClient);
-  await deleteUserRoutes(server, supabaseClient);
-  await updatePasswordRoutes(server, supabaseClient);
-  await manageOrdersRoutes(server, supabaseClient);
-  await manageAppointmentsRoutes(server, supabaseClient);
-  await manageTemplatesRoutes(server, supabaseClient);
-  await getAgentProfileRoutes(server, supabaseClient);
-  await uploadInvoiceTemplateRoutes(server, supabaseClient);
-  await getAdminInfoRoutes(server, supabaseClient);
-  await getAnalyticsRoutes(server, supabaseClient);
+  await whatsappWebhookRoutes(
+    server,
+    pgClient,
+    cacheService,
+    emitNewMessage,
+    emitAgentStatusUpdate
+  );
+  await sendWhatsappMessageRoutes(server, pgClient);
+  await getMediaPreviewRoutes(server, pgClient);
+  await uploadInventoryImagesRoutes(server, pgClient);
+  await uploadMediaRoutes(server, pgClient);
+  await authenticatedMessagesStreamRoutes(server, pgClient);
+  await addAgentRoutes(server, pgClient);
+  await getAgentsRoutes(server, pgClient);
+  await getWhatsappConfigRoutes(server, pgClient);
+  await updateWhatsappConfigRoutes(server, pgClient);
+  await deleteWhatsappConfigRoutes(server, pgClient);
+  await addCreditsRoutes(server, pgClient, emitAgentStatusUpdate);
+  await deleteAgentRoutes(server, pgClient);
+  await getConversationsRoutes(server, pgClient, cacheService);
+  await getConversationMessagesRoutes(server, pgClient, cacheService);
+  await getBotContextRoutes(server, pgClient, cacheService);
+  await chatbotReplyRoutes(server, pgClient);
+  await manageServicesRoutes(server, pgClient);
+  await manageInventoryRoutes(server, pgClient);
+  await manageCustomersRoutes(server, pgClient);
+  await getWhatsappProfilePicRoutes(server, pgClient);
+  await uploadServiceImagesRoutes(server, pgClient);
+  await setupWhatsappConfigRoutes(server, pgClient);
+  await getInvoiceTemplateRoutes(server, pgClient, cacheService);
+  await updateAgentRoutes(server, pgClient);
+  await sendInvoiceTemplateRoutes(server, pgClient);
+  await getUsersRoutes(server, pgClient);
+  await addUserRoutes(server, pgClient);
+  await updateUserRoutes(server, pgClient);
+  await deleteUserRoutes(server, pgClient);
+  await updatePasswordRoutes(server, pgClient);
+  await manageOrdersRoutes(server, pgClient);
+  await manageAppointmentsRoutes(server, pgClient);
+  await manageTemplatesRoutes(server, pgClient);
+  await getAgentProfileRoutes(server, pgClient);
+  await uploadInvoiceTemplateRoutes(server, pgClient);
+  await getAdminInfoRoutes(server, pgClient);
+  await getAnalyticsRoutes(server, pgClient);
 }
 
-// Socket.IO connection handling
-server.ready().then(() => {
-  (server as any).io.on("connection", (socket: any) => {
-    console.log("Client connected:", socket.id);
-
-    socket.on("join-agent-room", (data: any) => {
-      const { agentId, token } = data;
-      if (agentId && token) {
-        // Verify JWT token
-        // For now, just join the room - proper auth will be added
-        socket.join(`agent-${agentId}`);
-        console.log(`Socket ${socket.id} joined agent room: agent-${agentId}`);
-      }
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
-    });
-  });
-});
+// Socket.IO connection handling will be set up after routes are registered
 
 // Helper functions (ported from Edge Function)
 function getMediaTypeFromWhatsApp(
@@ -233,34 +218,6 @@ async function downloadWhatsAppMedia(
   }
 }
 
-async function processMessageStatus(supabase: any, status: any) {
-  try {
-    console.log(
-      "📨 Processing message status update:",
-      status.id,
-      status.status
-    );
-
-    const statusDate = new Date(status.timestamp * 1000);
-    const statusTimestamp = statusDate.toISOString();
-
-    console.log("Status timestamp conversion:", {
-      whatsappTimestamp: status.timestamp,
-      convertedDate: statusDate.toISOString(),
-      localString: statusDate.toLocaleString(),
-    });
-
-    console.log(
-      `📨 Message ${status.id} status: "${status.status}" at ${statusTimestamp}`
-    );
-
-    console.log(
-      "✅ Status update logged (full tracking available with optional migration)"
-    );
-  } catch (error) {
-    console.error("Status processing error:", error);
-  }
-}
 
 // Upload inventory images route
 server.get("/health", async (request, reply) => {
@@ -280,10 +237,38 @@ function emitAgentStatusUpdate(agentId: number, statusData: any) {
 
 const start = async () => {
   try {
+    // Wait for DB connection check
+    await pgClient.query("SELECT 1");
+    console.log("✅ Connected to PostgreSQL");
     await registerRoutes();
+
+    // Set up Socket.IO connection handling after routes are registered
+    server.ready().then(() => {
+      (server as any).io.on("connection", (socket: any) => {
+        console.log("Client connected:", socket.id);
+
+        socket.on("join-agent-room", (data: any) => {
+          const { agentId, token } = data;
+          if (agentId && token) {
+            // Verify JWT token
+            // For now, just join the room - proper auth will be added
+            socket.join(`agent-${agentId}`);
+            console.log(
+              `Socket ${socket.id} joined agent room: agent-${agentId}`
+            );
+          }
+        });
+
+        socket.on("disconnect", (reason: any) => {
+          console.log("Client disconnected:", socket.id, "reason:", reason);
+        });
+      });
+    });
+
     await server.listen({ port: 8080, host: "0.0.0.0" });
     console.log("Server running on http://localhost:8080");
   } catch (err) {
+    console.error("❌ PostgreSQL connection failed:", err);
     server.log.error(err);
     process.exit(1);
   }

@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function deleteWhatsappConfigRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function deleteWhatsappConfigRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.delete('/delete-whatsapp-config/:user_id', async (request, reply) => {
     try {
       // Verify JWT
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const { user_id } = request.params as any;
 
@@ -18,37 +18,34 @@ export default async function deleteWhatsappConfigRoutes(fastify: FastifyInstanc
       }
 
       // Validate user exists
-      const { data: userExists, error: userCheckError } = await supabaseClient
-        .from("users")
-        .select("id")
-        .eq("id", user_id)
-        .single();
+      const { rows: userRows } = await pgClient.query(
+        'SELECT id FROM users WHERE id = $1',
+        [user_id]
+      );
 
-      if (userCheckError || !userExists) {
+      if (userRows.length === 0) {
         return reply.code(404).send({
           success: false,
-          message: "User not found: " + userCheckError?.message,
+          message: "User not found",
         });
       }
 
-      // Delete WhatsApp configuration using RPC
-      const { data: configData, error: configError } = await supabaseClient.rpc(
-        "delete_whatsapp_config",
-        {
-          p_user_id: user_id,
-        }
+      // Delete WhatsApp configuration using function
+      const { rows: deleteRows } = await pgClient.query(
+        'SELECT * FROM delete_whatsapp_config($1)',
+        [user_id]
       );
 
-      if (configError) {
+      if (deleteRows.length === 0 || !deleteRows[0].success) {
         return reply.code(400).send({
           success: false,
-          message: "Failed to delete WhatsApp configuration: " + configError.message,
+          message: "Failed to delete WhatsApp configuration",
         });
       }
 
       return reply.code(200).send({
         success: true,
-        message: "WhatsApp configuration deleted successfully",
+        message: deleteRows[0].message || "WhatsApp configuration deleted successfully",
         user_id: user_id,
       });
     } catch (err) {

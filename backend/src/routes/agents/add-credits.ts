@@ -1,13 +1,12 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 
-// Socket.IO utility functions
-function emitAgentStatusUpdate(agentId: number, statusData: any) {
-  (require('../server') as any).emitAgentStatusUpdate(agentId, statusData);
-}
-
-export default async function addCreditsRoutes(fastify: FastifyInstance, supabaseClient: any) {
-  fastify.post('/add-credits', async (request, reply) => {
+export default async function addCreditsRoutes(
+  fastify: FastifyInstance,
+  supabaseClient: any,
+  emitAgentStatusUpdate: (agentId: number, statusData: any) => void
+) {
+  fastify.post("/add-credits", async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, supabaseClient);
@@ -17,47 +16,49 @@ export default async function addCreditsRoutes(fastify: FastifyInstance, supabas
       // Validate input
       if (!agent_id || !amount || amount <= 0) {
         return reply.code(400).send({
-          error: 'Invalid input: agent_id and positive amount required'
+          error: "Invalid input: agent_id and positive amount required",
         });
       }
 
       // Check if agent exists
       const { data: agent, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('id')
-        .eq('id', agent_id)
+        .from("agents")
+        .select("id")
+        .eq("id", agent_id)
         .single();
 
       if (agentError || !agent) {
         return reply.code(400).send({
-          error: 'Agent not found'
+          error: "Agent not found",
         });
       }
 
       // Call the RPC function to add credits
-      const { data, error } = await supabaseClient.rpc('add_credits', {
+      const { data, error } = await supabaseClient.rpc("add_credits", {
         p_agent_id: agent_id,
-        p_amount: amount
+        p_amount: amount,
       });
 
       if (error) {
         return reply.code(400).send({
-          error: error.message
+          error: error.message,
         });
       }
 
       // Emit agent status update
-      emitAgentStatusUpdate(agent_id, { type: 'credits_updated', credits: data });
-
-      return reply.code(200).send({
-        message: 'Credits added successfully',
-        credits: data
+      emitAgentStatusUpdate(agent_id, {
+        type: "credits_updated",
+        credits: data,
       });
 
+      return reply.code(200).send({
+        message: "Credits added successfully",
+        credits: data,
+      });
     } catch (error) {
       console.error(error);
       return reply.code(400).send({
-        error: (error as Error).message
+        error: (error as Error).message,
       });
     }
   });

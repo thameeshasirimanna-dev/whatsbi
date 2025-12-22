@@ -2,57 +2,67 @@ import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 import { CacheService } from '../../utils/cache';
 
-export default async function getConversationsRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: CacheService) {
-  fastify.get('/conversations', async (request, reply) => {
+export default async function getConversationsRoutes(
+  fastify: FastifyInstance,
+  pgClient: any,
+  cacheService: CacheService
+) {
+  fastify.get("/conversations", async (request, reply) => {
     try {
       // Verify JWT and get user
-      const user = await verifyJWT(request, supabaseClient);
+      const user = await verifyJWT(request, pgClient);
 
       const query = request.query as any;
       const agentId = query.agentId;
 
       if (!agentId) {
-        return reply.code(400).send('Agent ID required');
+        return reply.code(400).send("Agent ID required");
       }
 
       // Verify agent ownership
-      const { data: agentData, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('agent_prefix, id')
-        .eq('id', parseInt(agentId))
-        .eq('user_id', user.id)
-        .single();
+      const agentQuery =
+        "SELECT agent_prefix, id FROM agents WHERE id = $1 AND user_id = $2";
+      const agentResult = await pgClient.query(agentQuery, [
+        parseInt(agentId),
+        user.id,
+      ]);
 
-      if (agentError || !agentData) {
-        return reply.code(403).send('Agent not found or access denied');
+      if (agentResult.rows.length === 0) {
+        return reply.code(403).send("Agent not found or access denied");
       }
+
+      const agentData = agentResult.rows[0];
 
       const cacheKey = CacheService.chatListKey(parseInt(agentId));
 
       // Check cache first
       const cachedData = await cacheService.get(cacheKey);
       if (cachedData) {
-        console.log('Returning cached chat list for agent', agentId);
+        console.log("Returning cached chat list for agent", agentId);
         return JSON.parse(cachedData);
       }
 
       // Cache miss - fetch from DB
-      console.log('Cache miss for chat list, fetching from DB for agent', agentId);
+      console.log(
+        "Cache miss for chat list, fetching from DB for agent",
+        agentId
+      );
 
       const customersTable = `${agentData.agent_prefix}_customers`;
       const messagesTable = `${agentData.agent_prefix}_messages`;
 
       // Get customers
-      const { data: customers, error: customersError } = await supabaseClient
-        .from(customersTable)
-        .select('id, name, phone, last_user_message_time, ai_enabled, lead_stage, interest_stage, conversion_stage, created_at')
-        .eq('agent_id', parseInt(agentId));
+      const customersQuery = `
+        SELECT id, name, phone, last_user_message_time, ai_enabled, lead_stage, interest_stage, conversion_stage, created_at
+        FROM ${customersTable}
+        WHERE agent_id = $1
+      `;
+      const customersResult = await pgClient.query(customersQuery, [
+        parseInt(agentId),
+      ]);
+      const customers = customersResult.rows;
 
-      if (customersError) {
-        return reply.code(500).send('Failed to fetch customers');
-      }
-
-      if (!customers || customers.length === 0) {
+      if (customers.length === 0) {
         const emptyResult: any[] = [];
         await cacheService.set(cacheKey, JSON.stringify(emptyResult), 30); // 30s TTL
         return emptyResult;
@@ -60,39 +70,52 @@ export default async function getConversationsRoutes(fastify: FastifyInstance, s
 
       // Get last message for each customer
       const customerIds = customers.map((c: any) => c.id);
-      const { data: messages, error: messagesError } = await supabaseClient
-        .from(messagesTable)
-        .select('id, customer_id, message, direction, timestamp, is_read, media_type, media_url, caption')
-        .in('customer_id', customerIds)
-        .order('timestamp', { ascending: false });
-
-      if (messagesError) {
-        return reply.code(500).send('Failed to fetch messages');
-      }
+      const placeholders = customerIds.map((_: any, i: number) => `$${i + 1}`).join(",");
+      const messagesQuery = `
+        SELECT id, customer_id, message, direction, timestamp, is_read, media_type, media_url, caption
+        FROM ${messagesTable}
+        WHERE customer_id IN (${placeholders})
+        ORDER BY timestamp DESC
+      `;
+      const messagesResult = await pgClient.query(messagesQuery, customerIds);
+      const messages = messagesResult.rows;
 
       // Group messages by customer and create conversations
       const conversationsMap: { [key: number]: any } = {};
 
       customers.forEach((customer: any) => {
-        const customerMessages = messages?.filter((msg: any) => msg.customer_id === customer.id) || [];
+        const customerMessages =
+          messages?.filter((msg: any) => msg.customer_id === customer.id) || [];
         const lastMessage = customerMessages[0]; // Already ordered by timestamp desc
 
-        const unreadCount = customerMessages.filter((msg: any) => msg.direction === 'inbound' && !msg.is_read).length;
+        const unreadCount = customerMessages.filter(
+          (msg: any) => msg.direction === "inbound" && !msg.is_read
+        ).length;
 
-        const lastMessageText = lastMessage ? processMessageText(lastMessage.message, lastMessage.media_type, lastMessage.caption) : 'No messages yet';
-        const lastMessageTime = lastMessage ? new Date(lastMessage.timestamp).toLocaleString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          day: 'numeric',
-          month: 'short',
-        }) : new Date(customer.created_at).toLocaleString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          day: 'numeric',
-          month: 'short',
-        });
+        const lastMessageText = lastMessage
+          ? processMessageText(
+              lastMessage.message,
+              lastMessage.media_type,
+              lastMessage.caption
+            )
+          : "No messages yet";
+        const lastMessageTime = lastMessage
+          ? new Date(lastMessage.timestamp).toLocaleString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "numeric",
+              month: "short",
+            })
+          : new Date(customer.created_at).toLocaleString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "numeric",
+              month: "short",
+            });
 
-        const rawLastTimestamp = lastMessage ? new Date(lastMessage.timestamp).getTime() : new Date(customer.created_at).getTime();
+        const rawLastTimestamp = lastMessage
+          ? new Date(lastMessage.timestamp).getTime()
+          : new Date(customer.created_at).getTime();
 
         conversationsMap[customer.id] = {
           id: customer.id,
@@ -112,15 +135,17 @@ export default async function getConversationsRoutes(fastify: FastifyInstance, s
       });
 
       // Sort conversations by last message time
-      const conversations = Object.values(conversationsMap).sort((a: any, b: any) => b.rawLastTimestamp - a.rawLastTimestamp);
+      const conversations = Object.values(conversationsMap).sort(
+        (a: any, b: any) => b.rawLastTimestamp - a.rawLastTimestamp
+      );
 
       // Cache the result
       await cacheService.set(cacheKey, JSON.stringify(conversations), 30); // 30s TTL
 
       return conversations;
     } catch (error: any) {
-      console.error('Get conversations error:', error);
-      return reply.code(500).send('Internal Server Error');
+      console.error("Get conversations error:", error);
+      return reply.code(500).send("Internal Server Error");
     }
   });
 }

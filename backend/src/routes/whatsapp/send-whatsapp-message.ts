@@ -3,11 +3,11 @@ import crypto from 'crypto';
 import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } from '../../utils/helpers';
 import { uploadMediaToR2 } from "../../utils/s3";
 
-export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/send-whatsapp-message', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
       console.log('Incoming request body:', JSON.stringify(body, null, 2));
@@ -176,53 +176,54 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
       }
 
       // Validate user
-      const { data: user, error: userError } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('id', user_id)
-        .single();
+      const { rows: userRows } = await pgClient.query(
+        'SELECT id FROM users WHERE id = $1',
+        [user_id]
+      );
 
-      if (userError || !user) {
+      if (userRows.length === 0) {
         return reply.code(404).send({ error: 'User not found' });
       }
 
       // Get WhatsApp config
-      const { data: whatsappConfig, error: configError } = await supabaseClient
-        .from('whatsapp_configuration')
-        .select('api_key, phone_number_id, user_id')
-        .eq('user_id', user_id)
-        .eq('is_active', true)
-        .single();
+      const { rows: whatsappConfigRows } = await pgClient.query(
+        'SELECT api_key, phone_number_id, user_id FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true',
+        [user_id]
+      );
 
-      if (configError || !whatsappConfig) {
+      if (whatsappConfigRows.length === 0) {
         return reply.code(404).send({ error: 'WhatsApp configuration not found' });
       }
 
-      // Get agent
-      const { data: agent, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('id, agent_prefix')
-        .eq('user_id', user_id)
-        .single();
+      const whatsappConfig = whatsappConfigRows[0];
 
-      if (agentError || !agent) {
+      // Get agent
+      const { rows: agentRows } = await pgClient.query(
+        'SELECT id, agent_prefix FROM agents WHERE user_id = $1',
+        [user_id]
+      );
+
+      if (agentRows.length === 0) {
         return reply.code(404).send({ error: 'Agent not found' });
       }
+
+      const agent = agentRows[0];
 
       const customersTable = `${agent.agent_prefix}_customers`;
       const messagesTable = `${agent.agent_prefix}_messages`;
       const templatesTable = `${agent.agent_prefix}_templates`;
 
       // Find customer
-      const { data: customer, error: customerError } = await supabaseClient
-        .from(customersTable)
-        .select('id, last_user_message_time, phone')
-        .eq('phone', customer_phone)
-        .single();
+      const { rows: customerRows } = await pgClient.query(
+        `SELECT id, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1`,
+        [customer_phone]
+      );
 
-      if (customerError || !customer) {
+      if (customerRows.length === 0) {
         return reply.code(404).send({ error: 'Customer not found' });
       }
+
+      const customer = customerRows[0];
 
       // Normalize phone number to E.164 format
       let normalizedPhone = customer.phone.replace(/\D/g, ''); // Remove non-digits
@@ -247,32 +248,28 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
         useTemplate = true;
       } else if (hoursSince > 24) {
         // Check for available template
-        const { data: templates, error: templateError } = await supabaseClient
-          .from(templatesTable)
-          .select('*')
-          .eq('agent_id', agent.id)
-          .eq('category', category)
-          .eq('is_active', true)
-          .limit(1);
+        const { rows: templateRows } = await pgClient.query(
+          `SELECT * FROM ${templatesTable} WHERE agent_id = $1 AND category = $2 AND is_active = true LIMIT 1`,
+          [agent.id, category]
+        );
 
-        if (templateError || !templates || templates.length === 0) {
+        if (templateRows.length === 0) {
           console.log('No template available for 24h window');
           return reply.code(400).send({
             error: 'Template required after 24h window, none available',
           });
         }
-        templateData = templates[0];
+        templateData = templateRows[0];
         useTemplate = true;
       }
 
       if (useTemplate) {
-        const { data: creditsData, error: creditError } = await supabaseClient
-          .from('agents')
-          .select('credits')
-          .eq('id', agent.id)
-          .single();
+        const { rows: creditsRows } = await pgClient.query(
+          'SELECT credits FROM agents WHERE id = $1',
+          [agent.id]
+        );
 
-        if (creditError || !creditsData || creditsData.credits < 0.01) {
+        if (creditsRows.length === 0 || creditsRows[0].credits < 0.01) {
           return reply.code(400).send({
             error: 'Insufficient credits for template message',
           });
@@ -629,12 +626,14 @@ export default async function sendWhatsappMessageRoutes(fastify: FastifyInstance
           whatsapp_message_id: messageId,
         }));
 
-        const { error: logError } = await supabaseClient
-          .from('whatsapp_message_logs')
-          .insert(logInserts);
+        const { rowCount: logCount } = await pgClient.query(
+          'INSERT INTO whatsapp_message_logs (user_id, agent_id, customer_phone, message_type, category, status, whatsapp_message_id) VALUES ' +
+          logInserts.map((_, i) => `($${i * 7 + 1}, $${i * 7 + 2}, $${i * 7 + 3}, $${i * 7 + 4}, $${i * 7 + 5}, $${i * 7 + 6}, $${i * 7 + 7})`).join(', '),
+          logInserts.flatMap(log => [log.user_id, log.agent_id, log.customer_phone, log.message_type, log.category, log.status, log.whatsapp_message_id])
+        );
 
-        if (logError) {
-          console.error('Error logging sent messages:', logError);
+        if (logCount === 0) {
+          console.error('Error logging sent messages');
         } else {
           console.log(`Logged ${allMessageIds.length} sent messages`);
         }

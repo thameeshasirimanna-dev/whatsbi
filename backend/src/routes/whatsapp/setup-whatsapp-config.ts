@@ -1,11 +1,14 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance, supabaseClient: any) {
-  fastify.post('/setup-whatsapp-config', async (request, reply) => {
+export default async function setupWhatsappConfigRoutes(
+  fastify: FastifyInstance,
+  pgClient: any
+) {
+  fastify.post("/setup-whatsapp-config", async (request, reply) => {
     try {
       // Verify JWT
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
 
@@ -20,58 +23,61 @@ export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance
       if (!body.whatsapp_number || !body.webhook_url) {
         return reply.code(400).send({
           success: false,
-          message: "whatsapp_number and webhook_url are required for WhatsApp setup",
+          message:
+            "whatsapp_number and webhook_url are required for WhatsApp setup",
         });
       }
 
       // Validate user exists
-      const { data: userExists, error: userCheckError } = await supabaseClient
-        .from("users")
-        .select("id")
-        .eq("id", body.user_id)
-        .single();
+      const { rows: userRows } = await pgClient.query(
+        "SELECT id FROM users WHERE id = $1",
+        [body.user_id]
+      );
 
-      if (userCheckError || !userExists) {
+      if (userRows.length === 0) {
         return reply.code(404).send({
           success: false,
-          message: "User not found: " + userCheckError?.message,
+          message: "User not found",
         });
       }
 
       // Get agent details
-      const { data: agentData, error: agentError } = await supabaseClient
-        .from("agents")
-        .select("agent_prefix, id")
-        .eq("user_id", body.user_id)
-        .single();
-
-      if (agentError || !agentData) {
-        return reply.code(404).send({
-          success: false,
-          message: "Agent not found for user: " + agentError?.message,
-        });
-      }
-
-      // Create or update WhatsApp configuration using RPC
-      const { data: configData, error: configError } = await supabaseClient.rpc(
-        "create_whatsapp_config",
-        {
-          p_user_id: body.user_id,
-          p_whatsapp_number: body.whatsapp_number,
-          p_webhook_url: body.webhook_url,
-          p_api_key: body.api_key || null,
-          p_business_account_id: body.business_account_id || null,
-          p_phone_number_id: body.phone_number_id || null,
-          p_whatsapp_app_secret: body.whatsapp_app_secret || null,
-        }
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT agent_prefix, id FROM agents WHERE user_id = $1",
+        [body.user_id]
       );
 
-      if (configError) {
-        return reply.code(400).send({
+      if (agentRows.length === 0) {
+        return reply.code(404).send({
           success: false,
-          message: "Failed to setup WhatsApp configuration: " + configError.message,
+          message: "Agent not found for user",
         });
       }
+
+      const agentData = agentRows[0];
+
+      // Create or update WhatsApp configuration using function
+      const { rows: configRows } = await pgClient.query(
+        "SELECT * FROM create_whatsapp_config($1, $2, $3, $4, $5, $6, $7)",
+        [
+          body.user_id,
+          body.whatsapp_number,
+          body.webhook_url,
+          body.api_key || null,
+          body.business_account_id || null,
+          body.phone_number_id || null,
+          body.whatsapp_app_secret || null,
+        ]
+      );
+
+      if (configRows.length === 0 || !configRows[0].success) {
+        return reply.code(400).send({
+          success: false,
+          message: "Failed to setup WhatsApp configuration",
+        });
+      }
+
+      const configData = configRows[0].config;
 
       // Create default templates
       const templatesTable = `${agentData.agent_prefix}_templates`;
@@ -82,7 +88,7 @@ export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance
           name: "welcome_template",
           category: "utility",
           language: "en_US",
-          body: {
+          body: JSON.stringify({
             name: "welcome_template",
             language: { code: "en_US" },
             components: [
@@ -121,7 +127,7 @@ export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance
                 ],
               },
             ],
-          },
+          }),
           is_active: true,
           created_at: new Date().toISOString(),
         },
@@ -130,14 +136,14 @@ export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance
           name: "invoice_template",
           category: "utility",
           language: "en_US",
-          body: {
+          body: JSON.stringify({
             name: "invoice_template",
             language: { code: "en_US" },
             components: [
               {
                 text: "Your invoice is ready!",
                 type: "HEADER",
-                format: "TEXT"
+                format: "TEXT",
               },
               {
                 text: "Hello {{customer}},\n\nYour invoice for Order {{order_id}} is ready!\nTotal Amount: {{total}}\n\nDownload your invoice: {{invoice_url}}\n\nThank you for your business!",
@@ -146,44 +152,55 @@ export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance
                   body_text_named_params: [
                     {
                       example: "Kusal Sirimanna",
-                      param_name: "customer"
+                      param_name: "customer",
                     },
                     {
                       example: "000001",
-                      param_name: "order_id"
+                      param_name: "order_id",
                     },
                     {
                       example: "LKR 5000",
-                      param_name: "total"
+                      param_name: "total",
                     },
                     {
                       example: "www.facebook.com",
-                      param_name: "invoice_url"
-                    }
-                  ]
-                }
+                      param_name: "invoice_url",
+                    },
+                  ],
+                },
               },
               {
                 type: "BUTTONS",
                 buttons: [
                   {
                     text: "Send Message",
-                    type: "QUICK_REPLY"
-                  }
-                ]
-              }
-            ]
-          },
+                    type: "QUICK_REPLY",
+                  },
+                ],
+              },
+            ],
+          }),
           is_active: true,
           created_at: new Date().toISOString(),
         },
       ];
 
-      const { error: templateError } = await supabaseClient
-        .from(templatesTable)
-        .upsert(defaultTemplates, { onConflict: "agent_id,name" });
-
-      if (templateError) {
+      try {
+        for (const template of defaultTemplates) {
+          await pgClient.query(
+            `INSERT INTO ${templatesTable} (agent_id, name, category, language, body, is_active, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (agent_id, name) DO NOTHING`,
+            [
+              template.agent_id,
+              template.name,
+              template.category,
+              template.language,
+              template.body,
+              template.is_active,
+              template.created_at,
+            ]
+          );
+        }
+      } catch (templateError) {
         console.error("Failed to create default templates:", templateError);
       }
 
@@ -197,7 +214,7 @@ export default async function setupWhatsappConfigRoutes(fastify: FastifyInstance
       console.error("WhatsApp setup error:", err);
       return reply.code(500).send({
         success: false,
-        message: "Server error: " + (err as Error).message
+        message: "Server error: " + (err as Error).message,
       });
     }
   });

@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.get('/get-whatsapp-config', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const query = request.query as any;
       let userId = query.user_id;
@@ -19,37 +19,33 @@ export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, 
       }
 
       // Validate user exists
-      const { data: userExists, error: userCheckError } = await supabaseClient
-        .from("users")
-        .select("id, email")
-        .eq("id", userId)
-        .single();
+      const { rows: userRows } = await pgClient.query(
+        'SELECT id, email FROM users WHERE id = $1',
+        [userId]
+      );
 
-      if (userCheckError || !userExists) {
+      if (userRows.length === 0) {
         return reply.code(404).send({
           success: false,
-          message: "User not found: " + userCheckError?.message
+          message: "User not found"
         });
       }
 
-      // Get WhatsApp configuration using RPC
-      const { data: configData, error: configError } = await supabaseClient.rpc('get_whatsapp_config', {
-        p_user_id: userId
-      });
+      const userExists = userRows[0];
 
-      if (configError) {
-        console.error('WhatsApp config retrieval error:', configError);
-        return reply.code(400).send({
-          success: false,
-          message: "Failed to retrieve WhatsApp configuration: " + configError.message
-        });
-      }
+      // Get WhatsApp configuration using function
+      const { rows: configRows } = await pgClient.query(
+        'SELECT * FROM get_whatsapp_config($1)',
+        [userId]
+      );
+
+      const configData = configRows.length > 0 ? configRows[0].config : null;
 
       return reply.code(200).send({
         success: true,
-        message: configData && configData.length > 0 ? "WhatsApp configuration found" : "No WhatsApp configuration set up for this user",
+        message: configData ? "WhatsApp configuration found" : "No WhatsApp configuration set up for this user",
         user: userExists,
-        whatsapp_config: configData || null,
+        whatsapp_config: configData,
         user_id: userId
       });
 

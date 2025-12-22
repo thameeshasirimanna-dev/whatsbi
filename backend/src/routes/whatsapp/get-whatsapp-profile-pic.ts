@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/get-whatsapp-profile-pic', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
       const { phone, user_id } = body;
@@ -17,26 +17,35 @@ export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstan
         });
       }
 
-      // Get agent and WhatsApp config
-      const { data: agent, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('id, agent_prefix, whatsapp_config')
-        .eq('user_id', authenticatedUser.id)
-        .single();
+      // Get agent
+      const { rows: agentRows } = await pgClient.query(
+        'SELECT id, agent_prefix FROM agents WHERE user_id = $1',
+        [authenticatedUser.id]
+      );
 
-      if (agentError || !agent) {
+      if (agentRows.length === 0) {
         return reply.code(403).send({
           status: 'error',
           message: 'Agent not found'
         });
       }
 
-      if (!agent.whatsapp_config?.access_token) {
+      const agent = agentRows[0];
+
+      // Get WhatsApp config
+      const { rows: configRows } = await pgClient.query(
+        'SELECT api_key FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true',
+        [authenticatedUser.id]
+      );
+
+      if (configRows.length === 0 || !configRows[0].api_key) {
         return reply.code(400).send({
           status: 'error',
           message: 'WhatsApp not configured'
         });
       }
+
+      const accessToken = configRows[0].api_key;
 
       // Fetch profile picture from WhatsApp API
       try {
@@ -44,7 +53,7 @@ export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstan
           `https://graph.facebook.com/v23.0/${phone}?fields=profile_picture_url`,
           {
             headers: {
-              Authorization: `Bearer ${agent.whatsapp_config.access_token}`,
+              Authorization: `Bearer ${accessToken}`,
             },
           }
         );
@@ -60,7 +69,7 @@ export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstan
           throw new Error(`WhatsApp API error: ${response.status}`);
         }
 
-        const data = await response.json();
+        const data: any = await response.json();
 
         if (data.profile_picture_url) {
           return reply.code(200).send({
