@@ -29,6 +29,7 @@ import getWhatsappProfilePicRoutes from './routes/whatsapp/get-whatsapp-profile-
 import uploadServiceImagesRoutes from './routes/services/upload-service-images';
 import setupWhatsappConfigRoutes from './routes/whatsapp/setup-whatsapp-config';
 import getInvoiceTemplateRoutes from "./routes/invoices/get-invoice-template";
+import uploadInvoiceRoutes from "./routes/invoices/upload-invoice";
 import updateAgentRoutes from "./routes/agents/update-agent";
 import sendInvoiceTemplateRoutes from "./routes/invoices/send-invoice-template";
 import getUsersRoutes from "./routes/users/get-users";

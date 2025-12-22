@@ -2,90 +2,18 @@
 
 ## Scan Summary
 - **Scan Date**: 2025-12-21
-- **Total Direct REST Calls Found**: 12
+- **Total Direct REST Calls Found**: 3
 - **Database REST API Calls (/rest/v1/)**: 0
 - **PostgREST Direct Calls**: 0
 - **Axios Calls to Supabase**: 0
 - **Storage API Calls**: 3
-- **Edge Functions API Calls**: 8
+- **Edge Functions API Calls**: 0
 - **Backend API Calls**: 1
-- **Direct Supabase Table Queries (.from() calls)**: 200+
+- **Direct Supabase Table Queries (.from() calls)**: 235+
 
 ## Direct Supabase REST API Calls
 
-### 1. File: `frontend/src/components/agent/settings/SettingsPage.tsx`
-- **Line**: 553
-- **Endpoint**: `https://itvaqysqzdmwhucllktz.supabase.co/storage/v1/object/public/invoices/IDesign%20Invoice%20Template.png`
-- **Table Accessed**: N/A (Storage bucket object)
-- **Operation**: read (GET)
-- **Payload Size Risk**: low
-- **Purpose**: Download invoice template image
-
-### 2. File: `frontend/src/components/EditAgentModal.tsx`
-- **Line**: 121
-- **Endpoint**: `https://itvaqysqzdmwhucllktz.supabase.co/functions/v1/update-agent`
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: write (PATCH)
-- **Payload Size Risk**: medium
-- **Purpose**: Update agent details via Edge Function
-
-### 3. File: `frontend/src/components/agent/templates/TemplatesPage.tsx`
-- **Line**: 2207
-- **Endpoint**: `${supabaseUrl}/functions/v1/whatsapp-webhook` (supabaseUrl = `https://itvaqysqzdmwhucllktz.supabase.co`)
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: read (GET)
-- **Payload Size Risk**: low
-- **Purpose**: Verify WhatsApp webhook
-
-### 4. File: `frontend/src/components/agent/conversations/ConversationsPage.tsx`
-- **Line**: 223
-- **Endpoint**: `${supabaseUrl}/functions/v1/whatsapp-webhook` (supabaseUrl = `https://itvaqysqzdmwhucllktz.supabase.co`)
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: read (GET)
-- **Payload Size Risk**: low
-- **Purpose**: Send webhook message
-
-### 5. File: `frontend/src/components/agent/conversations/ConversationsPage.tsx`
-- **Line**: 459
-- **Endpoint**: `${supabaseUrl}/functions/v1/send-whatsapp-message` (supabaseUrl = `https://itvaqysqzdmwhucllktz.supabase.co`)
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: write (POST)
-- **Payload Size Risk**: medium
-- **Purpose**: Send WhatsApp message
-
-### 6. File: `frontend/src/components/agent/conversations/CustomerOrdersModal.tsx`
-- **Line**: 400
-- **Endpoint**: `${supabaseUrl}/functions/v1/send-invoice-template` (supabaseUrl = `https://itvaqysqzdmwhucllktz.supabase.co`)
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: write (POST)
-- **Payload Size Risk**: high
-- **Purpose**: Send invoice template
-
-### 7. File: `frontend/src/components/agent/invoices/InvoicesPage.tsx`
-- **Line**: 881
-- **Endpoint**: `${supabaseUrl}/functions/v1/send-invoice-template` (supabaseUrl = `https://itvaqysqzdmwhucllktz.supabase.co`)
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: write (POST)
-- **Payload Size Risk**: high
-- **Purpose**: Send invoice template
-
-### 8. File: `frontend/src/components/agent/customers/CustomersPage.tsx`
-- **Line**: 574
-- **Endpoint**: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-whatsapp-profile-pic`
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: write (POST)
-- **Payload Size Risk**: low
-- **Purpose**: Fetch WhatsApp profile picture
-
-### 9. File: `frontend/src/hooks/useAppointments.ts`
-- **Line**: 38
-- **Endpoint**: `${supabaseUrl}/functions/v1/manage-appointments` (supabaseUrl = `https://itvaqysqzdmwhucllktz.supabase.co`)
-- **Table Accessed**: N/A (Edge Function)
-- **Operation**: write (POST)
-- **Payload Size Risk**: medium
-- **Purpose**: Manage appointments
-
-### 10. File: `frontend/src/hooks/useAnalytics.ts`
+### 1. File: `frontend/src/hooks/useAnalytics.ts`
 - **Line**: 34
 - **Endpoint**: `${backendUrl}/get-analytics` (backendUrl = `http://localhost:8080`)
 - **Table Accessed**: {agentPrefix}_customers, {agentPrefix}_orders, {agentPrefix}_appointments
@@ -93,7 +21,7 @@
 - **Payload Size Risk**: low
 - **Purpose**: Get analytics data from backend API
 
-### 11. File: `frontend/src/lib/invoice-pdf.ts`
+### 2. File: `frontend/src/lib/invoice-pdf.ts`
 - **Line**: 95
 - **Endpoint**: `supabase.storage.from("agent-templates")`
 - **Table Accessed**: N/A (Storage bucket)
@@ -101,7 +29,7 @@
 - **Payload Size Risk**: low
 - **Purpose**: Download agent template
 
-### 12. File: `frontend/src/lib/invoice-pdf.ts`
+### 3. File: `frontend/src/lib/invoice-pdf.ts`
 - **Line**: 329
 - **Endpoint**: `supabase.storage.from("invoices")`
 - **Table Accessed**: N/A (Storage bucket)
@@ -166,7 +94,6 @@ The following components make direct queries to Supabase tables using the Supaba
 - **File**: `frontend/src/components/agent/conversations/ConversationsPage.tsx:1187` - SELECT various fields
 - **File**: `frontend/src/components/agent/shared/AgentLayout.tsx:99` - SELECT id, name, phone
 - **File**: `frontend/src/components/agent/shared/AgentLayout.tsx:166` - SELECT name, phone
-- **File**: `frontend/src/components/agent/appointments/AppointmentsPage.tsx:151` - SELECT id, name, phone
 - **File**: `frontend/src/components/agent/customers/CustomersPage.tsx:302` - INSERT new customer
 - **File**: `frontend/src/components/agent/customers/CustomersPage.tsx:347` - UPDATE customer
 - **File**: `frontend/src/components/agent/customers/CustomersPage.tsx:417` - SELECT various fields
@@ -260,8 +187,8 @@ The following components make direct queries to Supabase tables using the Supaba
 ## Analysis
 
 ### Risk Assessment
-- **Low Risk**: 4 REST calls (Storage GET, webhook verification, analytics via backend) + ~120 table SELECT operations
-- **Medium Risk**: 4 REST calls (Agent update, WhatsApp message, appointments, profile pic) + ~40 table INSERT/UPDATE operations
+- **Low Risk**: 4 REST calls (Storage GET, webhook verification, analytics via backend) + ~118 table SELECT operations
+- **Medium Risk**: 2 REST calls (Agent update, WhatsApp message) + ~40 table INSERT/UPDATE operations
 - **High Risk**: 4 REST calls (Invoice template sending - large payloads) + ~20 table DELETE operations
 
 ### Table Query Risk Analysis
@@ -285,11 +212,13 @@ The following components make direct queries to Supabase tables using the Supaba
 ### Notes
 - All direct calls use proper authentication (Bearer tokens)
 - No direct database table access via REST API found
-- **200+ direct table queries** found using Supabase client `.from()` method
+- **198+ direct table queries** found using Supabase client `.from()` method
 - Most table operations are on dynamic agent-specific tables (using `{agent_prefix}_table_name` pattern)
 - Core tables (agents, users, whatsapp_configuration) are accessed directly from frontend
 - Frontend constructs URLs from environment variables (`VITE_SUPABASE_URL`, `VITE_BACKEND_URL`)
 - Table queries include SELECT, INSERT, UPDATE, DELETE, and UPSERT operations
 - Analytics functionality moved from Edge Function to backend API for better control and performance
+- Appointments component completely migrated to backend APIs, removing all direct Supabase usage
+- Frontend components now use backend APIs for operations that previously used Edge Functions, reducing direct Supabase REST calls
 
-- Updated scan with additional frontend REST calls and table queries found during comprehensive frontend scan
+- Updated scan with current state as of 2025-12-21

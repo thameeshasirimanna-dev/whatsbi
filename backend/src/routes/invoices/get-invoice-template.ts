@@ -4,7 +4,17 @@ import { CacheService } from '../../utils/cache';
 export default async function getInvoiceTemplateRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: CacheService) {
   fastify.get('/get-invoice-template', async (request, reply) => {
     try {
-      const cacheKey = 'invoice_template_image';
+      const query = request.query as any;
+      const templatePath = query.path;
+
+      if (!templatePath) {
+        return reply.code(400).send({
+          status: 'error',
+          message: 'Template path is required'
+        });
+      }
+
+      const cacheKey = `invoice_template_${templatePath}`;
 
       // Check cache first
       const cachedImage = await cacheService.get(cacheKey);
@@ -19,7 +29,7 @@ export default async function getInvoiceTemplateRoutes(fastify: FastifyInstance,
 
       // Fetch from Supabase storage
       const supabaseUrl = process.env.SUPABASE_URL;
-      const imageUrl = `${supabaseUrl}/storage/v1/object/public/invoices/IDesign%20Invoice%20Template.png`;
+      const imageUrl = `${supabaseUrl}/storage/v1/object/public/agent-templates/${templatePath}`;
 
       const response = await fetch(imageUrl);
       if (!response.ok) {
