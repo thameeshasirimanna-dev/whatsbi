@@ -48,12 +48,12 @@ export default async function manageCustomersRoutes(
           const limit = parseInt(url.searchParams.get("limit") || "50");
           const offset = parseInt(url.searchParams.get("offset") || "0");
 
-          console.log("Customers fetch params:", {
-            search,
-            limit,
-            offset,
-            agentPrefix,
-          });
+          // console.log("Customers fetch params:", {
+          //   search,
+          //   limit,
+          //   offset,
+          //   agentPrefix,
+          // });
 
           // Build the query
           let queryText = `SELECT * FROM ${agentPrefix}_customers ORDER BY created_at DESC`;

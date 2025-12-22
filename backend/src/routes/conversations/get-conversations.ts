@@ -38,7 +38,7 @@ export default async function getConversationsRoutes(
       // Check cache first
       const cachedData = await cacheService.get(cacheKey);
       if (cachedData) {
-        console.log("Returning cached chat list for agent", agentId);
+        // console.log("Returning cached chat list for agent", agentId);
         return JSON.parse(cachedData);
       }
 
