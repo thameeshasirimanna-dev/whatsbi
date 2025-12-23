@@ -503,6 +503,7 @@ const ConversationsPage: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify(payload),
         }
@@ -1647,12 +1648,20 @@ const ConversationsPage: React.FC = () => {
           category: "utility",
         };
 
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error("Not authenticated");
+        }
+
         const textResponse = await fetch(
           "http://localhost:8080/send-whatsapp-message",
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify(textPayload),
           }
@@ -1683,6 +1692,7 @@ const ConversationsPage: React.FC = () => {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
                 },
                 body: JSON.stringify(imagePayload),
               }
@@ -1798,12 +1808,20 @@ const ConversationsPage: React.FC = () => {
           media_ids: pendingMedia.map((m) => m.id),
         };
 
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error("Not authenticated");
+        }
+
         const response = await fetch(
           "http://localhost:8080/send-whatsapp-message",
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify(payload),
           }
@@ -2012,12 +2030,20 @@ const ConversationsPage: React.FC = () => {
         const formattedToPhone = customerPhone.replace(/[\s+]/g, "");
 
         // Send message via Node backend
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error("Not authenticated");
+        }
+
         const response = await fetch(
           "http://localhost:8080/send-whatsapp-message",
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
               user_id: user.id,

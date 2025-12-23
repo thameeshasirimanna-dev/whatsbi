@@ -30,31 +30,63 @@ DECLARE
     v_config_id BIGINT;
 BEGIN
     -- Validate user exists
-    IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_user_id LIMIT 1) THEN
+    RAISE NOTICE 'Checking if user % exists in public.users', p_user_id;
+    IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_user_id LIMIT 1) THEN
+        RAISE NOTICE 'User % does not exist in public.users', p_user_id;
         RETURN QUERY SELECT NULL::jsonb, false;
         RETURN;
     END IF;
+    RAISE NOTICE 'User % exists in public.users', p_user_id;
 
     -- Insert or update whatsapp_configuration
     BEGIN
-        INSERT INTO whatsapp_configuration (
-            user_id, whatsapp_number, webhook_url, api_key,
-            business_account_id, phone_number_id, whatsapp_app_secret, is_active
-        )
-        VALUES (
-            p_user_id, p_whatsapp_number, p_webhook_url, p_api_key,
-            p_business_account_id, p_phone_number_id, p_whatsapp_app_secret, true
-        )
-        ON CONFLICT (user_id) DO UPDATE SET
-            whatsapp_number = EXCLUDED.whatsapp_number,
-            webhook_url = EXCLUDED.webhook_url,
-            api_key = EXCLUDED.api_key,
-            business_account_id = EXCLUDED.business_account_id,
-            phone_number_id = EXCLUDED.phone_number_id,
-            whatsapp_app_secret = EXCLUDED.whatsapp_app_secret,
-            is_active = true,
-            updated_at = CURRENT_TIMESTAMP
-        RETURNING id INTO v_config_id;
+        RAISE NOTICE 'Checking if whatsapp_app_secret column exists...';
+        -- Check if whatsapp_app_secret column exists
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'whatsapp_configuration' AND column_name = 'whatsapp_app_secret'
+        ) THEN
+            RAISE NOTICE 'whatsapp_app_secret column exists, using full insert';
+            INSERT INTO public.whatsapp_configuration (
+                user_id, whatsapp_number, webhook_url, api_key,
+                business_account_id, phone_number_id, whatsapp_app_secret, is_active
+            )
+            VALUES (
+                p_user_id, p_whatsapp_number, p_webhook_url, p_api_key,
+                p_business_account_id, p_phone_number_id, p_whatsapp_app_secret, true
+            )
+            ON CONFLICT (user_id) DO UPDATE SET
+                whatsapp_number = EXCLUDED.whatsapp_number,
+                webhook_url = EXCLUDED.webhook_url,
+                api_key = EXCLUDED.api_key,
+                business_account_id = EXCLUDED.business_account_id,
+                phone_number_id = EXCLUDED.phone_number_id,
+                whatsapp_app_secret = EXCLUDED.whatsapp_app_secret,
+                is_active = true,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING id INTO v_config_id;
+            RAISE NOTICE 'Insert with whatsapp_app_secret successful, config_id: %', v_config_id;
+        ELSE
+            RAISE NOTICE 'whatsapp_app_secret column does not exist, using basic insert';
+            INSERT INTO public.whatsapp_configuration (
+                user_id, whatsapp_number, webhook_url, api_key,
+                business_account_id, phone_number_id, is_active
+            )
+            VALUES (
+                p_user_id, p_whatsapp_number, p_webhook_url, p_api_key,
+                p_business_account_id, p_phone_number_id, true
+            )
+            ON CONFLICT (user_id) DO UPDATE SET
+                whatsapp_number = EXCLUDED.whatsapp_number,
+                webhook_url = EXCLUDED.webhook_url,
+                api_key = EXCLUDED.api_key,
+                business_account_id = EXCLUDED.business_account_id,
+                phone_number_id = EXCLUDED.phone_number_id,
+                is_active = true,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING id INTO v_config_id;
+            RAISE NOTICE 'Insert without whatsapp_app_secret successful, config_id: %', v_config_id;
+        END IF;
     EXCEPTION WHEN OTHERS THEN
         RAISE NOTICE 'Failed to create/update WhatsApp config for user %: %', p_user_id, SQLERRM;
         RETURN QUERY SELECT NULL::jsonb, false;
@@ -63,10 +95,12 @@ BEGIN
 
     -- Return the config
     BEGIN
+        RAISE NOTICE 'Fetching config for user %', p_user_id;
         RETURN QUERY
         SELECT row_to_json(wc.*)::jsonb, true
-        FROM whatsapp_configuration wc
+        FROM public.whatsapp_configuration wc
         WHERE wc.user_id = p_user_id LIMIT 1;
+        RAISE NOTICE 'Config fetch successful for user %', p_user_id;
     EXCEPTION WHEN OTHERS THEN
         RAISE NOTICE 'Failed to fetch WhatsApp config for user %: %', p_user_id, SQLERRM;
         RETURN QUERY SELECT NULL::jsonb, false;

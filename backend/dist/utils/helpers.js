@@ -83,16 +83,13 @@ export async function uploadMediaToStorage(pgClient, agentPrefix, mediaBuffer, o
 }
 export async function processIncomingMessage(pgClient, message, phoneNumberId, contactName, emitNewMessage, cacheService) {
     try {
-        console.log('Processing message:', message.id, message.type);
-        const { rows: whatsappConfigRows } = await pgClient.query('SELECT user_id, api_key, webhook_url FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true', [phoneNumberId]);
+        const { rows: whatsappConfigRows } = await pgClient.query("SELECT user_id, api_key, webhook_url FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true", [phoneNumberId]);
         if (whatsappConfigRows.length === 0) {
-            console.log('No config for phone:', phoneNumberId);
             return;
         }
         const whatsappConfig = whatsappConfigRows[0];
-        const { rows: agentRows } = await pgClient.query('SELECT id, agent_prefix FROM agents WHERE user_id = $1', [whatsappConfig.user_id]);
+        const { rows: agentRows } = await pgClient.query("SELECT id, agent_prefix FROM agents WHERE user_id = $1", [whatsappConfig.user_id]);
         if (agentRows.length === 0) {
-            console.log('No agent for user:', whatsappConfig.user_id);
             return;
         }
         const agent = agentRows[0];
@@ -107,103 +104,86 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
         else {
             const { rows: newCustomerRows, rowCount } = await pgClient.query(`INSERT INTO ${customersTable} (phone, name, agent_id) VALUES ($1, $2, $3) RETURNING id`, [fromPhone, contactName || fromPhone, agent.id]);
             if (rowCount === 0) {
-                console.error('Error inserting new customer');
                 return;
             }
             customerId = newCustomerRows[0].id;
-            console.log('New customer created successfully');
+            isNewCustomer = true;
         }
         const { rows: customerRows } = await pgClient.query(`SELECT id, name, ai_enabled, language FROM ${customersTable} WHERE id = $1`, [customerId]);
         let customer;
         if (customerRows.length === 0) {
-            console.log('Warning: Could not fetch customer ai_enabled, assuming false');
             customer = {
                 id: customerId,
                 name: contactName || fromPhone,
                 ai_enabled: false,
-                language: 'english',
+                language: "english",
             };
         }
         else {
             customer = customerRows[0];
         }
         const { rowCount: updateCount } = await pgClient.query(`UPDATE ${customersTable} SET last_user_message_time = $1 WHERE id = $2`, [new Date().toISOString(), customerId]);
-        if (updateCount > 0) {
-            console.log(`Updated last_user_message_time for customer ${customerId}`);
-        }
-        else {
-            console.error('Error updating last_user_message_time');
+        if (updateCount === 0) {
+            console.error("Error updating last_user_message_time");
         }
         const messageDate = new Date(message.timestamp * 1000);
         const messageTimestamp = messageDate.toISOString();
-        console.log('Timestamp conversion:', {
-            whatsappTimestamp: message.timestamp,
-            convertedDate: messageDate.toISOString(),
-            localString: messageDate.toLocaleString(),
-        });
-        let messageText = '';
-        let mediaType = 'none';
+        let messageText = "";
+        let mediaType = "none";
         let mediaUrl = null;
         let caption = null;
-        if (message.type === 'text') {
+        if (message.type === "text") {
             messageText = message.text.body;
         }
-        else if (['image', 'video', 'audio', 'document'].includes(message.type)) {
+        else if (["image", "video", "audio", "document"].includes(message.type)) {
             mediaType = getMediaTypeFromWhatsApp(message.type);
             caption = message[message.type]?.caption || null;
             messageText = caption || `[${message.type.toUpperCase()}] Media file`;
             if (message[message.type]?.id && whatsappConfig.api_key) {
-                console.log(`Downloading ${message.type} media: ${message[message.type].id}`);
                 const mediaBuffer = await downloadWhatsAppMedia(message[message.type].id, whatsappConfig.api_key);
                 if (mediaBuffer && mediaBuffer.length > 0) {
-                    let contentType = 'application/octet-stream';
+                    let contentType = "application/octet-stream";
                     let filename = `media_${Date.now()}.${message.type}`;
                     if (message[message.type].mime_type) {
                         contentType = message[message.type].mime_type;
-                        const ext = contentType.split('/')[1] || message.type;
+                        const ext = contentType.split("/")[1] || message.type;
                         filename = `media_${Date.now()}.${ext}`;
                     }
                     mediaUrl = await uploadMediaToStorage(pgClient, agent.agent_prefix, mediaBuffer, filename, contentType);
-                    if (mediaUrl) {
-                        console.log(`Media uploaded successfully: ${mediaUrl}`);
+                    if (!mediaUrl) {
+                        console.error("Failed to upload media to storage");
                     }
-                    else {
-                        console.error('Failed to upload media to storage');
-                    }
-                }
-                else {
-                    console.error(`Failed to download media: ${message[message.type].id}`);
                 }
             }
         }
-        else if (message.type === 'sticker') {
-            mediaType = 'sticker';
-            messageText = '[STICKER] Sticker message';
+        else if (message.type === "sticker") {
+            mediaType = "sticker";
+            messageText = "[STICKER] Sticker message";
             if (message.sticker?.id && whatsappConfig.api_key) {
                 const mediaBuffer = await downloadWhatsAppMedia(message.sticker.id, whatsappConfig.api_key);
                 if (mediaBuffer && mediaBuffer.length > 0) {
-                    mediaUrl = await uploadMediaToStorage(pgClient, agent.agent_prefix, mediaBuffer, `sticker_${Date.now()}.webp`, 'image/webp');
+                    mediaUrl = await uploadMediaToStorage(pgClient, agent.agent_prefix, mediaBuffer, `sticker_${Date.now()}.webp`, "image/webp");
                 }
             }
         }
-        else if (message.type === 'button') {
-            console.log('🔍 DEBUG: Full button message payload:', JSON.stringify(message, null, 2));
-            console.log('🔍 DEBUG: Button reply details:', message.button?.reply);
+        else if (message.type === "button") {
+            console.log("🔍 DEBUG: Full button message payload:", JSON.stringify(message, null, 2));
+            console.log("🔍 DEBUG: Button reply details:", message.button?.reply);
             messageText =
                 message.button?.reply?.title ||
                     message.button?.reply?.id ||
-                    'Button clicked';
+                    "Button clicked";
         }
-        else if (message.type === 'interactive') {
-            console.log('🔍 DEBUG: Full interactive message payload:', JSON.stringify(message, null, 2));
-            console.log('🔍 DEBUG: Interactive type:', message.interactive?.type);
-            console.log('🔍 DEBUG: Button reply details:', message.interactive?.button_reply);
-            if (message.interactive?.type === 'button_reply') {
+        else if (message.type === "interactive") {
+            console.log("🔍 DEBUG: Full interactive message payload:", JSON.stringify(message, null, 2));
+            console.log("🔍 DEBUG: Interactive type:", message.interactive?.type);
+            console.log("🔍 DEBUG: Button reply details:", message.interactive?.button_reply);
+            if (message.interactive?.type === "button_reply") {
                 messageText =
-                    message.interactive.button_reply?.title || 'Button clicked';
+                    message.interactive.button_reply?.title || "Button clicked";
             }
             else {
-                messageText = `[INTERACTIVE_${message.interactive?.type?.toUpperCase() || 'UNKNOWN'}] Interactive message`;
+                messageText = `[INTERACTIVE_${message.interactive?.type?.toUpperCase() || "UNKNOWN"}] Interactive message`;
             }
         }
         else {
@@ -212,82 +192,48 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
         const messageData = {
             customer_id: customerId,
             message: messageText,
-            direction: 'inbound',
+            direction: "inbound",
             timestamp: messageTimestamp,
             is_read: false,
             media_type: mediaType,
             media_url: mediaUrl,
             caption: caption,
         };
-        const { rows: insertedMessageRows, rowCount } = await pgClient.query(`INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [messageData.customer_id, messageData.message, messageData.direction, messageData.timestamp, messageData.is_read, messageData.media_type, messageData.media_url, messageData.caption]);
+        const { rows: insertedMessageRows, rowCount } = await pgClient.query(`INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [
+            messageData.customer_id,
+            messageData.message,
+            messageData.direction,
+            messageData.timestamp,
+            messageData.is_read,
+            messageData.media_type,
+            messageData.media_url,
+            messageData.caption,
+        ]);
         if (rowCount === 0) {
-            console.error('Error storing message');
+            console.error("❌ Error storing message: no rows inserted");
+            return;
         }
-        else {
-            const insertedMessage = insertedMessageRows[0];
-            console.log('Message stored successfully in dynamic table:', {
+        const insertedMessage = insertedMessageRows[0];
+        // Invalidate cache for chat list and recent messages
+        if (cacheService) {
+            await cacheService.invalidateChatList(agent.id);
+            await cacheService.invalidateRecentMessages(agent.id, customerId);
+        }
+        // Emit socket event for new message
+        if (emitNewMessage) {
+            const messageDataForSocket = {
                 id: insertedMessage.id,
-                type: message.type,
-                mediaType,
-                hasMediaUrl: !!mediaUrl,
-            });
-            // Invalidate cache for chat list and recent messages
-            if (cacheService) {
-                await cacheService.invalidateChatList(agent.id);
-                await cacheService.invalidateRecentMessages(agent.id, customerId);
-                console.log('Cache invalidated for agent', agent.id, 'customer', customerId);
-            }
-            // Emit socket event for new message
-            if (emitNewMessage) {
-                const messageDataForSocket = {
-                    id: insertedMessage.id,
-                    customer_id: insertedMessage.customer_id,
-                    message: insertedMessage.message,
-                    sender_type: 'customer',
-                    timestamp: insertedMessage.timestamp,
-                    media_type: insertedMessage.media_type,
-                    media_url: insertedMessage.media_url,
-                    caption: insertedMessage.caption,
-                };
-                emitNewMessage(agent.id, messageDataForSocket);
-            }
-            if (customer.ai_enabled && whatsappConfig?.webhook_url) {
-                console.log(`Triggering agent webhook for AI-enabled customer ${customer.id}`);
-                const payload = {
-                    event: 'message_received',
-                    data: {
-                        ...insertedMessage,
-                        customer_phone: fromPhone,
-                        customer_name: customer.name,
-                        customer_language: customer.language || 'english',
-                        agent_prefix: agent.agent_prefix,
-                        agent_user_id: whatsappConfig.user_id,
-                        phone_number_id: phoneNumberId,
-                        chatbot_secret: process.env.CHATBOT_SECRET ?? 'default-secret-change-in-prod',
-                        chatbot_reply_url: `${process.env.BACKEND_URL ?? 'http://localhost:8080'}/chatbot-reply`,
-                    },
-                };
-                try {
-                    const response = await fetch(whatsappConfig.webhook_url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(payload),
-                    });
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error(`Agent webhook failed: HTTP ${response.status} - ${errorText}`);
-                    }
-                    else {
-                        console.log('Agent webhook triggered successfully');
-                    }
-                }
-                catch (webhookError) {
-                    console.error('Error triggering agent webhook:', webhookError);
-                }
-            }
+                customer_id: insertedMessage.customer_id,
+                message: insertedMessage.message,
+                sender_type: "customer",
+                timestamp: insertedMessage.timestamp,
+                media_type: insertedMessage.media_type,
+                media_url: insertedMessage.media_url,
+                caption: insertedMessage.caption,
+            };
+            emitNewMessage(agent.id, messageDataForSocket);
         }
+        // Removed auto-send hello_world template logic - now handled by webhook
     }
     catch (error) {
         console.error('Message processing error:', error);

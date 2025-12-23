@@ -5,7 +5,9 @@ export default async function setupWhatsappConfigRoutes(
   fastify: FastifyInstance,
   pgClient: any
 ) {
+  console.log("Registering POST /setup-whatsapp-config route");
   fastify.post("/setup-whatsapp-config", async (request, reply) => {
+    console.log("POST /setup-whatsapp-config called");
     try {
       // Verify JWT
       const authenticatedUser = await verifyJWT(request, pgClient);
@@ -57,20 +59,44 @@ export default async function setupWhatsappConfigRoutes(
       const agentData = agentRows[0];
 
       // Create or update WhatsApp configuration using function
-      const { rows: configRows } = await pgClient.query(
-        "SELECT * FROM create_whatsapp_config($1, $2, $3, $4, $5, $6, $7)",
-        [
-          body.user_id,
-          body.whatsapp_number,
-          body.webhook_url,
-          body.api_key || null,
-          body.business_account_id || null,
-          body.phone_number_id || null,
-          body.whatsapp_app_secret || null,
-        ]
-      );
+      console.log("Calling create_whatsapp_config with params:", {
+        user_id: body.user_id,
+        whatsapp_number: body.whatsapp_number,
+        webhook_url: body.webhook_url,
+        api_key: body.api_key || null,
+        business_account_id: body.business_account_id || null,
+        phone_number_id: body.phone_number_id || null,
+        whatsapp_app_secret: body.whatsapp_app_secret || null,
+      });
+
+      let configRows;
+      try {
+        const result = await pgClient.query(
+          "SELECT * FROM create_whatsapp_config($1, $2, $3, $4, $5, $6, $7)",
+          [
+            body.user_id,
+            body.whatsapp_number,
+            body.webhook_url,
+            body.api_key || null,
+            body.business_account_id || null,
+            body.phone_number_id || null,
+            body.whatsapp_app_secret || null,
+          ]
+        );
+        configRows = result.rows;
+        console.log("Database query successful, rows:", configRows);
+      } catch (dbError) {
+        console.error("Database query failed:", dbError);
+        return reply.code(500).send({
+          success: false,
+          message: "Database error: " + (dbError as Error).message,
+        });
+      }
+
+      console.log("create_whatsapp_config result:", configRows);
 
       if (configRows.length === 0 || !configRows[0].success) {
+        console.error("Failed to setup WhatsApp configuration. Rows:", configRows);
         return reply.code(400).send({
           success: false,
           message: "Failed to setup WhatsApp configuration",

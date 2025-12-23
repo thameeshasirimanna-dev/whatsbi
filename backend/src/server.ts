@@ -108,7 +108,7 @@ async function registerRoutes() {
     emitNewMessage,
     emitAgentStatusUpdate
   );
-  await sendWhatsappMessageRoutes(server, pgClient);
+  await sendWhatsappMessageRoutes(server, pgClient, cacheService);
   await getMediaPreviewRoutes(server, pgClient);
   await uploadInventoryImagesRoutes(server, pgClient);
   await uploadMediaRoutes(server, pgClient);

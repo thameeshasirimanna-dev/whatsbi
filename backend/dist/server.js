@@ -184,6 +184,7 @@ server.get("/health", async (request, reply) => {
 });
 // Socket.IO utility functions
 function emitNewMessage(agentId, messageData) {
+    console.log('🔍 DEBUG: Emitting new-message to agent', agentId, 'message ID:', messageData.id);
     server.io.to(`agent-${agentId}`).emit("new-message", messageData);
 }
 function emitAgentStatusUpdate(agentId, statusData) {
@@ -200,18 +201,20 @@ const start = async () => {
         // Set up Socket.IO connection handling after routes are registered
         server.ready().then(() => {
             server.io.on("connection", (socket) => {
-                console.log("Client connected:", socket.id);
+                // console.log("Client connected:", socket.id);
                 socket.on("join-agent-room", (data) => {
                     const { agentId, token } = data;
                     if (agentId && token) {
                         // Verify JWT token
                         // For now, just join the room - proper auth will be added
                         socket.join(`agent-${agentId}`);
-                        console.log(`Socket ${socket.id} joined agent room: agent-${agentId}`);
+                        // console.log(
+                        //   `Socket ${socket.id} joined agent room: agent-${agentId}`
+                        // );
                     }
                 });
-                socket.on("disconnect", () => {
-                    console.log("Client disconnected:", socket.id);
+                socket.on("disconnect", (reason) => {
+                    // console.log("Client disconnected:", socket.id, "reason:", reason);
                 });
             });
         });
