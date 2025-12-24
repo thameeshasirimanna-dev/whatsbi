@@ -226,10 +226,31 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
       setRecentNotifications((prev) => prev.filter((n) => n.customerId !== customerId));
     };
 
+    const handleUnreadReceived = (event: CustomEvent) => {
+      const { count, messageData } = event.detail;
+      setUnreadCount((prev) => prev + count);
+      if (messageData) {
+        const notif = {
+          id: messageData.id,
+          customerName: messageData.customerName,
+          customerPhone: messageData.customerPhone,
+          customerId: messageData.customer_id,
+          preview: messageData.message.length > 50 ? `${messageData.message.substring(0, 50)}...` : messageData.message,
+          timestamp: messageData.timestamp,
+        };
+        setRecentNotifications((prev) => {
+          const updated = [notif, ...prev];
+          return updated.length > 5 ? updated.slice(0, 5) : updated;
+        });
+      }
+    };
+
     window.addEventListener('unread-messages-read', handleUnreadMarked as EventListener);
+    window.addEventListener('unread-message-received', handleUnreadReceived as EventListener);
 
     return () => {
       window.removeEventListener('unread-messages-read', handleUnreadMarked as EventListener);
+      window.removeEventListener('unread-message-received', handleUnreadReceived as EventListener);
     };
   }, []);
 

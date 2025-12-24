@@ -746,6 +746,26 @@ const ConversationsPage: React.FC = () => {
           return updated;
         });
       }
+
+      // Dispatch event for navbar update if message is unread
+      if (messageData.sender_type === "customer" && !newMsg.isRead) {
+        window.dispatchEvent(
+          new CustomEvent("unread-message-received", {
+            detail: {
+              count: 1,
+              messageData: {
+                id: newMsg.id,
+                customer_id: messageData.customer_id,
+                message: newMsg.text,
+                timestamp: newMsg.timestamp,
+                customerName: messageData.customer_name || `Customer ${messageData.customer_id}`,
+                customerPhone: messageData.customer_phone || '',
+              }
+            },
+          })
+        );
+      }
+
       setLastRealtimeEvent(Date.now());
     });
 
