@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../lib/auth";
 import { Order, Appointment } from "../../../types/index";
+import {
+  getOrders,
+  createOrder,
+  updateOrder,
+  deleteOrder,
+  getInvoices,
+  updateInvoiceStatus,
+  deleteInvoice,
+  getAppointments,
+  createAppointment as apiCreateAppointment,
+  updateAppointment as apiUpdateAppointment,
+  deleteAppointment,
+  getCustomers,
+} from "../../../lib/api";
+import { getCurrentAgent } from "../../../lib/agent";
 import CreateOrderModal from "../customers/CreateOrderModal";
 import ViewOrderModal from "../orders/ViewOrderModal";
 import EditOrderModal from "../orders/EditOrderModal";
@@ -104,14 +119,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
     try {
       // First, find customer_id by phone
-      const customersTable = `${agentPrefix}_customers`;
-      const { data: customerData, error: customerError } = await supabase
-        .from(customersTable)
-        .select("id")
-        .eq("phone", customerPhone)
-        .single();
+      const customers = await getCustomers({ search: customerPhone! });
+      const customerData = customers.find((c) => c.phone === customerPhone);
 
-      if (customerError || !customerData) {
+      if (!customerData) {
         // No customer found, no data
         setOrders([]);
         setInvoices([]);
@@ -124,57 +135,14 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
       const customerId = customerData.id;
       setCustomerId(customerData.id);
 
-      // Fetch agent details
-      if (agentId) {
-        try {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-          if (user) {
-            const { data: userData, error: userError } = await supabase
-              .from("users")
-              .select("name")
-              .eq("id", user.id)
-              .single();
-            if (!userError && userData) {
-              const { data: agentData, error: agentError } = await supabase
-                .from("agents")
-                .select(
-                  "address, business_email, contact_number, website, invoice_template_path"
-                )
-                .eq("id", agentId)
-                .single();
-              if (!agentError && agentData) {
-                setAgentDetails({
-                  name: userData.name || "",
-                  address: agentData.address || "",
-                  business_email: agentData.business_email || "",
-                  contact_number: agentData.contact_number || "",
-                  website: agentData.website || "",
-                });
-                setInvoiceTemplatePath(agentData.invoice_template_path || null);
-              }
-            }
-          }
-        } catch (err) {
-          console.warn("Failed to fetch agent details:", err);
-        }
-      }
+      // TODO: Fetch agent details if needed for invoice generation
+      // For now, using default values
 
       // Fetch orders for this customer
-      const ordersTable = `${agentPrefix}_orders`;
-      const { data: ordersData, error: ordersError } = await supabase
-        .from(ordersTable)
-        .select(
-          "id, total_amount, status, created_at, shipping_address, notes, customer_id"
-        )
-        .eq("customer_id", customerId)
-        .order("created_at", { ascending: false });
-
-      if (ordersError) throw ordersError;
+      const ordersData = await getOrders({ customer_id: customerId });
 
       setOrders(
-        (ordersData || []).map((order) => ({
+        (ordersData || []).map((order: any) => ({
           ...order,
           customer_name: customerName,
           customer_phone: customerPhone!,
@@ -182,51 +150,26 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
       );
 
       // Fetch invoices for this customer
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-      const { data: invoicesRaw, error: invoicesError } = await supabase
-        .from(invoicesTable)
-        .select(
-          `
-          id,
-          order_id,
-          name,
-          pdf_url,
-          status,
-          generated_at,
-          order:order_id!inner (
-            total_amount
-          )
-        `
-        )
-        .eq("order.customer_id", customerId)
-        .order("generated_at", { ascending: false });
+      const invoicesRaw = await getInvoices();
 
-      if (invoicesError) throw invoicesError;
-
-      const transformedInvoices = (invoicesRaw || []).map((inv: any) => ({
-        id: inv.id,
-        order_id: inv.order_id,
-        name: inv.name,
-        pdf_url: inv.pdf_url,
-        total_amount: inv.order?.total_amount || 0,
-        status: inv.status,
-        created_at: inv.generated_at,
-      }));
+      const transformedInvoices = (invoicesRaw || [])
+        .filter((inv) => inv.customer_id === customerId)
+        .map((inv: any) => ({
+          id: inv.id,
+          order_id: inv.order_id,
+          name: inv.name,
+          pdf_url: inv.pdf_url,
+          total_amount: inv.total || 0,
+          status: inv.status,
+          created_at: inv.generated_at,
+        }));
 
       setInvoices(transformedInvoices);
 
       // Fetch appointments for this customer
-      const appointmentsTable = `${agentPrefix}_appointments`;
-      const { data: appointmentsData, error: appointmentsError } =
-        await supabase
-          .from(appointmentsTable)
-          .select(
-            "id, title, appointment_date, duration_minutes, status, notes, customer_id, created_at"
-          )
-          .eq("customer_id", customerId)
-          .order("appointment_date", { ascending: false });
-
-      if (appointmentsError) throw appointmentsError;
+      const appointmentsData = await getAppointments({
+        customer_id: customerId,
+      });
 
       setAppointments(
         (appointmentsData || []).map((appt: Appointment) => ({
@@ -247,17 +190,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     if (!customerId) return;
 
     try {
-      const appointmentsTable = `${agentPrefix}_appointments`;
-      const { data: insertData, error } = await supabase
-        .from(appointmentsTable)
-        .insert({
-          ...data,
-          customer_id: customerId,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const insertData = await apiCreateAppointment({
+        ...data,
+        customer_id: customerId,
+      });
 
       setAppointments((prev) => [
         insertData,
@@ -277,13 +213,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
   const updateAppointment = async (id: number, data: any) => {
     try {
-      const appointmentsTable = `${agentPrefix}_appointments`;
-      const { error } = await supabase
-        .from(appointmentsTable)
-        .update(data)
-        .eq("id", id);
-
-      if (error) throw error;
+      await apiUpdateAppointment({ id, ...data });
 
       await fetchCustomerData();
     } catch (err: any) {
@@ -295,13 +225,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
   const deleteAppointment = async (id: number) => {
     try {
-      const appointmentsTable = `${agentPrefix}_appointments`;
-      const { error } = await supabase
-        .from(appointmentsTable)
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
+      await deleteAppointment(id);
 
       await fetchCustomerData();
     } catch (err: any) {
@@ -336,12 +260,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         if (!agentPrefix) {
           throw new Error("Missing agent prefix");
         }
-        const ordersTable = `${agentPrefix}_orders`;
-        const { error } = await supabase
-          .from(ordersTable)
-          .delete()
-          .eq("id", orderId);
-        if (error) throw error;
+        await deleteOrder(orderId);
         await fetchCustomerData(); // Refresh the list
       } catch (err: any) {
         alert("Failed to delete order: " + err.message);
@@ -380,15 +299,13 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     }
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("User not authenticated");
+      const agent = await getCurrentAgent();
+      if (!agent) {
+        throw new Error("Agent not found");
       }
 
       const body = {
-        user_id: user.id,
+        user_id: agent.user_id,
         customer_phone: customerPhone,
         invoice_url: invoice.pdf_url,
         invoice_name: invoice.name,
@@ -397,18 +314,21 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         customer_name: customerName,
       };
 
-      const response = await fetch('http://localhost:8080/send-invoice-template', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
+      const response = await fetch(
+        "http://localhost:8080/send-invoice-template",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send invoice');
+        throw new Error(data.error || "Failed to send invoice");
       }
 
       if (data && data.success) {
@@ -448,25 +368,8 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
       const invoicesTable = `${agentPrefix}_orders_invoices`;
 
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("invoices")
-        .remove([filePath]);
-
-      if (storageError) {
-        console.warn("Storage delete error:", storageError);
-        // Continue with DB delete even if storage fails
-      }
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from(invoicesTable)
-        .delete()
-        .eq("id", invoice.id);
-
-      if (dbError) {
-        throw dbError;
-      }
+      // Delete invoice (backend handles storage)
+      await deleteInvoice(invoice.id);
 
       // Refetch data
       await fetchCustomerData();
@@ -491,19 +394,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     try {
       const invoicesTable = `${agentPrefix}_orders_invoices`;
 
-      const { error: updateError } = await supabase
-        .from(invoicesTable)
-        .update({
-          status: "paid",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", invoice.id);
-
-      if (updateError) {
-        throw new Error(
-          "Failed to update invoice status: " + updateError.message
-        );
-      }
+      await updateInvoiceStatus(invoice.id, "paid");
 
       alert("Marked invoice as paid");
 
@@ -525,7 +416,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-4 flex flex-col gap-4">
           <div className="flex items-center justify-between w-full">
             <h2 className="text-xl font-semibold text-gray-900">
-              {customerName ? `${customerName}'s Records` : 'Customer Records'}
+              {customerName ? `${customerName}'s Records` : "Customer Records"}
             </h2>
             <button
               onClick={onClose}

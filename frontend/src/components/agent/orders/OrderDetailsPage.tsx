@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// import { getToken } from '../../../lib/auth';
+import { getToken, getCurrentUser } from "../../../lib/auth";
+import { getCurrentAgent } from "../../../lib/agent";
 
 interface OrderItem {
   name: string;
@@ -38,7 +39,7 @@ const OrderDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (!id) {
-      setError('Order ID not provided');
+      setError("Order ID not provided");
       setLoading(false);
       return;
     }
@@ -49,104 +50,120 @@ const OrderDetailsPage: React.FC = () => {
         setError(null);
 
         // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-          setError('User not authenticated');
+        const user = await getCurrentUser();
+        if (!user.success || !user.user) {
+          setError("User not authenticated");
           setLoading(false);
           return;
         }
 
         // Get agent profile from backend
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          setError('User not authenticated');
+        const agent = await getCurrentAgent();
+        if (!agent) {
+          setError("Agent not found");
           setLoading(false);
           return;
         }
 
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        if (!response.ok) {
-          setError('Failed to fetch agent profile');
-          setLoading(false);
-          return;
-        }
-
-        const agentData = await response.json();
-        if (!agentData.success || !agentData.agent) {
-          setError('Agent not found');
-          setLoading(false);
-          return;
-        }
-
-        const currentAgentId = agentData.agent.id;
-        const currentAgentPrefix = agentData.agent.agent_prefix;
+        const currentAgentId = parseInt(agent.id);
+        const currentAgentPrefix = agent.agent_prefix;
         setAgentId(currentAgentId);
         setAgentPrefix(currentAgentPrefix);
 
         if (!currentAgentPrefix) {
-          setError('Agent prefix not found');
+          setError("Agent prefix not found");
           setLoading(false);
           return;
         }
 
         // First fetch order details
-        const ordersTable = `${currentAgentPrefix}_orders`;
-        const joinTable = `${currentAgentPrefix}_customers`;
-        const { data: orderData, error: orderError } = await supabase
-          .from(ordersTable)
-          .select(`
-            id,
-            customer_id,
-            total_amount,
-            status,
-            notes,
-            created_at,
-            updated_at,
-            shipping_address,
-            ${joinTable} (name, phone)
-          `)
-          .eq("id", Number(id))
-          .single();
+        const orderResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/manage-orders?id=${id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-        if (orderError || !orderData) {
+        if (!orderResponse.ok) {
           setError("Order not found");
-          console.error("Order fetch error:", orderError);
           setLoading(false);
           return;
         }
 
-        const customerData = (orderData as any)[joinTable] || {
-          name: "Unknown Customer",
-          phone: "",
-        };
-
-        // Fetch order items
-        const itemsTable = `${currentAgentPrefix}_orders_items`;
-        const { data: itemsData, error: itemsError } = await supabase
-          .from(itemsTable)
-          .select("name, quantity, price")
-          .eq("order_id", Number(id));
-
-        if (itemsError) {
-          console.warn("Failed to fetch order items:", itemsError);
+        const orderDataResult = await orderResponse.json();
+        if (
+          !orderDataResult.success ||
+          !orderDataResult.orders ||
+          orderDataResult.orders.length === 0
+        ) {
+          setError("Order not found");
+          setLoading(false);
+          return;
         }
 
-        const orderItems = (itemsData || []).map((item: any) => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.quantity * item.price,
-        } as OrderItem));
+        const orderData = orderDataResult.orders[0];
+
+        // Fetch customer details
+        const customerResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/manage-customers?id=${
+            orderData.customer_id
+          }`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        let customerData = { name: "Unknown Customer", phone: "" };
+        if (customerResponse.ok) {
+          const customerDataResult = await customerResponse.json();
+          if (
+            customerDataResult.success &&
+            customerDataResult.customers &&
+            customerDataResult.customers.length > 0
+          ) {
+            customerData = customerDataResult.customers[0];
+          }
+        }
+
+        // Fetch order items
+        const itemsResponse = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/manage-orders?type=items&order_id=${id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        let orderItems: OrderItem[] = [];
+        if (itemsResponse.ok) {
+          const itemsDataResult = await itemsResponse.json();
+          if (itemsDataResult.success) {
+            orderItems = (itemsDataResult.items || []).map(
+              (item: any) =>
+                ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: item.price,
+                  total: item.quantity * item.price,
+                } as OrderItem)
+            );
+          }
+        } else {
+          console.warn("Failed to fetch order items");
+        }
 
         const orderDetails: OrderDetails = {
           id: (orderData as any).id,
@@ -167,8 +184,8 @@ const OrderDetailsPage: React.FC = () => {
         setOrder(orderDetails);
         setNewStatus(orderDetails.status);
       } catch (err) {
-        setError('Failed to load order details');
-        console.error('Fetch error:', err);
+        setError("Failed to load order details");
+        console.error("Fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -182,27 +199,45 @@ const OrderDetailsPage: React.FC = () => {
 
     try {
       setUpdatingStatus(true);
-      
-      const ordersTable = `${agentPrefix}_orders`;
-      const { error } = await supabase
-        .from(ordersTable)
-        .update({
-          status: newStatus
-        })
-        .eq('id', Number(id));
 
-      if (error) {
-        setError('Failed to update order status');
-        console.error('Status update error:', error);
+      const token = getToken();
+      if (!token) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const updateResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: Number(id),
+            status: newStatus,
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        setError("Failed to update order status");
+        return;
+      }
+
+      const updateData = await updateResponse.json();
+      if (!updateData.success) {
+        setError("Failed to update order status");
         return;
       }
 
       // Update local state
-      setOrder(prev => prev ? { ...prev, status: newStatus } : null);
-      alert('Order status updated successfully');
+      setOrder((prev) => (prev ? { ...prev, status: newStatus } : null));
+      alert("Order status updated successfully");
     } catch (err) {
-      setError('Failed to update order status');
-      console.error('Update error:', err);
+      setError("Failed to update order status");
+      console.error("Update error:", err);
     } finally {
       setUpdatingStatus(false);
     }

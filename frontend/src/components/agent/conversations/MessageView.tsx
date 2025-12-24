@@ -330,26 +330,37 @@ const MessageView: React.FC<MessageViewProps> = ({
     if (agentId && selectedConversation?.customerPhone && agentPrefix) {
       try {
         // Get customer details
-        const customersTable = `${agentPrefix}_customers`;
-        const { data: customer } = await supabase
-          .from(customersTable)
-          .select("id, name, language")
-          .eq("phone", selectedConversation.customerPhone)
-          .eq("agent_id", agentId)
-          .single();
+        const token = getToken();
+        const customerResponse = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/manage-customers?phone=${encodeURIComponent(
+            selectedConversation.customerPhone
+          )}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const customerData = await customerResponse.json();
+        if (!customerResponse.ok || !customerData.success) {
+          console.error("Failed to fetch customer:", customerData.message);
+          return;
+        }
+        const customer = customerData.customer;
 
         // Get agent profile from backend
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) return;
+        if (!token) return;
 
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -363,11 +374,27 @@ const MessageView: React.FC<MessageViewProps> = ({
         const agent = agentProfile.agent;
 
         if (agent.user_id) {
-          const { data: config } = await supabase
-            .from("whatsapp_configuration")
-            .select("webhook_url, phone_number_id")
-            .eq("user_id", agent.user_id)
-            .single();
+          const configResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${
+              agent.user_id
+            }`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          const configData = await configResponse.json();
+          if (!configResponse.ok || !configData.success) {
+            console.error(
+              "Failed to fetch whatsapp config:",
+              configData.message
+            );
+            return;
+          }
+          const config = configData.whatsapp_config;
 
           if (config?.webhook_url && customer) {
             const webhookMessage = `Send me details about ${service.service_name}`;

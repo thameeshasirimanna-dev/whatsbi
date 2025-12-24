@@ -41,12 +41,21 @@ const OrdersTab: React.FC<OrdersTabProps> = ({
         if (!agentPrefix) {
           throw new Error("Missing agent prefix");
         }
-        const ordersTable = `${agentPrefix}_orders`;
-        const { error } = await supabase
-          .from(ordersTable)
-          .delete()
-          .eq("id", orderId);
-        if (error) throw error;
+        const token = getToken();
+        const deleteResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/manage-orders?id=${orderId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const deleteData = await deleteResponse.json();
+        if (!deleteResponse.ok || !deleteData.success) {
+          throw new Error(deleteData.message || "Failed to delete order");
+        }
         onRefresh();
       } catch (err: any) {
         alert("Failed to delete order: " + err.message);
@@ -92,7 +101,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({
                 </span>
               </div>
               <p className="text-sm text-gray-600 mb-2">
-                Total: LKR {order.total_amount?.toFixed(2) || "0.00"}
+                Total: LKR {Number(order.total_amount)?.toFixed(2) || "0.00"}
               </p>
               <p className="text-xs text-gray-500">
                 Placed on: {new Date(order.created_at).toLocaleDateString()}
@@ -144,7 +153,14 @@ const OrdersTab: React.FC<OrdersTabProps> = ({
                   <span>Edit</span>
                 </button>
                 <button
-                  onClick={() => onGenerateInvoice(order.id, `Invoice for Order #${order.id.toString().padStart(4, "0")}`)}
+                  onClick={() =>
+                    onGenerateInvoice(
+                      order.id,
+                      `Invoice for Order #${order.id
+                        .toString()
+                        .padStart(4, "0")}`
+                    )
+                  }
                   className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors flex items-center space-x-1"
                 >
                   <svg

@@ -46,14 +46,47 @@ export default async function manageOrdersRoutes(
           const limit = parseInt(url.searchParams.get("limit") || "50");
           const offset = parseInt(url.searchParams.get("offset") || "0");
           const customerId = url.searchParams.get("customer_id");
+          const orderId = url.searchParams.get("order_id");
 
           console.log("Orders fetch params:", {
             search,
             limit,
             offset,
             customerId,
+            orderId,
             agentPrefix,
           });
+
+          // If order_id is provided, fetch single order
+          if (orderId) {
+            const sql = `
+              SELECT
+                o.*,
+                json_build_object('id', c.id, 'name', c.name, 'phone', c.phone) as customer,
+                COALESCE(json_agg(
+                  json_build_object('order_id', oi.order_id, 'name', oi.name, 'quantity', oi.quantity, 'price', oi.price, 'total', oi.quantity * oi.price)
+                ) FILTER (WHERE oi.order_id IS NOT NULL), '[]'::json) as items
+              FROM ${agentPrefix}_orders o
+              LEFT JOIN ${agentPrefix}_customers c ON o.customer_id = c.id
+              LEFT JOIN ${agentPrefix}_orders_items oi ON o.id = oi.order_id
+              WHERE o.id = $1
+              GROUP BY o.id, c.id
+            `;
+
+            const { rows: orders } = await pgClient.query(sql, [parseInt(orderId)]);
+
+            if (orders.length === 0) {
+              return reply.code(404).send({
+                success: false,
+                message: "Order not found",
+              });
+            }
+
+            return reply.code(200).send({
+              success: true,
+              order: orders[0],
+            });
+          }
 
           // Build the SQL query
           let sql = `

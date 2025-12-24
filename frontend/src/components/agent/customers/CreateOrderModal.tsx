@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// import { getToken } from '../../../lib/auth';
+import { getToken } from "../../../lib/auth";
 
 interface OrderItem {
   name: string;
@@ -32,19 +32,21 @@ interface CreateOrderModalProps {
   onSuccess: () => void;
 }
 
-const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ 
-  customer, 
-  agentPrefix, 
-  agentId, 
-  onClose, 
-  onSuccess 
+const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
+  customer,
+  agentPrefix,
+  agentId,
+  onClose,
+  onSuccess,
 }) => {
   const [items, setItems] = useState<OrderItem[]>([]);
-  const [notes, setNotes] = useState('');
-  const [shippingAddress, setShippingAddress] = useState('');
-  const [businessType, setBusinessType] = useState<'service' | 'product' | null>(null);
+  const [notes, setNotes] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [businessType, setBusinessType] = useState<
+    "service" | "product" | null
+  >(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
+  const [inventorySearchTerm, setInventorySearchTerm] = useState("");
   const [defaultAddQuantity, setDefaultAddQuantity] = useState(1);
   // Hardcoded to LKR
   const [loading, setLoading] = useState(false);
@@ -53,17 +55,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   useEffect(() => {
     const fetchBusinessType = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) return;
+        const token = getToken();
+        if (!token) return;
 
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -90,18 +90,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   useEffect(() => {
     const fetchInventory = async () => {
-      if (businessType !== 'product') return;
+      if (businessType !== "product") return;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        const token = getToken();
+        if (!token) return;
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
           {
-            method: 'GET',
+            method: "GET",
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            }
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
         );
         if (!response.ok) {
@@ -113,8 +113,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         }
         setInventoryItems(data.items || []);
       } catch (err) {
-        console.error('Failed to fetch inventory:', err);
-        setError('Failed to load inventory items');
+        console.error("Failed to fetch inventory:", err);
+        setError("Failed to load inventory items");
       }
     };
 
@@ -122,16 +122,20 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   }, [businessType]);
 
   const addItem = () => {
-    setItems([...items, { name: '', quantity: 1, price: 0 }]);
+    setItems([...items, { name: "", quantity: 1, price: 0 }]);
   };
 
   const removeItem = (index: number) => {
-    if (items.length > 1 || businessType === 'product') {
+    if (items.length > 1 || businessType === "product") {
       setItems(items.filter((_, i) => i !== index));
     }
   };
 
-  const updateItem = (index: number, field: keyof OrderItem, value: string | number) => {
+  const updateItem = (
+    index: number,
+    field: keyof OrderItem,
+    value: string | number
+  ) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     setItems(newItems);
@@ -141,25 +145,26 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     setItems([...items, { name: item.name, quantity, price: item.price }]);
   };
 
-  const filteredInventory = inventoryItems.filter(item =>
-    item.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
-    item.sku?.toLowerCase().includes(inventorySearchTerm.toLowerCase())
+  const filteredInventory = inventoryItems.filter(
+    (item) =>
+      item.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
+      item.sku?.toLowerCase().includes(inventorySearchTerm.toLowerCase())
   );
 
   const calculateTotal = () => {
-    return items.reduce((total, item) => total + (item.quantity * item.price), 0);
+    return items.reduce((total, item) => total + item.quantity * item.price, 0);
   };
 
   // Hardcoded to LKR
-  const CURRENCY_SYMBOL = 'LKR';
+  const CURRENCY_SYMBOL = "LKR";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agentPrefix || !agentId) {
-      setError('Agent configuration missing');
+      setError("Agent configuration missing");
       return;
     }
-  
+
     const validItems = items.filter(
       (item) => item.name.trim() && item.price > 0 && item.quantity > 0
     );
@@ -176,110 +181,56 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       setLoading(true);
       setError(null);
 
-      const ordersTable = `${agentPrefix}_orders`;
-      const orderItemsTable = `${agentPrefix}_orders_items`;
-
-      // Step 1: Insert the main order record
-      const { data: orderData, error: orderError } = await supabase
-        .from(ordersTable)
-        .insert({
-          customer_id: customer.id,
-          total_amount: totalAmount,
-          status: "pending",
-          notes: orderNotes,
-          shipping_address: orderShippingAddress,
-        })
-        .select("id")
-        .single();
-
-      if (orderError) {
-        throw orderError;
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication required');
       }
 
-      if (!orderData?.id) {
-        throw new Error(
-          "Failed to get order ID - orderData: " + JSON.stringify(orderData)
-        );
-      }
+      // Prepare order items
+      const items = validItems.map((item) => ({
+        name: item.name.trim(),
+        quantity: Math.floor(Number(item.quantity)) || 1,
+        price: Number(item.price) || 0,
+      }));
 
-      const orderId = orderData.id;
-
-      // Step 2: Prepare all order items with sanitization
-      const orderItemsData = validItems.map((item) => {
-        // Enhanced sanitization for SQL special characters - remove rather than escape to avoid SQL generation issues
-        const safeName = item.name
-          .trim()
-          .replace(/,/g, " - ")
-          .replace(/"/g, "'") // Replace double quotes with single quotes
-          .replace(/'/g, "''") // Escape single quotes by doubling them
-          .replace(/\n/g, " ") // Replace newlines with spaces
-          .replace(/\r/g, " ") // Replace carriage returns
-          .replace(/--/g, "-") // Prevent SQL comment sequences
-          .replace(/;/g, "") // Remove semicolons
-          .replace(/\//g, "-") // Replace slashes
-          .substring(0, 100); // Limit length to prevent very long names
-
-        // Strict type conversion to match schema
-        const insertQuantity = Math.floor(Number(item.quantity)) || 1;
-        const insertPrice = Number(item.price) || 0;
-
-        // Additional validation
-        if (insertQuantity <= 0 || insertPrice <= 0 || !safeName.trim()) {
-          throw new Error(
-            `Invalid item data: quantity=${insertQuantity}, price=${insertPrice}, name="${safeName}"`
-          );
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            customer_id: customer.id,
+            notes: orderNotes,
+            shipping_address: orderShippingAddress,
+            items
+          })
         }
-
-        return {
-          order_id: parseInt(orderId.toString()),
-          name: safeName,
-          quantity: insertQuantity,
-          price: parseFloat(insertPrice.toFixed(2)),
-          original_name: item.name, // For logging only
-        };
-      });
-
-      // Bulk insert all order items at once - more reliable than individual inserts for dynamic tables
-      const { error: itemError } = await supabase.from(orderItemsTable).insert(
-        orderItemsData.map((item) => {
-          const { original_name, ...insertData } = item;
-          return insertData;
-        })
       );
 
-      if (itemError) {
-        // Fallback: Try individual inserts
-        let allItemsInserted = true;
-        for (const itemData of orderItemsData) {
-          const { original_name, ...insertData } = itemData;
-          const { error: singleError } = await supabase
-            .from(orderItemsTable)
-            .insert(insertData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
 
-          if (singleError) {
-            allItemsInserted = false;
-            break;
-          }
-        }
-
-        if (!allItemsInserted) {
-          throw new Error(
-            "Failed to insert order items even with individual inserts"
-          );
-        }
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create order');
       }
 
       onSuccess();
       onClose();
     } catch (err: any) {
-      const errorMessage = err.message || 'Unknown error';
+      const errorMessage = err.message || "Unknown error";
       setError(`Failed to create order: ${errorMessage}`);
       console.error("Order creation error:", {
         message: errorMessage,
         code: err.code,
         details: err.details,
         hint: err.hint,
-        stack: err.stack
+        stack: err.stack,
       });
     } finally {
       setLoading(false);
@@ -290,26 +241,46 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold text-gray-900">Create Order for {customer.name}</h3>
+          <h3 className="text-xl font-semibold text-gray-900">
+            Create Order for {customer.name}
+          </h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
 
         <div className="mb-4">
-          <p className="text-sm text-gray-600">Customer: <span className="font-medium">{customer.name}</span></p>
-          <p className="text-sm text-gray-600">Phone: <span className="font-medium">{customer.phone}</span></p>
+          <p className="text-sm text-gray-600">
+            Customer: <span className="font-medium">{customer.name}</span>
+          </p>
+          <p className="text-sm text-gray-600">
+            Phone: <span className="font-medium">{customer.phone}</span>
+          </p>
         </div>
 
         {/* Currency hardcoded to LKR */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-          <p className="px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">LKR</p>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Currency
+          </label>
+          <p className="px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+            LKR
+          </p>
         </div>
 
         {error && (
@@ -320,48 +291,75 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Order Items */}
-          {businessType === 'service' ? (
+          {businessType === "service" ? (
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Order Items</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Order Items
+              </label>
               {items.map((item, index) => (
-                <div key={index} className="flex space-x-3 items-end bg-gray-50 p-3 rounded-lg">
+                <div
+                  key={index}
+                  className="flex space-x-3 items-end bg-gray-50 p-3 rounded-lg"
+                >
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Item Name</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Item Name
+                    </label>
                     <input
                       type="text"
                       value={item.name}
-                      onChange={(e) => updateItem(index, 'name', e.target.value)}
+                      onChange={(e) =>
+                        updateItem(index, "name", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Item name"
                       required
                     />
                   </div>
                   <div className="w-20">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Qty
+                    </label>
                     <input
                       type="number"
                       min="1"
                       value={item.quantity}
-                      onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        updateItem(
+                          index,
+                          "quantity",
+                          parseInt(e.target.value) || 1
+                        )
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     />
                   </div>
                   <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Price (LKR)</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Price (LKR)
+                    </label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={item.price}
-                      onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        updateItem(
+                          index,
+                          "price",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                       required
                     />
                   </div>
                   <div className="w-20">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Total</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Total
+                    </label>
                     <input
                       type="number"
                       value={(item.quantity * item.price).toFixed(2)}
@@ -376,8 +374,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       onClick={() => removeItem(index)}
                       className="w-8 h-8 flex items-center justify-center text-red-600 hover:text-red-800 -mt-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   )}
@@ -391,10 +399,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 + Add Item
               </button>
             </div>
-          ) : businessType === 'product' ? (
+          ) : businessType === "product" ? (
             <>
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Products from Inventory</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Products from Inventory
+                </label>
                 <input
                   type="text"
                   placeholder="Search products by name or SKU..."
@@ -403,19 +413,26 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="flex items-center space-x-3 mb-3">
-                  <label className="text-sm font-medium text-gray-700">Default Quantity:</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Default Quantity:
+                  </label>
                   <input
                     type="number"
                     min="1"
                     value={defaultAddQuantity}
-                    onChange={(e) => setDefaultAddQuantity(parseInt(e.target.value) || 1)}
+                    onChange={(e) =>
+                      setDefaultAddQuantity(parseInt(e.target.value) || 1)
+                    }
                     className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 {filteredInventory.length > 0 ? (
                   <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
                     {filteredInventory.map((invItem) => (
-                      <div key={invItem.id} className="flex items-center justify-between p-2 hover:bg-gray-100 rounded">
+                      <div
+                        key={invItem.id}
+                        className="flex items-center justify-between p-2 hover:bg-gray-100 rounded"
+                      >
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                           {invItem.image_urls?.[0] && (
                             <img
@@ -425,13 +442,19 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                             />
                           )}
                           <div className="min-w-0 flex-1">
-                            <div className="font-medium truncate">{invItem.name}</div>
-                            <div className="text-sm text-gray-500">LKR {invItem.price.toFixed(2)}</div>
+                            <div className="font-medium truncate">
+                              {invItem.name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              LKR {invItem.price.toFixed(2)}
+                            </div>
                           </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => addFromInventory(invItem, defaultAddQuantity)}
+                          onClick={() =>
+                            addFromInventory(invItem, defaultAddQuantity)
+                          }
                           className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm ml-2 flex-shrink-0"
                         >
                           Add
@@ -441,17 +464,26 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   </div>
                 ) : (
                   <div className="text-center py-4 text-gray-500 border rounded-lg">
-                    {inventorySearchTerm ? 'No products found' : 'No inventory items available. Add some in the Inventory page.'}
+                    {inventorySearchTerm
+                      ? "No products found"
+                      : "No inventory items available. Add some in the Inventory page."}
                   </div>
                 )}
               </div>
               {items.length > 0 && (
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Added Order Items</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Added Order Items
+                  </label>
                   {items.map((item, index) => (
-                    <div key={index} className="flex space-x-3 items-end bg-gray-50 p-3 rounded-lg">
+                    <div
+                      key={index}
+                      className="flex space-x-3 items-end bg-gray-50 p-3 rounded-lg"
+                    >
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Item Name</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Item Name
+                        </label>
                         <input
                           type="text"
                           value={item.name}
@@ -460,17 +492,27 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         />
                       </div>
                       <div className="w-20">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Qty
+                        </label>
                         <input
                           type="number"
                           min="1"
                           value={item.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              "quantity",
+                              parseInt(e.target.value) || 1
+                            )
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div className="w-24">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Price (LKR)</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Price (LKR)
+                        </label>
                         <input
                           type="number"
                           min="0"
@@ -481,7 +523,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         />
                       </div>
                       <div className="w-20">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Total</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Total
+                        </label>
                         <input
                           type="number"
                           value={(item.quantity * item.price).toFixed(2)}
@@ -494,8 +538,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         onClick={() => removeItem(index)}
                         className="w-8 h-8 flex items-center justify-center text-red-600 hover:text-red-800 -mt-2"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -512,7 +566,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notes (Optional)
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -524,7 +580,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
           {/* Shipping Address */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Address (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Shipping Address (Optional)
+            </label>
             <textarea
               value={shippingAddress}
               onChange={(e) => setShippingAddress(e.target.value)}
@@ -558,9 +616,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             >
               {loading ? (
                 <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Creating...</span>
-                  </>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Creating...</span>
+                </>
               ) : (
                 <span>Create Order</span>
               )}

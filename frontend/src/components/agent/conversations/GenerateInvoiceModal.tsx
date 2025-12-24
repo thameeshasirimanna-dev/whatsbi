@@ -82,30 +82,14 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
     setGenerating(true);
     setError(null);
     try {
-      // Fetch order details
-      const ordersTable = `${agentPrefix}_orders`;
-      const { data: orderData, error: orderError } = await supabase
-        .from(ordersTable)
-        .select("id, customer_id, status, notes, created_at")
-        .eq("id", selectedOrderId)
-        .single();
-
-      if (orderError || !orderData) {
-        throw new Error("Failed to fetch order details");
+      // Find order details from props
+      const orderData = orders.find(o => o.id === selectedOrderId);
+      if (!orderData) {
+        throw new Error("Order not found");
       }
 
-      // Fetch order items
-      const itemsTable = `${agentPrefix}_orders_items`;
-      const { data: itemsData, error: itemsError } = await supabase
-        .from(itemsTable)
-        .select("name, quantity, price, total")
-        .eq("order_id", selectedOrderId);
-
-      if (itemsError) {
-        throw new Error("Failed to fetch order items: " + itemsError.message);
-      }
-
-      const items: InvoiceItem[] = (itemsData || []).map((item: any) => ({
+      // Use order items from order data (assuming it's included)
+      const items: InvoiceItem[] = (orderData.order_items || []).map((item: any) => ({
         name: item.name,
         quantity: item.quantity,
         price: item.price,

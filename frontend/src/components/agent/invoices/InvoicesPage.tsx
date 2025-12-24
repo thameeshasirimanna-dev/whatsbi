@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, Combobox } from '@headlessui/react';
 import { getToken, getCurrentUser } from "../../../lib/auth";
+import { getCurrentAgent } from "../../../lib/agent";
 import jsPDF from "jspdf";
 
 interface InvoiceItem {
@@ -370,44 +371,41 @@ const InvoicesPage: React.FC = () => {
     setGenerating(order.id);
 
     try {
+      const token = getToken();
+      if (!token) {
+        setError("User not authenticated");
+        return;
+      }
       // Refetch latest invoice template path to ensure it's up-to-date
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          const agentProfile = await response.json();
-          if (agentProfile.success && agentProfile.agent) {
-            setInvoiceTemplatePath(
-              agentProfile.agent.invoice_template_path || null
-            );
-          }
-        }
+      const agent = await getCurrentAgent();
+      if (agent) {
+        setInvoiceTemplatePath(agent.invoice_template_path || null);
       }
 
       // Fetch order items
-      const itemsTable = `${agentPrefix}_orders_items`;
-      const { data: itemsData, error: itemsError } = await supabase
-        .from(itemsTable)
-        .select("name, quantity, price, total")
-        .eq("order_id", order.id);
+      const itemsResponse = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/manage-orders?type=items&order_id=${order.id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (itemsError) {
-        throw new Error("Failed to fetch order items: " + itemsError.message);
+      if (!itemsResponse.ok) {
+        throw new Error("Failed to fetch order items");
       }
 
-      const items: InvoiceItem[] = (itemsData || []).map((item: any) => ({
+      const itemsData = await itemsResponse.json();
+      if (!itemsData.success) {
+        throw new Error("Failed to fetch order items");
+      }
+
+      const items: InvoiceItem[] = (itemsData.items || []).map((item: any) => ({
         name: item.name,
         quantity: item.quantity,
         price: item.price,
@@ -416,61 +414,78 @@ const InvoicesPage: React.FC = () => {
 
       // Fetch template if available
       let templateBase64: string | null = null;
-      if (latestAgentData?.invoice_template_path || invoiceTemplatePath) {
-        const currentPath =
-          latestAgentData?.invoice_template_path || invoiceTemplatePath;
+      if (agent?.invoice_template_path || invoiceTemplatePath) {
+        const currentPath = agent?.invoice_template_path || invoiceTemplatePath;
         try {
-          const { data: templateData, error: templateError } =
-            await supabase.storage
-              .from("agent-templates")
-              .download(currentPath);
+          if (!currentPath) {
+            console.warn("No template path available");
+          } else {
+            const templateResponse = await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/get-invoice-template?path=${encodeURIComponent(currentPath)}`,
+              {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
 
-          if (templateError) {
-            console.warn("Failed to fetch template:", templateError);
-          } else if (templateData) {
-            const img = new Image();
-            const url = URL.createObjectURL(templateData);
-            img.src = url;
-            await new Promise((resolve, reject) => {
-              img.onload = () => {
-                const canvas = document.createElement("canvas");
-                const ctx = canvas.getContext("2d")!;
-                const DPI = 150;
-                const a4WidthPt = 595; // A4 width at 72 DPI
-                const a4HeightPt = 842; // A4 height at 72 DPI
-                const scaleFactor = DPI / 72;
-                const canvasWidth = a4WidthPt * scaleFactor;
-                const canvasHeight = a4HeightPt * scaleFactor;
-                canvas.width = canvasWidth;
-                canvas.height = canvasHeight;
+            if (templateResponse.ok) {
+              const templateBlob = await templateResponse.blob();
+              const img = new Image();
+              const url = URL.createObjectURL(templateBlob);
+              img.src = url;
+              await new Promise((resolve, reject) => {
+                img.onload = () => {
+                  const canvas = document.createElement("canvas");
+                  const ctx = canvas.getContext("2d")!;
+                  const DPI = 150;
+                  const a4WidthPt = 595; // A4 width at 72 DPI
+                  const a4HeightPt = 842; // A4 height at 72 DPI
+                  const scaleFactor = DPI / 72;
+                  const canvasWidth = a4WidthPt * scaleFactor;
+                  const canvasHeight = a4HeightPt * scaleFactor;
+                  canvas.width = canvasWidth;
+                  canvas.height = canvasHeight;
 
-                // Calculate scale to fit A4 while preserving aspect ratio at high DPI
-                const scaleX = canvasWidth / img.width;
-                const scaleY = canvasHeight / img.height;
-                const scale = Math.min(scaleX, scaleY);
-                const scaledWidth = img.width * scale;
-                const scaledHeight = img.height * scale;
+                  // Calculate scale to fit A4 while preserving aspect ratio at high DPI
+                  const scaleX = canvasWidth / img.width;
+                  const scaleY = canvasHeight / img.height;
+                  const scale = Math.min(scaleX, scaleY);
+                  const scaledWidth = img.width * scale;
+                  const scaledHeight = img.height * scale;
 
-                // Center the image
-                const offsetX = (canvasWidth - scaledWidth) / 2;
-                const offsetY = (canvasHeight - scaledHeight) / 2;
+                  // Center the image
+                  const offsetX = (canvasWidth - scaledWidth) / 2;
+                  const offsetY = (canvasHeight - scaledHeight) / 2;
 
-                // Fill canvas with white background for JPEG compatibility
-                ctx.fillStyle = "white";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  // Fill canvas with white background for JPEG compatibility
+                  ctx.fillStyle = "white";
+                  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = "high";
-                ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
-                templateBase64 = canvas.toDataURL("image/jpeg", 0.95); // JPEG for better compression while maintaining quality
-                URL.revokeObjectURL(url);
-                resolve(null);
-              };
-              img.onerror = () => {
-                console.error("Failed to load template image");
-                reject(new Error("Image load failed"));
-              };
-            });
+                  ctx.imageSmoothingEnabled = true;
+                  ctx.imageSmoothingQuality = "high";
+                  ctx.drawImage(
+                    img,
+                    offsetX,
+                    offsetY,
+                    scaledWidth,
+                    scaledHeight
+                  );
+                  templateBase64 = canvas.toDataURL("image/jpeg", 0.95); // JPEG for better compression while maintaining quality
+                  URL.revokeObjectURL(url);
+                  resolve(null);
+                };
+                img.onerror = () => {
+                  console.error("Failed to load template image");
+                  reject(new Error("Image load failed"));
+                };
+              });
+            } else {
+              console.warn("Failed to fetch template");
+            }
           }
         } catch (err) {
           console.error("Error fetching template:", err);
@@ -700,36 +715,58 @@ const InvoicesPage: React.FC = () => {
       const fileName = `${agentPrefix}/${sanitizedFileName}.pdf`;
 
       // Upload to storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("invoices")
-        .upload(fileName, pdfBlob, {
-          contentType: "application/pdf",
-          upsert: true,
-        });
+      const uploadResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/upload-invoice`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fileName,
+            pdfBlob: await pdfBlob.arrayBuffer(), // Convert blob to array buffer for JSON
+          }),
+        }
+      );
 
-      if (uploadError) {
-        throw new Error("Failed to upload invoice: " + uploadError.message);
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload invoice");
       }
 
-      // Get public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("invoices").getPublicUrl(fileName);
+      const uploadData = await uploadResponse.json();
+      if (!uploadData.success) {
+        throw new Error("Failed to upload invoice");
+      }
+
+      const publicUrl = uploadData.publicUrl;
 
       // Insert invoice record
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-      const { error: insertError } = await supabase.from(invoicesTable).insert({
-        order_id: order.id,
-        name: invoiceName,
-        pdf_url: publicUrl,
-        status: "generated" as const,
-        discount_percentage: discountPercentage,
-      });
+      const insertResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-invoices`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            order_id: order.id,
+            name: invoiceName,
+            pdf_url: publicUrl,
+            status: "generated",
+            discount_percentage: discountPercentage,
+          }),
+        }
+      );
 
-      if (insertError) {
-        throw new Error(
-          "Failed to save invoice record: " + insertError.message
-        );
+      if (!insertResponse.ok) {
+        throw new Error("Failed to save invoice record");
+      }
+
+      const insertData = await insertResponse.json();
+      if (!insertData.success) {
+        throw new Error("Failed to save invoice record");
       }
 
       // Refresh data
@@ -761,56 +798,100 @@ const InvoicesPage: React.FC = () => {
     setUpdating(invoiceId);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user || !userId) {
+      const token = getToken();
+      if (!token) {
         throw new Error("User not authenticated");
       }
 
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-      const ordersTable = `${agentPrefix}_orders`;
-      const customersTable = `${agentPrefix}_customers`;
-      const itemsTable = `${agentPrefix}_orders_items`;
+      const user = await getCurrentUser();
+      if (!user.success || !user.user || !userId) {
+        throw new Error("User not authenticated");
+      }
 
       // Fetch invoice
-      const { data: invoice, error: invoiceError } = await supabase
-        .from(invoicesTable)
-        .select("id, name, pdf_url, order_id, discount_percentage, status")
-        .eq("id", invoiceId)
-        .single();
+      const invoiceResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-invoices?id=${invoiceId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (invoiceError || !invoice) {
-        throw new Error(
-          "Failed to fetch invoice: " + (invoiceError?.message || "Not found")
-        );
+      if (!invoiceResponse.ok) {
+        throw new Error("Failed to fetch invoice");
       }
+
+      const invoiceData = await invoiceResponse.json();
+      if (
+        !invoiceData.success ||
+        !invoiceData.invoices ||
+        invoiceData.invoices.length === 0
+      ) {
+        throw new Error("Invoice not found");
+      }
+
+      const invoice = invoiceData.invoices[0];
 
       // Fetch order
-      const { data: order, error: orderError } = await supabase
-        .from(ordersTable)
-        .select("customer_id")
-        .eq("id", invoice.order_id)
-        .single();
+      const orderResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders?id=${
+          invoice.order_id
+        }`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (orderError || !order) {
-        throw new Error(
-          "Failed to fetch order: " + (orderError?.message || "Not found")
-        );
+      if (!orderResponse.ok) {
+        throw new Error("Failed to fetch order");
       }
+
+      const orderData = await orderResponse.json();
+      if (
+        !orderData.success ||
+        !orderData.orders ||
+        orderData.orders.length === 0
+      ) {
+        throw new Error("Order not found");
+      }
+
+      const order = orderData.orders[0];
 
       // Fetch customer (include last_user_message_time for 24h window check)
-      const { data: customer, error: customerError } = await supabase
-        .from(customersTable)
-        .select("id, name, phone, last_user_message_time")
-        .eq("id", order.customer_id)
-        .single();
+      const customerResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-customers?id=${
+          order.customer_id
+        }`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (customerError || !customer) {
-        throw new Error(
-          "Failed to fetch customer: " + (customerError?.message || "Not found")
-        );
+      if (!customerResponse.ok) {
+        throw new Error("Failed to fetch customer");
       }
+
+      const customerData = await customerResponse.json();
+      if (
+        !customerData.success ||
+        !customerData.customers ||
+        customerData.customers.length === 0
+      ) {
+        throw new Error("Customer not found");
+      }
+
+      const customer = customerData.customers[0];
 
       const phone = customer.phone;
       if (!phone) {
@@ -821,16 +902,29 @@ const InvoicesPage: React.FC = () => {
       const orderNumber = `#${orderId.toString().padStart(4, "0")}`;
 
       // Calculate total
-      const { data: itemsData, error: itemsError } = await supabase
-        .from(itemsTable)
-        .select("total")
-        .eq("order_id", orderId);
+      const itemsResponse = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/manage-orders?type=items&order_id=${orderId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (itemsError) {
-        throw new Error("Failed to fetch order items: " + itemsError.message);
+      if (!itemsResponse.ok) {
+        throw new Error("Failed to fetch order items");
       }
 
-      const subtotal = (itemsData || []).reduce(
+      const itemsDataResult = await itemsResponse.json();
+      if (!itemsDataResult.success) {
+        throw new Error("Failed to fetch order items");
+      }
+
+      const subtotal = (itemsDataResult.items || []).reduce(
         (sum: number, item: any) => sum + (item.total || 0),
         0
       );
@@ -877,18 +971,29 @@ const InvoicesPage: React.FC = () => {
 
       // Update status only if generated
       if (invoice.status === "generated") {
-        const { error: updateError } = await supabase
-          .from(invoicesTable)
-          .update({
-            status: "sent" as const,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", invoiceId);
+        const updateResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/manage-invoices`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: invoiceId,
+              status: "sent",
+              updated_at: new Date().toISOString(),
+            }),
+          }
+        );
 
-        if (updateError) {
-          throw new Error(
-            "Failed to update invoice status: " + updateError.message
-          );
+        if (!updateResponse.ok) {
+          throw new Error("Failed to update invoice status");
+        }
+
+        const updateData = await updateResponse.json();
+        if (!updateData.success) {
+          throw new Error("Failed to update invoice status");
         }
       }
 
@@ -908,19 +1013,34 @@ const InvoicesPage: React.FC = () => {
     setUpdating(invoiceId);
 
     try {
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-      const { error: updateError } = await supabase
-        .from(invoicesTable)
-        .update({
-          status: "paid" as const,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", invoiceId);
+      const token = getToken();
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
 
-      if (updateError) {
-        throw new Error(
-          "Failed to update invoice status: " + updateError.message
-        );
+      const updateResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-invoices`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: invoiceId,
+            status: "paid",
+            updated_at: new Date().toISOString(),
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        throw new Error("Failed to update invoice status");
+      }
+
+      const updateData = await updateResponse.json();
+      if (!updateData.success) {
+        throw new Error("Failed to update invoice status");
       }
 
       alert("Marked invoice as paid");
@@ -973,28 +1093,49 @@ const InvoicesPage: React.FC = () => {
     setUpdating(invoice.id);
 
     try {
+      const token = getToken();
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+
       // Delete from storage
       const sanitizedFileName = sanitizeFileName(invoice.name);
       const fileName = `${agentPrefix}/${sanitizedFileName}.pdf`;
-      const { error: deleteError } = await supabase.storage
-        .from("invoices")
-        .remove([fileName]);
+      const deleteResponse = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/delete-invoice?fileName=${encodeURIComponent(fileName)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      if (deleteError) {
-        throw new Error(
-          "Failed to delete PDF from storage: " + deleteError.message
-        );
+      if (!deleteResponse.ok) {
+        throw new Error("Failed to delete PDF from storage");
       }
 
       // Delete from DB
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-      const { error: dbError } = await supabase
-        .from(invoicesTable)
-        .delete()
-        .eq("id", invoice.id);
+      const dbDeleteResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-invoices?id=${invoice.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (dbError) {
-        throw new Error("Failed to delete invoice record: " + dbError.message);
+      if (!dbDeleteResponse.ok) {
+        throw new Error("Failed to delete invoice record");
+      }
+
+      const dbData = await dbDeleteResponse.json();
+      if (!dbData.success) {
+        throw new Error("Failed to delete invoice record");
       }
 
       // Refresh data

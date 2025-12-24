@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-// import { getToken } from '../../../lib/auth';
+import { getToken } from "../../../lib/auth";
+import { getCurrentAgent } from "../../../lib/agent";
 
 interface InventoryItem {
   id: number;
@@ -44,13 +45,13 @@ const InventoryPage: React.FC = () => {
     quantity: "",
     price: "",
     category_id: "",
-    sku: ""
+    sku: "",
   });
   const [createImages, setCreateImages] = useState<File[]>([]);
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     description: "",
-    color: "#000000"
+    color: "#000000",
   });
   const [editForm, setEditForm] = useState({
     name: "",
@@ -58,33 +59,33 @@ const InventoryPage: React.FC = () => {
     quantity: "",
     price: "",
     category_id: "",
-    sku: ""
+    sku: "",
   });
   const [editImages, setEditImages] = useState<File[]>([]);
   const [keptImages, setKeptImages] = useState<string[]>([]);
   const [removedImages, setRemovedImages] = useState<string[]>([]);
-
 
   const fetchItems = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-inventory`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -106,10 +107,8 @@ const InventoryPage: React.FC = () => {
   const fetchCategories = async () => {
     try {
       setLoadingCategories(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         return;
       }
 
@@ -118,7 +117,7 @@ const InventoryPage: React.FC = () => {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -156,21 +155,14 @@ const InventoryPage: React.FC = () => {
     if (!createForm.name.trim()) return;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
 
-      const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", session.user.id)
-        .single();
-
-      if (agentError || !agentData) {
+      const agent = await getCurrentAgent();
+      if (!agent) {
         setError("Agent not found");
         return;
       }
@@ -183,24 +175,27 @@ const InventoryPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-inventory`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: createForm.name.trim(),
-          description: createForm.description.trim() || null,
-          quantity: createForm.quantity ? parseInt(createForm.quantity) : 0,
-          price: createForm.price ? parseFloat(createForm.price) : 0,
-          category_id: createForm.category_id
-            ? parseInt(createForm.category_id)
-            : null,
-          sku: createForm.sku.trim() || null,
-          image_urls: null,
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: createForm.name.trim(),
+            description: createForm.description.trim() || null,
+            quantity: createForm.quantity ? parseInt(createForm.quantity) : 0,
+            price: createForm.price ? parseFloat(createForm.price) : 0,
+            category_id: createForm.category_id
+              ? parseInt(createForm.category_id)
+              : null,
+            sku: createForm.sku.trim() || null,
+            image_urls: null,
+          }),
+        }
+      );
 
       const data = await response.json();
       if (data.error) {
@@ -217,10 +212,10 @@ const InventoryPage: React.FC = () => {
       if (createImages.length > 0) {
         try {
           imageUrls = await uploadImages(
-            agentData.id.toString(),
+            agent.id.toString(),
             itemId.toString(),
             createImages,
-            session.access_token
+            token
           );
         } catch (uploadError) {
           setError("Item created but failed to upload images");
@@ -236,7 +231,7 @@ const InventoryPage: React.FC = () => {
           {
             method: "PUT",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -273,10 +268,8 @@ const InventoryPage: React.FC = () => {
     if (!categoryForm.name.trim()) return;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
@@ -286,7 +279,7 @@ const InventoryPage: React.FC = () => {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -324,21 +317,14 @@ const InventoryPage: React.FC = () => {
     if (!editingItem || !editForm.name.trim()) return;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
 
-      const { data: agentData, error: agentError } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", session.user.id)
-        .single();
-
-      if (agentError || !agentData) {
+      const agent = await getCurrentAgent();
+      if (!agent) {
         setError("Agent not found");
         return;
       }
@@ -355,10 +341,10 @@ const InventoryPage: React.FC = () => {
       if (editImages.length > 0) {
         try {
           newImageUrls = await uploadImages(
-            agentData.id.toString(),
+            agent.id.toString(),
             editingItem.id.toString(),
             editImages,
-            session.access_token
+            token
           );
         } catch (uploadError) {
           setError("Failed to upload images");
@@ -366,26 +352,29 @@ const InventoryPage: React.FC = () => {
         }
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-inventory`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: editingItem.id,
-          name: editForm.name.trim(),
-          description: editForm.description.trim() || null,
-          quantity: editForm.quantity ? parseInt(editForm.quantity) : 0,
-          price: editForm.price ? parseFloat(editForm.price) : 0,
-          category_id: editForm.category_id
-            ? parseInt(editForm.category_id)
-            : null,
-          sku: editForm.sku.trim() || null,
-          image_urls: [...keptImages, ...newImageUrls],
-          removed_image_urls: removedImages,
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: editingItem.id,
+            name: editForm.name.trim(),
+            description: editForm.description.trim() || null,
+            quantity: editForm.quantity ? parseInt(editForm.quantity) : 0,
+            price: editForm.price ? parseFloat(editForm.price) : 0,
+            category_id: editForm.category_id
+              ? parseInt(editForm.category_id)
+              : null,
+            sku: editForm.sku.trim() || null,
+            image_urls: [...keptImages, ...newImageUrls],
+            removed_image_urls: removedImages,
+          }),
+        }
+      );
 
       const data = await response.json();
       if (data.error) {
@@ -419,10 +408,8 @@ const InventoryPage: React.FC = () => {
     if (!editingCategory || !categoryForm.name.trim()) return;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
@@ -432,7 +419,7 @@ const InventoryPage: React.FC = () => {
         {
           method: "PUT",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -474,10 +461,8 @@ const InventoryPage: React.FC = () => {
     }
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
@@ -487,7 +472,7 @@ const InventoryPage: React.FC = () => {
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -519,20 +504,20 @@ const InventoryPage: React.FC = () => {
     }
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory?type=category&id=${category.id}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/manage-inventory?type=category&id=${category.id}`,
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }

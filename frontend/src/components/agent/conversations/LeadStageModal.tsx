@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../lib/auth";
+import { getCustomers, updateCustomer } from "../../../lib/api";
 
-export type LeadStage = 'New Lead' | 'Contacted' | 'Not Responding' | 'Follow-up Needed';
+export type LeadStage =
+  | "New Lead"
+  | "Contacted"
+  | "Not Responding"
+  | "Follow-up Needed";
 
-export type InterestStage = 'Interested' | 'Quotation Sent' | 'Asked for More Info';
+export type InterestStage =
+  | "Interested"
+  | "Quotation Sent"
+  | "Asked for More Info";
 
-export type ConversionStage = 'Payment Pending' | 'Paid' | 'Order Confirmed';
+export type ConversionStage = "Payment Pending" | "Paid" | "Order Confirmed";
 
 interface LeadStageModalProps {
   isOpen: boolean;
@@ -14,7 +22,11 @@ interface LeadStageModalProps {
   customerName: string;
   agentPrefix: string | null;
   agentId: number | null;
-  onStageUpdate?: (newStages: { lead_stage: LeadStage; interest_stage: InterestStage | null; conversion_stage: ConversionStage | null }) => void;
+  onStageUpdate?: (newStages: {
+    lead_stage: LeadStage;
+    interest_stage: InterestStage | null;
+    conversion_stage: ConversionStage | null;
+  }) => void;
 }
 
 const LeadStageModal: React.FC<LeadStageModalProps> = ({
@@ -29,35 +41,47 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<number | null>(null);
-  const [currentLeadStage, setCurrentLeadStage] = useState<LeadStage | null>(null);
-  const [currentInterestStage, setCurrentInterestStage] = useState<InterestStage | null>(null);
-  const [currentConversionStage, setCurrentConversionStage] = useState<ConversionStage | null>(null);
-  const [selectedLeadStage, setSelectedLeadStage] = useState<LeadStage | null>(null);
-  const [selectedInterestStage, setSelectedInterestStage] = useState<InterestStage | null>(null);
-  const [selectedConversionStage, setSelectedConversionStage] = useState<ConversionStage | null>(null);
+  const [currentLeadStage, setCurrentLeadStage] = useState<LeadStage | null>(
+    null
+  );
+  const [currentInterestStage, setCurrentInterestStage] =
+    useState<InterestStage | null>(null);
+  const [currentConversionStage, setCurrentConversionStage] =
+    useState<ConversionStage | null>(null);
+  const [selectedLeadStage, setSelectedLeadStage] = useState<LeadStage | null>(
+    null
+  );
+  const [selectedInterestStage, setSelectedInterestStage] =
+    useState<InterestStage | null>(null);
+  const [selectedConversionStage, setSelectedConversionStage] =
+    useState<ConversionStage | null>(null);
   const [updating, setUpdating] = useState(false);
 
   const leadStages: LeadStage[] = [
-    'New Lead',
-    'Contacted',
-    'Not Responding',
-    'Follow-up Needed',
+    "New Lead",
+    "Contacted",
+    "Not Responding",
+    "Follow-up Needed",
   ];
 
   const interestStages: InterestStage[] = [
-    'Interested',
-    'Quotation Sent',
-    'Asked for More Info',
+    "Interested",
+    "Quotation Sent",
+    "Asked for More Info",
   ];
 
   const conversionStages: ConversionStage[] = [
-    'Payment Pending',
-    'Paid',
-    'Order Confirmed',
+    "Payment Pending",
+    "Paid",
+    "Order Confirmed",
   ];
-  
-  const currentColor = currentConversionStage ? 'green' : currentInterestStage ? 'yellow' : 'blue';
-  
+
+  const currentColor = currentConversionStage
+    ? "green"
+    : currentInterestStage
+    ? "yellow"
+    : "blue";
+
   // Handle cascading stage logic
   const handleStageChange = (
     field: "lead_stage" | "interest_stage" | "conversion_stage",
@@ -92,30 +116,34 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
     setError(null);
 
     try {
-      // Find customer_id by phone
-      const customersTable = `${agentPrefix}_customers`;
-      const { data: customerData, error: customerError } = await supabase
-        .from(customersTable)
-        .select("id, lead_stage, interest_stage, conversion_stage")
-        .eq("phone", customerPhone)
-        .eq("agent_id", agentId)
-        .single();
+      // Find customer by phone
+      const customers = await getCustomers({ search: customerPhone! });
+      const customerData = customers.find((c) => c.phone === customerPhone);
 
-      if (customerError || !customerData) {
+      if (!customerData) {
         setError("Customer not found");
         setLoading(false);
         return;
       }
 
-      const customerId = customerData.id;
-      setCustomerId(customerId);
+      setCustomerId(customerData.id);
 
-      setCurrentLeadStage(customerData.lead_stage || 'New Lead');
-      setCurrentInterestStage(customerData.interest_stage || null);
-      setCurrentConversionStage(customerData.conversion_stage || null);
-      setSelectedLeadStage(customerData.lead_stage || 'New Lead');
-      setSelectedInterestStage(customerData.interest_stage || null);
-      setSelectedConversionStage(customerData.conversion_stage || null);
+      setCurrentLeadStage((customerData.lead_stage as LeadStage) || "New Lead");
+      setCurrentInterestStage(
+        (customerData.interest_stage as InterestStage) || null
+      );
+      setCurrentConversionStage(
+        (customerData.conversion_stage as ConversionStage) || null
+      );
+      setSelectedLeadStage(
+        (customerData.lead_stage as LeadStage) || "New Lead"
+      );
+      setSelectedInterestStage(
+        (customerData.interest_stage as InterestStage) || null
+      );
+      setSelectedConversionStage(
+        (customerData.conversion_stage as ConversionStage) || null
+      );
     } catch (err: any) {
       setError("Failed to fetch customer data: " + err.message);
       console.error("Error fetching customer data:", err);
@@ -131,18 +159,12 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
     setError(null);
 
     try {
-      const customersTable = `${agentPrefix}_customers`;
-      const { error } = await supabase
-        .from(customersTable)
-        .update({
-          lead_stage: selectedLeadStage,
-          interest_stage: selectedInterestStage || null,
-          conversion_stage: selectedConversionStage || null
-        })
-        .eq("id", customerId)
-        .eq("agent_id", agentId);
-
-      if (error) throw error;
+      await updateCustomer({
+        id: customerId,
+        lead_stage: selectedLeadStage,
+        interest_stage: selectedInterestStage || undefined,
+        conversion_stage: selectedConversionStage || undefined,
+      });
 
       // Update local state
       setCurrentLeadStage(selectedLeadStage);
@@ -154,7 +176,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
         onStageUpdate({
           lead_stage: selectedLeadStage,
           interest_stage: selectedInterestStage,
-          conversion_stage: selectedConversionStage
+          conversion_stage: selectedConversionStage,
         });
       }
 
@@ -211,7 +233,9 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
             <>
               {/* Current Progress */}
               <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Current Progress</h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">
+                  Current Progress
+                </h3>
                 <div className="space-y-1">
                   {currentConversionStage ? (
                     <span className="text-sm font-medium text-green-600">
@@ -242,7 +266,9 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                     </label>
                     <select
                       value={selectedLeadStage || ""}
-                      onChange={(e) => handleStageChange("lead_stage", e.target.value)}
+                      onChange={(e) =>
+                        handleStageChange("lead_stage", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       disabled={loading || updating}
                     >
@@ -253,7 +279,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                       ))}
                     </select>
                   </div>
-                  
+
                   {/* Interest Stage */}
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -261,8 +287,12 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                     </label>
                     <select
                       value={selectedInterestStage || ""}
-                      onChange={(e) => handleStageChange("interest_stage", e.target.value)}
-                      disabled={selectedLeadStage === "New Lead" || loading || updating}
+                      onChange={(e) =>
+                        handleStageChange("interest_stage", e.target.value)
+                      }
+                      disabled={
+                        selectedLeadStage === "New Lead" || loading || updating
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
                       <option value="">Select Interest Stage</option>
@@ -273,7 +303,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                       ))}
                     </select>
                   </div>
-                  
+
                   {/* Conversion Stage */}
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -281,7 +311,9 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                     </label>
                     <select
                       value={selectedConversionStage || ""}
-                      onChange={(e) => handleStageChange("conversion_stage", e.target.value)}
+                      onChange={(e) =>
+                        handleStageChange("conversion_stage", e.target.value)
+                      }
                       disabled={!selectedInterestStage || loading || updating}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
@@ -295,8 +327,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                   </div>
                 </div>
               </div>
-              
-              
+
               {/* Update Button */}
               <button
                 onClick={handleStageUpdate}

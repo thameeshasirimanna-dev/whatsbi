@@ -60,57 +60,7 @@ const InvoicesTab: React.FC<InvoicesTabProps> = ({
   };
 
   const handleDelete = async (invoice: Invoice) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete invoice "${invoice.name}"? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
-
-    if (!agentPrefix) {
-      alert("Missing agent prefix");
-      return;
-    }
-
-    try {
-      // Extract path from public URL
-      const urlParts = invoice.pdf_url.split("/invoices/");
-      if (urlParts.length < 2) {
-        throw new Error("Invalid invoice URL");
-      }
-      const filePath = urlParts[1];
-
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("invoices")
-        .remove([filePath]);
-
-      if (storageError) {
-        console.warn("Storage delete error:", storageError);
-        // Continue with DB delete even if storage fails
-      }
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from(invoicesTable)
-        .delete()
-        .eq("id", invoice.id);
-
-      if (dbError) {
-        throw dbError;
-      }
-
-      // Refetch data
-      onRefresh();
-
-      alert("Invoice deleted successfully!");
-    } catch (err: any) {
-      alert("Failed to delete invoice: " + err.message);
-      console.error("Error deleting invoice:", err);
-    }
+    onDeleteInvoice(invoice);
   };
 
   return (

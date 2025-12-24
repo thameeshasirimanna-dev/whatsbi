@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getToken } from '../../../lib/auth';
+import { getCurrentAgent } from '../../../lib/agent';
 import {
   XMarkIcon,
   CheckIcon,
@@ -520,19 +521,32 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
       const fileName = `${timestamp}-${randomStr}.${fileExt}`;
       const filePath = `templates/${fileName}`;
 
-      const { data: supabaseData, error: uploadError } = await supabase.storage
-        .from("templates-media")
-        .upload(filePath, processedFile, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+      // Upload to backend
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', processedFile);
+      uploadFormData.append('filePath', filePath);
 
-      if (uploadError) throw uploadError;
-      if (!supabaseData) throw new Error("Supabase upload failed");
+      const uploadResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/upload-template-media`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: uploadFormData,
+        }
+      );
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("templates-media").getPublicUrl(filePath);
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const uploadData = await uploadResponse.json();
+      if (!uploadData.success) {
+        throw new Error(uploadData.error || 'Upload failed');
+      }
+
+      const publicUrl = uploadData.publicUrl;
 
       const mediaHandle = await uploadToMeta(
         processedFile,
@@ -834,8 +848,7 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
 
       onSuccess(newTemplate, isEdit);
 
-      // Cache in Supabase
-      const templatesTable = `${agentPrefix}_templates`;
+      // Cache in backend
       const cacheBody: Record<string, any> = {
         name: newTemplate.name,
         language: { code: newTemplate.language },
@@ -857,41 +870,28 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
         cacheBody.media_urls = initialTemplate.mediaUrls;
       }
 
-      if (isEdit) {
-        const { error: cacheError } = await supabase
-          .from(templatesTable)
-          .update({
-            category: formData.category.toLowerCase() as
-              | "utility"
-              | "marketing"
-              | "authentication",
+      const cacheResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-templates`,
+        {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ...(isEdit ? { id: templateName, update: true } : {}),
+            name: newTemplate.name,
+            category: formData.category.toLowerCase(),
             language: formData.language,
             body: cacheBody,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("agent_id", agentId)
-          .eq("name", templateName);
-        if (cacheError) {
-          console.error("Cache update error:", cacheError);
-        }
-      } else {
-        const { error: cacheError } = await supabase
-          .from(templatesTable)
-          .insert({
-            agent_id: agentId,
-            name: newTemplate.name,
-            category: formData.category.toLowerCase() as
-              | "utility"
-              | "marketing"
-              | "authentication",
-            language: newTemplate.language,
-            body: cacheBody,
             is_active: true,
-            created_at: new Date().toISOString(),
-          });
-        if (cacheError) {
-          console.error("Cache insert error:", cacheError);
+            ...(isEdit ? { updated_at: new Date().toISOString() } : { created_at: new Date().toISOString() }),
+          })
         }
+      );
+
+      if (!cacheResponse.ok) {
+        console.error("Cache error:", await cacheResponse.text());
       }
 
       onClose();

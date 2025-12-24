@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// import { getToken } from '../../../lib/auth';
+import { getToken } from "../../../lib/auth";
 import { Order, OrderItem } from '../../../types/index';
 
 interface ViewOrderModalProps {
@@ -35,19 +35,38 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
       // Fetch order items if not present
       let orderItems: OrderItem[] = order.parsed_order_details?.items || [];
       if (orderItems.length === 0 && order.id) {
-        const itemsTable = `${agentPrefix}_orders_items`;
-        const { data: itemsData, error: itemsError } = await supabase
-          .from(itemsTable)
-          .select("name, quantity, price")
-          .eq("order_id", order.id);
+        const token = getToken();
+        if (!token) {
+          setError("User not authenticated");
+          return;
+        }
 
-        if (!itemsError) {
-          orderItems = (itemsData || []).map((item: any) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-            total: item.quantity * item.price,
-          } as OrderItem));
+        const itemsResponse = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/manage-orders?type=items&order_id=${order.id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (itemsResponse.ok) {
+          const itemsDataResult = await itemsResponse.json();
+          if (itemsDataResult.success) {
+            orderItems = (itemsDataResult.items || []).map(
+              (item: any) =>
+                ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: item.price,
+                  total: item.quantity * item.price,
+                } as OrderItem)
+            );
+          }
         }
       }
 

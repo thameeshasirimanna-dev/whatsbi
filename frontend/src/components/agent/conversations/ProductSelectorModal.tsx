@@ -52,26 +52,32 @@ const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
 
     setLoading(true);
     try {
-      const inventoryTable = `${agentPrefix}_inventory_items`;
-
-      const { data, error } = await supabase
-        .from(inventoryTable)
-        .select("id, name, description, price, image_urls, category_id")
-        .eq("agent_id", agentId)
-        .order("name", { ascending: true });
-
-      if (error) {
-        console.error("Error fetching products:", error);
+      const token = getToken();
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        console.error("Error fetching products:", data.error);
       } else {
         // Map data to Product interface (handle image_urls array)
-        const mappedProducts: Product[] = (data || []).map((item: any) => ({
-          id: item.id.toString(),
-          name: item.name,
-          description: item.description,
-          price: item.price,
-          images: item.image_urls || [],
-          category_id: item.category_id || undefined,
-        }));
+        const mappedProducts: Product[] = (data.items || []).map(
+          (item: any) => ({
+            id: item.id.toString(),
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            images: item.image_urls || [],
+            category_id: item.category_id || undefined,
+          })
+        );
         setProducts(mappedProducts);
       }
     } catch (err) {

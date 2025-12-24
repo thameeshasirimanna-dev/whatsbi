@@ -36,27 +36,28 @@ export interface OrderItem {
 }
 
 export interface Order {
-  id: number;
-  customer_id: number;
-  agent_id?: number;
-  customer_name?: string;
-  customer_phone?: string;
-  total_amount: number;
-  status:
-    | "pending"
-    | "processing"
-    | "shipped"
-    | "completed"
-    | "delivered"
-    | "cancelled";
-  notes?: string;
-  order_details?: string;
-  shipping_address?: string;
-  created_at: string;
-  updated_at?: string;
-  parsed_order_details?: any;
-  type?: "order";
-}
+   id: number;
+   customer_id: number;
+   agent_id?: number;
+   customer_name?: string;
+   customer_phone?: string;
+   total_amount: number;
+   status:
+     | "pending"
+     | "processing"
+     | "shipped"
+     | "completed"
+     | "delivered"
+     | "cancelled";
+   notes?: string;
+   order_details?: string;
+   shipping_address?: string;
+   created_at: string;
+   updated_at?: string;
+   parsed_order_details?: any;
+   type?: "order";
+   order_items?: OrderItem[];
+ }
 
 export type LeadStage = 'New Lead' | 'Contacted' | 'Not Responding' | 'Follow-up Needed';
 

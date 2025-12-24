@@ -50,83 +50,55 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         console.error("User not authenticated");
         setLoading(false);
         return;
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
         {
-          method: 'GET',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            operation: "get",
+          }),
         }
       );
 
       if (!response.ok) {
-        console.error("Failed to fetch agent profile");
+        console.error("Failed to fetch services");
+        setServices([]);
         setLoading(false);
         return;
       }
 
-      const agentProfile = await response.json();
-      if (!agentProfile.success || !agentProfile.agent) {
-        console.error("Agent not found");
-        setLoading(false);
-        return;
-      }
-
-      const agent = agentProfile.agent;
-
-      const servicesTable = `${agent.agent_prefix}_services`;
-      const packagesTable = `${agent.agent_prefix}_service_packages`;
-
-      // Step 1: Fetch services (note: no 'deleted_at' column exists, so filter by is_active instead)
-      const { data: servicesData, error: servicesError } = await supabase
-        .from(servicesTable)
-        .select('id, service_name, description')
-        .eq('agent_id', agent.id)
-        .eq('is_active', true)
-        .order('service_name', { ascending: true });
-
-      if (servicesError) {
-        console.error("Error fetching services:", servicesError);
+      const servicesData = await response.json();
+      if (servicesData.status !== "success") {
+        console.error("Error fetching services:", servicesData.message);
         setServices([]);
       } else {
-        // Step 2: For each service, fetch its packages
-        const servicesWithPackages: Service[] = [];
-        for (const service of (servicesData || [])) {
-          const { data: packagesData, error: packagesError } = await supabase
-            .from(packagesTable)
-            .select('id, package_name, price, currency, discount, description')
-            .eq('service_id', service.id)
-            .eq('is_active', true);
-
-          if (packagesError) {
-            console.error(`Error fetching packages for service ${service.id}:`, packagesError);
-          }
-
-          const packages: Package[] = (packagesData || []).map(pkg => ({
-            id: pkg.id,
-            package_name: pkg.package_name,
-            price: Number(pkg.price),
-            currency: pkg.currency || 'USD',
-            discount: pkg.discount ? Number(pkg.discount) : undefined,
-            description: pkg.description
-          }));
-
-          servicesWithPackages.push({
+        // Map the data to Service interface
+        const servicesWithPackages: Service[] = (servicesData.data || []).map(
+          (service: any) => ({
             id: service.id,
             service_name: service.service_name,
             description: service.description,
-            packages
-          });
-        }
+            packages: (service.packages || []).map((pkg: any) => ({
+              id: pkg.id,
+              package_name: pkg.package_name,
+              price: Number(pkg.price),
+              currency: pkg.currency || "USD",
+              discount: pkg.discount ? Number(pkg.discount) : undefined,
+              description: pkg.description,
+            })),
+          })
+        );
 
         setServices(servicesWithPackages);
       }
