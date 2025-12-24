@@ -599,11 +599,7 @@ const ConversationsPage: React.FC = () => {
       // Handle new message similar to realtime logic
       const newMsg: Message = {
         id: messageData.id,
-        text: processMessageText(
-          messageData.message,
-          messageData.media_type,
-          messageData.caption
-        ),
+        text: messageData.message || "",
         sender: messageData.sender_type,
         timestamp: new Date(messageData.timestamp).toLocaleString([], {
           hour: "2-digit",
@@ -767,6 +763,15 @@ const ConversationsPage: React.FC = () => {
       }
 
       setLastRealtimeEvent(Date.now());
+
+      // Scroll to bottom if message is for selected conversation
+      if (selectedConversationId === messageData.customer_id && messagesContainerRef.current) {
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+          }
+        }, 100);
+      }
     });
 
     newSocket.on("agent-status-update", (statusData: any) => {
@@ -1259,8 +1264,25 @@ const ConversationsPage: React.FC = () => {
           setMessagesPrependedCount(processedMessages.length);
           setLastRealtimeEvent(Date.now()); // Prevent polling from overriding
         } else {
-          // Replace with new messages (initial load)
-          updatedMessages = processedMessages;
+          // Merge with existing messages to preserve real-time updates
+          const existingMessages = existingConv.messages || [];
+          const allMessages = [...processedMessages, ...existingMessages];
+
+          // Remove duplicates based on id and keep the most recent version
+          const messageMap = new Map<string | number, Message>();
+          allMessages.forEach(msg => {
+            const existing = messageMap.get(msg.id);
+            if (!existing || (msg.rawTimestamp || 0) > (existing.rawTimestamp || 0)) {
+              messageMap.set(msg.id, msg);
+            }
+          });
+
+          updatedMessages = Array.from(messageMap.values()).sort((a, b) => {
+            const aTime = a.rawTimestamp || new Date(a.timestamp).getTime();
+            const bTime = b.rawTimestamp || new Date(b.timestamp).getTime();
+            return aTime - bTime;
+          });
+
           setMessagesWerePrepended(false);
           setMessagesPrependedCount(0);
         }
