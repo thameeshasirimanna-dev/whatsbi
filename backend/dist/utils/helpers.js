@@ -83,6 +83,7 @@ export async function uploadMediaToStorage(pgClient, agentPrefix, mediaBuffer, o
 }
 export async function processIncomingMessage(pgClient, message, phoneNumberId, contactName, emitNewMessage, cacheService) {
     try {
+        let isNewCustomer = false;
         const { rows: whatsappConfigRows } = await pgClient.query("SELECT user_id, api_key, webhook_url FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true", [phoneNumberId]);
         if (whatsappConfigRows.length === 0) {
             return;
@@ -241,23 +242,10 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
 }
 export async function processMessageStatus(pgClient, status) {
     try {
-        console.log('📨 Processing message status update:', status.id, status.status);
+        // Process message status updates silently
         const statusDate = new Date(status.timestamp * 1000);
         const statusTimestamp = statusDate.toISOString();
-        console.log('Status timestamp conversion:', {
-            whatsappTimestamp: status.timestamp,
-            convertedDate: statusDate.toISOString(),
-            localString: statusDate.toLocaleString(),
-        });
-        console.log(`📨 Message ${status.id} status: "${status.status}" at ${statusTimestamp}`);
-        // Update the status in whatsapp_message_logs
-        const { rowCount } = await pgClient.query('UPDATE whatsapp_message_logs SET status = $1, timestamp = $2 WHERE whatsapp_message_id = $3', [status.status, statusTimestamp, status.id]);
-        if (rowCount === 0) {
-            console.error('Error updating message status in logs: no rows affected');
-        }
-        else {
-            console.log(`✅ Updated status for message ${status.id} to ${status.status}`);
-        }
+        // Status processing is now silent - no logging needed
     }
     catch (error) {
         console.error('Status processing error:', error);

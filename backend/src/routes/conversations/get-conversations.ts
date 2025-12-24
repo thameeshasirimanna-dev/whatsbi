@@ -38,7 +38,7 @@ export default async function getConversationsRoutes(
       // Check cache first
       const cachedData = await cacheService.get(cacheKey);
       if (cachedData) {
-        // console.log("Returning cached chat list for agent", agentId);
+        console.log("Returning cached chat list for agent", agentId);
         return JSON.parse(cachedData);
       }
 
@@ -91,6 +91,7 @@ export default async function getConversationsRoutes(
         const unreadCount = customerMessages.filter(
           (msg: any) => msg.direction === "inbound" && !msg.is_read
         ).length;
+        console.log(`Customer ${customer.id} has ${unreadCount} unread messages`);
 
         const lastMessageText = lastMessage
           ? processMessageText(

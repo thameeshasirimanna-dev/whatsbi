@@ -153,6 +153,15 @@ const ConversationsPage: React.FC = () => {
   const [lastSentProducts, setLastSentProducts] = useState<{
     [key: number]: Product;
   }>({});
+  const [messageOffset, setMessageOffset] = useState<{ [key: number]: number }>(
+    {}
+  );
+  const [hasMoreMessages, setHasMoreMessages] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
+  const [messagesWerePrepended, setMessagesWerePrepended] = useState(false);
+  const [messagesPrependedCount, setMessagesPrependedCount] = useState(0);
   const handleProductSelect = async (product: Product) => {
     if (!selectedConversationId || !selectedConversation) {
       setSendError("No conversation selected");
@@ -463,6 +472,13 @@ const ConversationsPage: React.FC = () => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
+      }
 
       const formattedPhone = selectedConversation.customerPhone.replace(
         /[\s+]/g,
@@ -1001,9 +1017,14 @@ const ConversationsPage: React.FC = () => {
     [conversations, selectedConversationId]
   );
 
-  // Clear pending media when switching conversations
+  // Clear pending media and reset pagination when switching conversations
   useEffect(() => {
     setPendingMedia([]);
+    setMessageOffset((prev) => ({ ...prev, [selectedConversationId || 0]: 0 }));
+    setHasMoreMessages((prev) => ({
+      ...prev,
+      [selectedConversationId || 0]: true,
+    }));
   }, [selectedConversationId]);
 
   // Extracted fetch function to make it reusable
@@ -1160,80 +1181,150 @@ const ConversationsPage: React.FC = () => {
   ); // Added selectedConversationId dependency
 
   // Function to fetch only the selected conversation's messages
-  const fetchSelectedConversation = useCallback(async () => {
-    if (!selectedConversationId || !agentId) return;
+  const fetchSelectedConversation = useCallback(
+    async (loadMore = false) => {
+      if (!selectedConversationId || !agentId) return;
 
-    try {
-      // Get authenticated session
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      try {
+        // Get authenticated session
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
 
-      // Get messages using backend API
-      const messagesResponse = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/conversations/${selectedConversationId}/messages?agentId=${agentId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
+        const currentOffset = messageOffset[selectedConversationId] || 0;
+        const limit = 50;
+        const offset = loadMore ? currentOffset : 0;
+
+        // Get messages using backend API
+        const messagesResponse = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/conversations/${selectedConversationId}/messages?agentId=${agentId}&limit=${limit}&offset=${offset}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!messagesResponse.ok) return;
+
+        const processedMessages: Message[] = await messagesResponse.json();
+
+        // Update offset and hasMore state
+        const newOffset = offset + processedMessages.length;
+        setMessageOffset((prev) => ({
+          ...prev,
+          [selectedConversationId]: newOffset,
+        }));
+        setHasMoreMessages((prev) => ({
+          ...prev,
+          [selectedConversationId]: processedMessages.length === limit,
+        }));
+
+        // Get existing conversation
+        const existingConv = conversations.find(
+          (c) => c.id === selectedConversationId
+        );
+        if (!existingConv) return;
+
+        let updatedMessages: Message[];
+        if (loadMore) {
+          // Prepend older messages to existing ones
+          updatedMessages = [...processedMessages, ...existingConv.messages];
+          setMessagesWerePrepended(true);
+          setMessagesPrependedCount(processedMessages.length);
+          setLastRealtimeEvent(Date.now()); // Prevent polling from overriding
+        } else {
+          // Replace with new messages (initial load)
+          updatedMessages = processedMessages;
+          setMessagesWerePrepended(false);
+          setMessagesPrependedCount(0);
         }
-      );
 
-      if (!messagesResponse.ok) return;
+        const unreadCount = updatedMessages.filter(
+          (m) => m.sender === "customer" && !m.isRead
+        ).length;
 
-      const processedMessages: Message[] = await messagesResponse.json();
+        const lastMsg = updatedMessages[updatedMessages.length - 1];
+        const lastMessageText = lastMsg
+          ? processMessageText(
+              lastMsg.text,
+              lastMsg.media_type || null,
+              lastMsg.caption || null
+            )
+          : "No messages yet";
+        const lastMessageTime = lastMsg
+          ? lastMsg.timestamp
+          : new Date().toLocaleString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "numeric",
+              month: "short",
+            });
+        const rawLastTimestamp = lastMsg ? lastMsg.rawTimestamp : Date.now();
 
-      const unreadCount = processedMessages.filter(
-        (m) => m.sender === "customer" && !m.isRead
-      ).length;
+        const updatedConv = {
+          ...existingConv,
+          lastMessage: lastMessageText,
+          lastMessageTime: lastMessageTime,
+          rawLastTimestamp: rawLastTimestamp ?? Date.now(),
+          unreadCount,
+          messages: updatedMessages,
+        } as Conversation;
 
-      const lastMsg = processedMessages[processedMessages.length - 1];
-      const lastMessageText = lastMsg
-        ? processMessageText(
-            lastMsg.text,
-            lastMsg.media_type || null,
-            lastMsg.caption || null
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === selectedConversationId ? updatedConv : conv
           )
-        : "No messages yet";
-      const lastMessageTime = lastMsg
-        ? lastMsg.timestamp
-        : new Date().toLocaleString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            day: "numeric",
-            month: "short",
-          });
-      const rawLastTimestamp = lastMsg ? lastMsg.rawTimestamp : Date.now();
+        );
 
-      // Get customer info from current conversations or fetch if needed
-      const existingConv = conversations.find(
-        (c) => c.id === selectedConversationId
-      );
-      if (!existingConv) return;
+        // Scroll to bottom only for initial load
+        if (!loadMore && messagesContainerRef.current) {
+          setTimeout(() => {
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop =
+                messagesContainerRef.current.scrollHeight;
+            }
+          }, 100);
+        }
+      } catch (error) {
+        console.error("Error fetching selected conversation:", error);
+      }
+    },
+    [
+      selectedConversationId,
+      agentId,
+      conversations,
+      processMessageText,
+      messageOffset,
+    ]
+  );
 
-      const updatedConv = {
-        ...existingConv,
-        lastMessage: lastMessageText,
-        lastMessageTime: lastMessageTime,
-        rawLastTimestamp: rawLastTimestamp ?? Date.now(),
-        unreadCount,
-        messages: processedMessages,
-      } as Conversation;
+  // Function to load more messages when scrolling up
+  const loadMoreMessages = useCallback(async () => {
+    if (
+      !selectedConversationId ||
+      loadingMoreMessages ||
+      !hasMoreMessages[selectedConversationId]
+    )
+      return;
 
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.id === selectedConversationId ? updatedConv : conv
-        )
-      );
-    } catch (error) {
-      console.error("Error fetching selected conversation:", error);
+    setLoadingMoreMessages(true);
+    try {
+      await fetchSelectedConversation(true);
+    } finally {
+      setLoadingMoreMessages(false);
     }
-  }, [selectedConversationId, agentId, conversations, processMessageText]);
+  }, [
+    selectedConversationId,
+    loadingMoreMessages,
+    hasMoreMessages,
+    fetchSelectedConversation,
+  ]);
 
   // Initial fetch
   useEffect(() => {
@@ -1273,10 +1364,54 @@ const ConversationsPage: React.FC = () => {
         )
       );
 
-      // Mark messages as read - for now, this will be handled by the backend
-      // when messages are fetched. In a full implementation, we'd have a backend
-      // endpoint to mark messages as read.
+      // Mark messages as read
       if (unreadToMark > 0) {
+        console.log(
+          `Marking ${unreadToMark} messages as read for customer ${customerId}`
+        );
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            console.log("Making mark-read request to backend");
+            const response = await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/conversations/${customerId}/mark-read?agentId=${agentId}`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+              }
+            );
+            console.log(`Mark-read response status: ${response.status}`);
+            if (response.ok) {
+              const data = await response.json();
+              console.log("Messages marked as read successfully:", data);
+            } else {
+              const errorText = await response.text();
+              console.error(
+                "Failed to mark messages as read:",
+                response.status,
+                errorText
+              );
+            }
+          } else {
+            console.log("No session token available for mark-read");
+          }
+        } catch (error) {
+          console.error("Failed to mark messages as read:", error);
+        }
+
+        // Update the conversation unread count directly since we know it should be 0
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === conversation.id ? { ...conv, unreadCount: 0 } : conv
+          )
+        );
+
         // Dispatch custom event for immediate header update
         window.dispatchEvent(
           new CustomEvent("unread-messages-read", {
@@ -1284,8 +1419,11 @@ const ConversationsPage: React.FC = () => {
           })
         );
       }
+
+      // Fetch messages after marking as read
+      await fetchSelectedConversation();
     },
-    [agentPrefix, agentId]
+    [agentPrefix, agentId, fetchSelectedConversation]
   );
 
   useEffect(() => {
@@ -1307,28 +1445,18 @@ const ConversationsPage: React.FC = () => {
     navigate,
   ]);
 
+  // Ensure messages are loaded when conversation is selected but has no messages
+  useEffect(() => {
+    if (selectedConversationId && selectedConversation && (!selectedConversation.messages || selectedConversation.messages.length === 0)) {
+      fetchSelectedConversation();
+    }
+  }, [selectedConversationId, selectedConversation, fetchSelectedConversation]);
+
   // True realtime updates via 1-second polling
 
-  const scrollToBottom = useCallback(() => {
-    if (messagesContainerRef.current) {
-      const container = messagesContainerRef.current;
-      container.scrollTop = container.scrollHeight;
-    }
-  }, []);
-
-  // Consolidated scroll to bottom logic
-  useEffect(() => {
-    if (selectedConversationId !== null && selectedConversation) {
-      const timer = setTimeout(scrollToBottom, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [
-    selectedConversationId,
-    selectedConversation?.messages.length,
-    scrollToBottom,
-  ]);
-
   // Fallback polling for realtime drops - selected conversation
+  // Disabled to prevent overriding prepended messages
+  /*
   useEffect(() => {
     if (!selectedConversationId || !agentPrefix || !agentId) {
       if (pollIntervalRef.current) {
@@ -1366,6 +1494,7 @@ const ConversationsPage: React.FC = () => {
     lastRealtimeEvent,
     fetchSelectedConversation,
   ]);
+  */
 
   // Polling for conversation list updates (fallback for non-selected conversations)
   useEffect(() => {
@@ -2316,6 +2445,11 @@ const ConversationsPage: React.FC = () => {
         agentPrefix={agentPrefix}
         agentId={agentId}
         businessType={businessType}
+        onLoadMoreMessages={loadMoreMessages}
+        loadingMoreMessages={loadingMoreMessages}
+        messagesWerePrepended={messagesWerePrepended}
+        messagesPrependedCount={messagesPrependedCount}
+        onResetMessagesWerePrepended={() => setMessagesWerePrepended(false)}
       />
 
       {/* New Conversation Modal */}
@@ -2687,8 +2821,8 @@ const ConversationsPage: React.FC = () => {
     </div>
   );
 };
-
 export default ConversationsPage;
+
 
 
 

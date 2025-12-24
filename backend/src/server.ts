@@ -22,6 +22,7 @@ import addCreditsRoutes from './routes/agents/add-credits';
 import deleteAgentRoutes from './routes/agents/delete-agent';
 import getConversationsRoutes from './routes/conversations/get-conversations';
 import getConversationMessagesRoutes from './routes/conversations/get-conversation-messages';
+import markMessagesReadRoutes from './routes/conversations/mark-messages-read';
 import getBotContextRoutes from './routes/bot/get-bot-context';
 import chatbotReplyRoutes from './routes/bot/chatbot-reply';
 import manageServicesRoutes from './routes/services/manage-services';
@@ -122,6 +123,7 @@ async function registerRoutes() {
   await deleteAgentRoutes(server, pgClient);
   await getConversationsRoutes(server, pgClient, cacheService);
   await getConversationMessagesRoutes(server, pgClient, cacheService);
+  await markMessagesReadRoutes(server, pgClient, cacheService);
   await getBotContextRoutes(server, pgClient, cacheService);
   await chatbotReplyRoutes(server, pgClient);
   await manageServicesRoutes(server, pgClient);

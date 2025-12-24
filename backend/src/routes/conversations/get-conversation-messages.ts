@@ -12,6 +12,8 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
       const customerId = params.customerId;
       const query = request.query as any;
       const agentId = query.agentId;
+      const limit = parseInt(query.limit) || null; // Default to null for backward compatibility
+      const offset = parseInt(query.offset) || 0;
 
       if (!customerId || !agentId) {
         return reply.code(400).send('Customer ID and Agent ID required');
@@ -42,12 +44,14 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
 
       const customer = customerResult.rows[0];
 
-      const cacheKey = CacheService.recentMessagesKey(parseInt(agentId), parseInt(customerId));
+      const cacheKey = limit
+        ? CacheService.recentMessagesKey(parseInt(agentId), parseInt(customerId), limit, offset)
+        : CacheService.recentMessagesKey(parseInt(agentId), parseInt(customerId));
 
       // Check cache first
       const cachedData = await cacheService.get(cacheKey);
       if (cachedData) {
-        // console.log('Returning cached messages for conversation', agentId, customerId);
+        // console.log('Returning cached messages for conversation', agentId, customerId, limit, offset);
         return JSON.parse(cachedData);
       }
 
@@ -56,14 +60,37 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
 
       const messagesTable = `${agentData.agent_prefix}_messages`;
 
-      const messagesQuery = `
-        SELECT *
-        FROM ${messagesTable}
-        WHERE customer_id = $1
-        ORDER BY timestamp ASC
-      `;
-      const messagesResult = await pgClient.query(messagesQuery, [parseInt(customerId)]);
-      const messagesData = messagesResult.rows;
+      let messagesQuery: string;
+      let queryParams: any[];
+
+      if (limit) {
+        // For pagination: get messages in descending order (newest first), then we'll reverse in processing
+        messagesQuery = `
+          SELECT *
+          FROM ${messagesTable}
+          WHERE customer_id = $1
+          ORDER BY timestamp DESC
+          LIMIT $2 OFFSET $3
+        `;
+        queryParams = [parseInt(customerId), limit, offset];
+      } else {
+        // Backward compatibility: get all messages in ascending order
+        messagesQuery = `
+          SELECT *
+          FROM ${messagesTable}
+          WHERE customer_id = $1
+          ORDER BY timestamp ASC
+        `;
+        queryParams = [parseInt(customerId)];
+      }
+
+      const messagesResult = await pgClient.query(messagesQuery, queryParams);
+      let messagesData = messagesResult.rows;
+
+      // If using pagination, reverse to get ascending order (oldest first)
+      if (limit) {
+        messagesData = messagesData.reverse();
+      }
 
       const processedMessages = messagesData.map((msg: any) => ({
         id: msg.id,

@@ -21,6 +21,7 @@ import addCreditsRoutes from './routes/agents/add-credits';
 import deleteAgentRoutes from './routes/agents/delete-agent';
 import getConversationsRoutes from './routes/conversations/get-conversations';
 import getConversationMessagesRoutes from './routes/conversations/get-conversation-messages';
+import markMessagesReadRoutes from './routes/conversations/mark-messages-read';
 import getBotContextRoutes from './routes/bot/get-bot-context';
 import chatbotReplyRoutes from './routes/bot/chatbot-reply';
 import manageServicesRoutes from './routes/services/manage-services';
@@ -89,7 +90,7 @@ const cacheService = new CacheService(redisClient);
 // Register routes
 async function registerRoutes() {
     await whatsappWebhookRoutes(server, pgClient, cacheService, emitNewMessage, emitAgentStatusUpdate);
-    await sendWhatsappMessageRoutes(server, pgClient);
+    await sendWhatsappMessageRoutes(server, pgClient, cacheService);
     await getMediaPreviewRoutes(server, pgClient);
     await uploadInventoryImagesRoutes(server, pgClient);
     await uploadMediaRoutes(server, pgClient);
@@ -103,6 +104,7 @@ async function registerRoutes() {
     await deleteAgentRoutes(server, pgClient);
     await getConversationsRoutes(server, pgClient, cacheService);
     await getConversationMessagesRoutes(server, pgClient, cacheService);
+    await markMessagesReadRoutes(server, pgClient, cacheService);
     await getBotContextRoutes(server, pgClient, cacheService);
     await chatbotReplyRoutes(server, pgClient);
     await manageServicesRoutes(server, pgClient);

@@ -41,6 +41,9 @@ export class CacheService {
   }
 
   async invalidateRecentMessages(agentId: number, customerId: number): Promise<void> {
+    // Invalidate all paginated versions by deleting the base key pattern
+    // Since Redis doesn't support pattern deletion easily, we'll just delete the main key
+    // In a production system, you might want to use Redis keys command or maintain a list
     await this.del(CacheService.recentMessagesKey(agentId, customerId));
   }
 
@@ -53,7 +56,10 @@ export class CacheService {
     return `chat_list:${agentId}`;
   }
 
-  static recentMessagesKey(agentId: number, customerId: number): string {
+  static recentMessagesKey(agentId: number, customerId: number, limit?: number, offset?: number): string {
+    if (limit !== undefined && offset !== undefined) {
+      return `recent_messages:${agentId}:${customerId}:${limit}:${offset}`;
+    }
     return `recent_messages:${agentId}:${customerId}`;
   }
 

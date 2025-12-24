@@ -217,6 +217,11 @@ interface MessageViewProps {
   agentPrefix?: string | null;
   agentId?: number | null;
   businessType?: string | null;
+  onLoadMoreMessages?: () => void;
+  loadingMoreMessages?: boolean;
+  messagesWerePrepended?: boolean;
+  messagesPrependedCount?: number;
+  onResetMessagesWerePrepended?: () => void;
 }
 
 const MessageView: React.FC<MessageViewProps> = ({
@@ -240,6 +245,11 @@ const MessageView: React.FC<MessageViewProps> = ({
   agentPrefix,
   agentId,
   businessType,
+  onLoadMoreMessages,
+  loadingMoreMessages = false,
+  messagesWerePrepended = false,
+  messagesPrependedCount = 0,
+  onResetMessagesWerePrepended,
 }) => {
   const isTemplateRequired = selectedConversation
     ? !selectedConversation.lastUserMessageTime ||
@@ -255,6 +265,7 @@ const MessageView: React.FC<MessageViewProps> = ({
   const [showOrdersModal, setShowOrdersModal] = useState(false);
   const [showLeadStageModal, setShowLeadStageModal] = useState(false);
   const [serviceMessage, setServiceMessage] = useState("");
+  const scrollAdjustedRef = useRef(false);
   const isProductBusiness = businessType === "product";
   const isServiceBusiness = businessType === "service";
 
@@ -328,17 +339,19 @@ const MessageView: React.FC<MessageViewProps> = ({
           .single();
 
         // Get agent profile from backend
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!session) return;
 
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
           {
-            method: 'GET',
+            method: "GET",
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            }
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
           }
         );
 
@@ -467,6 +480,39 @@ const MessageView: React.FC<MessageViewProps> = ({
     return groups;
   }, [selectedConversation?.messages]);
 
+  // Adjust scroll position when messages are prepended
+  useEffect(() => {
+    if (
+      messagesWerePrepended &&
+      messagesContainerRef.current &&
+      messagesPrependedCount > 0 &&
+      !scrollAdjustedRef.current
+    ) {
+      scrollAdjustedRef.current = true;
+
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          // Estimate scroll adjustment based on number of messages added
+          // Conservative estimate for better accuracy
+          const estimatedMessageHeight = 120; // pixels per message
+          const adjustment = messagesPrependedCount * estimatedMessageHeight;
+          messagesContainerRef.current.scrollTop += adjustment;
+        }
+
+        // Reset the flag after adjustment
+        if (onResetMessagesWerePrepended) {
+          onResetMessagesWerePrepended();
+        }
+        scrollAdjustedRef.current = false;
+      }, 0);
+    }
+  }, [
+    messagesWerePrepended,
+    messagesPrependedCount,
+    onResetMessagesWerePrepended,
+  ]);
+
   // Auto-expand textarea height
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -496,6 +542,24 @@ const MessageView: React.FC<MessageViewProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showAttachMenu]);
+
+  // Handle scroll to load more messages
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !onLoadMoreMessages) return;
+
+    const handleScroll = () => {
+      // Trigger when user scrolls within 100px of the top
+      if (container.scrollTop <= 100 && !loadingMoreMessages) {
+        onLoadMoreMessages();
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, [messagesContainerRef, onLoadMoreMessages, loadingMoreMessages]);
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
@@ -830,6 +894,14 @@ const MessageView: React.FC<MessageViewProps> = ({
               className="flex-1 overflow-y-auto space-y-6 pb-4 pl-4 custom-scrollbar"
               ref={messagesContainerRef}
             >
+              {loadingMoreMessages && (
+                <div className="flex justify-center py-4">
+                  <div className="flex items-center space-x-2 text-gray-500">
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin"></div>
+                    <span className="text-sm">Loading more messages...</span>
+                  </div>
+                </div>
+              )}
               {groupedMessages.map((messageOrGroup: GroupedMessage) => {
                 const isGroup = messageOrGroup.isGroup || false;
                 const msg = messageOrGroup;
@@ -1599,3 +1671,4 @@ const MessageView: React.FC<MessageViewProps> = ({
 };
 
 export default MessageView;
+
