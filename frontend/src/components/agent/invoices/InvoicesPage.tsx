@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, Combobox } from '@headlessui/react';
-import { supabase } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
 import jsPDF from "jspdf";
 
 interface InvoiceItem {

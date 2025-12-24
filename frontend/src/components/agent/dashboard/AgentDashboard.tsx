@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from 'react-router-dom';
-import { supabase } from "../../../lib/supabase";
+import { getToken } from '../lib/auth';
 import {
   ChatBubbleLeftRightIcon,
   UserGroupIcon,

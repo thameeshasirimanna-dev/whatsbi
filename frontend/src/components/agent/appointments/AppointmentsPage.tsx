@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../../lib/supabase";
 import { Appointment } from "../../../types";
 import { Menu, Transition, Combobox, Popover } from "@headlessui/react";
 import CreateAppointmentModal from "./CreateAppointmentModal";
@@ -129,17 +128,19 @@ const AppointmentsPage: React.FC = () => {
 
   const fetchAgentInfo = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -154,20 +155,30 @@ const AppointmentsPage: React.FC = () => {
 
       if (!agentData.agent_prefix) return;
 
-      const customersTable = `${agentData.agent_prefix}_customers`;
-      const { data: agentCustomers, error: customersError } = await supabase
-        .from(customersTable)
-        .select("id, name, phone")
-        .eq("agent_id", agentData.id);
+      // Fetch customers from backend
+      const customersResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-customers`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (customersError) return;
+      if (!customersResponse.ok) return;
 
-      setAllCustomers(agentCustomers || []);
+      const customersData = await customersResponse.json();
+      if (!customersData.success) return;
+
+      const agentCustomers = customersData.customers || [];
+      setAllCustomers(agentCustomers);
       setCustomerMap(
-        agentCustomers?.reduce((map: any, c: any) => {
+        agentCustomers.reduce((map: any, c: any) => {
           map[c.id] = c;
           return map;
-        }, {}) || {}
+        }, {})
       );
     } catch (err) {
       console.error("Error fetching agent info:", err);
@@ -633,14 +644,16 @@ const AppointmentsPage: React.FC = () => {
               </div>
               <div className="max-w-md space-y-3">
                 <h3 className="text-2xl font-semibold text-gray-900">
-                  {appointments.length === 0 ? "No appointments yet" : "No matching appointments"}
+                  {appointments.length === 0
+                    ? "No appointments yet"
+                    : "No matching appointments"}
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
                   {appointments.length === 0
                     ? "Get started by scheduling your first appointment with a customer to manage your bookings effectively."
                     : searchTerm
-                      ? `No appointments match "${searchTerm}". Try a different search term.`
-                      : "No appointments match your current filters. Adjust your criteria or clear all filters to see more results."}
+                    ? `No appointments match "${searchTerm}". Try a different search term.`
+                    : "No appointments match your current filters. Adjust your criteria or clear all filters to see more results."}
                 </p>
               </div>
               {appointments.length === 0 && (
@@ -650,8 +663,18 @@ const AppointmentsPage: React.FC = () => {
                   onClick={() => setShowCustomerSelect(true)}
                   className="inline-flex items-center px-6 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
                   </svg>
                   Schedule First Appointment
                 </motion.button>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabase';
+import { Navigate } from "react-router-dom";
 
 interface AgentAuthGuardProps {
   children: React.ReactNode;
@@ -13,8 +12,24 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setIsAuthenticated(!!user);
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate token with backend
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-current-user`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+        setIsAuthenticated(response.ok && data.success && !!data.user);
       } catch (error) {
         console.error('AgentAuthGuard: Auth check failed:', error);
         setIsAuthenticated(false);
@@ -24,15 +39,6 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
     };
 
     checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session?.user);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
 

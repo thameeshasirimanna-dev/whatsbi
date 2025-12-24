@@ -46,6 +46,9 @@ import getAgentProfileRoutes from "./routes/agents/get-agent-profile";
 import uploadInvoiceTemplateRoutes from "./routes/upload-invoice-template";
 import getAdminInfoRoutes from "./routes/admin/get-admin-info";
 import getAnalyticsRoutes from "./routes/analytics/get-analytics";
+import loginRoutes from "./routes/auth/login";
+import logoutRoutes from "./routes/auth/logout";
+import getCurrentUserRoutes from "./routes/auth/get-current-user";
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
@@ -146,6 +149,9 @@ async function registerRoutes() {
   await uploadInvoiceTemplateRoutes(server, pgClient);
   await getAdminInfoRoutes(server, pgClient);
   await getAnalyticsRoutes(server, pgClient);
+  await loginRoutes(server, pgClient);
+  await logoutRoutes(server, pgClient);
+  await getCurrentUserRoutes(server, pgClient);
 }
 
 // Socket.IO connection handling will be set up after routes are registered

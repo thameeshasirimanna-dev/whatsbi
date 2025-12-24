@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
 import EditOrderModal from "./EditOrderModal";
 import ViewOrderModal from "./ViewOrderModal";
 import CreateOrderModal from "../customers/CreateOrderModal";

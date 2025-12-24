@@ -80,8 +80,10 @@ const pgClient = new Pool({
     connectionString: DATABASE_URL,
 });
 // Redis client
+console.log("Attempting to connect to Redis at:", REDIS_URL);
 const redisClient = new Redis(REDIS_URL);
 redisClient.on("error", (err) => console.error("Redis Client Error", err));
+redisClient.on("connect", () => console.log("Connected to Redis"));
 // Cache service
 const cacheService = new CacheService(redisClient);
 // Register routes
@@ -194,6 +196,7 @@ const start = async () => {
     try {
         // Wait for DB connection check
         await pgClient.query("SELECT 1");
+        console.log("✅ Connected to PostgreSQL");
         await registerRoutes();
         // Set up Socket.IO connection handling after routes are registered
         server.ready().then(() => {
@@ -216,6 +219,7 @@ const start = async () => {
             });
         });
         await server.listen({ port: 8080, host: "0.0.0.0" });
+        console.log("Server running on http://localhost:8080");
     }
     catch (err) {
         console.error("❌ PostgreSQL connection failed:", err);

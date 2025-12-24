@@ -1,7 +1,7 @@
 # Supabase REST API Direct Usage Report
 
 ## Scan Summary
-- **Scan Date**: 2025-12-21
+- **Scan Date**: 2025-12-24
 - **Total Direct REST Calls Found**: 3
 - **Database REST API Calls (/rest/v1/)**: 0
 - **PostgREST Direct Calls**: 0
@@ -9,7 +9,7 @@
 - **Storage API Calls**: 3
 - **Edge Functions API Calls**: 0
 - **Backend API Calls**: 1
-- **Direct Supabase Table Queries (.from() calls)**: 235+
+- **Direct Supabase Table Queries (.from() calls)**: 65+
 
 ## Direct Supabase REST API Calls
 
@@ -187,14 +187,14 @@ The following components make direct queries to Supabase tables using the Supaba
 ## Analysis
 
 ### Risk Assessment
-- **Low Risk**: 4 REST calls (Storage GET, webhook verification, analytics via backend) + ~118 table SELECT operations
-- **Medium Risk**: 2 REST calls (Agent update, WhatsApp message) + ~40 table INSERT/UPDATE operations
-- **High Risk**: 4 REST calls (Invoice template sending - large payloads) + ~20 table DELETE operations
+- **Low Risk**: 4 REST calls (Storage GET, webhook verification, analytics via backend) + ~40 table SELECT operations
+- **Medium Risk**: 2 REST calls (Agent update, WhatsApp message) + ~15 table INSERT/UPDATE operations
+- **High Risk**: 4 REST calls (Invoice template sending - large payloads) + ~10 table DELETE operations
 
 ### Table Query Risk Analysis
-- **SELECT Operations**: Generally low risk, but frequent queries to large tables may impact performance (~120 SELECT operations identified)
-- **INSERT/UPDATE Operations**: Medium risk due to potential data consistency issues and race conditions (~40 INSERT/UPDATE operations)
-- **DELETE Operations**: High risk due to potential data loss if not properly validated (~20 DELETE operations)
+- **SELECT Operations**: Generally low risk, but frequent queries to large tables may impact performance (~40 SELECT operations identified)
+- **INSERT/UPDATE Operations**: Medium risk due to potential data consistency issues and race conditions (~15 INSERT/UPDATE operations)
+- **DELETE Operations**: High risk due to potential data loss if not properly validated (~10 DELETE operations)
 - **Dynamic Tables**: The use of agent-specific table prefixes adds complexity and potential for cross-agent data access
 
 ### Recommendations
@@ -212,7 +212,7 @@ The following components make direct queries to Supabase tables using the Supaba
 ### Notes
 - All direct calls use proper authentication (Bearer tokens)
 - No direct database table access via REST API found
-- **198+ direct table queries** found using Supabase client `.from()` method
+- **65+ direct table queries** found using Supabase client `.from()` method
 - Most table operations are on dynamic agent-specific tables (using `{agent_prefix}_table_name` pattern)
 - Core tables (agents, users, whatsapp_configuration) are accessed directly from frontend
 - Frontend constructs URLs from environment variables (`VITE_SUPABASE_URL`, `VITE_BACKEND_URL`)
@@ -221,4 +221,5 @@ The following components make direct queries to Supabase tables using the Supaba
 - Appointments component completely migrated to backend APIs, removing all direct Supabase usage
 - Frontend components now use backend APIs for operations that previously used Edge Functions, reducing direct Supabase REST calls
 
-- Updated scan with current state as of 2025-12-21
+- Updated scan with current state as of 2025-12-24
+- Line numbers are approximate and may change with code updates

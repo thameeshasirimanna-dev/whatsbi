@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom'; // Assuming React Router is set up
 import { AddAgentModal } from './AddAgentModal';
 import { EditAgentModal } from './EditAgentModal';
 import { WhatsAppSetupModal } from './WhatsAppSetupModal';
 
-// Supabase client with service key (same as AdminLoginPage)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Types - Updated for new structure
 interface User {
@@ -70,20 +65,18 @@ const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = localStorage.getItem('auth_token');
 
-      if (!session) {
+      if (!token) {
         navigate('/login?error=no-session');
         return;
       }
-
-      setCurrentUser(session.user);
 
       // Verify admin role and get user info via backend
       try {
         const response = await fetch(`${backendUrl}/get-admin-info`, {
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${token}`,
           },
         });
 
@@ -91,7 +84,7 @@ const AdminDashboard: React.FC = () => {
 
         if (!response.ok || !data.success) {
           console.error('Admin verification failed:', data.message);
-          await supabase.auth.signOut();
+          localStorage.removeItem('auth_token');
           navigate('/login?error=unauthorized');
           return;
         }
@@ -104,7 +97,7 @@ const AdminDashboard: React.FC = () => {
       } catch (err: any) {
         console.error('Admin verification error:', err);
         setError('Database connection error during authentication.');
-        await supabase.auth.signOut();
+        localStorage.removeItem('auth_token');
         navigate('/login');
         return;
       }
@@ -129,10 +122,10 @@ const AdminDashboard: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Get current session token for authentication
-      const { data: { session } } = await supabase.auth.getSession();
+      // Get current token for authentication
+      const token = localStorage.getItem('auth_token');
 
-      if (!session?.access_token) {
+      if (!token) {
         setError('Please log in to continue');
         setAgents([]);
         return;
@@ -141,7 +134,7 @@ const AdminDashboard: React.FC = () => {
       // Call backend directly to get agents
       const response = await fetch(`${backendUrl}/get-agents`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -191,9 +184,9 @@ const AdminDashboard: React.FC = () => {
     
     try {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = localStorage.getItem('auth_token');
 
-      if (!session?.access_token) {
+      if (!token) {
         setError('Please log in to continue');
         return;
       }
@@ -201,7 +194,7 @@ const AdminDashboard: React.FC = () => {
       const response = await fetch(`${backendUrl}/delete-agent`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ agent_id: id })
@@ -509,13 +502,30 @@ const AdminDashboard: React.FC = () => {
 
     try {
       setLoading(true);
-      // Update email confirmation in auth.users using admin API
-      const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
-        email_confirm: true
+      const token = localStorage.getItem('auth_token');
+
+      if (!token) {
+        setError('Please log in to continue');
+        return;
+      }
+
+      // Call backend to confirm email
+      const response = await fetch(`${backendUrl}/update-user`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          updates: { email_verified: true }
+        })
       });
 
-      if (authError) {
-        throw new Error(`Failed to confirm email: ${authError.message}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to confirm email');
       }
 
       // Refresh agents list
@@ -533,13 +543,13 @@ const AdminDashboard: React.FC = () => {
     if (!userId) return null;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
         throw new Error('No active session');
       }
       const response = await fetch(`${backendUrl}/get-whatsapp-config?user_id=${userId}`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
       const responseData = await response.json();
@@ -602,7 +612,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'whatsapp', label: 'WhatsApp Config' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'settings', label: 'Settings' },
-    { id: 'logout', label: 'Logout', onClick: () => supabase.auth.signOut().then(() => navigate('/login')) },
+    { id: 'logout', label: 'Logout', onClick: () => { localStorage.removeItem('auth_token'); navigate('/login'); } },
   ];
 
   const renderContent = () => {

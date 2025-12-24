@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
 import jsPDF from "jspdf";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";

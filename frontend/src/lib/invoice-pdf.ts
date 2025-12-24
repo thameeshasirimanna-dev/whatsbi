@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { supabase } from "./supabase";
+import { getToken } from "./auth";
 
 export interface AgentDetails {
   name: string;
@@ -36,7 +36,9 @@ export interface GeneratePDFParams {
   customerId: number;
 }
 
-export const generateInvoicePDF = async (params: GeneratePDFParams): Promise<Blob> => {
+export const generateInvoicePDF = async (
+  params: GeneratePDFParams
+): Promise<Blob> => {
   const {
     orderData,
     items,
@@ -92,11 +94,20 @@ export const generateInvoicePDF = async (params: GeneratePDFParams): Promise<Blo
   let templateBase64: string | null = null;
   if (invoiceTemplatePath) {
     try {
-      const { data: templateData } = await supabase.storage
-        .from("agent-templates")
-        .download(invoiceTemplatePath);
+      const token = getToken();
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/get-invoice-template?path=${invoiceTemplatePath}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      if (templateData) {
+      if (response.ok) {
+        const templateData = await response.blob();
         const img = new Image();
         const url = URL.createObjectURL(templateData);
         img.src = url;
@@ -321,44 +332,32 @@ export const generateInvoicePDF = async (params: GeneratePDFParams): Promise<Blo
   // Generate blob
   const pdfBlob = doc.output("blob");
 
-  // Generate filename with date and time
-  const fileName = `invoice_${orderData.id}${formattedDate}.pdf`;
-  const storagePath = `${agentPrefix}/${customerId}/${fileName}`;
+  // Convert blob to base64
+  const pdfBase64 = arrayBufferToBase64(await pdfBlob.arrayBuffer());
 
-  // Upload to storage
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from("invoices")
-    .upload(storagePath, pdfBlob, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
-
-  if (uploadError) {
-    throw new Error("Failed to upload invoice: " + uploadError.message);
-  }
-
-  // Get public URL
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("invoices").getPublicUrl(storagePath);
-
-  // Insert invoice record
-  const invoicesTable = `${agentPrefix}_orders_invoices`;
-  const { error: insertError } = await supabase.from(invoicesTable).insert({
-    order_id: orderData.id,
-    name: invoiceName,
-    pdf_url: publicUrl,
-    status: "generated",
-    discount_percentage: discountPercentage,
+  // Upload via API
+  const token = getToken();
+  const uploadResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload-invoice`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      orderId: orderData.id,
+      invoiceName,
+      agentPrefix,
+      customerId,
+      discountPercentage,
+      pdfBase64,
+    }),
   });
 
-  if (insertError) {
-    throw new Error(
-      "Failed to save invoice record: " + insertError.message
-    );
+  if (!uploadResponse.ok) {
+    throw new Error("Failed to upload invoice");
   }
 
-  return pdfBlob; // Return the blob, but note that upload and insert are done here
+  return pdfBlob; // Return the blob, upload is done via API
 };
 
 export const uploadAndSaveInvoice = async (
@@ -369,50 +368,41 @@ export const uploadAndSaveInvoice = async (
   customerId: number,
   discountPercentage: number
 ): Promise<string> => {
-  const now = new Date();
-  const formattedDate = `${now.getFullYear()}${String(
-    now.getMonth() + 1
-  ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(
-    now.getHours()
-  ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
-    now.getSeconds()
-  ).padStart(2, "0")}`;
+  const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+    let binary = "";
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  };
 
-  const fileName = `invoice_${orderId}${formattedDate}.pdf`;
-  const storagePath = `${agentPrefix}/${customerId}/${fileName}`;
+  // Convert blob to base64
+  const pdfBase64 = arrayBufferToBase64(await pdfBlob.arrayBuffer());
 
-  // Upload to storage
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from("invoices")
-    .upload(storagePath, pdfBlob, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
-
-  if (uploadError) {
-    throw new Error("Failed to upload invoice: " + uploadError.message);
-  }
-
-  // Get public URL
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("invoices").getPublicUrl(storagePath);
-
-  // Insert invoice record
-  const invoicesTable = `${agentPrefix}_orders_invoices`;
-  const { error: insertError } = await supabase.from(invoicesTable).insert({
-    order_id: orderId,
-    name: invoiceName,
-    pdf_url: publicUrl,
-    status: "generated",
-    discount_percentage: discountPercentage,
+  // Upload via API
+  const token = getToken();
+  const uploadResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload-invoice`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      orderId,
+      invoiceName,
+      agentPrefix,
+      customerId,
+      discountPercentage,
+      pdfBase64,
+    }),
   });
 
-  if (insertError) {
-    throw new Error(
-      "Failed to save invoice record: " + insertError.message
-    );
+  if (!uploadResponse.ok) {
+    throw new Error("Failed to upload invoice");
   }
 
+  const { publicUrl } = await uploadResponse.json();
   return publicUrl;
 };

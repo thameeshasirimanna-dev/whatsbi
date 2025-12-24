@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+// import { getToken } from '../../../lib/auth';
 import { Order, OrderItem } from '../../../types/index';
 
 interface InventoryItem {
@@ -40,6 +40,10 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const [newItemPrice, setNewItemPrice] = useState(0);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [businessType, setBusinessType] = useState<'service' | 'product' | null>(null);
+  const [businessTypeLoading, setBusinessTypeLoading] = useState(true);
+  const [businessTypeError, setBusinessTypeError] = useState<string | null>(
+    null
+  );
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventorySearchTerm, setInventorySearchTerm] = useState('');
   const [defaultAddQuantity, setDefaultAddQuantity] = useState(1);
@@ -54,10 +58,16 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   useEffect(() => {
     const fetchBusinessType = async () => {
       try {
+        setBusinessTypeLoading(true);
+        setBusinessTypeError(null);
+
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (!session) return;
+        if (!session) {
+          setBusinessTypeError("Not authenticated");
+          return;
+        }
 
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
@@ -78,10 +88,13 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         if (data.success && data.agent) {
           setBusinessType(data.agent.business_type as "service" | "product");
         } else {
-          console.error("Failed to fetch agent profile:", data.message);
+          setBusinessTypeError("Failed to fetch agent profile");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching business type:", err);
+        setBusinessTypeError(err.message || "Failed to load business type");
+      } finally {
+        setBusinessTypeLoading(false);
       }
     };
 
@@ -279,7 +292,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
     }
   };
 
-  if (!order || fetchLoading) {
+  if (!order || fetchLoading || businessTypeLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
         <div className="bg-white rounded-xl p-6">
@@ -289,11 +302,11 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
     );
   }
 
-  if (businessType === null) {
+  if (businessTypeError) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
         <div className="bg-white rounded-xl p-6 text-center">
-          <p className="text-red-600 mb-4">Unable to load business type. Please refresh and try again.</p>
+          <p className="text-red-600 mb-4">Unable to load business type: {businessTypeError}</p>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"

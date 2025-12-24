@@ -1,6 +1,5 @@
 // AddAgentModal.tsx
-import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import React, { useState } from "react";
 
 interface AddAgentModalProps {
   isOpen: boolean;
@@ -127,11 +126,9 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({
 
     try {
       // Get current session token for authentication
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const token = localStorage.getItem("auth_token");
 
-      if (!session?.access_token) {
+      if (!token) {
         setError("Please log in to continue");
         setIsLoading(false);
         return;
@@ -143,7 +140,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({
       const res = await fetch(`${apiUrl}/${endpoint}`, {
         method,
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(submitData),

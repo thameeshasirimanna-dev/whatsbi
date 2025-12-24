@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, getCurrentAgent } from "../../../lib/supabase";
+import { getCurrentAgent } from "../../../lib/agent";
+import { getToken } from "../../../lib/auth";
 import {
   PlusIcon,
   PencilIcon,
@@ -90,21 +91,19 @@ const TemplatesPage: React.FC = () => {
       setError(null);
 
       // Step 1: Get current user's WhatsApp configuration
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         setLoading(false);
         return;
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${session.user.id}`,
+        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }
@@ -129,31 +128,8 @@ const TemplatesPage: React.FC = () => {
       const templatesTable = `${agentPrefix}_templates`;
 
       if (!forceRefetch) {
-        // Step 2: Check cache first (dynamic templates table)
-        const { data: cachedTemplates, error: cacheError } = await supabase
-          .from(templatesTable)
-          .select("*")
-          .eq("is_active", true);
-
-        if (!cacheError && cachedTemplates && cachedTemplates.length > 0) {
-          const parsedTemplates = cachedTemplates.map((t: any) => {
-            const mediaUrls = t.body?.media_urls || {};
-            return {
-              id: t.name, // Use name as id for consistency with Meta
-              name: t.name,
-              language: t.language,
-              category: t.category,
-              body: t.body,
-              components: t.body?.components || [],
-              mediaUrls,
-              status: t.status || "APPROVED",
-              created_time: t.created_at,
-            };
-          }) as WhatsAppTemplate[];
-          setTemplates(parsedTemplates);
-          setLoading(false);
-          return;
-        }
+        // TODO: Step 2: Check cache first via backend API
+        // For now, skip cache and fetch from Meta API
       }
 
       // Step 3: Fetch from Meta API if no cache or cache empty
@@ -191,43 +167,8 @@ const TemplatesPage: React.FC = () => {
         return;
       }
 
-      // Step 4: Sync in Supabase dynamic table (deactivate old, upsert current)
-      if (agentId) {
-        if (forceRefetch) {
-          const { error: deactivateError } = await supabase
-            .from(templatesTable)
-            .update({ is_active: false })
-            .eq("agent_id", agentId);
-
-          if (deactivateError) {
-            console.error("Deactivate templates error:", deactivateError);
-          }
-        }
-
-        const upserts = fetchedTemplates.map((template) => ({
-          agent_id: agentId,
-          name: template.name,
-          category: template.category.toLowerCase() as
-            | "utility"
-            | "marketing"
-            | "authentication",
-          language: template.language,
-          body: template.body,
-          is_active: true,
-          updated_at: new Date().toISOString(),
-        }));
-
-        const { error: upsertError } = await supabase
-          .from(templatesTable)
-          .upsert(upserts, { onConflict: "agent_id,name" });
-
-        if (upsertError) {
-          console.error("Caching upsert error:", upsertError);
-          // Don't fail the whole operation, just log
-        }
-      } else {
-        console.warn("Skipping cache upsert due to missing agentId");
-      }
+      // TODO: Step 4: Sync templates via backend API
+      // For now, skip caching
 
       setTemplates(fetchedTemplates);
       setLoading(false);
@@ -271,20 +212,8 @@ const TemplatesPage: React.FC = () => {
       // Delete from local state
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
 
-      // Delete from Supabase dynamic table
-      const templatesTable = `${agentPrefix}_templates`;
-      if (agentId) {
-        const { error: deleteError } = await supabase
-          .from(templatesTable)
-          .delete()
-          .eq("agent_id", agentId)
-          .eq("name", templateId);
-        if (deleteError) {
-          console.error("Cache delete error:", deleteError);
-        }
-      } else {
-        console.warn("Skipping cache delete due to missing agentId");
-      }
+      // TODO: Delete from cache via backend API
+      // For now, skip
 
       // TODO: Add toast notification for success
     } catch (err: any) {

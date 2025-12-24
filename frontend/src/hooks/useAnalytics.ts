@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState, useEffect, useCallback } from "react";
 
 export interface AnalyticsData {
   totalCustomers: number;

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { supabase } from '../../../lib/supabase';
 import { useNavigate, Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { Agent } from '../../../types';
-import { getCurrentAgent } from '../../../lib/supabase';
+import { getCurrentAgent } from '../../../lib/agent';
+import { logout } from '../../../lib/auth';
 
 interface AgentLayoutProps {
   children?: React.ReactNode;
@@ -70,153 +70,16 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
       agentFetchedRef.current = true;
       setLoading(false);
 
-      // Fetch unread count and recent notifications
-      if (currentAgent && currentAgent.agent_prefix) {
-        const messagesTable = `${currentAgent.agent_prefix}_messages`;
-        const customersTable = `${currentAgent.agent_prefix}_customers`;
-
-        // Fetch unread count
-        const { count, error: countError } = await supabase
-          .from(messagesTable)
-          .select('*', { count: 'exact', head: true })
-          .eq('direction', 'inbound')
-          .eq('is_read', false);
-        if (!countError && count !== null) {
-          setUnreadCount(count);
-        }
-
-        // Fetch recent 5 unread messages
-        const { data: unreadMessages, error: unreadError } = await supabase
-          .from(messagesTable)
-          .select('id, message, timestamp, customer_id')
-          .eq('direction', 'inbound')
-          .eq('is_read', false)
-          .order('timestamp', { ascending: false })
-          .limit(5);
-
-        if (!unreadError && unreadMessages && unreadMessages.length > 0) {
-          const customerIds = [...new Set(unreadMessages.map((msg: any) => msg.customer_id))];
-          const { data: customers, error: customerError } = await supabase
-            .from(customersTable)
-            .select('id, name, phone')
-            .in('id', customerIds);
-
-          if (!customerError && customers) {
-            const customerMap = new Map(customers.map((c: any) => [c.id, c]));
-            setRecentNotifications(unreadMessages.map((msg: any) => {
-              const customer = customerMap.get(msg.customer_id);
-              return {
-                id: msg.id,
-                customerName: customer ? customer.name : `Customer ${msg.customer_id}`,
-                customerPhone: customer ? customer.phone : '',
-                customerId: msg.customer_id,
-                preview: msg.message.length > 50 ? `${msg.message.substring(0, 50)}...` : msg.message,
-                timestamp: new Date(msg.timestamp).toLocaleString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }),
-              };
-            }));
-          }
-        } else {
-          setRecentNotifications([]);
-        }
-      }
+      // TODO: Implement unread count and notifications fetching via backend API
+      // For now, set to 0 and empty array
+      setUnreadCount(0);
+      setRecentNotifications([]);
     };
 
     fetchAgent();
-
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && !agent) {
-        fetchAgent();
-      } else if (event === 'SIGNED_OUT') {
-        setAgent(null);
-        setUnreadCount(0);
-        setRecentNotifications([]);
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
   }, []);
 
-  // Realtime subscription for unread notifications
-  useEffect(() => {
-    if (!agent?.agent_prefix || !agent?.id) return;
-
-    const messagesTable = `${agent.agent_prefix}_messages`;
-    const channel = supabase
-      .channel(`unread-notifications-${agent.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: messagesTable,
-          filter: 'direction=eq.inbound',
-        },
-        async (payload) => {
-          const newMsg = payload.new;
-          if (!newMsg.is_read) {
-            setUnreadCount((prev) => prev + 1);
-
-            const customersTable = `${agent.agent_prefix}_customers`;
-            const { data: customer, error } = await supabase
-              .from(customersTable)
-              .select('name, phone')
-              .eq('id', newMsg.customer_id)
-              .single();
-
-            if (!error && customer) {
-              const preview = newMsg.message ? (newMsg.message.length > 50 ? `${newMsg.message.substring(0, 50)}...` : newMsg.message) : '';
-              const notif = {
-                id: newMsg.id,
-                customerName: customer.name || `Customer ${newMsg.customer_id}`,
-                customerPhone: customer.phone || '',
-                customerId: newMsg.customer_id,
-                preview,
-                timestamp: new Date(newMsg.timestamp).toLocaleString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }),
-              };
-              setRecentNotifications((prev) => {
-                const updated = [notif, ...prev];
-                return updated.length > 5 ? updated.slice(0, 5) : updated;
-              });
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: messagesTable,
-          filter: 'direction=eq.inbound',
-        },
-        (payload) => {
-          const oldMsg = payload.old;
-          const newMsg = payload.new;
-          if (oldMsg.is_read === false && newMsg.is_read === true) {
-            setUnreadCount((prev) => Math.max(0, prev - 1));
-            setRecentNotifications((prev) => prev.filter((n) => n.id !== newMsg.id));
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Subscribed to unread notifications');
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [agent?.agent_prefix, agent?.id]);
+  // TODO: Implement realtime subscription for unread notifications via WebSocket
 
   // Listen for bulk read events from ConversationsPage
   useEffect(() => {
@@ -292,10 +155,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
         onLogout={async () => {
           // Handle logout
           if (confirm('Are you sure you want to logout?')) {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-              console.error('Logout error:', error);
-            }
+            logout();
             window.location.href = '/login';
           }
         }}

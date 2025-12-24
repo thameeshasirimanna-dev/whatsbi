@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from '../../../lib/supabase';
+// import { getToken } from '../../../lib/auth';
 import CreateOrderModal from "./CreateOrderModal";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";

@@ -1,9 +1,4 @@
 import React, { useState } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
-const supabase: SupabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
 // Types
 interface WhatsAppConfig {
@@ -43,17 +38,8 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
   selectedAgent,
   initialConfig
 }) => {
-  const [session, setSession] = React.useState<any>(null);
-
-  React.useEffect(() => {
-    const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
-    };
-    getSession();
-  }, []);
+  // Get token from localStorage
+  const getToken = () => localStorage.getItem('auth_token');
   const [formData, setFormData] = useState<WhatsAppConfig>({
     whatsapp_number: "",
     webhook_url: "",
@@ -153,7 +139,7 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${getToken()}`,
         },
         body: JSON.stringify(payload),
       });

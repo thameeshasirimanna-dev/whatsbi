@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify';
+import bcrypt from 'bcrypt';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function addUserRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function addUserRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/add-user', async (request, reply) => {
     try {
       const body = request.body as any;
@@ -32,31 +33,42 @@ export default async function addUserRoutes(fastify: FastifyInstance, supabaseCl
         });
       }
 
+      // Check if user already exists
+      const { rows: existingUsers } = await pgClient.query(
+        'SELECT id FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (existingUsers.length > 0) {
+        return reply.code(400).send({
+          success: false,
+          message: "User with this email already exists"
+        });
+      }
+
       // Check if trying to create first admin (no existing admins)
       let isFirstAdmin = false;
       if (role === 'admin') {
-        const { count: adminCount } = await supabaseClient
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('role', 'admin');
-
-        isFirstAdmin = adminCount === 0;
+        const { rows: adminRows } = await pgClient.query(
+          'SELECT COUNT(*) as count FROM users WHERE role = $1',
+          ['admin']
+        );
+        isFirstAdmin = parseInt(adminRows[0].count) === 0;
       }
 
       // If not creating first admin, verify JWT and check admin role
       if (!isFirstAdmin) {
         // Verify JWT and get authenticated user
-        const authenticatedUser = await verifyJWT(request, supabaseClient);
+        const authenticatedUser = await verifyJWT(request, pgClient);
         console.log('Authenticated User:', authenticatedUser.id);
 
         // Get user role from database
-        const { data: userData } = await supabaseClient
-          .from('users')
-          .select('role')
-          .eq('id', authenticatedUser.id)
-          .single();
+        const { rows: userRows } = await pgClient.query(
+          'SELECT role FROM users WHERE id = $1',
+          [authenticatedUser.id]
+        );
 
-        if (!userData || userData.role !== 'admin') {
+        if (userRows.length === 0 || userRows[0].role !== 'admin') {
           return reply.code(403).send({
             success: false,
             message: 'Access denied. Admin role required.'
@@ -64,64 +76,40 @@ export default async function addUserRoutes(fastify: FastifyInstance, supabaseCl
         }
       }
 
-      // 1️⃣ Create Auth user
-      const { data: authUser, error: authError } = await supabaseClient.auth.admin.createUser({
-        email: email,
-        password: password,
-        user_metadata: {
-          name: name,
-          role: role
-        },
-        email_confirm: true
-      });
+      // Hash the password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
 
-      if (authError || !authUser) {
+      // Generate UUID for user
+      const { rows: uuidRows } = await pgClient.query('SELECT gen_random_uuid() as id');
+      const userId = uuidRows[0].id;
+
+      // Insert into users table
+      const { rows: userRows, rowCount } = await pgClient.query(
+        'INSERT INTO users (id, name, email, role, password_hash) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [userId, name, email, role, passwordHash]
+      );
+
+      if (rowCount === 0) {
         return reply.code(400).send({
           success: false,
-          message: "Failed to create Auth user: " + authError?.message
+          message: "Failed to create user record"
         });
       }
 
-      const authUserId = authUser.user.id;
-
-      // Update auth user's display name
-      const { error: updateError } = await supabaseClient.auth.admin.updateUserById(authUserId, {
-        user_metadata: {
-          ...authUser.user.user_metadata,
-          name: name
-        }
-      });
-
-      if (updateError) {
-        console.error('Failed to update auth user display name:', updateError);
-        // Continue without failing
-      }
-
-      // 2️⃣ Insert into users table
-      const { data: user, error: userError } = await supabaseClient.from("users").insert({
-        id: authUserId,
-        name: name,
-        email: email,
-        role: role
-      }).select().single();
-
-      if (userError || !user) {
-        // Clean up auth user if users table insert fails
-        await supabaseClient.auth.admin.deleteUser(authUserId);
-        return reply.code(400).send({
-          success: false,
-          message: "Failed to create user record: " + userError?.message
-        });
-      }
-
+      const user = userRows[0];
       console.log('User created successfully:', user);
 
-      // 3️⃣ Return success response
+      // Return success response
       return reply.code(200).send({
         success: true,
         message: "User created successfully",
-        authUser,
-        user
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
       });
 
     } catch (err) {

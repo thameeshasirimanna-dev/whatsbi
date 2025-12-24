@@ -1,11 +1,38 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  safelist: [
+    // Dynamic gradient classes used in LandingPage
+    "from-emerald-500",
+    "to-emerald-600",
+    "from-emerald-400",
+    "to-emerald-500",
+    "from-blue-500",
+    "to-blue-600",
+    "from-blue-400",
+    "to-blue-500",
+    "from-purple-500",
+    "to-purple-600",
+    "from-purple-400",
+    "to-purple-500",
+    "from-indigo-500",
+    "to-indigo-600",
+    "from-indigo-400",
+    "to-indigo-500",
+    "from-cyan-500",
+    "to-cyan-600",
+    "from-cyan-400",
+    "to-cyan-500",
+    "bg-emerald-300",
+    "bg-cyan-300",
+    "bg-emerald-200",
+    "bg-gradient-to-br",
+    "bg-gradient-to-r",
+    "hover:shadow-emerald-500/25",
+    "hover:shadow-emerald-500/10",
   ],
   theme: {
     extend: {},
   },
   plugins: [],
-}
+};

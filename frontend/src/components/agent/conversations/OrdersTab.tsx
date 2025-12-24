@@ -1,5 +1,5 @@
 import React from "react";
-import { supabase } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
 import { Order } from "../../../types/index";
 
 interface OrdersTabProps {

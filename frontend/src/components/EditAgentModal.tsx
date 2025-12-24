@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { getToken } from "../lib/auth";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
 
@@ -111,42 +111,42 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Get current user session for authentication
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        setError('User not authenticated. Please log in again.');
+      // Get current user token for authentication
+      const token = getToken();
+
+      if (!token) {
+        setError("User not authenticated. Please log in again.");
         setIsLoading(false);
         return;
       }
 
       const res = await fetch(`${backendUrl}/update-agent`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(submitData)
+        body: JSON.stringify(submitData),
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setSuccessMessage('Agent updated successfully!');
+        setSuccessMessage("Agent updated successfully!");
         setShowSuccess(true);
-        
+
         // Call success callback immediately
         if (onSuccess) {
           onSuccess();
         }
-        
+
         // Close modal after success display
         setTimeout(() => {
           setShowSuccess(false);
           onClose();
         }, 2000);
       } else {
-        setError(data.message || 'Failed to update agent');
-        console.error('Edge function failed:', data);
+        setError(data.message || "Failed to update agent");
+        console.error("Edge function failed:", data);
       }
     } catch (err: any) {
       console.error('Update agent error:', err);

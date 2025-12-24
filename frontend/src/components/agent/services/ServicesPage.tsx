@@ -1,12 +1,4 @@
 import React, { useState, useEffect } from "react";
-import {
-  createService,
-  getServices,
-  updateService,
-  deleteService,
-  supabase,
-  getCurrentAgent,
-} from "../../../lib/supabase";
 import type {
   Service,
   ServiceWithPackages,
@@ -43,7 +35,8 @@ const ServicesPage: React.FC = () => {
   const [deletingServiceId, setDeletingServiceId] = useState<string | null>(
     null
   );
-  const [viewingService, setViewingService] = useState<ServiceWithPackages | null>(null);
+  const [viewingService, setViewingService] =
+    useState<ServiceWithPackages | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [filters, setFilters] = useState({
     service_name: "",
@@ -59,23 +52,73 @@ const ServicesPage: React.FC = () => {
 
   // Fetch agent
   useEffect(() => {
-    getCurrentAgent().then(setAgent);
+    const fetchAgent = async () => {
+      try {
+        const token = localStorage.getItem("auth_token");
+        if (!token) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setAgent(data.agent);
+        }
+      } catch (error) {
+        console.error("Failed to fetch agent:", error);
+      }
+    };
+
+    fetchAgent();
   }, []);
 
   const fetchServices = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      setLoading(true);
+      setError(null);
 
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await getServices(filters);
-    if (fetchError) {
-      setError(fetchError);
-    } else {
-      setServices(data || []);
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        setError("Not authenticated");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            operation: "get",
+            ...filters,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Failed to fetch services");
+      } else {
+        setServices(result.data || []);
+      }
+    } catch (error) {
+      setError("Failed to fetch services");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Create service - modified to return success boolean
@@ -95,15 +138,42 @@ const ServicesPage: React.FC = () => {
       description?: string;
     }>;
   }): Promise<boolean> => {
-    const { data, error: createError } = await createService(formData);
-    if (createError) {
-      setError(createError.message || "Failed to create service");
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        setError("Not authenticated");
+        return false;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            operation: "create",
+            ...formData,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Failed to create service");
+        return false;
+      } else {
+        setShowCreateModal(false);
+        fetchServices(); // Refresh list
+        setError(null);
+        return true;
+      }
+    } catch (error) {
+      setError("Failed to create service");
       return false;
-    } else {
-      setShowCreateModal(false);
-      fetchServices(); // Refresh list
-      setError(null);
-      return true;
     }
   };
 
@@ -113,25 +183,79 @@ const ServicesPage: React.FC = () => {
     id: string,
     updates: any
   ) => {
-    const { data, error: updateError } = await updateService(type, id, updates);
-    if (updateError) {
-      setError(updateError);
-    } else {
-      setEditingService(null);
-      fetchServices(); // Refresh list
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        setError("Not authenticated");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            operation: "update",
+            type,
+            id,
+            updates,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Failed to update service");
+      } else {
+        setEditingService(null);
+        fetchServices(); // Refresh list
+      }
+    } catch (error) {
+      setError("Failed to update service");
     }
   };
 
   // Delete service (permanent only)
   const handleDeleteService = async (id: string) => {
-    const { data, error: deleteError } = await deleteService(id);
-    if (deleteError) {
-      setError(deleteError.message || "Failed to permanently delete service");
-    } else {
-      setShowDeleteModal(false);
-      setDeletingServiceId(null);
-      fetchServices(); // Refresh list
-      setError(null);
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        setError("Not authenticated");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            operation: "delete",
+            id,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Failed to permanently delete service");
+      } else {
+        setShowDeleteModal(false);
+        setDeletingServiceId(null);
+        fetchServices(); // Refresh list
+        setError(null);
+      }
+    } catch (error) {
+      setError("Failed to permanently delete service");
     }
   };
 
@@ -206,7 +330,9 @@ const ServicesPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search services or packages..."
-                value={`${filters.service_name} ${filters.package_name}`.trim() || ""}
+                value={
+                  `${filters.service_name} ${filters.package_name}`.trim() || ""
+                }
                 onChange={(e) => {
                   const value = e.target.value;
                   setFilters({
@@ -235,7 +361,8 @@ const ServicesPage: React.FC = () => {
             >
               <Menu as="div" className="relative">
                 <Menu.Button className="flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                  {sortByOptions.find((opt) => opt.value === filters.sort_by)?.label || "Sort by Date"}
+                  {sortByOptions.find((opt) => opt.value === filters.sort_by)
+                    ?.label || "Sort by Date"}
                   <svg
                     className="w-4 h-4 ml-2"
                     fill="none"
@@ -270,7 +397,9 @@ const ServicesPage: React.FC = () => {
                                 ? "bg-green-50 text-green-700"
                                 : ""
                             }`}
-                            onClick={() => setFilters({ ...filters, sort_by: option.value })}
+                            onClick={() =>
+                              setFilters({ ...filters, sort_by: option.value })
+                            }
                           >
                             {option.label}
                           </button>
@@ -290,7 +419,9 @@ const ServicesPage: React.FC = () => {
             >
               <Menu as="div" className="relative">
                 <Menu.Button className="flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                  {sortOrderOptions.find((opt) => opt.value === filters.sort_order)?.label || "Descending"}
+                  {sortOrderOptions.find(
+                    (opt) => opt.value === filters.sort_order
+                  )?.label || "Descending"}
                   <svg
                     className="w-4 h-4 ml-2"
                     fill="none"
@@ -325,7 +456,12 @@ const ServicesPage: React.FC = () => {
                                 ? "bg-green-50 text-green-700"
                                 : ""
                             }`}
-                            onClick={() => setFilters({ ...filters, sort_order: option.value })}
+                            onClick={() =>
+                              setFilters({
+                                ...filters,
+                                sort_order: option.value,
+                              })
+                            }
                           >
                             {option.label}
                           </button>
@@ -403,8 +539,7 @@ const ServicesPage: React.FC = () => {
                 {/* Service Header */}
                 <div className="flex items-start space-x-3 mb-3">
                   <div className="flex-shrink-0">
-                    {service.image_urls &&
-                    service.image_urls.length > 0 ? (
+                    {service.image_urls && service.image_urls.length > 0 ? (
                       <img
                         className="h-12 w-12 rounded-lg object-cover"
                         src={service.image_urls[0]}
@@ -441,7 +576,9 @@ const ServicesPage: React.FC = () => {
 
                 {/* Packages */}
                 <div className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-900 mb-1.5 uppercase tracking-wide">Packages</h4>
+                  <h4 className="text-xs font-medium text-gray-900 mb-1.5 uppercase tracking-wide">
+                    Packages
+                  </h4>
                   <div className="space-y-2 max-h-24 overflow-y-auto">
                     {service.packages.map((pkg) => (
                       <div
@@ -471,7 +608,9 @@ const ServicesPage: React.FC = () => {
                       </div>
                     ))}
                     {service.packages.length === 0 && (
-                      <p className="text-sm text-gray-500 italic">No packages</p>
+                      <p className="text-sm text-gray-500 italic">
+                        No packages
+                      </p>
                     )}
                   </div>
                 </div>
@@ -491,9 +630,7 @@ const ServicesPage: React.FC = () => {
                     Edit
                   </button>
                   <button
-                    onClick={() =>
-                      confirmDelete(service.id)
-                    }
+                    onClick={() => confirmDelete(service.id)}
                     className="text-red-600 hover:text-red-900 text-xs font-medium transition-colors"
                   >
                     Delete

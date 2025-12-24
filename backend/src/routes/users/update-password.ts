@@ -1,11 +1,12 @@
 import { FastifyInstance } from 'fastify';
+import bcrypt from 'bcrypt';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function updatePasswordRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function updatePasswordRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.patch('/update-password', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
 
@@ -24,19 +25,20 @@ export default async function updatePasswordRoutes(fastify: FastifyInstance, sup
         });
       }
 
-      // Update password using Supabase Admin API
-      const { data, error } = await supabaseClient.auth.admin.updateUserById(
-        authenticatedUser.id,
-        {
-          password: body.new_password,
-        }
+      // Hash the new password
+      const saltRounds = 10;
+      const newPasswordHash = await bcrypt.hash(body.new_password, saltRounds);
+
+      // Update password hash in database
+      const { rowCount } = await pgClient.query(
+        'UPDATE users SET password_hash = $1 WHERE id = $2',
+        [newPasswordHash, authenticatedUser.id]
       );
 
-      if (error) {
-        console.error("Password update error:", error);
-        return reply.code(400).send({
+      if (rowCount === 0) {
+        return reply.code(404).send({
           success: false,
-          message: "Failed to update password: " + error.message,
+          message: "User not found",
         });
       }
 

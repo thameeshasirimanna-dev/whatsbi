@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
 import { Order, Appointment } from "../../../types/index";
 import CreateOrderModal from "../customers/CreateOrderModal";
 import ViewOrderModal from "../orders/ViewOrderModal";

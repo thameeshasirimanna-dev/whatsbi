@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import type { Package } from "../../../types";
-import { getCurrentAgent, uploadServiceImages } from "../../../lib/supabase";
 
 const resizeImage = (
   file: File,

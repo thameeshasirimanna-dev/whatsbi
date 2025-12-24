@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { supabase } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
 import { Conversation, Message, GroupedMessage } from "./ConversationsPage";
 import ProductSelectorModal from "./ProductSelectorModal";
 import ServiceSelectorModal from "./ServiceSelectorModal";

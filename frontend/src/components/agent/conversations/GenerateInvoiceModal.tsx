@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
 import { generateInvoicePDF, type InvoiceItem } from "../../../lib/invoice-pdf";
 import { Order } from "../../../types/index";
 

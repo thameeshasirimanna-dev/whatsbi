@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabase";
-import { getCurrentAgent } from "../../../lib/supabase";
+import { getToken } from "../../../lib/auth";
+import { getCurrentAgent } from "../../../lib/agent";
 
 interface Package {
   id: string;

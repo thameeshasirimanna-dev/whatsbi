@@ -6,7 +6,6 @@ import React, {
   useMemo,
 } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../../lib/supabase";
 import { io, Socket } from "socket.io-client";
 import ConversationList from "./ConversationList";
 import MessageView from "./MessageView";
@@ -14,6 +13,45 @@ import ContactDetails from "./ContactDetails";
 import ProductSelectorModal from "./ProductSelectorModal";
 import ViewTemplateModal from "../templates/ViewTemplateModal";
 import { EyeIcon } from "@heroicons/react/24/outline";
+// Auth utilities - JWT token based
+const getToken = () => {
+  return localStorage.getItem("auth_token");
+};
+
+const getAuthHeaders = () => {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const getUser = async () => {
+  try {
+    const token = getToken();
+    if (!token) return { data: { user: null }, error: null };
+
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/get-current-user`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await response.json();
+    if (response.ok && data.success) {
+      return { data: { user: data.user }, error: null };
+    } else {
+      return {
+        data: { user: null },
+        error: data.message || "Failed to get user",
+      };
+    }
+  } catch (error) {
+    return { data: { user: null }, error };
+  }
+};
 
 export interface Message {
   id: string | number;
@@ -183,10 +221,10 @@ const ConversationsPage: React.FC = () => {
     setSendError(null);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const userResult = await getUser();
+      if (userResult.error || !userResult.data.user)
+        throw new Error("Not authenticated");
+      const user = userResult.data.user;
 
       const formattedPhone = selectedConversation.customerPhone.replace(
         /[\s+]/g,
@@ -200,10 +238,8 @@ const ConversationsPage: React.FC = () => {
 
       // Trigger agent's webhook with product details and command (regardless of ai_enabled)
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) return;
+        const headers = getAuthHeaders();
+        if (!headers.Authorization) return;
 
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
@@ -305,10 +341,8 @@ const ConversationsPage: React.FC = () => {
     if (!agentId) return;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      const token = getToken();
+      if (!token) return;
 
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/manage-templates?is_active=true`,
@@ -350,10 +384,8 @@ const ConversationsPage: React.FC = () => {
     setTemplateError(null);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      const token = getToken();
+      if (!token) {
         throw new Error("Not authenticated");
       }
 
@@ -468,14 +500,14 @@ const ConversationsPage: React.FC = () => {
     setTemplateError(null);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const userResult = await getUser();
+      if (userResult.error || !userResult.data.user)
+        throw new Error("Not authenticated");
+      const user = userResult.data.user;
 
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = getSession();
       if (!session?.access_token) {
         throw new Error("Not authenticated");
       }
@@ -581,7 +613,6 @@ const ConversationsPage: React.FC = () => {
     });
 
     newSocket.on("connect", () => {
-      console.log("Connected to Socket.IO server");
       // Join agent room
       newSocket.emit("join-agent-room", { agentId, token: "dummy-token" }); // TODO: Add proper JWT token
     });
@@ -595,7 +626,6 @@ const ConversationsPage: React.FC = () => {
     });
 
     newSocket.on("new-message", async (messageData: any) => {
-      console.log("Received new message:", messageData);
       // Handle new message similar to realtime logic
       const newMsg: Message = {
         id: messageData.id,
@@ -625,10 +655,8 @@ const ConversationsPage: React.FC = () => {
 
         // Mark all unread messages for this customer as read in the backend
         try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.access_token) {
+          const token = getToken();
+          if (token) {
             fetch(
               `${import.meta.env.VITE_BACKEND_URL}/conversations/${
                 messageData.customer_id
@@ -636,7 +664,7 @@ const ConversationsPage: React.FC = () => {
               {
                 method: "POST",
                 headers: {
-                  Authorization: `Bearer ${session.access_token}`,
+                  Authorization: `Bearer ${token}`,
                 },
               }
             ).catch((error) => {
@@ -777,9 +805,11 @@ const ConversationsPage: React.FC = () => {
                 customer_id: messageData.customer_id,
                 message: newMsg.text,
                 timestamp: newMsg.timestamp,
-                customerName: messageData.customer_name || `Customer ${messageData.customer_id}`,
-                customerPhone: messageData.customer_phone || '',
-              }
+                customerName:
+                  messageData.customer_name ||
+                  `Customer ${messageData.customer_id}`,
+                customerPhone: messageData.customer_phone || "",
+              },
             },
           })
         );
@@ -788,24 +818,25 @@ const ConversationsPage: React.FC = () => {
       setLastRealtimeEvent(Date.now());
 
       // Scroll to bottom if message is for selected conversation
-      if (selectedConversationId === messageData.customer_id && messagesContainerRef.current) {
+      if (
+        selectedConversationId === messageData.customer_id &&
+        messagesContainerRef.current
+      ) {
         setTimeout(() => {
           if (messagesContainerRef.current) {
-            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            messagesContainerRef.current.scrollTop =
+              messagesContainerRef.current.scrollHeight;
           }
         }, 100);
       }
     });
 
     newSocket.on("agent-status-update", (statusData: any) => {
-      console.log("Received agent status update:", statusData);
       // Handle agent status updates (e.g., credits changed)
       // For now, just log - can be extended to update UI
     });
 
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from Socket.IO server");
-    });
+    newSocket.on("disconnect", () => {});
 
     setSocket(newSocket);
 
@@ -853,17 +884,15 @@ const ConversationsPage: React.FC = () => {
     if (!agentId) return;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      const token = getToken();
+      if (!token) return;
 
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/manage-customers`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -906,10 +935,8 @@ const ConversationsPage: React.FC = () => {
       );
     setCreatingCustomer(true);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      const token = getToken();
+      if (!token) {
         setCreatingCustomer(false);
         return;
       }
@@ -919,7 +946,7 @@ const ConversationsPage: React.FC = () => {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -1085,21 +1112,17 @@ const ConversationsPage: React.FC = () => {
         }
 
         // Get authenticated user
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-        if (authError || !user) {
+        const userResult = await getUser();
+        if (userResult.error || !userResult.data.user) {
           setError("User not authenticated");
           if (isInitialLoad) setLoading(false);
           return;
         }
+        const user = userResult.data.user;
 
-        // Get agent profile from backend
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) {
+        // Get token for API calls
+        const token = getToken();
+        if (!token) {
           setError("User not authenticated");
           if (isInitialLoad) setLoading(false);
           return;
@@ -1110,7 +1133,7 @@ const ConversationsPage: React.FC = () => {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -1147,7 +1170,7 @@ const ConversationsPage: React.FC = () => {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -1168,7 +1191,7 @@ const ConversationsPage: React.FC = () => {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -1235,10 +1258,8 @@ const ConversationsPage: React.FC = () => {
 
       try {
         // Get authenticated session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
+        const token = getToken();
+        if (!token) return;
 
         const currentOffset = messageOffset[selectedConversationId] || 0;
         const limit = 50;
@@ -1252,7 +1273,7 @@ const ConversationsPage: React.FC = () => {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -1293,9 +1314,12 @@ const ConversationsPage: React.FC = () => {
 
           // Remove duplicates based on id and keep the most recent version
           const messageMap = new Map<string | number, Message>();
-          allMessages.forEach(msg => {
+          allMessages.forEach((msg) => {
             const existing = messageMap.get(msg.id);
-            if (!existing || (msg.rawTimestamp || 0) > (existing.rawTimestamp || 0)) {
+            if (
+              !existing ||
+              (msg.rawTimestamp || 0) > (existing.rawTimestamp || 0)
+            ) {
               messageMap.set(msg.id, msg);
             }
           });
@@ -1441,15 +1465,9 @@ const ConversationsPage: React.FC = () => {
 
       // Mark messages as read
       if (unreadToMark > 0) {
-        console.log(
-          `Marking ${unreadToMark} messages as read for customer ${customerId}`
-        );
         try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            console.log("Making mark-read request to backend");
+          const token = getToken();
+          if (token) {
             const response = await fetch(
               `${
                 import.meta.env.VITE_BACKEND_URL
@@ -1457,14 +1475,12 @@ const ConversationsPage: React.FC = () => {
               {
                 method: "POST",
                 headers: {
-                  Authorization: `Bearer ${session.access_token}`,
+                  Authorization: `Bearer ${token}`,
                 },
               }
             );
-            console.log(`Mark-read response status: ${response.status}`);
             if (response.ok) {
               const data = await response.json();
-              console.log("Messages marked as read successfully:", data);
             } else {
               const errorText = await response.text();
               console.error(
@@ -1474,7 +1490,6 @@ const ConversationsPage: React.FC = () => {
               );
             }
           } else {
-            console.log("No session token available for mark-read");
           }
         } catch (error) {
           console.error("Failed to mark messages as read:", error);
@@ -1522,7 +1537,12 @@ const ConversationsPage: React.FC = () => {
 
   // Ensure messages are loaded when conversation is selected but has no messages
   useEffect(() => {
-    if (selectedConversationId && selectedConversation && (!selectedConversation.messages || selectedConversation.messages.length === 0)) {
+    if (
+      selectedConversationId &&
+      selectedConversation &&
+      (!selectedConversation.messages ||
+        selectedConversation.messages.length === 0)
+    ) {
       fetchSelectedConversation();
     }
   }, [selectedConversationId, selectedConversation, fetchSelectedConversation]);
@@ -1724,10 +1744,8 @@ const ConversationsPage: React.FC = () => {
         })
       );
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      const token = getToken();
+      if (!token) {
         throw new Error("Not authenticated");
       }
 
@@ -1738,7 +1756,7 @@ const ConversationsPage: React.FC = () => {
         method: "POST",
         body: formData,
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       const uploadResult = await uploadResponse.json();
@@ -1827,10 +1845,10 @@ const ConversationsPage: React.FC = () => {
       setNewMessage(""); // Clear the input
 
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
+        const userResult = await getUser();
+        if (userResult.error || !userResult.data.user)
+          throw new Error("Not authenticated");
+        const user = userResult.data.user;
 
         const formattedPhone = conversation.customerPhone.replace(/[\s+]/g, "");
 
@@ -1852,10 +1870,8 @@ const ConversationsPage: React.FC = () => {
           category: "utility",
         };
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.access_token) {
+        const token = getToken();
+        if (!token) {
           throw new Error("Not authenticated");
         }
 
@@ -1865,7 +1881,7 @@ const ConversationsPage: React.FC = () => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify(textPayload),
           }
@@ -1896,7 +1912,7 @@ const ConversationsPage: React.FC = () => {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
+                  Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(imagePayload),
               }
@@ -1994,12 +2010,11 @@ const ConversationsPage: React.FC = () => {
       setSendError(null);
 
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
+        const userResult = await getUser();
+        if (userResult.error || !userResult.data.user) {
           throw new Error("User not authenticated");
         }
+        const user = userResult.data.user;
 
         const formattedPhone = customerPhone.replace(/[\s+]/g, "");
 
@@ -2012,10 +2027,8 @@ const ConversationsPage: React.FC = () => {
           media_ids: pendingMedia.map((m) => m.id),
         };
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.access_token) {
+        const token = getToken();
+        if (!token) {
           throw new Error("Not authenticated");
         }
 
@@ -2025,7 +2038,7 @@ const ConversationsPage: React.FC = () => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify(payload),
           }
@@ -2041,10 +2054,8 @@ const ConversationsPage: React.FC = () => {
           if (errorMsg.includes("Template required after 24h window")) {
             if (agentId) {
               try {
-                const {
-                  data: { session },
-                } = await supabase.auth.getSession();
-                if (session?.access_token) {
+                const token = getToken();
+                if (token) {
                   const response = await fetch(
                     `${
                       import.meta.env.VITE_BACKEND_URL
@@ -2052,7 +2063,7 @@ const ConversationsPage: React.FC = () => {
                     {
                       method: "GET",
                       headers: {
-                        Authorization: `Bearer ${session.access_token}`,
+                        Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
                       },
                     }
@@ -2141,10 +2152,8 @@ const ConversationsPage: React.FC = () => {
           // Fetch templates for this agent
           if (agentId) {
             try {
-              const {
-                data: { session },
-              } = await supabase.auth.getSession();
-              if (session?.access_token) {
+              const token = getToken();
+              if (token) {
                 const response = await fetch(
                   `${
                     import.meta.env.VITE_BACKEND_URL
@@ -2152,7 +2161,7 @@ const ConversationsPage: React.FC = () => {
                   {
                     method: "GET",
                     headers: {
-                      Authorization: `Bearer ${session.access_token}`,
+                      Authorization: `Bearer ${token}`,
                       "Content-Type": "application/json",
                     },
                   }
@@ -2223,21 +2232,18 @@ const ConversationsPage: React.FC = () => {
       let result: any = null;
       try {
         // Get authenticated user
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
+        const userResult = await getUser();
+        if (userResult.error || !userResult.data.user) {
           throw new Error("User not authenticated");
         }
+        const user = userResult.data.user;
 
         // Format phone number for WhatsApp API (remove + and spaces)
         const formattedToPhone = customerPhone.replace(/[\s+]/g, "");
 
         // Send message via Node backend
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.access_token) {
+        const token = getToken();
+        if (!token) {
           throw new Error("Not authenticated");
         }
 
@@ -2247,7 +2253,7 @@ const ConversationsPage: React.FC = () => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
               user_id: user.id,
@@ -2270,10 +2276,8 @@ const ConversationsPage: React.FC = () => {
             // Fetch templates for this agent
             if (agentId) {
               try {
-                const {
-                  data: { session },
-                } = await supabase.auth.getSession();
-                if (session?.access_token) {
+                const token = getToken();
+                if (token) {
                   const response = await fetch(
                     `${
                       import.meta.env.VITE_BACKEND_URL
@@ -2412,10 +2416,8 @@ const ConversationsPage: React.FC = () => {
 
   const getMediaPreviewUrl = async (handle: string): Promise<string> => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) return "";
+      const token = getToken();
+      if (!token) return "";
 
       const configResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
@@ -2897,6 +2899,8 @@ const ConversationsPage: React.FC = () => {
   );
 };
 export default ConversationsPage;
+
+
 
 
 
