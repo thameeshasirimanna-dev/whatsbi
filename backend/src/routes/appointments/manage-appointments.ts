@@ -50,14 +50,6 @@ export default async function manageAppointmentsRoutes(
           const customerId = url.searchParams.get("customer_id");
           const status = url.searchParams.get("status");
 
-          console.log("Appointments fetch params:", {
-            search,
-            limit,
-            offset,
-            customerId,
-            status,
-            agentPrefix,
-          });
 
           // Build the query
           let queryText = `

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from 'react-router-dom';
-import { getToken } from '../lib/auth';
+import { getToken } from '../../../lib/auth';
 import {
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
@@ -88,123 +88,60 @@ const DashboardContent: React.FC = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser();
-        
-        if (!authUser) {
-          setError("User not authenticated");
-          return;
-        }
-
-        // Fetch agent profile from backend
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        const token = getToken();
+        if (!token) {
           setError("User not authenticated");
           return;
         }
 
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+          `${import.meta.env.VITE_BACKEND_URL}/get-dashboard-data`,
           {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
+              'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }
         );
 
         if (!response.ok) {
-          setError("Failed to fetch agent profile");
+          setError("Failed to fetch dashboard data");
           return;
         }
 
-        const agentProfile = await response.json();
-        if (!agentProfile.success || !agentProfile.agent) {
-          setError("Agent not found");
+        const dashboardResponse = await response.json();
+        if (!dashboardResponse.success || !dashboardResponse.data) {
+          setError("Failed to load dashboard data");
           return;
         }
 
-        const agentData = agentProfile.agent;
-        const agentPrefix = agentData.agent_prefix;
+        const data = dashboardResponse.data;
 
-        setAgent({
-          name: agentData.name || "Agent"
-        });
+        setAgent(data.agent);
 
-        // Use dynamic tables for customers and messages
-        const customersTable = `${agentPrefix}_customers`;
-        const messagesTable = `${agentPrefix}_messages`;
-
-        // Fetch customers
-        const { data: customers, error: customersError } = await supabase
-          .from(customersTable)
-          .select('id, name, phone')
-          .eq('agent_id', agentData.id);
-
-        const customerIds = customers?.map(c => c.id) || [];
-
-        let recentMessages: { id: number; customer_id: number; message: string; direction: string; timestamp: string; is_read: boolean }[] = [];
-        let messagesError = null;
-        if (customerIds.length > 0) {
-          // Fetch recent messages as conversations proxy, filtered by customer_ids
-          const { data: msgData, error: msgError } = await supabase
-            .from(messagesTable)
-            .select('id, customer_id, message, direction, timestamp, is_read')
-            .in('customer_id', customerIds)
-            .order('timestamp', { ascending: false })
-            .limit(10);
-          recentMessages = msgData || [];
-          messagesError = msgError;
-        } else {
-        }
-
-        // For orders, assuming a dynamic orders table or fallback to messages with order keywords
-        // For now, use messages count as orders proxy if no orders table
-        const ordersCount = recentMessages.filter(msg => msg.message.toLowerCase().includes('order')).length || 0;
-
-        // Calculate active conversations (customers with recent messages)
-        const activeConversations = recentMessages.length > 0 ? new Set(recentMessages.map(msg => msg.customer_id)).size : 0;
-
-        // Fetch recent activity from messages, join with customer names
-        const recentActivityData: RecentActivity[] = recentMessages.slice(0, 3).map(msg => {
-          const customer = customers?.find(c => c.id === msg.customer_id);
-          return {
-            id: msg.id.toString(),
-            type: 'conversation' as const,
-            title: `Message from ${customer?.name || `Customer ${msg.customer_id}`}`,
-            description: msg.message.substring(0, 50) + '...',
-            time: new Date(msg.timestamp).toLocaleString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true
-            }) + ' ago',
-            status: msg.is_read ? 'completed' : 'new'
-          };
-        });
-        setRecentActivity(recentActivityData);
+        setRecentActivity(data.recentActivity);
 
         // Update metrics with fetched data
         setMetrics(prev => [
           {
             ...prev[0],
-            value: activeConversations,
-            change: `+${activeConversations}`
+            value: data.metrics.activeConversations,
+            change: `+${data.metrics.activeConversations}`
           },
           {
             ...prev[1],
-            value: customers?.length || 0,
-            change: `+${customers?.length || 0}`
+            value: data.metrics.totalCustomers,
+            change: `+${data.metrics.totalCustomers}`
           },
           {
             ...prev[2],
-            value: ordersCount,
-            change: `+${ordersCount}`
+            value: data.metrics.ordersToday,
+            change: `+${data.metrics.ordersToday}`
           },
           {
             ...prev[3],
-            value: "2.3 min", // This would come from analytics
+            value: data.metrics.avgResponseTime,
             change: "-0.4"
           }
         ]);

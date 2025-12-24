@@ -76,11 +76,9 @@ const OrdersPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Get agent profile from backend
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      // Get token
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         setLoading(false);
         return;
@@ -91,7 +89,7 @@ const OrdersPage: React.FC = () => {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -128,7 +126,7 @@ const OrdersPage: React.FC = () => {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -156,11 +154,10 @@ const OrdersPage: React.FC = () => {
       }
 
       // Build customer map from the joined data
-      const customerKey = `${currentAgentPrefix}_customers`;
       const customerMapFromOrders = ordersDataArray.reduce(
         (map: any, order: any) => {
-          if (order[customerKey]) {
-            map[String(order[customerKey].id)] = order[customerKey];
+          if (order.customer) {
+            map[String(order.customer.id)] = order.customer;
           }
           return map;
         },
@@ -168,31 +165,6 @@ const OrdersPage: React.FC = () => {
       );
 
       setCustomerMap(customerMapFromOrders);
-
-      // Fetch order items for all orders
-      const orderIds = ordersDataArray.map((o: any) => o.id);
-      const itemsTable = `${currentAgentPrefix}_orders_items`;
-      const { data: itemsData, error: itemsError } = await supabase
-        .from(itemsTable)
-        .select("order_id, name, quantity, price")
-        .in("order_id", orderIds);
-
-      if (itemsError) {
-        console.warn("Failed to fetch order items:", itemsError);
-      }
-
-      const itemsMap = new Map();
-      (itemsData || []).forEach((item: any) => {
-        if (!itemsMap.has(item.order_id)) {
-          itemsMap.set(item.order_id, []);
-        }
-        itemsMap.get(item.order_id)!.push({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.quantity * item.price,
-        });
-      });
 
       // Use customer map from orders for names and phones
       const customerMapInstance = new Map<number, any>();
@@ -205,7 +177,7 @@ const OrdersPage: React.FC = () => {
 
       // Process orders
       const processedOrders: Order[] = ordersDataArray.map((order: any) => {
-        const totalAmount = order.total_amount || 0;
+        const totalAmount = Number(order.total_amount) || 0;
         const customerIdNum = Number(order.customer_id);
         const customerInfo = customerMapInstance.get(customerIdNum) || {
           name: "Unknown Customer",
@@ -223,7 +195,12 @@ const OrdersPage: React.FC = () => {
           shipping_address: order.shipping_address,
           created_at: order.created_at,
           parsed_order_details: {
-            items: itemsMap.get(order.id) || [],
+            items: (order.order_items || []).map((item: any) => ({
+              name: item.name,
+              quantity: Number(item.quantity),
+              price: Number(item.price),
+              total: Number(item.quantity) * Number(item.price),
+            })),
             total_amount: totalAmount,
             shipping_address: order.shipping_address,
             currency: "LKR",
@@ -342,10 +319,8 @@ const OrdersPage: React.FC = () => {
     setUpdatingOrderId(orderId);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         alert("User not authenticated");
         return;
       }
@@ -355,7 +330,7 @@ const OrdersPage: React.FC = () => {
         {
           method: "PUT",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -393,10 +368,8 @@ const OrdersPage: React.FC = () => {
     }
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         alert("User not authenticated");
         return;
       }
@@ -406,7 +379,7 @@ const OrdersPage: React.FC = () => {
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }

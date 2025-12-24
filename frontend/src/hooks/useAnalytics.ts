@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { getToken } from "../lib/auth";
 
 export interface AnalyticsData {
   totalCustomers: number;
@@ -37,17 +38,15 @@ export const useAnalytics = () => {
       setLoading(true);
       setError(null);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         throw new Error("Not authenticated");
       }
 
       const response = await fetch(`${backendUrl}/get-analytics`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 

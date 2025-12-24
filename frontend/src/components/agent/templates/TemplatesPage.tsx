@@ -11,6 +11,36 @@ import {
 import ViewTemplateModal from "./ViewTemplateModal";
 import CreateTemplateModal from "./CreateTemplateModal";
 
+const getUser = async () => {
+  try {
+    const token = getToken();
+    if (!token) return { data: { user: null }, error: null };
+
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/get-current-user`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await response.json();
+    if (response.ok && data.success) {
+      return { data: { user: data.user }, error: null };
+    } else {
+      return {
+        data: { user: null },
+        error: data.message || "Failed to get user",
+      };
+    }
+  } catch (error) {
+    return { data: { user: null }, error };
+  }
+};
+
 interface WhatsAppConfig {
   business_account_id: string;
   phone_number_id: string;
@@ -90,6 +120,15 @@ const TemplatesPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      // Get user
+      const userResult = await getUser();
+      if (userResult.error || !userResult.data.user) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
+      const user = userResult.data.user;
+
       // Step 1: Get current user's WhatsApp configuration
       const token = getToken();
       if (!token) {
@@ -99,7 +138,7 @@ const TemplatesPage: React.FC = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
+        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${user.id}`,
         {
           method: 'GET',
           headers: {

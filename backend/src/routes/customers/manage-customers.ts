@@ -55,9 +55,19 @@ export default async function manageCustomersRoutes(
           //   agentPrefix,
           // });
 
-          // Build the query
-          let queryText = `SELECT * FROM ${agentPrefix}_customers ORDER BY created_at DESC`;
-          const queryParams: any[] = [];
+          // Build the query with order count
+           let queryText = `
+             SELECT c.*,
+                    COALESCE(order_counts.order_count, 0) as order_count
+             FROM ${agentPrefix}_customers c
+             LEFT JOIN (
+               SELECT customer_id, COUNT(*) as order_count
+               FROM ${agentPrefix}_orders
+               GROUP BY customer_id
+             ) order_counts ON c.id = order_counts.customer_id
+             ORDER BY c.created_at DESC
+           `;
+           const queryParams: any[] = [];
 
           if (search) {
             queryText += ` WHERE (name ILIKE $1 OR phone ILIKE $1)`;
@@ -93,6 +103,8 @@ export default async function manageCustomersRoutes(
             email,
             address,
             lead_stage,
+            interest_stage,
+            conversion_stage,
             language,
             ai_enabled,
           } = body || {};
@@ -114,20 +126,37 @@ export default async function manageCustomersRoutes(
               .send({ success: false, message: "Customer phone is required" });
           }
 
-          // Validate lead_stage if provided
-          const validStages = [
-            "new",
-            "contacted",
-            "qualified",
-            "proposal",
-            "negotiation",
-            "closed_won",
-            "closed_lost",
+          // Validate stages if provided
+          const validLeadStages = [
+            "New Lead",
+            "Contacted",
+            "Not Responding",
+            "Follow-up Needed",
           ];
-          if (lead_stage && !validStages.includes(lead_stage)) {
+          const validInterestStages = [
+            "Interested",
+            "Quotation Sent",
+            "Asked for More Info",
+          ];
+          const validConversionStages = [
+            "Payment Pending",
+            "Paid",
+            "Order Confirmed",
+          ];
+          if (lead_stage && !validLeadStages.includes(lead_stage)) {
             return reply
               .code(400)
               .send({ success: false, message: "Invalid lead stage" });
+          }
+          if (interest_stage && !validInterestStages.includes(interest_stage)) {
+            return reply
+              .code(400)
+              .send({ success: false, message: "Invalid interest stage" });
+          }
+          if (conversion_stage && !validConversionStages.includes(conversion_stage)) {
+            return reply
+              .code(400)
+              .send({ success: false, message: "Invalid conversion stage" });
           }
 
           // Validate language if provided
@@ -143,27 +172,31 @@ export default async function manageCustomersRoutes(
             phone: phone.trim(),
             email: email ? email.trim() : null,
             address: address ? address.trim() : null,
-            lead_stage: lead_stage || "new",
+            lead_stage: lead_stage || "New Lead",
+            interest_stage: interest_stage || null,
+            conversion_stage: conversion_stage || null,
             language: language || "en",
             ai_enabled: ai_enabled !== undefined ? ai_enabled : true,
             last_user_message_time: new Date().toISOString(),
           };
 
-          const insertQuery = `
-            INSERT INTO ${agentPrefix}_customers (name, phone, email, address, lead_stage, language, ai_enabled, last_user_message_time)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           const insertQuery = `
+            INSERT INTO ${agentPrefix}_customers (name, phone, email, address, lead_stage, interest_stage, conversion_stage, language, ai_enabled, last_user_message_time)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
           `;
-          const insertParams = [
-            customerData.name,
-            customerData.phone,
-            customerData.email,
-            customerData.address,
-            customerData.lead_stage,
-            customerData.language,
-            customerData.ai_enabled,
-            customerData.last_user_message_time,
-          ];
+           const insertParams = [
+             customerData.name,
+             customerData.phone,
+             customerData.email,
+             customerData.address,
+             customerData.lead_stage,
+             customerData.interest_stage,
+             customerData.conversion_stage,
+             customerData.language,
+             customerData.ai_enabled,
+             customerData.last_user_message_time,
+           ];
 
           const { rows: customers } = await pgClient.query(
             insertQuery,
@@ -184,71 +217,100 @@ export default async function manageCustomersRoutes(
         }
 
         case "PUT": {
-          const body = parsedBody;
-          const {
-            id,
-            name,
-            phone,
-            email,
-            address,
-            lead_stage,
-            language,
-            ai_enabled,
-          } = body || {};
+           const body = parsedBody;
+           const {
+             id,
+             name,
+             phone,
+             email,
+             address,
+             lead_stage,
+             interest_stage,
+             conversion_stage,
+             language,
+             ai_enabled,
+           } = body || {};
 
-          if (!id || typeof id !== "number") {
-            return reply
-              .code(400)
-              .send({ success: false, message: "Customer ID is required" });
-          }
+           if (!id || typeof id !== "number") {
+             return reply
+               .code(400)
+               .send({ success: false, message: "Customer ID is required" });
+           }
 
-          // Validate lead_stage if provided
-          const validStages = [
-            "new",
-            "contacted",
-            "qualified",
-            "proposal",
-            "negotiation",
-            "closed_won",
-            "closed_lost",
-          ];
-          if (lead_stage && !validStages.includes(lead_stage)) {
-            return reply
-              .code(400)
-              .send({ success: false, message: "Invalid lead stage" });
-          }
+           // Validate lead_stage if provided
+           const validLeadStages = [
+             "New Lead",
+             "Contacted",
+             "Not Responding",
+             "Follow-up Needed",
+           ];
+           const validInterestStages = [
+             "Interested",
+             "Quotation Sent",
+             "Asked for More Info",
+           ];
+           const validConversionStages = [
+             "Payment Pending",
+             "Paid",
+             "Order Confirmed",
+           ];
+           if (lead_stage && !validLeadStages.includes(lead_stage)) {
+             return reply
+               .code(400)
+               .send({ success: false, message: "Invalid lead stage" });
+           }
+           if (interest_stage && !validInterestStages.includes(interest_stage)) {
+             return reply
+               .code(400)
+               .send({ success: false, message: "Invalid interest stage" });
+           }
+           if (conversion_stage && !validConversionStages.includes(conversion_stage)) {
+             return reply
+               .code(400)
+               .send({ success: false, message: "Invalid conversion stage" });
+           }
 
-          // Validate language if provided
-          const validLanguages = ["en", "si", "ta"];
-          if (language && !validLanguages.includes(language)) {
-            return reply
-              .code(400)
-              .send({ success: false, message: "Invalid language" });
-          }
+           // Validate language if provided
+           const validLanguages = ["en", "si", "ta"];
+           if (language && !validLanguages.includes(language)) {
+             return reply
+               .code(400)
+               .send({ success: false, message: "Invalid language" });
+           }
 
-          const updateFields: string[] = [];
-          const updateValues: any[] = [];
+           const updateFields: string[] = [];
+           const updateValues: any[] = [];
 
-          if (name !== undefined) {
-            updateFields.push(`name = $${updateValues.length + 1}`);
-            updateValues.push(name.trim());
-          }
-          if (phone !== undefined) {
-            updateFields.push(`phone = $${updateValues.length + 1}`);
-            updateValues.push(phone.trim());
-          }
-          if (email !== undefined) {
-            updateFields.push(`email = $${updateValues.length + 1}`);
-            updateValues.push(email ? email.trim() : null);
-          }
-          if (address !== undefined) {
-            updateFields.push(`address = $${updateValues.length + 1}`);
-            updateValues.push(address ? address.trim() : null);
-          }
-          if (lead_stage !== undefined) {
-            updateFields.push(`lead_stage = $${updateValues.length + 1}`);
-            updateValues.push(lead_stage);
-          }
+           if (name !== undefined) {
+             updateFields.push(`name = $${updateValues.length + 1}`);
+             updateValues.push(name.trim());
+           }
+           if (phone !== undefined) {
+             updateFields.push(`phone = $${updateValues.length + 1}`);
+             updateValues.push(phone.trim());
+           }
+           if (email !== undefined) {
+             updateFields.push(`email = $${updateValues.length + 1}`);
+             updateValues.push(email ? email.trim() : null);
+           }
+           if (address !== undefined) {
+             updateFields.push(`address = $${updateValues.length + 1}`);
+             updateValues.push(address ? address.trim() : null);
+           }
+           if (lead_stage !== undefined) {
+             updateFields.push(`lead_stage = $${updateValues.length + 1}`);
+             updateValues.push(lead_stage);
+           }
+           if (interest_stage !== undefined) {
+             updateFields.push(`interest_stage = $${updateValues.length + 1}`);
+             updateValues.push(interest_stage);
+           }
+           if (conversion_stage !== undefined) {
+             updateFields.push(
+               `conversion_stage = $${updateValues.length + 1}`
+             );
+             updateValues.push(conversion_stage);
+           }
           if (language !== undefined) {
             updateFields.push(`language = $${updateValues.length + 1}`);
             updateValues.push(language);

@@ -226,6 +226,11 @@ const ConversationsPage: React.FC = () => {
         throw new Error("Not authenticated");
       const user = userResult.data.user;
 
+      const token = getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const formattedPhone = selectedConversation.customerPhone.replace(
         /[\s+]/g,
         ""
@@ -242,11 +247,11 @@ const ConversationsPage: React.FC = () => {
         if (!headers.Authorization) return;
 
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
+          `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${user.id}`,
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -349,7 +354,7 @@ const ConversationsPage: React.FC = () => {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -397,7 +402,7 @@ const ConversationsPage: React.FC = () => {
         method: "POST",
         body: formData,
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       const uploadResult = await uploadResponse.json();
@@ -505,10 +510,8 @@ const ConversationsPage: React.FC = () => {
         throw new Error("Not authenticated");
       const user = userResult.data.user;
 
-      const {
-        data: { session },
-      } = getSession();
-      if (!session?.access_token) {
+      const token = getToken();
+      if (!token) {
         throw new Error("Not authenticated");
       }
 
@@ -551,7 +554,7 @@ const ConversationsPage: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         }
@@ -2285,7 +2288,7 @@ const ConversationsPage: React.FC = () => {
                     {
                       method: "GET",
                       headers: {
-                        Authorization: `Bearer ${session.access_token}`,
+                        Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
                       },
                     }
@@ -2419,12 +2422,16 @@ const ConversationsPage: React.FC = () => {
       const token = getToken();
       if (!token) return "";
 
+      const userResult = await getUser();
+      if (userResult.error || !userResult.data.user) return "";
+      const user = userResult.data.user;
+
       const configResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
+        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${user.id}`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }

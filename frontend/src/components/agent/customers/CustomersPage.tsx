@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-// import { getToken } from '../../../lib/auth';
+import { getToken } from "../../../lib/auth";
 import CreateOrderModal from "./CreateOrderModal";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
@@ -22,6 +22,7 @@ interface Customer {
   interest_stage?: string;
   conversion_stage?: string;
   order_count: number;
+  profile_image_url?: string;
 }
 
 interface Metrics {
@@ -294,10 +295,8 @@ const CustomersPage: React.FC = () => {
     );
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
@@ -305,7 +304,7 @@ const CustomersPage: React.FC = () => {
       const response = await fetch(`${backendUrl}/manage-customers`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -354,10 +353,8 @@ const CustomersPage: React.FC = () => {
     );
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         return;
       }
@@ -365,7 +362,7 @@ const CustomersPage: React.FC = () => {
       const response = await fetch(`${backendUrl}/manage-customers`, {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -410,10 +407,8 @@ const CustomersPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         setLoading(false);
         return;
@@ -423,7 +418,7 @@ const CustomersPage: React.FC = () => {
       const agentResponse = await fetch(`${backendUrl}/get-agent-profile`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -457,7 +452,7 @@ const CustomersPage: React.FC = () => {
       const customersResponse = await fetch(`${backendUrl}/manage-customers`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -475,29 +470,12 @@ const CustomersPage: React.FC = () => {
         return;
       }
 
-      // Fetch order counts for each customer (this still needs to be done client-side since we don't have a backend endpoint for this)
-      const customersWithOrderCounts = await Promise.all(
-        (customersData.customers || []).map(async (customer: any) => {
-          const ordersTable = `${currentAgentPrefix}_orders`;
-          const { count, error: orderError } = await supabase
-            .from(ordersTable)
-            .select("*", { count: "exact", head: true })
-            .eq("customer_id", customer.id);
-
-          if (orderError) {
-            console.error("Order count error:", orderError);
-            return {
-              ...customer,
-              order_count: 0,
-            };
-          }
-
-          return {
-            ...customer,
-            order_count: count || 0,
-          };
-        })
-      );
+      const customersWithOrderCounts: Customer[] = (
+        customersData.customers || []
+      ).map((c: any) => ({
+        ...c,
+        order_count: c.order_count || 0,
+      }));
 
       // Compute metrics
       const totalCustomers = customersWithOrderCounts.length;
@@ -565,35 +543,7 @@ const CustomersPage: React.FC = () => {
     fetchCustomers();
   }, []);
 
-  useEffect(() => {
-    if (!agentPrefix || !agentId) return;
-
-    const customersTable = `${agentPrefix}_customers`;
-
-    const channel = supabase
-      .channel("realtime-customers")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: customersTable,
-          filter: `agent_id=eq.${agentId}`,
-        },
-        () => {
-          fetchCustomers();
-        }
-      )
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          console.error("Subscription error");
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [agentPrefix, agentId]);
+  // Realtime subscription removed - using backend only
 
   const fetchProfilePicture = async (phone: string) => {
     const existing = profileImages.find((img) => img.phone === phone);
@@ -609,10 +559,7 @@ const CustomersPage: React.FC = () => {
     );
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = getToken();
 
       const response = await fetch(`${backendUrl}/get-whatsapp-profile-pic`, {
         method: "POST",
@@ -1607,7 +1554,10 @@ const CustomersPage: React.FC = () => {
                           className="p-2 text-green-600 hover:text-green-900 hover:bg-green-100 rounded-lg transition-colors"
                           title="Open conversation"
                           onClick={() =>
-                            window.open(`${window.location.origin}/agent/conversations?customerId=${customer.id}`, '_blank')
+                            window.open(
+                              `${window.location.origin}/agent/conversations?customerId=${customer.id}`,
+                              "_blank"
+                            )
                           }
                         >
                           <svg

@@ -1,266 +1,380 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function manageOrdersRoutes(fastify: FastifyInstance, supabaseClient: any) {
-  fastify.all('/manage-orders', async (request, reply) => {
+export default async function manageOrdersRoutes(
+  fastify: FastifyInstance,
+  pgClient: any
+) {
+  fastify.all("/manage-orders", async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       // Get agent
-      const { data: agent, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('id, agent_prefix')
-        .eq('user_id', authenticatedUser.id)
-        .single();
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+        [authenticatedUser.id]
+      );
 
-      if (agentError || !agent) {
+      if (agentRows.length === 0) {
         return reply.code(403).send({
           success: false,
-          message: 'Agent not found'
+          message: "Agent not found",
         });
       }
 
+      const agent = agentRows[0];
       const agentPrefix = agent.agent_prefix;
       const method = request.method;
       const url = new URL(request.url, `http://${request.headers.host}`);
       let parsedBody = null;
 
-      if (method === 'POST' || method === 'PUT') {
+      if (method === "POST" || method === "PUT") {
         try {
           parsedBody = request.body as any;
         } catch (e) {
-          console.error('JSON parse error:', e);
-          return reply.code(400).send({ success: false, message: 'Invalid JSON body' });
+          console.error("JSON parse error:", e);
+          return reply
+            .code(400)
+            .send({ success: false, message: "Invalid JSON body" });
         }
       }
 
       switch (method) {
-        case 'GET': {
-          const search = url.searchParams.get('search') || undefined;
-          const limit = parseInt(url.searchParams.get('limit') || '50');
-          const offset = parseInt(url.searchParams.get('offset') || '0');
-          const customerId = url.searchParams.get('customer_id');
+        case "GET": {
+          const search = url.searchParams.get("search") || undefined;
+          const limit = parseInt(url.searchParams.get("limit") || "50");
+          const offset = parseInt(url.searchParams.get("offset") || "0");
+          const customerId = url.searchParams.get("customer_id");
 
-          console.log('Orders fetch params:', { search, limit, offset, customerId, agentPrefix });
+          console.log("Orders fetch params:", {
+            search,
+            limit,
+            offset,
+            customerId,
+            agentPrefix,
+          });
 
-          // Query the orders table with customer information
-          let query = supabaseClient
-            .from(`${agentPrefix}_orders`)
-            .select(`
-              *,
-              ${agentPrefix}_customers!customer_id (
-                id,
-                name,
-                phone
-              )
-            `)
-            .order('created_at', { ascending: false });
+          // Build the SQL query
+          let sql = `
+            SELECT
+              o.*,
+              json_build_object('id', c.id, 'name', c.name, 'phone', c.phone) as customer,
+              COALESCE(json_agg(
+                json_build_object('order_id', oi.order_id, 'name', oi.name, 'quantity', oi.quantity, 'price', oi.price)
+              ) FILTER (WHERE oi.order_id IS NOT NULL), '[]'::json) as order_items
+            FROM ${agentPrefix}_orders o
+            LEFT JOIN ${agentPrefix}_customers c ON o.customer_id = c.id
+            LEFT JOIN ${agentPrefix}_orders_items oi ON o.id = oi.order_id
+          `;
+
+          const params: any[] = [];
+          const conditions: string[] = [];
 
           if (customerId) {
-            query = query.eq('customer_id', parseInt(customerId));
+            conditions.push("o.customer_id = $" + (params.length + 1));
+            params.push(parseInt(customerId));
           }
 
           if (search) {
-            // Search in customer name or order notes
-            query = query.or(`notes.ilike.%${search}%,${agentPrefix}_customers.name.ilike.%${search}%`);
+            conditions.push(
+              "(o.notes ILIKE $" +
+                (params.length + 1) +
+                " OR c.name ILIKE $" +
+                (params.length + 2) +
+                ")"
+            );
+            params.push(`%${search}%`, `%${search}%`);
           }
 
+          if (conditions.length > 0) {
+            sql += " WHERE " + conditions.join(" AND ");
+          }
+
+          sql += " GROUP BY o.id, c.id ORDER BY o.created_at DESC";
+
           if (limit > 0) {
-            query = query.limit(limit);
+            sql += " LIMIT $" + (params.length + 1);
+            params.push(limit);
           }
 
           if (offset > 0) {
-            query = query.offset(offset);
+            sql += " OFFSET $" + (params.length + 1);
+            params.push(offset);
           }
 
-          const { data: orders, error: getError } = await query;
+          const { rows: orders, rowCount } = await pgClient.query(sql, params);
 
-          if (getError) {
-            console.error('Get orders error:', getError);
-            return reply.code(500).send({ success: false, message: getError.message });
+          if (rowCount === undefined) {
+            return reply
+              .code(500)
+              .send({ success: false, message: "Failed to fetch orders" });
           }
 
           return reply.code(200).send({
             success: true,
-            orders: orders || []
+            orders: orders || [],
           });
         }
 
-        case 'POST': {
+        case "POST": {
           const body = parsedBody;
           const { customer_id, notes, shipping_address, items } = body || {};
 
           // Validate required fields
-          if (!customer_id || typeof customer_id !== 'number') {
-            return reply.code(400).send({ success: false, message: 'Valid customer ID is required' });
+          if (!customer_id || typeof customer_id !== "number") {
+            return reply.code(400).send({
+              success: false,
+              message: "Valid customer ID is required",
+            });
           }
 
           if (!items || !Array.isArray(items) || items.length === 0) {
-            return reply.code(400).send({ success: false, message: 'Order must have at least one item' });
+            return reply.code(400).send({
+              success: false,
+              message: "Order must have at least one item",
+            });
           }
 
           // Validate items
           for (const item of items) {
-            if (!item.name || typeof item.name !== 'string' || item.name.trim().length === 0) {
-              return reply.code(400).send({ success: false, message: 'Item name is required' });
+            if (
+              !item.name ||
+              typeof item.name !== "string" ||
+              item.name.trim().length === 0
+            ) {
+              return reply
+                .code(400)
+                .send({ success: false, message: "Item name is required" });
             }
-            if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
-              return reply.code(400).send({ success: false, message: 'Valid item quantity is required' });
+            if (
+              !item.quantity ||
+              typeof item.quantity !== "number" ||
+              item.quantity <= 0
+            ) {
+              return reply.code(400).send({
+                success: false,
+                message: "Valid item quantity is required",
+              });
             }
-            if (typeof item.price !== 'number' || item.price < 0) {
-              return reply.code(400).send({ success: false, message: 'Valid item price is required' });
+            if (typeof item.price !== "number" || item.price < 0) {
+              return reply.code(400).send({
+                success: false,
+                message: "Valid item price is required",
+              });
             }
           }
 
           // Calculate total amount
-          const totalAmount = items.reduce((sum: number, item: any) => sum + (item.quantity * item.price), 0);
+          const totalAmount = items.reduce(
+            (sum: number, item: any) => sum + item.quantity * item.price,
+            0
+          );
 
           const orderData = {
             customer_id,
             total_amount: totalAmount,
-            status: 'pending',
+            status: "pending",
             notes: notes ? notes.trim() : null,
             shipping_address: shipping_address ? shipping_address.trim() : null,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           };
 
-          // Start transaction by inserting order
-          const { data: order, error: orderError } = await supabaseClient
-            .from(`${agentPrefix}_orders`)
-            .insert(orderData)
-            .select()
-            .single();
+          // Start transaction
+          const client = await pgClient.connect();
+          try {
+            await client.query("BEGIN");
 
-          if (orderError) {
-            console.error('Create order error:', orderError);
-            return reply.code(500).send({ success: false, message: orderError.message });
-          }
+            // Insert order
+            const { rows: orderRows } = await client.query(
+              `INSERT INTO ${agentPrefix}_orders (customer_id, total_amount, status, notes, shipping_address, updated_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+              [
+                orderData.customer_id,
+                orderData.total_amount,
+                orderData.status,
+                orderData.notes,
+                orderData.shipping_address,
+                orderData.updated_at,
+              ]
+            );
 
-          // Insert order items
-          const orderItems = items.map((item: any) => ({
-            order_id: order.id,
-            name: item.name.trim(),
-            quantity: item.quantity,
-            price: item.price
-          }));
-
-          const { data: insertedItems, error: itemsError } = await supabaseClient
-            .from(`${agentPrefix}_order_items`)
-            .insert(orderItems)
-            .select();
-
-          if (itemsError) {
-            console.error('Create order items error:', itemsError);
-            // Try to delete the order if items insertion failed
-            await supabaseClient
-              .from(`${agentPrefix}_orders`)
-              .delete()
-              .eq('id', order.id);
-            return reply.code(500).send({ success: false, message: 'Failed to create order items' });
-          }
-
-          return reply.code(201).send({
-            success: true,
-            message: 'Order created successfully',
-            order: {
-              ...order,
-              items: insertedItems
+            if (orderRows.length === 0) {
+              await client.query("ROLLBACK");
+              return reply
+                .code(500)
+                .send({ success: false, message: "Failed to create order" });
             }
-          });
+
+            const order = orderRows[0];
+
+            // Insert order items
+            const orderItems = items.map((item: any) => ({
+              order_id: order.id,
+              name: item.name.trim(),
+              quantity: item.quantity,
+              price: item.price,
+            }));
+
+            if (orderItems.length > 0) {
+              const values = orderItems
+                .map(
+                  (_, i) =>
+                    `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${
+                      i * 4 + 4
+                    })`
+                )
+                .join(", ");
+              const params = orderItems.flatMap((item) => [
+                item.order_id,
+                item.name,
+                item.quantity,
+                item.price,
+              ]);
+              await client.query(
+                `INSERT INTO ${agentPrefix}_orders_items (order_id, name, quantity, price) VALUES ${values}`,
+                params
+              );
+            }
+
+            await client.query("COMMIT");
+
+            return reply.code(201).send({
+              success: true,
+              message: "Order created successfully",
+              order: {
+                ...order,
+                items: orderItems,
+              },
+            });
+          } catch (error) {
+            await client.query("ROLLBACK");
+            console.error("Create order error:", error);
+            return reply
+              .code(500)
+              .send({ success: false, message: "Failed to create order" });
+          } finally {
+            client.release();
+          }
         }
 
-        case 'PUT': {
+        case "PUT": {
           const body = parsedBody;
           const { id, status, notes, shipping_address } = body || {};
 
-          if (!id || typeof id !== 'number') {
-            return reply.code(400).send({ success: false, message: 'Order ID is required' });
+          if (!id || typeof id !== "number") {
+            return reply
+              .code(400)
+              .send({ success: false, message: "Order ID is required" });
           }
 
           // Validate status if provided
-          const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+          const validStatuses = [
+            "pending",
+            "confirmed",
+            "processing",
+            "shipped",
+            "delivered",
+            "cancelled",
+          ];
           if (status && !validStatuses.includes(status)) {
-            return reply.code(400).send({ success: false, message: 'Invalid order status' });
+            return reply
+              .code(400)
+              .send({ success: false, message: "Invalid order status" });
           }
 
           const updateData: any = {
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           };
 
           if (status !== undefined) updateData.status = status;
-          if (notes !== undefined) updateData.notes = notes ? notes.trim() : null;
-          if (shipping_address !== undefined) updateData.shipping_address = shipping_address ? shipping_address.trim() : null;
+          if (notes !== undefined)
+            updateData.notes = notes ? notes.trim() : null;
+          if (shipping_address !== undefined)
+            updateData.shipping_address = shipping_address
+              ? shipping_address.trim()
+              : null;
 
-          const { data: order, error: updateError } = await supabaseClient
-            .from(`${agentPrefix}_orders`)
-            .update(updateData)
-            .eq('id', id)
-            .select(`
-              *,
-              ${agentPrefix}_customers!customer_id (
-                id,
-                name,
-                phone
-              )
-            `)
-            .single();
+          const setParts = [];
+          const params = [id];
+          let paramIndex = 2;
 
-          if (updateError) {
-            console.error('Update order error:', updateError);
-            return reply.code(500).send({ success: false, message: updateError.message });
+          if (status !== undefined) {
+            setParts.push(`status = $${paramIndex++}`);
+            params.push(status);
+          }
+          if (notes !== undefined) {
+            setParts.push(`notes = $${paramIndex++}`);
+            params.push(notes);
+          }
+          if (shipping_address !== undefined) {
+            setParts.push(`shipping_address = $${paramIndex++}`);
+            params.push(shipping_address);
+          }
+          setParts.push(`updated_at = $${paramIndex++}`);
+          params.push(updateData.updated_at);
+
+          const { rows: orderRows } = await pgClient.query(
+            `UPDATE ${agentPrefix}_orders SET ${setParts.join(
+              ", "
+            )} WHERE id = $1 RETURNING *`,
+            params
+          );
+
+          if (orderRows.length === 0) {
+            return reply
+              .code(404)
+              .send({ success: false, message: "Order not found" });
           }
 
-          if (!order) {
-            return reply.code(404).send({ success: false, message: 'Order not found' });
-          }
+          const order = orderRows[0];
 
           return reply.code(200).send({
             success: true,
-            message: 'Order updated successfully',
-            order
+            message: "Order updated successfully",
+            order,
           });
         }
 
-        case 'DELETE': {
-          const id = url.searchParams.get('id');
+        case "DELETE": {
+          const id = url.searchParams.get("id");
 
-          if (!id || typeof id !== 'string' || !id.match(/^\d+$/)) {
-            return reply.code(400).send({ success: false, message: 'Valid order ID is required' });
+          if (!id || typeof id !== "string" || !id.match(/^\d+$/)) {
+            return reply
+              .code(400)
+              .send({ success: false, message: "Valid order ID is required" });
           }
 
           const orderId = parseInt(id);
 
           // Delete order (cascade will delete order items)
-          const { data: order, error: deleteError } = await supabaseClient
-            .from(`${agentPrefix}_orders`)
-            .delete()
-            .eq('id', orderId)
-            .select()
-            .single();
+          const { rows: orderRows } = await pgClient.query(
+            `DELETE FROM ${agentPrefix}_orders WHERE id = $1 RETURNING *`,
+            [orderId]
+          );
 
-          if (deleteError) {
-            console.error('Delete order error:', deleteError);
-            return reply.code(500).send({ success: false, message: deleteError.message });
-          }
-
-          if (!order) {
-            return reply.code(404).send({ success: false, message: 'Order not found' });
+          if (orderRows.length === 0) {
+            return reply
+              .code(404)
+              .send({ success: false, message: "Order not found" });
           }
 
           return reply.code(200).send({
             success: true,
-            message: 'Order deleted successfully'
+            message: "Order deleted successfully",
           });
         }
 
         default: {
-          return reply.code(405).send({ success: false, message: 'Method not allowed' });
+          return reply
+            .code(405)
+            .send({ success: false, message: "Method not allowed" });
         }
       }
     } catch (error) {
-      console.error('Order management error:', error);
-      return reply.code(500).send({ success: false, message: 'Internal server error' });
+      console.error("Order management error:", error);
+      return reply
+        .code(500)
+        .send({ success: false, message: "Internal server error" });
     }
   });
 }

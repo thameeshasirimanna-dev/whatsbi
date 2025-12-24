@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// import { getToken } from '../../../lib/auth';
+import { getToken } from '../../../lib/auth';
 import { Conversation } from './ConversationsPage';
 
 interface ContactDetailsProps {
@@ -63,18 +63,35 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
     setError(null);
 
     try {
-      const customersTable = `${agentPrefix}_customers`;
-      const { error: updateError } = await supabase
-        .from(customersTable)
-        .update({ 
-          name: editingName.trim(), 
-          phone: editingPhone.trim() 
-        })
-        .eq('id', conversation.customerId)
-        .eq('agent_id', agentId);
+      const token = getToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
 
-      if (updateError) {
-        throw updateError;
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-customers`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: conversation.customerId,
+            name: editingName.trim(),
+            phone: editingPhone.trim(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update customer');
       }
 
       // Update local state
@@ -109,17 +126,34 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
     setError(null);
 
     try {
-      const customersTable = `${agentPrefix}_customers`;
-      const { error: updateError } = await supabase
-        .from(customersTable)
-        .update({
-          ai_enabled: !aiEnabled
-        })
-        .eq('id', conversation.customerId)
-        .eq('agent_id', agentId);
+      const token = getToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
 
-      if (updateError) {
-        throw updateError;
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-customers`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: conversation.customerId,
+            ai_enabled: !aiEnabled,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update AI setting');
       }
 
       // Update local state

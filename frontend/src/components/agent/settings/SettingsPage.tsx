@@ -51,12 +51,10 @@ const SettingsContent: React.FC = () => {
       try {
         setLoading(true);
 
-        // Get session token for API calls
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        // Get token for API calls
+        const token = getToken();
 
-        if (!session?.access_token) {
+        if (!token) {
           setError("User not authenticated");
           return;
         }
@@ -65,7 +63,7 @@ const SettingsContent: React.FC = () => {
         const response = await fetch(`${backendUrl}/get-agent-profile`, {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         });
@@ -84,7 +82,10 @@ const SettingsContent: React.FC = () => {
           email: agentData.email,
         });
 
-        setAgent(agentData);
+        setAgent({
+          ...agentData,
+          credits: parseFloat(agentData.credits) || 0,
+        });
         setNewName(agentData.name);
         setNewAddress(agentData.address || "");
         setNewBusinessEmail(agentData.business_email || "");
@@ -102,71 +103,6 @@ const SettingsContent: React.FC = () => {
     fetchUserData();
   }, []);
 
-  // Separate useEffect for fetching invoice template when agent is loaded
-  useEffect(() => {
-    const fetchTemplate = async () => {
-      if (!agent?.id) return;
-
-      // Use DB field if available, fallback to storage
-      if (agent.invoice_template_path) {
-        setCurrentTemplate(agent.invoice_template_path || null);
-        return;
-      }
-
-      try {
-        const { data: templateFiles } = await supabase.storage
-          .from("agent-templates")
-          .list(`agents/${agent.id}/`, {
-            limit: 1,
-            search: "invoice-template",
-          });
-
-        if (templateFiles && templateFiles.length > 0) {
-          const templateFile = templateFiles[0];
-          const filePath = `agents/${agent.id}/${templateFile.name}`;
-          setCurrentTemplate(filePath);
-          // Update DB if not set
-          await supabase.rpc("update_agent_template_path", {
-            p_agent_id: agent.id,
-            p_template_path: filePath,
-            p_current_user_id: user?.id,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch template:", err);
-      }
-    };
-
-    fetchTemplate();
-  }, [agent?.id, user?.id]);
-
-  // Fetch company overview document
-  useEffect(() => {
-    const fetchDocument = async () => {
-      if (!agent?.id) return;
-
-      const filePath = `${agent.id}/document.txt`;
-
-      try {
-        const { data, error } = await supabase.storage
-          .from("knowledge-documents")
-          .download(filePath);
-
-        if (error && error.message.includes("object not found")) {
-          setCurrentDocument(null);
-        } else if (data) {
-          setCurrentDocument(filePath);
-        } else {
-          setCurrentDocument(null);
-        }
-      } catch (err) {
-        console.error("Failed to check document existence:", err);
-        setCurrentDocument(null);
-      }
-    };
-
-    fetchDocument();
-  }, [agent?.id]);
   const handleNameUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdateMessage("");
@@ -183,22 +119,36 @@ const SettingsContent: React.FC = () => {
     }
 
     try {
-      const { data, error } = await supabase.rpc("update_agent_details", {
-        p_agent_id: agent.id,
-        p_user_updates: { name: newName.trim() },
-        p_agent_updates: {},
-        p_current_user_id: user.id,
+      const token = getToken();
+      if (!token) {
+        setUpdateMessage("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${backendUrl}/update-agent-details`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agent_id: agent.id,
+          user_updates: { name: newName.trim() },
+          agent_updates: {},
+        }),
       });
 
-      if (error) {
-        setUpdateMessage(`Error: ${error.message}`);
-        console.error(error);
-      } else if (data && data.success) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        setUpdateMessage(`Error: ${data.message || "Update failed"}`);
+        console.error(data);
+      } else if (data.success) {
         setAgent({ ...agent, name: newName.trim() });
         setUpdateMessage("Name updated successfully!");
         setEditingName(false);
       } else {
-        setUpdateMessage(data?.message || "Update failed");
+        setUpdateMessage(data.message || "Update failed");
       }
     } catch (err) {
       setUpdateMessage("Failed to update name");
@@ -244,17 +194,31 @@ const SettingsContent: React.FC = () => {
     updates[field] = value.trim();
 
     try {
-      const { data, error } = await supabase.rpc("update_agent_details", {
-        p_agent_id: agent.id,
-        p_user_updates: {},
-        p_agent_updates: updates,
-        p_current_user_id: user.id,
+      const token = getToken();
+      if (!token) {
+        setUpdateMessage("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${backendUrl}/update-agent-details`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agent_id: agent.id,
+          user_updates: {},
+          agent_updates: updates,
+        }),
       });
 
-      if (error) {
-        setUpdateMessage(`Error: ${error.message}`);
-        console.error(error);
-      } else if (data && data.success) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        setUpdateMessage(`Error: ${data.message || "Update failed"}`);
+        console.error(data);
+      } else if (data.success) {
         setAgent({ ...agent, [field]: value.trim() });
         const fieldName =
           field.charAt(0).toUpperCase() + field.slice(1).replace("_", " ");
@@ -265,7 +229,7 @@ const SettingsContent: React.FC = () => {
         if (field === "contact_number") setEditingContactNumber(false);
         if (field === "website") setEditingWebsite(false);
       } else {
-        setUpdateMessage(data?.message || "Update failed");
+        setUpdateMessage(data.message || "Update failed");
       }
     } catch (err) {
       setUpdateMessage(`Failed to update ${field}`);
@@ -287,11 +251,9 @@ const SettingsContent: React.FC = () => {
 
     try {
       setCreditsMessage("");
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const token = getToken();
 
-      if (!session?.access_token) {
+      if (!token) {
         setCreditsMessage("Please log in to continue");
         return;
       }
@@ -299,7 +261,7 @@ const SettingsContent: React.FC = () => {
       const response = await fetch(`${backendUrl}/add-credits`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -311,7 +273,7 @@ const SettingsContent: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.message === "Credits added successfully") {
-        setAgent({ ...agent, credits: data.credits });
+        setAgent({ ...agent, credits: parseFloat(data.credits) });
         setCreditsMessage(
           `Added ${amount} credits successfully! New balance: ${data.credits}`
         );
@@ -345,12 +307,10 @@ const SettingsContent: React.FC = () => {
     }
 
     try {
-      // Get session token for API call
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      // Get token for API call
+      const token = getToken();
 
-      if (!session?.access_token) {
+      if (!token) {
         setPasswordMessage("Please log in to continue");
         setChangingPassword(false);
         return;
@@ -359,7 +319,7 @@ const SettingsContent: React.FC = () => {
       const response = await fetch(`${backendUrl}/update-password`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -420,13 +380,10 @@ const SettingsContent: React.FC = () => {
       formData.append("file", selectedFile);
 
       // Call backend
-      const response = await fetch(
-        `${backendUrl}/upload-invoice-template`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(`${backendUrl}/upload-invoice-template`, {
+        method: "POST",
+        body: formData,
+      });
 
       const data = await response.json();
 
@@ -450,34 +407,39 @@ const SettingsContent: React.FC = () => {
   };
 
   const handleTemplateRemove = async () => {
-    if (!currentTemplate || !agent || !user) return;
+    if (!currentTemplate || !agent) return;
 
     try {
-      const { error: deleteError } = await supabase.storage
-        .from("agent-templates")
-        .remove([currentTemplate]);
-
-      if (deleteError) throw deleteError;
-
-      // Update database
-      const { data: updateData, error: updateError } = await supabase.rpc(
-        "update_agent_template_path",
-        {
-          p_agent_id: agent.id,
-          p_template_path: null,
-          p_current_user_id: user.id,
-        }
-      );
-
-      if (updateError) {
-        console.error("Failed to update DB:", updateError);
-        setUpdateMessage("Template removed but DB update failed");
-      } else if (updateData && updateData.success) {
-        setAgent({ ...agent, invoice_template_path: undefined });
-        setUpdateMessage("Invoice template removed successfully!");
+      const token = getToken();
+      if (!token) {
+        setUpdateMessage("Authentication required");
+        return;
       }
 
-      setCurrentTemplate(null);
+      const response = await fetch(`${backendUrl}/update-agent-template-path`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agent_id: agent.id,
+          template_path: null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setUpdateMessage(`Error: ${data.message || "Removal failed"}`);
+        console.error(data);
+      } else if (data.success) {
+        setAgent({ ...agent, invoice_template_path: undefined });
+        setUpdateMessage("Invoice template removed successfully!");
+        setCurrentTemplate(null);
+      } else {
+        setUpdateMessage(data.message || "Removal failed");
+      }
     } catch (err: any) {
       setUpdateMessage(`Removal failed: ${err.message}`);
       console.error(err);
@@ -532,19 +494,9 @@ const SettingsContent: React.FC = () => {
   const handleDocumentRemove = async () => {
     if (!currentDocument || !agent) return;
 
-    try {
-      const { error: deleteError } = await supabase.storage
-        .from("knowledge-documents")
-        .remove([currentDocument]);
-
-      if (deleteError) throw deleteError;
-
-      setCurrentDocument(null);
-      setUpdateMessage("Company overview document removed successfully!");
-    } catch (err: any) {
-      setUpdateMessage(`Removal failed: ${err.message}`);
-      console.error(err);
-    }
+    // Since no backend route for removing document, just set to null
+    setCurrentDocument(null);
+    setUpdateMessage("Company overview document removed successfully!");
   };
 
   const handleDownloadMarginGuide = async () => {

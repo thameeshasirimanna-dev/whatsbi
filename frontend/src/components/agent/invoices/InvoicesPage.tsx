@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, Combobox } from '@headlessui/react';
-import { getToken } from "../../../lib/auth";
+import { getToken, getCurrentUser } from "../../../lib/auth";
 import jsPDF from "jspdf";
 
 interface InvoiceItem {
@@ -96,32 +96,33 @@ const InvoicesPage: React.FC = () => {
       setError(null);
 
       // Get authenticated user
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) {
+      const token = getToken();
+      if (!token) {
         setError("User not authenticated");
         setLoading(false);
         return;
       }
 
-      // Get agent profile from backend
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const authResponse = await getCurrentUser();
+      if (!authResponse.success || !authResponse.user) {
         setError("User not authenticated");
         setLoading(false);
         return;
       }
+
+      const user = authResponse.user;
+      setUserId(user.id);
+
+      // Get agent profile from backend
 
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -157,22 +158,24 @@ const InvoicesPage: React.FC = () => {
 
       // Get WhatsApp config from backend
       const whatsappResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/get-whatsapp-config?user_id=${userId}`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
       if (whatsappResponse.ok) {
         const whatsappData = await whatsappResponse.json();
-        if (whatsappData.success && whatsappData.config) {
+        if (whatsappData.success && whatsappData.whatsapp_config) {
           setWhatsappConfig({
-            phone_number_id: whatsappData.config.phone_number_id,
-            api_key: whatsappData.config.api_key
+            phone_number_id: whatsappData.whatsapp_config.phone_number_id,
+            api_key: whatsappData.whatsapp_config.api_key,
           });
         }
       }
@@ -184,61 +187,73 @@ const InvoicesPage: React.FC = () => {
       }
 
       // Fetch customers
-      const customersTable = `${currentAgentPrefix}_customers`;
-      const { data: agentCustomers, error: customersError } = await supabase
-        .from(customersTable)
-        .select("id, name")
-        .eq("agent_id", currentAgentId)
-        .order("name");
-
-      if (customersError) {
+      const customersResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-customers`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!customersResponse.ok) {
         setError("Failed to fetch customers");
-        console.error("Customers fetch error:", customersError);
+        console.error("Customers fetch error:", await customersResponse.text());
         setLoading(false);
         return;
       }
+      const customersData = await customersResponse.json();
+      if (!customersData.success) {
+        setError("Failed to fetch customers");
+        setLoading(false);
+        return;
+      }
+      const agentCustomers =
+        customersData.customers.map((c: any) => ({ id: c.id, name: c.name })) ||
+        [];
+      setCustomers(agentCustomers);
 
-      setCustomers(agentCustomers || []);
-
-      // Fetch all orders for customers
-      const ordersTable = `${currentAgentPrefix}_orders`;
-      const { data: allOrdersData, error: ordersError } = await supabase
-        .from(ordersTable)
-        .select(
-          `
-          id,
-          customer_id,
-          total_amount,
-          status,
-          notes,
-          created_at
-        `
-        )
-        .in(
-          "customer_id",
-          (agentCustomers || []).map((c) => c.id)
-        )
-        .order("created_at", { ascending: false });
-
-      if (ordersError) {
+      // Fetch all orders
+      const ordersResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!ordersResponse.ok) {
         setError("Failed to fetch orders");
-        console.error("Orders fetch error:", ordersError);
+        console.error("Orders fetch error:", await ordersResponse.text());
         setLoading(false);
         return;
       }
-
-      // Fetch customer names for orders
-      const { data: customersData, error: nameError } = await supabase
-        .from(customersTable)
-        .select("id, name")
-        .in("id", allOrdersData?.map((o: any) => o.customer_id) || []);
-
-      if (nameError) {
-        console.warn("Customer names fetch warning:", nameError);
+      const ordersData = await ordersResponse.json();
+      if (!ordersData.success) {
+        setError("Failed to fetch orders");
+        setLoading(false);
+        return;
       }
+      const allOrdersDataTemp =
+        ordersData.orders.map((o: any) => ({
+          id: o.id,
+          customer_id: o.customer.id,
+          total_amount: o.total_amount,
+          status: o.status,
+          notes: o.notes,
+          created_at: o.created_at,
+        })) || [];
+      // Filter orders for the customers
+      const allOrdersData = allOrdersDataTemp.filter((o: any) =>
+        agentCustomers.some((c: any) => c.id === o.customer_id)
+      );
 
+      // Set customer map
       const customerMap = new Map();
-      (customersData || []).forEach((customer: any) => {
+      agentCustomers.forEach((customer: any) => {
         customerMap.set(customer.id, customer.name);
       });
 
@@ -265,103 +280,29 @@ const InvoicesPage: React.FC = () => {
       setCustomerOrders(ordersByCustomer);
 
       // Fetch invoices
-      const invoicesTable = `${currentAgentPrefix}_orders_invoices`;
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from(invoicesTable)
-        .select("id, name, pdf_url, status, generated_at, order_id")
-        .order("generated_at", { ascending: false });
-
-      if (invoicesError) {
-        console.warn("Failed to fetch invoices:", invoicesError);
-      } else {
-        // Fetch order and customer details for invoices
-        const invoiceOrderIds = (invoicesData || []).map((inv) => inv.order_id);
-        const { data: invoiceOrdersData, error: orderDetailsError } =
-          await supabase
-            .from(ordersTable)
-            .select("id, customer_id")
-            .in("id", invoiceOrderIds);
-
-        if (orderDetailsError) {
-          console.warn(
-            "Failed to fetch order details for invoices:",
-            orderDetailsError
-          );
-        } else {
-          const orderCustomerMap = new Map();
-          (invoiceOrdersData || []).forEach((ord: any) => {
-            orderCustomerMap.set(ord.id, ord.customer_id);
-          });
-
-          const invoiceCustomerIds = Array.from(orderCustomerMap.values());
-          const { data: invoiceCustomersData, error: customerDetailsError } =
-            await supabase
-              .from(customersTable)
-              .select("id, name")
-              .in("id", invoiceCustomerIds);
-
-          if (customerDetailsError) {
-            console.warn(
-              "Failed to fetch customer details for invoices:",
-              customerDetailsError
-            );
-          } else {
-            const customerNameMap = new Map();
-            (invoiceCustomersData || []).forEach((cust: any) => {
-              customerNameMap.set(cust.id, cust.name);
-            });
-
-            // Fetch order items to calculate totals
-            const itemsTable = `${currentAgentPrefix}_orders_items`;
-            const { data: allItemsData, error: itemsError } = await supabase
-              .from(itemsTable)
-              .select("order_id, total")
-              .in("order_id", invoiceOrderIds);
-
-            if (itemsError) {
-              console.warn(
-                "Failed to fetch order items for invoices:",
-                itemsError
-              );
-            }
-
-            const orderTotals = new Map<number, number>();
-            (allItemsData || []).forEach((item: any) => {
-              const orderId = item.order_id;
-              const itemTotal = item.total || item.quantity * item.price || 0;
-              if (!orderTotals.has(orderId)) {
-                orderTotals.set(orderId, 0);
-              }
-              orderTotals.set(orderId, orderTotals.get(orderId)! + itemTotal);
-            });
-
-            const processedInvoices: InvoiceWithDetails[] = (
-              invoicesData || []
-            ).map((inv: any) => {
-              const orderId = inv.order_id;
-              const customerId = orderCustomerMap.get(orderId);
-              const customerName =
-                customerNameMap.get(customerId) || "Unknown Customer";
-              const subtotal = orderTotals.get(orderId) || 0;
-              const invoiceDiscountPercentage = inv.discount_percentage || 0;
-              const discountAmount =
-                subtotal * (invoiceDiscountPercentage / 100);
-              const calculatedTotal = subtotal - discountAmount;
-
-              return {
-                ...inv,
-                customer_id: customerId,
-                customer_name: customerName,
-                order_number: `#${orderId.toString().padStart(4, "0")}`,
-                total: calculatedTotal,
-                discount_percentage: invoiceDiscountPercentage,
-              };
-            });
-
-            setInvoices(processedInvoices);
-          }
+      const invoicesResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-invoices`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
+      );
+      if (!invoicesResponse.ok) {
+        setError("Failed to fetch invoices");
+        console.error("Invoices fetch error:", await invoicesResponse.text());
+        setLoading(false);
+        return;
       }
+      const invoicesData = await invoicesResponse.json();
+      if (!invoicesData.success) {
+        setError("Failed to fetch invoices");
+        setLoading(false);
+        return;
+      }
+      setInvoices(invoicesData.invoices || []);
 
       setError(null);
     } catch (err) {
@@ -430,23 +371,27 @@ const InvoicesPage: React.FC = () => {
 
     try {
       // Refetch latest invoice template path to ensure it's up-to-date
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
           {
-            method: 'GET',
+            method: "GET",
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            }
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
         );
 
         if (response.ok) {
           const agentProfile = await response.json();
           if (agentProfile.success && agentProfile.agent) {
-            setInvoiceTemplatePath(agentProfile.agent.invoice_template_path || null);
+            setInvoiceTemplatePath(
+              agentProfile.agent.invoice_template_path || null
+            );
           }
         }
       }

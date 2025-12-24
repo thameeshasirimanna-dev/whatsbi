@@ -5,6 +5,7 @@ import CreateAppointmentModal from "./CreateAppointmentModal";
 import ViewAppointmentModal from "./ViewAppointmentModal";
 import EditAppointmentModal from "./EditAppointmentModal";
 import { useAppointments } from "../../../hooks/useAppointments";
+import { getToken } from "../../../lib/auth";
 import { motion } from "framer-motion";
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -128,17 +129,15 @@ const AppointmentsPage: React.FC = () => {
 
   const fetchAgentInfo = useCallback(async () => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = getToken();
+      if (!token) return;
 
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -161,7 +160,7 @@ const AppointmentsPage: React.FC = () => {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
