@@ -594,7 +594,7 @@ const ConversationsPage: React.FC = () => {
       console.error("Socket error:", error);
     });
 
-    newSocket.on("new-message", (messageData: any) => {
+    newSocket.on("new-message", async (messageData: any) => {
       console.log("Received new message:", messageData);
       // Handle new message similar to realtime logic
       const newMsg: Message = {
@@ -621,8 +621,31 @@ const ConversationsPage: React.FC = () => {
         selectedConversationId === messageData.customer_id
       ) {
         // For real-time updates, we mark as read in the UI
-        // The backend will handle persistence
         newMsg.isRead = true;
+
+        // Mark all unread messages for this customer as read in the backend
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/conversations/${
+                messageData.customer_id
+              }/mark-read?agentId=${agentId}`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+              }
+            ).catch((error) => {
+              console.error("Failed to mark messages as read:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Failed to mark messages as read:", error);
+        }
       }
 
       // Find or create conversation
@@ -1399,10 +1422,20 @@ const ConversationsPage: React.FC = () => {
 
       setSelectedConversationId(conversation.id);
 
-      // Immediately update UI to show 0 unread count for better UX
+      // Immediately update UI to show 0 unread count and mark messages as read for better UX
       setConversations((prev) =>
         prev.map((conv) =>
-          conv.id === conversation.id ? { ...conv, unreadCount: 0 } : conv
+          conv.id === conversation.id
+            ? {
+                ...conv,
+                unreadCount: 0,
+                messages: conv.messages.map((msg) =>
+                  msg.sender === "customer" && !msg.isRead
+                    ? { ...msg, isRead: true }
+                    : msg
+                ),
+              }
+            : conv
         )
       );
 
