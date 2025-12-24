@@ -45,7 +45,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
             const limit = parseInt(url.searchParams.get('limit') || '50');
             const offset = parseInt(url.searchParams.get('offset') || '0');
 
-            console.log('Categories fetch params:', { search, limit, offset, agentPrefix });
 
             // Call the get_categories function
             const { data: categories, error: getError } = await supabaseClient.rpc('get_categories', {
@@ -68,7 +67,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
             const limit = parseInt(url.searchParams.get('limit') || '50');
             const offset = parseInt(url.searchParams.get('offset') || '0');
 
-            console.log('Inventory fetch params:', { category, search, limit, offset, agentPrefix });
 
             // Call the get_inventory_items function
             const { data: items, error: getError } = await supabaseClient.rpc('get_inventory_items', {
@@ -79,7 +77,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
               p_offset: offset
             });
 
-            console.log('RPC result items length:', items ? items.length : 'null');
             if (getError) {
               console.error('get_inventory_items RPC error:', JSON.stringify(getError));
               return reply.code(500).send({ error: getError.message + ' - Details logged' });
@@ -106,13 +103,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
             if (color && !color.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
               return reply.code(400).send({ error: 'Invalid color format (use hex #RRGGBB or #RGB)' });
             }
-
-            console.log('Calling create_category RPC with params:', {
-              p_agent_prefix: agentPrefix,
-              p_name: name.trim(),
-              p_description: description || null,
-              p_color: color || null
-            });
 
             // Call the create_category function
             const { data: result, error: createError } = await supabaseClient.rpc('create_category', {
@@ -157,17 +147,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
               return reply.code(400).send({ error: 'Category ID must be a positive integer' });
             }
 
-            console.log('Calling create_inventory_item RPC with params:', {
-              p_agent_prefix: agentPrefix,
-              p_name: name.trim(),
-              p_quantity: quantity || 0,
-              p_price: price || 0,
-              p_category_id: category_id || null,
-              p_description: description || null,
-              p_sku: sku || null,
-              p_image_urls: image_urls || null
-            });
-
             // Call the create_inventory_item function
             const { data: result, error: createError } = await supabaseClient.rpc('create_inventory_item', {
               p_agent_prefix: agentPrefix,
@@ -180,7 +159,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
               p_image_urls: image_urls || null
             });
 
-            console.log('create_inventory_item RPC result:', { data: result, error: createError });
             if (createError) {
               console.error('create_inventory_item RPC detailed error:', JSON.stringify(createError));
             }

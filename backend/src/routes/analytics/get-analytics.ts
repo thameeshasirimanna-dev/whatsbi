@@ -10,9 +10,6 @@ export default async function getAnalyticsRoutes(
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, pgClient);
 
-      console.log("=== GET-ANALYTICS FUNCTION START ===");
-      console.log("Authenticated User:", authenticatedUser.id);
-
       // Get agent
       const { rows: agentRows } = await pgClient.query(
         "SELECT id, agent_prefix FROM agents WHERE user_id = $1",

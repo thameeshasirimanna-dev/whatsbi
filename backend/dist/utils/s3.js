@@ -20,7 +20,6 @@ export async function uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename
             const fileName = `${timestamp}_${crypto.randomUUID()}.${fileExt}`;
             key = `${agentPrefix}/${folder}/${fileName}`;
         }
-        console.log(`Uploading media to R2: ${key}`);
         const command = new PutObjectCommand({
             Bucket: process.env.R2_BUCKET_NAME,
             Key: key,
@@ -30,7 +29,6 @@ export async function uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename
         await s3Client.send(command);
         // Construct public URL
         const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
-        console.log(`Media uploaded successfully: ${publicUrl}`);
         return publicUrl;
     }
     catch (error) {

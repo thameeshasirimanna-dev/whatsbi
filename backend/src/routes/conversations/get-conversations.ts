@@ -38,15 +38,10 @@ export default async function getConversationsRoutes(
       // Check cache first
       const cachedData = await cacheService.get(cacheKey);
       if (cachedData) {
-        console.log("Returning cached chat list for agent", agentId);
         return JSON.parse(cachedData);
       }
 
       // Cache miss - fetch from DB
-      console.log(
-        "Cache miss for chat list, fetching from DB for agent",
-        agentId
-      );
 
       const customersTable = `${agentData.agent_prefix}_customers`;
       const messagesTable = `${agentData.agent_prefix}_messages`;
@@ -70,7 +65,9 @@ export default async function getConversationsRoutes(
 
       // Get last message for each customer
       const customerIds = customers.map((c: any) => c.id);
-      const placeholders = customerIds.map((_: any, i: number) => `$${i + 1}`).join(",");
+      const placeholders = customerIds
+        .map((_: any, i: number) => `$${i + 1}`)
+        .join(",");
       const messagesQuery = `
         SELECT id, customer_id, message, direction, timestamp, is_read, media_type, media_url, caption
         FROM ${messagesTable}
@@ -91,7 +88,6 @@ export default async function getConversationsRoutes(
         const unreadCount = customerMessages.filter(
           (msg: any) => msg.direction === "inbound" && !msg.is_read
         ).length;
-        console.log(`Customer ${customer.id} has ${unreadCount} unread messages`);
 
         const lastMessageText = lastMessage
           ? processMessageText(

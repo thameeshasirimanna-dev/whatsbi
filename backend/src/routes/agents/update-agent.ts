@@ -103,18 +103,10 @@ export default async function updateAgentRoutes(fastify: FastifyInstance, supaba
       }
 
       // Execute agent details update using RPC if any updates provided (user or agent)
-      if (Object.keys(userUpdates).length > 0 || Object.keys(agentUpdates).length > 0) {
-        console.log("Debug - Calling update_agent_details for updates");
-        console.log(
-          "Debug - userUpdates JSON:",
-          JSON.stringify(userUpdates, null, 2)
-        );
-        console.log(
-          "Debug - agentUpdates JSON:",
-          JSON.stringify(agentUpdates, null, 2)
-        );
-        console.log("Debug - currentUserId:", currentUserId);
-
+      if (
+        Object.keys(userUpdates).length > 0 ||
+        Object.keys(agentUpdates).length > 0
+      ) {
         const { data: transactionData, error: transactionError } =
           await supabaseClient.rpc("update_agent_details", {
             p_agent_id: parseInt(body.agent_id),
@@ -155,7 +147,6 @@ export default async function updateAgentRoutes(fastify: FastifyInstance, supaba
         }
       } else {
         // If no updates, fetch current agent data with user info for consistent response
-        console.log("Debug - No updates provided, fetching current agent data");
         const { data: currentAgent } = await supabaseClient
           .from("agents")
           .select("id, user_id, agent_prefix, business_type")
@@ -189,9 +180,8 @@ export default async function updateAgentRoutes(fastify: FastifyInstance, supaba
         body.is_active !== undefined;
 
       if (hasWhatsAppFields) {
-        const { data: configData, error: configError } = await supabaseClient.rpc(
-          "update_whatsapp_config",
-          {
+        const { data: configData, error: configError } =
+          await supabaseClient.rpc("update_whatsapp_config", {
             p_user_id: agentUserId,
             p_whatsapp_number: body.whatsapp_number || null,
             p_webhook_url: body.webhook_url || null,
@@ -199,8 +189,7 @@ export default async function updateAgentRoutes(fastify: FastifyInstance, supaba
             p_business_account_id: body.business_account_id || null,
             p_phone_number_id: body.phone_number_id || null,
             p_is_active: body.is_active !== undefined ? body.is_active : null,
-          }
-        );
+          });
 
         if (configError) {
           console.error(
@@ -226,11 +215,6 @@ export default async function updateAgentRoutes(fastify: FastifyInstance, supaba
           info: "No WhatsApp configuration changes requested. Current config shown if exists.",
         };
       }
-
-      console.log("Agent update operation completed");
-      console.log("Agent result:", agentUpdateResult);
-      console.log("WhatsApp result:", whatsappUpdateResult);
-      console.log("Auth update:", authUpdateResult);
 
       // Return success response
       return reply.code(200).send({

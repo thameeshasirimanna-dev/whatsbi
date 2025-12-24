@@ -30,132 +30,126 @@ export default async function authenticatedMessagesStreamRoutes(fastify: Fastify
 
       // Get agent's customers from dynamic table
       const dynamicCustomersTable = `${agentData.agent_prefix}_customers`;
-      console.log(`Looking for customers in table: ${dynamicCustomersTable}`);
 
-      const { data: agentCustomers, error: customersError } = await supabaseClient
-        .from(dynamicCustomersTable)
-        .select('id')
-        .eq('agent_id', parseInt(agentId));
+      const { data: agentCustomers, error: customersError } =
+        await supabaseClient
+          .from(dynamicCustomersTable)
+          .select("id")
+          .eq("agent_id", parseInt(agentId));
 
       if (customersError) {
-        console.error('Error fetching customers:', customersError);
-      } else if (!agentCustomers || agentCustomers.length === 0) {
-        console.log(`No customers found in ${dynamicCustomersTable} for agent ${agentId}`);
-      } else {
-        console.log(`Found ${agentCustomers.length} customers:`, agentCustomers.map((c: any) => c.id));
+        console.error("Error fetching customers:", customersError);
       }
 
       const customerIds = agentCustomers?.map((ac: any) => ac.id) || [];
 
       // Log the filter that will be used
-      const filter = customerIds.length > 0 ? `customer_id=in.(${customerIds.join(',')})` : '*';
-      console.log(`Using filter for messages: ${filter}`);
+      const filter =
+        customerIds.length > 0
+          ? `customer_id=in.(${customerIds.join(",")})`
+          : "*";
 
       // Set up SSE headers
       reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization',
-        'Access-Control-Expose-Headers': 'Content-Length,Content-Range',
-        'X-Accel-Buffering': 'no' // Disable nginx buffering if used
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers":
+          "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization",
+        "Access-Control-Expose-Headers": "Content-Length,Content-Range",
+        "X-Accel-Buffering": "no", // Disable nginx buffering if used
       });
 
       // Send initial connection message
-      reply.raw.write(`data: ${JSON.stringify({ type: 'connected', agentId: parseInt(agentId) })}\n\n`);
+      reply.raw.write(
+        `data: ${JSON.stringify({
+          type: "connected",
+          agentId: parseInt(agentId),
+        })}\n\n`
+      );
 
       // Set up database notification channel for dynamic messages table
-      console.log(`Setting up subscription on table: ${messagesTable}`);
-      const filterStr = customerIds.length > 0 ? `customer_id=in.(${customerIds.join(',')})` : '*';
-      console.log(`Subscription filter: ${filterStr}`);
+      const filterStr =
+        customerIds.length > 0
+          ? `customer_id=in.(${customerIds.join(",")})`
+          : "*";
 
       const channel = supabaseClient
         .channel(`messages-stream-${agentId}`)
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: 'INSERT',
-            schema: 'public',
+            event: "INSERT",
+            schema: "public",
             table: messagesTable,
-            filter: filterStr
+            filter: filterStr,
           },
           async (payload: any) => {
-            console.log('CHANGE EVENT RECEIVED:', JSON.stringify(payload, null, 2));
-
             const newMessage = payload.new;
-            console.log('New message payload:', newMessage);
 
             // Fetch full message details from dynamic table
-            const { data: fullMessage, error: messageError } = await supabaseClient
-              .from(messagesTable)
-              .select('*')
-              .eq('id', newMessage.id)
-              .single();
+            const { data: fullMessage, error: messageError } =
+              await supabaseClient
+                .from(messagesTable)
+                .select("*")
+                .eq("id", newMessage.id)
+                .single();
 
             if (messageError || !fullMessage) {
-              console.error('Error fetching message from dynamic table:', messageError);
+              console.error(
+                "Error fetching message from dynamic table:",
+                messageError
+              );
               return;
             }
-
-            console.log('Full message details:', fullMessage);
 
             // Fetch customer info from dynamic customers table
             const { data: customer } = await supabaseClient
               .from(dynamicCustomersTable)
-              .select('name, phone')
-              .eq('id', fullMessage.customer_id)
+              .select("name, phone")
+              .eq("id", fullMessage.customer_id)
               .single();
 
             const messageData = {
               id: fullMessage.id,
               customer_id: fullMessage.customer_id,
               message: fullMessage.message, // Use 'message' to match frontend expectation
-              sender_type: fullMessage.direction === 'inbound' ? 'customer' : 'agent', // Map from actual column
-              timestamp: fullMessage.timestamp
+              sender_type:
+                fullMessage.direction === "inbound" ? "customer" : "agent", // Map from actual column
+              timestamp: fullMessage.timestamp,
             };
 
             // Send via SSE
             try {
               reply.raw.write(`data: ${JSON.stringify(messageData)}\n\n`);
             } catch (error) {
-              console.error('Error sending SSE data:', error);
+              console.error("Error sending SSE data:", error);
             }
           }
         )
-        .subscribe((status: string) => {
-          console.log(`Subscription status for agent ${agentId} on ${messagesTable}:`, status);
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Successfully subscribed to messages table');
-          } else if (status === 'CLOSED') {
-            console.log('❌ Subscription closed unexpectedly');
-          } else if (status === 'CHANNEL_ERROR') {
-            console.log('❌ Subscription channel error');
-          }
-        });
+        .subscribe(() => {});
 
       // Keep connection alive with heartbeat
       const heartBeatInterval = setInterval(() => {
         try {
-          reply.raw.write(':\n\n');
+          reply.raw.write(":\n\n");
         } catch (error) {
-          console.error('Heartbeat error:', error);
+          console.error("Heartbeat error:", error);
           clearInterval(heartBeatInterval);
         }
       }, 15000);
 
       // Handle connection close
-      request.raw.on('close', () => {
+      request.raw.on("close", () => {
         clearInterval(heartBeatInterval);
         channel.unsubscribe();
-        console.log(`Stream closed for agent ${agentId}`);
       });
 
-      request.raw.on('aborted', () => {
+      request.raw.on("aborted", () => {
         clearInterval(heartBeatInterval);
         channel.unsubscribe();
-        console.log(`Stream aborted for agent ${agentId}`);
       });
 
     } catch (error: any) {

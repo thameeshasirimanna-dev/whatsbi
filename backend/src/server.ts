@@ -1,36 +1,35 @@
-import 'dotenv/config';
-console.log("🚀 Server starting...");
-import fastify from 'fastify';
+import "dotenv/config";
+import fastify from "fastify";
 import { Pool } from "pg";
 import Redis from "ioredis";
-import crypto from 'crypto';
-import { CacheService } from './utils/cache';
+import crypto from "crypto";
+import { CacheService } from "./utils/cache";
 import fastifyCors from "@fastify/cors";
 import fastifyMultipart from "@fastify/multipart";
-import whatsappWebhookRoutes from './routes/whatsapp/whatsapp-webhook';
-import sendWhatsappMessageRoutes from './routes/whatsapp/send-whatsapp-message';
-import getMediaPreviewRoutes from './routes/media/get-media-preview';
-import uploadInventoryImagesRoutes from './routes/inventory/upload-inventory-images';
-import uploadMediaRoutes from './routes/media/upload-media';
-import authenticatedMessagesStreamRoutes from './routes/conversations/authenticated-messages-stream';
-import addAgentRoutes from './routes/agents/add-agent';
+import whatsappWebhookRoutes from "./routes/whatsapp/whatsapp-webhook";
+import sendWhatsappMessageRoutes from "./routes/whatsapp/send-whatsapp-message";
+import getMediaPreviewRoutes from "./routes/media/get-media-preview";
+import uploadInventoryImagesRoutes from "./routes/inventory/upload-inventory-images";
+import uploadMediaRoutes from "./routes/media/upload-media";
+import authenticatedMessagesStreamRoutes from "./routes/conversations/authenticated-messages-stream";
+import addAgentRoutes from "./routes/agents/add-agent";
 import getAgentsRoutes from "./routes/agents/get-agents";
-import getWhatsappConfigRoutes from './routes/whatsapp/get-whatsapp-config';
-import updateWhatsappConfigRoutes from './routes/whatsapp/update-whatsapp-config';
-import deleteWhatsappConfigRoutes from './routes/whatsapp/delete-whatsapp-config';
-import addCreditsRoutes from './routes/agents/add-credits';
-import deleteAgentRoutes from './routes/agents/delete-agent';
-import getConversationsRoutes from './routes/conversations/get-conversations';
-import getConversationMessagesRoutes from './routes/conversations/get-conversation-messages';
-import markMessagesReadRoutes from './routes/conversations/mark-messages-read';
-import getBotContextRoutes from './routes/bot/get-bot-context';
-import chatbotReplyRoutes from './routes/bot/chatbot-reply';
-import manageServicesRoutes from './routes/services/manage-services';
-import manageInventoryRoutes from './routes/inventory/manage-inventory';
-import manageCustomersRoutes from './routes/customers/manage-customers';
-import getWhatsappProfilePicRoutes from './routes/whatsapp/get-whatsapp-profile-pic';
-import uploadServiceImagesRoutes from './routes/services/upload-service-images';
-import setupWhatsappConfigRoutes from './routes/whatsapp/setup-whatsapp-config';
+import getWhatsappConfigRoutes from "./routes/whatsapp/get-whatsapp-config";
+import updateWhatsappConfigRoutes from "./routes/whatsapp/update-whatsapp-config";
+import deleteWhatsappConfigRoutes from "./routes/whatsapp/delete-whatsapp-config";
+import addCreditsRoutes from "./routes/agents/add-credits";
+import deleteAgentRoutes from "./routes/agents/delete-agent";
+import getConversationsRoutes from "./routes/conversations/get-conversations";
+import getConversationMessagesRoutes from "./routes/conversations/get-conversation-messages";
+import markMessagesReadRoutes from "./routes/conversations/mark-messages-read";
+import getBotContextRoutes from "./routes/bot/get-bot-context";
+import chatbotReplyRoutes from "./routes/bot/chatbot-reply";
+import manageServicesRoutes from "./routes/services/manage-services";
+import manageInventoryRoutes from "./routes/inventory/manage-inventory";
+import manageCustomersRoutes from "./routes/customers/manage-customers";
+import getWhatsappProfilePicRoutes from "./routes/whatsapp/get-whatsapp-profile-pic";
+import uploadServiceImagesRoutes from "./routes/services/upload-service-images";
+import setupWhatsappConfigRoutes from "./routes/whatsapp/setup-whatsapp-config";
 import getInvoiceTemplateRoutes from "./routes/invoices/get-invoice-template";
 import uploadInvoiceRoutes from "./routes/invoices/upload-invoice";
 import updateAgentRoutes from "./routes/agents/update-agent";
@@ -220,7 +219,6 @@ async function downloadWhatsAppMedia(
   }
 }
 
-
 // Upload inventory images route
 server.get("/health", async (request, reply) => {
   return { status: "ok" };
@@ -228,7 +226,6 @@ server.get("/health", async (request, reply) => {
 
 // Socket.IO utility functions
 function emitNewMessage(agentId: number, messageData: any) {
-  console.log('🔍 DEBUG: Emitting new-message to agent', agentId, 'message ID:', messageData.id);
   (server as any).io.to(`agent-${agentId}`).emit("new-message", messageData);
 }
 

@@ -7,9 +7,6 @@ export default async function getUsersRoutes(fastify: FastifyInstance, supabaseC
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, supabaseClient);
 
-      console.log('=== GET-USERS FUNCTION START ===');
-      console.log('Authenticated User:', authenticatedUser.id);
-
       // Check if user is admin
       if (authenticatedUser.role !== 'admin') {
         return reply.code(403).send({

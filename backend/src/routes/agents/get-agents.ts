@@ -10,9 +10,6 @@ export default async function getAgentsRoutes(
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, pgClient);
 
-      console.log("=== GET-AGENTS FUNCTION START ===");
-      console.log("Authenticated User:", authenticatedUser.id);
-
       // Check table row count first
       const { rows: countRows } = await pgClient.query(
         "SELECT COUNT(*) as count FROM agents"

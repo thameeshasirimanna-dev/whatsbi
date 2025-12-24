@@ -56,8 +56,6 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
       }
 
       // Cache miss - fetch from DB
-      console.log('Cache miss for messages, fetching from DB for conversation', agentId, customerId);
-
       const messagesTable = `${agentData.agent_prefix}_messages`;
 
       let messagesQuery: string;

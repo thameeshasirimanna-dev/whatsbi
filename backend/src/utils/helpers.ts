@@ -14,19 +14,16 @@ export async function verifyJWT(request: any, pgClient: any) {
   }
 
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  console.log('JWT token received, length:', token.length);
 
   try {
     // Decode the JWT without verification first to get the user ID
     const decoded = jwt.decode(token) as any;
-    console.log('Decoded JWT:', decoded);
     if (!decoded || !decoded.sub) {
-      console.error('Invalid token structure - decoded:', decoded);
+      console.error('Invalid token structure');
       throw new Error('Invalid token structure');
     }
 
     const userId = decoded.sub;
-    console.log('Extracted userId:', userId);
 
     // Verify the user exists in the database
     const { rows } = await pgClient.query('SELECT id, email, role FROM users WHERE id = $1', [userId]);
@@ -292,27 +289,11 @@ export async function processIncomingMessage(
         }
       }
     } else if (message.type === "button") {
-      console.log(
-        "🔍 DEBUG: Full button message payload:",
-        JSON.stringify(message, null, 2)
-      );
-      console.log("🔍 DEBUG: Button reply details:", message.button?.reply);
-
       messageText =
         message.button?.reply?.title ||
         message.button?.reply?.id ||
         "Button clicked";
     } else if (message.type === "interactive") {
-      console.log(
-        "🔍 DEBUG: Full interactive message payload:",
-        JSON.stringify(message, null, 2)
-      );
-      console.log("🔍 DEBUG: Interactive type:", message.interactive?.type);
-      console.log(
-        "🔍 DEBUG: Button reply details:",
-        message.interactive?.button_reply
-      );
-
       if (message.interactive?.type === "button_reply") {
         messageText =
           message.interactive.button_reply?.title || "Button clicked";
@@ -380,16 +361,8 @@ export async function processIncomingMessage(
       emitNewMessage(agent.id, messageDataForSocket);
     }
 
-    // Debug logging for webhook trigger conditions
-    console.log(
-      `DEBUG: Customer ${customer.id} ai_enabled: ${customer.ai_enabled}, webhook_url: ${whatsappConfig.webhook_url}`
-    );
-
     // Trigger agent webhook if ai_enabled
     if (customer.ai_enabled && whatsappConfig.webhook_url) {
-      console.log(
-        `Triggering agent webhook for AI-enabled customer ${customer.id}`
-      );
       const jwtToken = generateJWT(whatsappConfig.user_id);
       const payload = {
         event: "message_received",
@@ -418,8 +391,6 @@ export async function processIncomingMessage(
           console.error(
             `Agent webhook failed: HTTP ${response.status} - ${errorText}`
           );
-        } else {
-          console.log("Agent webhook triggered successfully");
         }
       } catch (webhookError) {
         console.error("Error triggering agent webhook:", webhookError);

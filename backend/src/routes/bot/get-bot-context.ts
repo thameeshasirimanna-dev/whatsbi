@@ -14,45 +14,46 @@ export default async function getBotContextRoutes(fastify: FastifyInstance, supa
       const agentId = query.agentId;
 
       if (!customerId || !agentId) {
-        return reply.code(400).send('Customer ID and Agent ID required');
+        return reply.code(400).send("Customer ID and Agent ID required");
       }
 
       // Verify agent ownership
       const { data: agentData, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('agent_prefix, id')
-        .eq('id', parseInt(agentId))
-        .eq('user_id', user.id)
+        .from("agents")
+        .select("agent_prefix, id")
+        .eq("id", parseInt(agentId))
+        .eq("user_id", user.id)
         .single();
 
       if (agentError || !agentData) {
-        return reply.code(403).send('Agent not found or access denied');
+        return reply.code(403).send("Agent not found or access denied");
       }
 
       // Verify customer belongs to agent
       const customersTable = `${agentData.agent_prefix}_customers`;
       const { data: customer, error: customerError } = await supabaseClient
         .from(customersTable)
-        .select('id, ai_enabled, lead_stage, interest_stage, conversion_stage')
-        .eq('id', parseInt(customerId))
-        .eq('agent_id', parseInt(agentId))
+        .select("id, ai_enabled, lead_stage, interest_stage, conversion_stage")
+        .eq("id", parseInt(customerId))
+        .eq("agent_id", parseInt(agentId))
         .single();
 
       if (customerError || !customer) {
-        return reply.code(404).send('Customer not found');
+        return reply.code(404).send("Customer not found");
       }
 
-      const cacheKey = CacheService.botContextKey(parseInt(agentId), parseInt(customerId));
+      const cacheKey = CacheService.botContextKey(
+        parseInt(agentId),
+        parseInt(customerId)
+      );
 
       // Check cache first
       const cachedData = await cacheService.get(cacheKey);
       if (cachedData) {
-        console.log('Returning cached bot context for customer', customerId);
         return JSON.parse(cachedData);
       }
 
       // Cache miss - fetch from DB
-      console.log('Cache miss for bot context, fetching from DB for customer', customerId);
 
       // For now, bot context includes AI enabled status and stages
       // This can be extended to include conversation history summary or AI state

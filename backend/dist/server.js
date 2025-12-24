@@ -1,35 +1,34 @@
-import 'dotenv/config';
-console.log("🚀 Server starting...");
-import fastify from 'fastify';
+import "dotenv/config";
+import fastify from "fastify";
 import { Pool } from "pg";
 import Redis from "ioredis";
-import { CacheService } from './utils/cache';
+import { CacheService } from "./utils/cache";
 import fastifyCors from "@fastify/cors";
 import fastifyMultipart from "@fastify/multipart";
-import whatsappWebhookRoutes from './routes/whatsapp/whatsapp-webhook';
-import sendWhatsappMessageRoutes from './routes/whatsapp/send-whatsapp-message';
-import getMediaPreviewRoutes from './routes/media/get-media-preview';
-import uploadInventoryImagesRoutes from './routes/inventory/upload-inventory-images';
-import uploadMediaRoutes from './routes/media/upload-media';
-import authenticatedMessagesStreamRoutes from './routes/conversations/authenticated-messages-stream';
-import addAgentRoutes from './routes/agents/add-agent';
+import whatsappWebhookRoutes from "./routes/whatsapp/whatsapp-webhook";
+import sendWhatsappMessageRoutes from "./routes/whatsapp/send-whatsapp-message";
+import getMediaPreviewRoutes from "./routes/media/get-media-preview";
+import uploadInventoryImagesRoutes from "./routes/inventory/upload-inventory-images";
+import uploadMediaRoutes from "./routes/media/upload-media";
+import authenticatedMessagesStreamRoutes from "./routes/conversations/authenticated-messages-stream";
+import addAgentRoutes from "./routes/agents/add-agent";
 import getAgentsRoutes from "./routes/agents/get-agents";
-import getWhatsappConfigRoutes from './routes/whatsapp/get-whatsapp-config';
-import updateWhatsappConfigRoutes from './routes/whatsapp/update-whatsapp-config';
-import deleteWhatsappConfigRoutes from './routes/whatsapp/delete-whatsapp-config';
-import addCreditsRoutes from './routes/agents/add-credits';
-import deleteAgentRoutes from './routes/agents/delete-agent';
-import getConversationsRoutes from './routes/conversations/get-conversations';
-import getConversationMessagesRoutes from './routes/conversations/get-conversation-messages';
-import markMessagesReadRoutes from './routes/conversations/mark-messages-read';
-import getBotContextRoutes from './routes/bot/get-bot-context';
-import chatbotReplyRoutes from './routes/bot/chatbot-reply';
-import manageServicesRoutes from './routes/services/manage-services';
-import manageInventoryRoutes from './routes/inventory/manage-inventory';
-import manageCustomersRoutes from './routes/customers/manage-customers';
-import getWhatsappProfilePicRoutes from './routes/whatsapp/get-whatsapp-profile-pic';
-import uploadServiceImagesRoutes from './routes/services/upload-service-images';
-import setupWhatsappConfigRoutes from './routes/whatsapp/setup-whatsapp-config';
+import getWhatsappConfigRoutes from "./routes/whatsapp/get-whatsapp-config";
+import updateWhatsappConfigRoutes from "./routes/whatsapp/update-whatsapp-config";
+import deleteWhatsappConfigRoutes from "./routes/whatsapp/delete-whatsapp-config";
+import addCreditsRoutes from "./routes/agents/add-credits";
+import deleteAgentRoutes from "./routes/agents/delete-agent";
+import getConversationsRoutes from "./routes/conversations/get-conversations";
+import getConversationMessagesRoutes from "./routes/conversations/get-conversation-messages";
+import markMessagesReadRoutes from "./routes/conversations/mark-messages-read";
+import getBotContextRoutes from "./routes/bot/get-bot-context";
+import chatbotReplyRoutes from "./routes/bot/chatbot-reply";
+import manageServicesRoutes from "./routes/services/manage-services";
+import manageInventoryRoutes from "./routes/inventory/manage-inventory";
+import manageCustomersRoutes from "./routes/customers/manage-customers";
+import getWhatsappProfilePicRoutes from "./routes/whatsapp/get-whatsapp-profile-pic";
+import uploadServiceImagesRoutes from "./routes/services/upload-service-images";
+import setupWhatsappConfigRoutes from "./routes/whatsapp/setup-whatsapp-config";
 import getInvoiceTemplateRoutes from "./routes/invoices/get-invoice-template";
 import updateAgentRoutes from "./routes/agents/update-agent";
 import sendInvoiceTemplateRoutes from "./routes/invoices/send-invoice-template";
@@ -81,10 +80,8 @@ const pgClient = new Pool({
     connectionString: DATABASE_URL,
 });
 // Redis client
-console.log("Attempting to connect to Redis at:", REDIS_URL);
 const redisClient = new Redis(REDIS_URL);
 redisClient.on("error", (err) => console.error("Redis Client Error", err));
-redisClient.on("connect", () => console.log("Connected to Redis"));
 // Cache service
 const cacheService = new CacheService(redisClient);
 // Register routes
@@ -186,7 +183,6 @@ server.get("/health", async (request, reply) => {
 });
 // Socket.IO utility functions
 function emitNewMessage(agentId, messageData) {
-    console.log('🔍 DEBUG: Emitting new-message to agent', agentId, 'message ID:', messageData.id);
     server.io.to(`agent-${agentId}`).emit("new-message", messageData);
 }
 function emitAgentStatusUpdate(agentId, statusData) {
@@ -198,7 +194,6 @@ const start = async () => {
     try {
         // Wait for DB connection check
         await pgClient.query("SELECT 1");
-        console.log("✅ Connected to PostgreSQL");
         await registerRoutes();
         // Set up Socket.IO connection handling after routes are registered
         server.ready().then(() => {
@@ -221,7 +216,6 @@ const start = async () => {
             });
         });
         await server.listen({ port: 8080, host: "0.0.0.0" });
-        console.log("Server running on http://localhost:8080");
     }
     catch (err) {
         console.error("❌ PostgreSQL connection failed:", err);

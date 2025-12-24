@@ -8,7 +8,6 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, supab
   fastify.post('/chatbot-reply', async (request, reply) => {
     try {
       const body = request.body as any;
-      console.log('Chatbot reply request body:', JSON.stringify(body, null, 2));
 
       const {
         secret,

@@ -6,6 +6,7 @@ export function escapeRegExp(string) {
 export async function verifyJWT(request, pgClient) {
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.error('No authorization header or not Bearer token');
         throw new Error('Authorization header required');
     }
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
@@ -13,12 +14,14 @@ export async function verifyJWT(request, pgClient) {
         // Decode the JWT without verification first to get the user ID
         const decoded = jwt.decode(token);
         if (!decoded || !decoded.sub) {
+            console.error('Invalid token structure');
             throw new Error('Invalid token structure');
         }
         const userId = decoded.sub;
         // Verify the user exists in the database
         const { rows } = await pgClient.query('SELECT id, email, role FROM users WHERE id = $1', [userId]);
         if (rows.length === 0) {
+            console.error('User not found in database for userId:', userId);
             throw new Error('User not found');
         }
         return { id: userId, email: rows[0].email, role: rows[0].role };
@@ -27,6 +30,18 @@ export async function verifyJWT(request, pgClient) {
         console.error('JWT verification error:', error);
         throw new Error('Invalid or expired token');
     }
+}
+export function generateJWT(userId) {
+    const secret = process.env.JWT_SECRET ?? "";
+    if (!secret) {
+        throw new Error("JWT_SECRET not configured");
+    }
+    const payload = {
+        sub: userId,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
+    };
+    return jwt.sign(payload, secret);
 }
 export function getMediaTypeFromWhatsApp(messageType, mimeType) {
     switch (messageType) {
@@ -168,17 +183,12 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
             }
         }
         else if (message.type === "button") {
-            console.log("🔍 DEBUG: Full button message payload:", JSON.stringify(message, null, 2));
-            console.log("🔍 DEBUG: Button reply details:", message.button?.reply);
             messageText =
                 message.button?.reply?.title ||
                     message.button?.reply?.id ||
                     "Button clicked";
         }
         else if (message.type === "interactive") {
-            console.log("🔍 DEBUG: Full interactive message payload:", JSON.stringify(message, null, 2));
-            console.log("🔍 DEBUG: Interactive type:", message.interactive?.type);
-            console.log("🔍 DEBUG: Button reply details:", message.interactive?.button_reply);
             if (message.interactive?.type === "button_reply") {
                 messageText =
                     message.interactive.button_reply?.title || "Button clicked";
@@ -225,6 +235,8 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
             const messageDataForSocket = {
                 id: insertedMessage.id,
                 customer_id: insertedMessage.customer_id,
+                customer_name: customer.name,
+                customer_phone: fromPhone,
                 message: insertedMessage.message,
                 sender_type: "customer",
                 timestamp: insertedMessage.timestamp,
@@ -234,7 +246,40 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
             };
             emitNewMessage(agent.id, messageDataForSocket);
         }
-        // Removed auto-send hello_world template logic - now handled by webhook
+        // Trigger agent webhook if ai_enabled
+        if (customer.ai_enabled && whatsappConfig.webhook_url) {
+            const jwtToken = generateJWT(whatsappConfig.user_id);
+            const payload = {
+                event: "message_received",
+                jwt_token: jwtToken,
+                data: {
+                    ...insertedMessage,
+                    customer_phone: fromPhone,
+                    customer_name: customer.name,
+                    customer_language: customer.language || "english",
+                    agent_prefix: agent.agent_prefix,
+                    agent_user_id: whatsappConfig.user_id,
+                    phone_number_id: phoneNumberId,
+                },
+            };
+            try {
+                const response = await fetch(whatsappConfig.webhook_url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${jwtToken}`,
+                    },
+                    body: JSON.stringify(payload),
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Agent webhook failed: HTTP ${response.status} - ${errorText}`);
+                }
+            }
+            catch (webhookError) {
+                console.error("Error triggering agent webhook:", webhookError);
+            }
+        }
     }
     catch (error) {
         console.error('Message processing error:', error);
