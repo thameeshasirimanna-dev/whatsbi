@@ -32,6 +32,7 @@ import uploadServiceImagesRoutes from "./routes/services/upload-service-images";
 import setupWhatsappConfigRoutes from "./routes/whatsapp/setup-whatsapp-config";
 import getInvoiceTemplateRoutes from "./routes/invoices/get-invoice-template";
 import uploadInvoiceRoutes from "./routes/invoices/upload-invoice";
+import downloadInvoiceRoutes from "./routes/invoices/download-invoice";
 import updateAgentRoutes from "./routes/agents/update-agent";
 import sendInvoiceTemplateRoutes from "./routes/invoices/send-invoice-template";
 import manageInvoicesRoutes from "./routes/invoices/manage-invoices";
@@ -139,6 +140,8 @@ async function registerRoutes() {
   await uploadServiceImagesRoutes(server, pgClient);
   await setupWhatsappConfigRoutes(server, pgClient);
   await getInvoiceTemplateRoutes(server, pgClient, cacheService);
+  await uploadInvoiceRoutes(server, pgClient);
+  await downloadInvoiceRoutes(server, pgClient);
   await updateAgentRoutes(server, pgClient);
   await sendInvoiceTemplateRoutes(server, pgClient);
   await manageInvoicesRoutes(server, pgClient);

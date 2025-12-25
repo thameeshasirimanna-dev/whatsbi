@@ -14,20 +14,33 @@ export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, 
       if (!userId) {
         return reply.code(400).send({
           success: false,
-          message: "user_id is required"
+          message: "user_id is required",
+        });
+      }
+
+      // Validate userId is a valid UUID
+      if (
+        userId === "null" ||
+        !userId.match(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        )
+      ) {
+        return reply.code(400).send({
+          success: false,
+          message: "user_id must be a valid UUID",
         });
       }
 
       // Validate user exists
       const { rows: userRows } = await pgClient.query(
-        'SELECT id, email FROM users WHERE id = $1',
+        "SELECT id, email FROM users WHERE id = $1",
         [userId]
       );
 
       if (userRows.length === 0) {
         return reply.code(404).send({
           success: false,
-          message: "User not found"
+          message: "User not found",
         });
       }
 
@@ -35,7 +48,7 @@ export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, 
 
       // Get WhatsApp configuration using function
       const { rows: configRows } = await pgClient.query(
-        'SELECT * FROM get_whatsapp_config($1)',
+        "SELECT * FROM get_whatsapp_config($1)",
         [userId]
       );
 
@@ -43,12 +56,13 @@ export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, 
 
       return reply.code(200).send({
         success: true,
-        message: configData ? "WhatsApp configuration found" : "No WhatsApp configuration set up for this user",
+        message: configData
+          ? "WhatsApp configuration found"
+          : "No WhatsApp configuration set up for this user",
         user: userExists,
         whatsapp_config: configData,
-        user_id: userId
+        user_id: userId,
       });
-
     } catch (err) {
       console.error("WhatsApp config retrieval error:", err);
       return reply.code(500).send({

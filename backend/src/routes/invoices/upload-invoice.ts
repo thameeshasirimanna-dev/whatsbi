@@ -1,62 +1,84 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
+import { uploadMediaToR2 } from "../../utils/s3";
 
-export default async function uploadInvoiceRoutes(fastify: FastifyInstance, supabaseClient: any) {
-  fastify.post('/upload-invoice', async (request, reply) => {
+export default async function uploadInvoiceRoutes(
+  fastify: FastifyInstance,
+  pgClient: any
+) {
+  fastify.post("/upload-invoice", async (request, reply) => {
     try {
       // Verify JWT
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
-      const { orderId, invoiceName, agentPrefix, customerId, discountPercentage, pdfBase64 } = body;
+      const {
+        orderId,
+        invoiceName,
+        agentPrefix,
+        customerId,
+        discountPercentage,
+        pdfBase64,
+      } = body;
 
-      if (!orderId || !invoiceName || !agentPrefix || !customerId || !pdfBase64) {
-        return reply.code(400).send({ error: 'Missing required fields' });
+      if (
+        !orderId ||
+        !invoiceName ||
+        !agentPrefix ||
+        !customerId ||
+        !pdfBase64
+      ) {
+        return reply.code(400).send({ error: "Missing required fields" });
       }
 
       // Decode base64 to buffer
-      const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+      const pdfBuffer = Buffer.from(pdfBase64, "base64");
 
       // Generate filename
       const now = new Date();
-      const formattedDate = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+      const formattedDate = `${now.getFullYear()}${String(
+        now.getMonth() + 1
+      ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(
+        now.getHours()
+      ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
+        now.getSeconds()
+      ).padStart(2, "0")}`;
 
       const fileName = `invoice_${orderId}${formattedDate}.pdf`;
-      const storagePath = `${agentPrefix}/${customerId}/${fileName}`;
+      const r2Key = `${agentPrefix}/invoices/${customerId}/${fileName}`;
 
-      // Upload to Supabase storage
-      const { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from('invoices')
-        .upload(storagePath, pdfBuffer, {
-          contentType: 'application/pdf',
-          upsert: true,
-        });
+      // Upload to R2
+      const uploadedUrl = await uploadMediaToR2(
+        "",
+        pdfBuffer,
+        fileName,
+        "application/pdf",
+        "incoming",
+        r2Key
+      );
 
-      if (uploadError) {
-        return reply.code(500).send({ error: 'Failed to upload invoice' });
+      if (!uploadedUrl) {
+        return reply.code(500).send({ error: "Failed to upload invoice" });
       }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabaseClient.storage.from('invoices').getPublicUrl(storagePath);
 
       // Insert invoice record
       const invoicesTable = `${agentPrefix}_orders_invoices`;
-      const { error: insertError } = await supabaseClient.from(invoicesTable).insert({
-        order_id: orderId,
-        name: invoiceName,
-        pdf_url: publicUrl,
-        status: 'generated',
-        discount_percentage: discountPercentage,
-      });
+      const insertQuery = `
+        INSERT INTO ${invoicesTable} (order_id, name, pdf_url, status, discount_percentage)
+        VALUES ($1, $2, $3, $4, $5)
+      `;
+      await pgClient.query(insertQuery, [
+        orderId,
+        invoiceName,
+        uploadedUrl,
+        "generated",
+        discountPercentage || 0,
+      ]);
 
-      if (insertError) {
-        return reply.code(500).send({ error: 'Failed to save invoice record' });
-      }
-
-      return reply.code(200).send({ publicUrl });
+      return reply.code(200).send({ success: true, publicUrl: uploadedUrl });
     } catch (error) {
-      console.error('Upload invoice error:', error);
-      return reply.code(500).send({ error: 'Internal server error' });
+      console.error("Upload invoice error:", error);
+      return reply.code(500).send({ error: "Internal server error" });
     }
   });
 }

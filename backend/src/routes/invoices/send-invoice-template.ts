@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
 
-export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/send-invoice-template', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
       const {
@@ -26,54 +26,55 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
       }
 
       // Validate user
-      const { data: user, error: userError } = await supabaseClient
-        .from("users")
-        .select("id")
-        .eq("id", user_id)
-        .single();
+      const { rows: userRows } = await pgClient.query(
+        "SELECT id FROM users WHERE id = $1",
+        [user_id]
+      );
 
-      if (userError || !user) {
+      if (userRows.length === 0) {
         return reply.code(404).send({ error: "User not found" });
       }
 
       // Get WhatsApp config
-      const { data: whatsappConfig, error: configError } = await supabaseClient
-        .from("whatsapp_configuration")
-        .select("api_key, phone_number_id, user_id")
-        .eq("user_id", user_id)
-        .eq("is_active", true)
-        .single();
+      const { rows: whatsappRows } = await pgClient.query(
+        "SELECT api_key, phone_number_id, user_id FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true",
+        [user_id]
+      );
 
-      if (configError || !whatsappConfig) {
+      if (whatsappRows.length === 0) {
         return reply.code(404).send({
           error: "WhatsApp configuration not found",
         });
       }
 
-      // Get agent
-      const { data: agent, error: agentError } = await supabaseClient
-        .from("agents")
-        .select("id, agent_prefix")
-        .eq("user_id", user_id)
-        .single();
+      const whatsappConfig = whatsappRows[0];
 
-      if (agentError || !agent) {
+      // Get agent
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+        [user_id]
+      );
+
+      if (agentRows.length === 0) {
         return reply.code(404).send({ error: "Agent not found" });
       }
+
+      const agent = agentRows[0];
 
       const customersTable = `${agent.agent_prefix}_customers`;
       const templatesTable = `${agent.agent_prefix}_templates`;
 
       // Find customer
-      const { data: customer, error: customerError } = await supabaseClient
-        .from(customersTable)
-        .select("id, last_user_message_time, phone")
-        .eq("phone", customer_phone)
-        .single();
+      const { rows: customerRows } = await pgClient.query(
+        `SELECT id, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1`,
+        [customer_phone]
+      );
 
-      if (customerError || !customer) {
+      if (customerRows.length === 0) {
         return reply.code(404).send({ error: "Customer not found" });
       }
+
+      const customer = customerRows[0];
 
       // Normalize phone number to E.164 format
       let normalizedPhone = customer.phone.replace(/\D/g, ""); // Remove non-digits
@@ -106,20 +107,19 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
 
       if (!useFreeForm) {
         // Get the invoice_template
-        const { data: templates, error: templateError } = await supabaseClient
-          .from(templatesTable)
-          .select("*")
-          .eq("agent_id", agent.id)
-          .eq("name", "invoice_template")
-          .eq("is_active", true)
-          .single();
+        const { rows: templateRows } = await pgClient.query(
+          `SELECT * FROM ${templatesTable} WHERE agent_id = $1 AND name = $2 AND is_active = true`,
+          [agent.id, "invoice_template"]
+        );
 
-        if (templateError || !templates) {
+        if (templateRows.length === 0) {
           return reply.code(404).send({
             error:
               "Invoice template not found. Please create 'invoice_template' template first.",
           });
         }
+
+        const templates = templateRows[0];
 
         const templateData = templates;
         const accessToken = whatsappConfig.api_key;
@@ -264,7 +264,7 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
           }
         );
 
-        const result = await response.json();
+        const result = await response.json() as any;
 
         if (!response.ok) {
           return reply.code(500).send({
@@ -301,21 +301,15 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
         }
         stored_message = renderedText;
 
-        const { error: msgError } = await supabaseClient.from(messagesTable).insert({
-          customer_id: customer.id,
-          message: stored_message,
-          direction: "outbound",
-          timestamp: messageTimestamp,
-          is_read: true,
-          media_type: "none",
-          media_url: null,
-          caption: null,
-        });
-
-        if (msgError) {
+        try {
+          await pgClient.query(
+            `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [customer.id, stored_message, "outbound", messageTimestamp, true, "none", null, null]
+          );
+        } catch (msgError) {
           return reply.code(500).send({
             error: "Failed to store message in database",
-            details: msgError,
+            details: (msgError as Error).message,
           });
         }
 
@@ -351,32 +345,7 @@ Thank you for your business!`;
 
         // Upload to Supabase storage for dashboard access
         let storedMediaUrl = null;
-        if (agent && agent.agent_prefix) {
-          try {
-            const now = new Date();
-            const formattedDate = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-            const fileName = `invoice_${order_number}${formattedDate}.pdf`;
-            const filePath = `${agent.agent_prefix}/outgoing/${customer.id}/${fileName}`;
-
-            const { data: uploadData, error: uploadError } =
-              await supabaseClient.storage
-                .from("whatsapp-media")
-                .upload(filePath, invoiceBlob, {
-                  contentType: mimeType,
-                  cacheControl: "3600",
-                  upsert: false,
-                });
-
-            if (!uploadError && uploadData) {
-              const { data: urlData } = supabaseClient.storage
-                .from("whatsapp-media")
-                .getPublicUrl(filePath);
-              storedMediaUrl = urlData.publicUrl;
-            }
-          } catch (storageError) {
-            console.error("Error uploading to Supabase storage:", storageError);
-          }
-        }
+        // TODO: Implement storage upload using S3 or other method
 
         // Upload to WhatsApp media
         const uploadedFile = new File(
@@ -410,7 +379,7 @@ Thank you for your business!`;
           });
         }
 
-        const uploadResult = await uploadResponse.json();
+        const uploadResult = await uploadResponse.json() as any;
         const mediaId = uploadResult.id;
 
         if (!mediaId) {
@@ -443,7 +412,7 @@ Thank you for your business!`;
           }
         );
 
-        const result = await response.json();
+        const result = await response.json() as any;
 
         if (!response.ok) {
           return reply.code(500).send({
@@ -462,21 +431,15 @@ Thank you for your business!`;
         stored_media_type = "document";
         stored_media_url = storedMediaUrl;
 
-        const { error: msgError } = await supabaseClient.from(messagesTable).insert({
-          customer_id: customer.id,
-          message: stored_message,
-          direction: "outbound",
-          timestamp: messageTimestamp,
-          is_read: true,
-          media_type: stored_media_type,
-          media_url: stored_media_url,
-          caption: stored_caption,
-        });
-
-        if (msgError) {
+        try {
+          await pgClient.query(
+            `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [customer.id, stored_message, "outbound", messageTimestamp, true, stored_media_type, stored_media_url, stored_caption]
+          );
+        } catch (msgError) {
           return reply.code(500).send({
             error: "Failed to store message in database",
-            details: msgError,
+            details: msgError.message,
           });
         }
 

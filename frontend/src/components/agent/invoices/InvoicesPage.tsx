@@ -1,8 +1,54 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, Combobox } from '@headlessui/react';
-import { getToken, getCurrentUser } from "../../../lib/auth";
+import { getToken } from "../../../lib/auth";
 import { getCurrentAgent } from "../../../lib/agent";
 import jsPDF from "jspdf";
+
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+const getUser = async () => {
+  try {
+    const token = getToken();
+    if (!token) return { data: { user: null }, error: null };
+
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/get-current-user`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await response.json();
+    if (response.ok && data.success) {
+      if (!data.user || !data.user.id) {
+        return { data: { user: null }, error: "Invalid user data from server" };
+      }
+      return { data: { user: data.user }, error: null };
+    } else {
+      return {
+        data: { user: null },
+        error: data.message || "Failed to get user",
+      };
+    }
+  } catch (error) {
+    return { data: { user: null }, error };
+  }
+};
 
 interface InvoiceItem {
   name: string;
@@ -104,15 +150,28 @@ const InvoicesPage: React.FC = () => {
         return;
       }
 
-      const authResponse = await getCurrentUser();
-      if (!authResponse.success || !authResponse.user) {
+      const userResult = await getUser();
+      if (userResult.error || !userResult.data.user) {
         setError("User not authenticated");
         setLoading(false);
         return;
       }
 
-      const user = authResponse.user;
+      const user = userResult.data.user;
       setUserId(user.id);
+
+      // Validate user ID
+      if (
+        !user.id ||
+        user.id === "null" ||
+        !user.id.match(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        )
+      ) {
+        setError("Invalid user data");
+        setLoading(false);
+        return;
+      }
 
       // Get agent profile from backend
 
@@ -158,26 +217,38 @@ const InvoicesPage: React.FC = () => {
       setUserId(user.id);
 
       // Get WhatsApp config from backend
-      const whatsappResponse = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/get-whatsapp-config?user_id=${userId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      if (!user.id) {
+        setWhatsappConfig(null);
+      } else {
+        const whatsappResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${
+            user.id
+          }`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-      if (whatsappResponse.ok) {
-        const whatsappData = await whatsappResponse.json();
-        if (whatsappData.success && whatsappData.whatsapp_config) {
-          setWhatsappConfig({
-            phone_number_id: whatsappData.whatsapp_config.phone_number_id,
-            api_key: whatsappData.whatsapp_config.api_key,
-          });
+        if (!whatsappResponse.ok) {
+          // Do not set error, allow page to load without WhatsApp config
+          setWhatsappConfig(null);
+        } else {
+          const whatsappData = await whatsappResponse.json();
+          if (!whatsappData.success || !whatsappData.whatsapp_config) {
+            // Do not set error, allow page to load without WhatsApp config
+            setWhatsappConfig(null);
+          } else {
+            const whatsappConfigData =
+              whatsappData.whatsapp_config[0] || whatsappData.whatsapp_config;
+            setWhatsappConfig({
+              phone_number_id: whatsappConfigData.phone_number_id,
+              api_key: whatsappConfigData.api_key,
+            });
+          }
         }
       }
 
@@ -242,7 +313,7 @@ const InvoicesPage: React.FC = () => {
         ordersData.orders.map((o: any) => ({
           id: o.id,
           customer_id: o.customer.id,
-          total_amount: o.total_amount,
+          total_amount: Number(o.total_amount) || 0,
           status: o.status,
           notes: o.notes,
           created_at: o.created_at,
@@ -303,7 +374,12 @@ const InvoicesPage: React.FC = () => {
         setLoading(false);
         return;
       }
-      setInvoices(invoicesData.invoices || []);
+      setInvoices(
+        (invoicesData.invoices || []).map((inv: any) => ({
+          ...inv,
+          total: Number(inv.total) || 0,
+        }))
+      );
 
       setError(null);
     } catch (err) {
@@ -407,9 +483,11 @@ const InvoicesPage: React.FC = () => {
 
       const items: InvoiceItem[] = (itemsData.items || []).map((item: any) => ({
         name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        total: item.total || item.quantity * item.price,
+        quantity: Number(item.quantity) || 0,
+        price: Number(item.price) || 0,
+        total: item.total
+          ? Number(item.total)
+          : (Number(item.quantity) || 0) * (Number(item.price) || 0),
       }));
 
       // Fetch template if available
@@ -715,6 +793,7 @@ const InvoicesPage: React.FC = () => {
       const fileName = `${agentPrefix}/${sanitizedFileName}.pdf`;
 
       // Upload to storage
+      const pdfBase64 = await blobToBase64(pdfBlob);
       const uploadResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/upload-invoice`,
         {
@@ -724,8 +803,12 @@ const InvoicesPage: React.FC = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            fileName,
-            pdfBlob: await pdfBlob.arrayBuffer(), // Convert blob to array buffer for JSON
+            orderId: order.id,
+            invoiceName,
+            agentPrefix,
+            customerId: order.customer_id,
+            discountPercentage,
+            pdfBase64,
           }),
         }
       );
@@ -737,36 +820,6 @@ const InvoicesPage: React.FC = () => {
       const uploadData = await uploadResponse.json();
       if (!uploadData.success) {
         throw new Error("Failed to upload invoice");
-      }
-
-      const publicUrl = uploadData.publicUrl;
-
-      // Insert invoice record
-      const insertResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/manage-invoices`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            order_id: order.id,
-            name: invoiceName,
-            pdf_url: publicUrl,
-            status: "generated",
-            discount_percentage: discountPercentage,
-          }),
-        }
-      );
-
-      if (!insertResponse.ok) {
-        throw new Error("Failed to save invoice record");
-      }
-
-      const insertData = await insertResponse.json();
-      if (!insertData.success) {
-        throw new Error("Failed to save invoice record");
       }
 
       // Refresh data
@@ -803,10 +856,11 @@ const InvoicesPage: React.FC = () => {
         throw new Error("User not authenticated");
       }
 
-      const user = await getCurrentUser();
-      if (!user.success || !user.user || !userId) {
+      const userResult = await getUser();
+      if (userResult.error || !userResult.data.user) {
         throw new Error("User not authenticated");
       }
+      const user = userResult.data.user;
 
       // Fetch invoice
       const invoiceResponse = await fetch(
@@ -947,6 +1001,7 @@ const InvoicesPage: React.FC = () => {
         {
           method: "POST",
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -1059,8 +1114,28 @@ const InvoicesPage: React.FC = () => {
 
   const downloadPDF = async (invoice: InvoiceWithDetails) => {
     try {
-      const response = await fetch(invoice.pdf_url);
-      if (!response.ok) throw new Error("Failed to fetch PDF");
+      const token = getToken();
+      if (!token) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/download-invoice?invoiceId=${
+          invoice.id
+        }`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to download PDF");
+      }
+
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -1098,26 +1173,7 @@ const InvoicesPage: React.FC = () => {
         throw new Error("User not authenticated");
       }
 
-      // Delete from storage
-      const sanitizedFileName = sanitizeFileName(invoice.name);
-      const fileName = `${agentPrefix}/${sanitizedFileName}.pdf`;
-      const deleteResponse = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/delete-invoice?fileName=${encodeURIComponent(fileName)}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!deleteResponse.ok) {
-        throw new Error("Failed to delete PDF from storage");
-      }
-
-      // Delete from DB
+      // Delete from DB (backend handles storage deletion)
       const dbDeleteResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/manage-invoices?id=${invoice.id}`,
         {
@@ -1628,3 +1684,4 @@ const InvoicesPage: React.FC = () => {
 };
 
 export default InvoicesPage;
+

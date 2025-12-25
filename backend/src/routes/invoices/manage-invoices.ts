@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
+import { deleteMediaFromR2 } from "../../utils/s3";
 
 export default async function manageInvoicesRoutes(
   fastify: FastifyInstance,
@@ -141,17 +142,39 @@ export default async function manageInvoicesRoutes(
 
           const invoiceId = parseInt(id);
 
-          // Get invoice details for file deletion
+          // Get invoice details including pdf_url for file deletion
           const selectQuery = `
-            SELECT name FROM ${agentPrefix}_orders_invoices WHERE id = $1
+            SELECT pdf_url FROM ${agentPrefix}_orders_invoices WHERE id = $1
           `;
-          const { rows: invoices } = await pgClient.query(selectQuery, [invoiceId]);
+          const { rows: invoices } = await pgClient.query(selectQuery, [
+            invoiceId,
+          ]);
 
           if (invoices.length === 0) {
             return reply.code(404).send({
               success: false,
               message: "Invoice not found",
             });
+          }
+
+          const invoice = invoices[0];
+
+          // Extract key from pdf_url
+          const publicUrl = process.env.R2_PUBLIC_URL;
+          if (!publicUrl) {
+            return reply.code(500).send({
+              success: false,
+              message: "Storage configuration error",
+            });
+          }
+
+          const key = invoice.pdf_url.replace(publicUrl + "/", "");
+
+          // Delete from storage
+          const deleted = await deleteMediaFromR2(key);
+          if (!deleted) {
+            console.error("Failed to delete invoice from storage:", key);
+            // Continue with DB deletion even if storage deletion fails
           }
 
           // Delete from database

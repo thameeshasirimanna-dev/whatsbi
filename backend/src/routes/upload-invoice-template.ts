@@ -3,42 +3,69 @@ import { verifyJWT } from '../utils/helpers';
 import { uploadMediaToR2 } from '../utils/s3';
 
 export default async function uploadInvoiceTemplateRoutes(fastify: FastifyInstance, supabaseClient: any) {
-  fastify.post('/upload-invoice-template', async (request, reply) => {
+  fastify.post("/upload-invoice-template", async (request, reply) => {
     try {
+      console.log("Upload invoice template request received");
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, supabaseClient);
+      console.log("JWT verified, user:", authenticatedUser.id);
 
-      const formData = request.body as any;
-      const agentId = formData.agentId;
-      const file = formData.file;
+      // Parse JSON body
+      const body = request.body as any;
+      const agentId = body.agentId;
+      const fileData = body.file;
 
-      if (!agentId || !file) {
+      console.log("agentId:", agentId);
+      console.log("fileData:", fileData?.fileName, fileData?.fileType);
+
+      if (!agentId) {
         return reply.code(400).send({
           success: false,
-          message: "agentId and file are required",
+          message: "agentId is required",
+        });
+      }
+
+      if (!fileData) {
+        return reply.code(400).send({
+          success: false,
+          message: "file is required",
         });
       }
 
       // Get agent to validate ownership
-      const { data: agent, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('id, agent_prefix')
-        .eq('id', agentId)
-        .eq('user_id', authenticatedUser.id)
-        .single();
+      const { rows: agentRows } = await supabaseClient.query(
+        "SELECT id, agent_prefix FROM agents WHERE id = $1 AND user_id = $2",
+        [agentId, authenticatedUser.id]
+      );
 
-      if (agentError || !agent) {
+      if (agentRows.length === 0) {
         return reply.code(403).send({
           success: false,
           message: "Agent not found or access denied",
         });
       }
 
-      // Upload to S3
-      const fileName = `invoice-template.${file.filename.split('.').pop()}`;
-      const s3Key = `agents/${agentId}/${fileName}`;
+      const agent = agentRows[0];
 
-      const uploadResult = await uploadMediaToR2("", file, s3Key, file.mimetype, "incoming", s3Key);
+      // Decode base64 file
+      const binaryString = atob(fileData.fileBase64);
+      const fileBuffer = Buffer.alloc(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        fileBuffer[i] = binaryString.charCodeAt(i);
+      }
+
+      // Upload to S3
+      const fileName = `invoice-template.${fileData.fileName.split(".").pop()}`;
+      const s3Key = `${agent.agent_prefix}/invoice_template/${fileName}`;
+
+      const uploadResult = await uploadMediaToR2(
+        "",
+        fileBuffer,
+        fileData.fileName,
+        fileData.fileType,
+        "incoming",
+        s3Key
+      );
 
       if (!uploadResult) {
         return reply.code(500).send({
@@ -48,19 +75,10 @@ export default async function uploadInvoiceTemplateRoutes(fastify: FastifyInstan
       }
 
       // Update agent record with template path
-      const { error: updateError } = await supabaseClient.rpc("update_agent_template_path", {
-        p_agent_id: parseInt(agentId),
-        p_template_path: s3Key,
-        p_current_user_id: authenticatedUser.id,
-      });
-
-      if (updateError) {
-        console.error("Failed to update agent template path:", updateError);
-        return reply.code(500).send({
-          success: false,
-          message: "File uploaded but failed to update database",
-        });
-      }
+      await supabaseClient.query(
+        "UPDATE agents SET invoice_template_path = $1 WHERE id = $2 AND user_id = $3",
+        [s3Key, agentId, authenticatedUser.id]
+      );
 
       return reply.code(200).send({
         success: true,

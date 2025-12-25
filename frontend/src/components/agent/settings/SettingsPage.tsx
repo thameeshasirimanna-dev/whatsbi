@@ -371,6 +371,14 @@ const SettingsContent: React.FC = () => {
     try {
       setUpdateMessage("");
 
+      // Get token for API call
+      const token = getToken();
+
+      if (!token) {
+        setUpdateMessage("Authentication required");
+        return;
+      }
+
       // Read file as base64
       const reader = new FileReader();
       const base64 = await new Promise((resolve) => {
@@ -380,16 +388,23 @@ const SettingsContent: React.FC = () => {
 
       const fileBase64 = (base64 as string).split(",")[1];
       const fileType = selectedFile.type;
-
-      // Create form data
-      const formData = new FormData();
-      formData.append("agentId", agent.id.toString());
-      formData.append("file", selectedFile);
+      const fileName = selectedFile.name;
 
       // Call backend
       const response = await fetch(`${backendUrl}/upload-invoice-template`, {
         method: "POST",
-        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agentId: agent.id.toString(),
+          file: {
+            fileName,
+            fileBase64,
+            fileType,
+          },
+        }),
       });
 
       const data = await response.json();
