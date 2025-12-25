@@ -32,6 +32,7 @@ import setupWhatsappConfigRoutes from "./routes/whatsapp/setup-whatsapp-config";
 import getInvoiceTemplateRoutes from "./routes/invoices/get-invoice-template";
 import updateAgentRoutes from "./routes/agents/update-agent";
 import sendInvoiceTemplateRoutes from "./routes/invoices/send-invoice-template";
+import manageInvoicesRoutes from "./routes/invoices/manage-invoices";
 import getUsersRoutes from "./routes/users/get-users";
 import addUserRoutes from "./routes/users/add-user";
 import updateUserRoutes from "./routes/users/update-user";
@@ -41,9 +42,15 @@ import manageOrdersRoutes from "./routes/orders/manage-orders";
 import manageAppointmentsRoutes from "./routes/appointments/manage-appointments";
 import manageTemplatesRoutes from "./routes/templates/manage-templates";
 import getAgentProfileRoutes from "./routes/agents/get-agent-profile";
+import updateAgentDetailsRoutes from "./routes/agents/update-agent-details";
+import updateAgentTemplatePathRoutes from "./routes/agents/update-agent-template-path";
 import uploadInvoiceTemplateRoutes from "./routes/upload-invoice-template";
 import getAdminInfoRoutes from "./routes/admin/get-admin-info";
 import getAnalyticsRoutes from "./routes/analytics/get-analytics";
+import getDashboardDataRoutes from "./routes/dashboard/get-dashboard-data";
+import loginRoutes from "./routes/auth/login";
+import logoutRoutes from "./routes/auth/logout";
+import getCurrentUserRoutes from "./routes/auth/get-current-user";
 import fastifySocketIO from "fastify-socket.io";
 const server = fastify();
 // Register CORS plugin
@@ -115,6 +122,7 @@ async function registerRoutes() {
     await getInvoiceTemplateRoutes(server, pgClient, cacheService);
     await updateAgentRoutes(server, pgClient);
     await sendInvoiceTemplateRoutes(server, pgClient);
+    await manageInvoicesRoutes(server, pgClient);
     await getUsersRoutes(server, pgClient);
     await addUserRoutes(server, pgClient);
     await updateUserRoutes(server, pgClient);
@@ -124,9 +132,15 @@ async function registerRoutes() {
     await manageAppointmentsRoutes(server, pgClient);
     await manageTemplatesRoutes(server, pgClient);
     await getAgentProfileRoutes(server, pgClient);
+    await updateAgentDetailsRoutes(server, pgClient);
+    await updateAgentTemplatePathRoutes(server, pgClient);
     await uploadInvoiceTemplateRoutes(server, pgClient);
     await getAdminInfoRoutes(server, pgClient);
     await getAnalyticsRoutes(server, pgClient);
+    await getDashboardDataRoutes(server, pgClient);
+    await loginRoutes(server, pgClient);
+    await logoutRoutes(server, pgClient);
+    await getCurrentUserRoutes(server, pgClient);
 }
 // Socket.IO connection handling will be set up after routes are registered
 // Helper functions (ported from Edge Function)

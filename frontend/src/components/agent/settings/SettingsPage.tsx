@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../lib/auth";
 import jsPDF from "jspdf";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
 
@@ -38,12 +39,17 @@ const SettingsContent: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentTemplate, setCurrentTemplate] = useState<string | null>(null);
 
   const [editingDocument, setEditingDocument] = useState(false);
-  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
+  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(
+    null
+  );
   const [currentDocument, setCurrentDocument] = useState<string | null>(null);
 
   useEffect(() => {
@@ -323,6 +329,7 @@ const SettingsContent: React.FC = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          current_password: currentPassword,
           new_password: newPassword,
         }),
       });
@@ -905,7 +912,9 @@ const SettingsContent: React.FC = () => {
                 ) : (
                   <div className="flex items-center justify-between">
                     <p className="text-lg font-medium text-gray-900">
-                      {agent?.credits ? `${agent.credits.toFixed(2)} credits` : "0.00 credits"}
+                      {agent?.credits
+                        ? `${agent.credits.toFixed(2)} credits`
+                        : "0.00 credits"}
                     </p>
                     <button
                       onClick={() => {
@@ -1043,40 +1052,79 @@ const SettingsContent: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Current Password
               </label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter current password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter current password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showCurrentPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 New Password
               </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter new password (min 8 characters)"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter new password (min 8 characters)"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showNewPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm New Password
               </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Confirm new password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Confirm new password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
             {passwordMessage && (
               <div
