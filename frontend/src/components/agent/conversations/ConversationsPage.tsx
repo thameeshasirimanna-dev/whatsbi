@@ -2526,6 +2526,7 @@ const ConversationsPage: React.FC = () => {
             )
           );
         }}
+        onRefreshConversations={() => fetchAgentAndConversations(false)}
         agentPrefix={agentPrefix}
         agentId={agentId}
         businessType={businessType}

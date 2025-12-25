@@ -214,6 +214,7 @@ interface MessageViewProps {
   onOpenContactDetails?: () => void;
   onSelectProduct?: (product: any) => void;
   onUpdateConversation?: (updatedConversation: Conversation) => void;
+  onRefreshConversations?: () => void;
   agentPrefix?: string | null;
   agentId?: number | null;
   businessType?: string | null;
@@ -242,6 +243,7 @@ const MessageView: React.FC<MessageViewProps> = ({
   onOpenContactDetails,
   onSelectProduct,
   onUpdateConversation,
+  onRefreshConversations,
   agentPrefix,
   agentId,
   businessType,
@@ -1675,6 +1677,7 @@ const MessageView: React.FC<MessageViewProps> = ({
             agentPrefix={agentPrefix || null}
             agentId={agentId || null}
             onStageUpdate={handleStageUpdate}
+            onRefreshConversations={onRefreshConversations}
           />
           <CustomerOrdersModal
             isOpen={showOrdersModal}

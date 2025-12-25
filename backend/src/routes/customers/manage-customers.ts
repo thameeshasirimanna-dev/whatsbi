@@ -1,9 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers';
+import { CacheService } from "../../utils/cache";
 
 export default async function manageCustomersRoutes(
   fastify: FastifyInstance,
-  pgClient: any
+  pgClient: any,
+  cacheService?: CacheService
 ) {
   fastify.all("/manage-customers", async (request, reply) => {
     try {
@@ -70,7 +72,9 @@ export default async function manageCustomersRoutes(
               ) order_counts ON c.id = order_counts.customer_id
               WHERE c.phone = $1
             `;
-            const { rows: customers } = await pgClient.query(customerQuery, [phone]);
+            const { rows: customers } = await pgClient.query(customerQuery, [
+              phone,
+            ]);
 
             return reply.code(200).send({
               success: true,
@@ -79,7 +83,7 @@ export default async function manageCustomersRoutes(
           }
 
           // Build the query with order count
-           let queryText = `
+          let queryText = `
              SELECT c.*,
                     COALESCE(order_counts.order_count, 0) as order_count
              FROM ${agentPrefix}_customers c
@@ -89,14 +93,14 @@ export default async function manageCustomersRoutes(
                GROUP BY customer_id
              ) order_counts ON c.id = order_counts.customer_id
            `;
-           const queryParams: any[] = [];
+          const queryParams: any[] = [];
 
-           if (search) {
-             queryText += ` WHERE (name ILIKE $1 OR phone ILIKE $1)`;
-             queryParams.push(`%${search}%`);
-           }
+          if (search) {
+            queryText += ` WHERE (name ILIKE $1 OR phone ILIKE $1)`;
+            queryParams.push(`%${search}%`);
+          }
 
-           queryText += ` ORDER BY c.created_at DESC`;
+          queryText += ` ORDER BY c.created_at DESC`;
 
           if (limit > 0) {
             queryText += ` LIMIT $${queryParams.length + 1}`;
@@ -236,6 +240,11 @@ export default async function manageCustomersRoutes(
               .send({ success: false, message: "Failed to create customer" });
           }
 
+          // Invalidate chat list cache for the agent
+          if (cacheService) {
+            await cacheService.invalidateChatList(agent.id);
+          }
+
           return reply.code(201).send({
             success: true,
             message: "Customer created successfully",
@@ -373,6 +382,11 @@ export default async function manageCustomersRoutes(
               .send({ success: false, message: "Customer not found" });
           }
 
+          // Invalidate chat list cache for the agent
+          if (cacheService) {
+            await cacheService.invalidateChatList(agent.id);
+          }
+
           return reply.code(200).send({
             success: true,
             message: "Customer updated successfully",
@@ -406,6 +420,11 @@ export default async function manageCustomersRoutes(
             return reply
               .code(404)
               .send({ success: false, message: "Customer not found" });
+          }
+
+          // Invalidate chat list cache for the agent
+          if (cacheService) {
+            await cacheService.invalidateChatList(agent.id);
           }
 
           return reply.code(200).send({

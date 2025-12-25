@@ -479,8 +479,8 @@ export const updateCustomer = async (customerData: {
   email?: string;
   address?: string;
   lead_stage?: string;
-  interest_stage?: string;
-  conversion_stage?: string;
+  interest_stage?: string | null;
+  conversion_stage?: string | null;
   language?: string;
   ai_enabled?: boolean;
 }): Promise<Customer> => {

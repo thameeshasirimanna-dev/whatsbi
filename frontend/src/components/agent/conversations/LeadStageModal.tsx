@@ -27,6 +27,7 @@ interface LeadStageModalProps {
     interest_stage: InterestStage | null;
     conversion_stage: ConversionStage | null;
   }) => void;
+  onRefreshConversations?: () => void;
 }
 
 const LeadStageModal: React.FC<LeadStageModalProps> = ({
@@ -37,6 +38,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
   agentPrefix,
   agentId,
   onStageUpdate,
+  onRefreshConversations,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +50,8 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
     useState<InterestStage | null>(null);
   const [currentConversionStage, setCurrentConversionStage] =
     useState<ConversionStage | null>(null);
-  const [selectedLeadStage, setSelectedLeadStage] = useState<LeadStage | null>(
-    null
+  const [selectedLeadStage, setSelectedLeadStage] = useState<LeadStage>(
+    "New Lead"
   );
   const [selectedInterestStage, setSelectedInterestStage] =
     useState<InterestStage | null>(null);
@@ -162,8 +164,8 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
       await updateCustomer({
         id: customerId,
         lead_stage: selectedLeadStage,
-        interest_stage: selectedInterestStage || undefined,
-        conversion_stage: selectedConversionStage || undefined,
+        interest_stage: selectedInterestStage,
+        conversion_stage: selectedConversionStage,
       });
 
       // Update local state
@@ -178,6 +180,11 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
           interest_stage: selectedInterestStage,
           conversion_stage: selectedConversionStage,
         });
+      }
+
+      // Refresh conversations to show updated stages immediately
+      if (onRefreshConversations) {
+        onRefreshConversations();
       }
 
       onClose();
