@@ -380,7 +380,6 @@ const OrdersPage: React.FC = () => {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         }
       );

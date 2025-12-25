@@ -154,8 +154,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         (data.items || []).map((item: any) => ({
           name: item.name,
           quantity: item.quantity,
-          price: item.price,
-          total: item.quantity * item.price,
+          price: parseFloat(item.price) || 0,
+          total: item.quantity * (parseFloat(item.price) || 0),
         })) as OrderItem[]
       );
     } catch (err) {
@@ -190,7 +190,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const handleItemPriceChange = (index: number, value: number) => {
     const newItems = [...items];
     if (newItems[index]) {
-      newItems[index].price = Math.max(0, value);
+      const validValue = isNaN(value) ? 0 : Math.max(0, value);
+      newItems[index].price = validValue;
       newItems[index].total = newItems[index].quantity * newItems[index].price;
       setItems(newItems);
     }
@@ -242,7 +243,42 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   };
 
   const handleUpdateOrder = async () => {
-    if (!order || !agentPrefix || !agentId) return;
+    if (!order) return;
+
+    // Get agent info if not provided
+    let currentAgentPrefix = agentPrefix;
+    let currentAgentId = agentId;
+
+    if (!currentAgentPrefix || !currentAgentId) {
+      try {
+        const agent = await getCurrentAgent();
+        if (!agent) {
+          alert('Agent information not available');
+          return;
+        }
+        currentAgentPrefix = agent.agent_prefix;
+        currentAgentId = agent.id;
+      } catch (err) {
+        alert('Failed to get agent information');
+        return;
+      }
+    }
+
+    // Validate items before sending request
+    for (const item of items) {
+      if (!item.name || item.name.trim().length === 0) {
+        alert('All items must have a name');
+        return;
+      }
+      if (!item.quantity || item.quantity <= 0) {
+        alert('All items must have a valid quantity');
+        return;
+      }
+      if (typeof item.price !== 'number' || isNaN(item.price) || item.price < 0) {
+        alert('All items must have a valid price');
+        return;
+      }
+    }
 
     setLoading(true);
     try {
@@ -290,8 +326,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            Authorization: `Bearer ${token}`
           }
         }
       );

@@ -20,13 +20,13 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (order && agentPrefix && agentId) {
+    if (order && order.id && agentPrefix && agentId) {
       fetchFullOrderDetails();
     }
   }, [order, agentPrefix, agentId]);
 
   const fetchFullOrderDetails = async () => {
-    if (!order || !agentPrefix || !agentId) return;
+    if (!order || !order.id || !agentPrefix || !agentId) return;
 
     try {
       setLoading(true);
@@ -61,9 +61,11 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
               (item: any) =>
                 ({
                   name: item.name,
-                  quantity: item.quantity,
-                  price: item.price,
-                  total: item.quantity * item.price,
+                  quantity: parseFloat(item.quantity) || 0,
+                  price: parseFloat(item.price) || 0,
+                  total:
+                    (parseFloat(item.quantity) || 0) *
+                    (parseFloat(item.price) || 0),
                 } as OrderItem)
             );
           }
@@ -73,7 +75,7 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
       const fullDetails: Order = {
         ...order,
         customer_name: order.customer_name || "Unknown Customer",
-        customer_phone: order.customer_phone || '',
+        customer_phone: order.customer_phone || "",
         parsed_order_details: {
           ...order.parsed_order_details,
           items: orderItems,
@@ -82,8 +84,8 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
 
       setFullOrderDetails(fullDetails);
     } catch (err) {
-      setError('Failed to load order details');
-      console.error('Fetch error:', err);
+      setError("Failed to load order details");
+      console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -140,14 +142,25 @@ Thank you!`;
     );
   }
 
-  if (error || !fullOrderDetails) {
+  if (
+    error ||
+    !fullOrderDetails ||
+    !fullOrderDetails.id ||
+    typeof fullOrderDetails.id !== "number" ||
+    fullOrderDetails.id <= 0
+  ) {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" aria-hidden="true" />
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            aria-hidden="true"
+          />
           <div className="relative w-full max-w-md mx-auto my-8 max-h-[95vh] flex flex-col bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl ring-1 ring-black/10 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-300">
             <div className="p-6 text-center">
-              <p className="text-red-600 mb-3 text-sm">{error || 'Order not found'}</p>
+              <p className="text-red-600 mb-3 text-sm">
+                {error || "Order not found or invalid"}
+              </p>
               <button
                 onClick={onClose}
                 className="inline-flex justify-center px-4 py-2 rounded-lg border border-gray-300 shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all"

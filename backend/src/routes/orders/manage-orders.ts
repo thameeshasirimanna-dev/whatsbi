@@ -40,6 +40,7 @@ export default async function manageOrdersRoutes(
         }
       }
 
+
       switch (method) {
         case "GET": {
           const search = url.searchParams.get("search") || undefined;
@@ -47,6 +48,7 @@ export default async function manageOrdersRoutes(
           const offset = parseInt(url.searchParams.get("offset") || "0");
           const customerId = url.searchParams.get("customer_id");
           const orderId = url.searchParams.get("order_id");
+          const type = url.searchParams.get("type");
 
           console.log("Orders fetch params:", {
             search,
@@ -54,8 +56,29 @@ export default async function manageOrdersRoutes(
             offset,
             customerId,
             orderId,
+            type,
             agentPrefix,
           });
+
+          // If type=items and order_id is provided, fetch only order items
+          if (type === "items" && orderId) {
+            const sql = `
+              SELECT
+                name, quantity, price, (quantity * price) as total
+              FROM ${agentPrefix}_orders_items
+              WHERE order_id = $1
+              ORDER BY id
+            `;
+
+            const { rows: items } = await pgClient.query(sql, [
+              parseInt(orderId),
+            ]);
+
+            return reply.code(200).send({
+              success: true,
+              items: items || [],
+            });
+          }
 
           // If order_id is provided, fetch single order
           if (orderId) {
@@ -73,7 +96,9 @@ export default async function manageOrdersRoutes(
               GROUP BY o.id, c.id
             `;
 
-            const { rows: orders } = await pgClient.query(sql, [parseInt(orderId)]);
+            const { rows: orders } = await pgClient.query(sql, [
+              parseInt(orderId),
+            ]);
 
             if (orders.length === 0) {
               return reply.code(404).send({
@@ -152,9 +177,91 @@ export default async function manageOrdersRoutes(
 
         case "POST": {
           const body = parsedBody;
-          const { customer_id, notes, shipping_address, items } = body || {};
+          const { customer_id, notes, shipping_address, items, order_id } =
+            body || {};
+          const type = url.searchParams.get("type");
 
-          // Validate required fields
+          // Handle insert-items type
+          if (type === "insert-items") {
+            if (!body?.order_id || typeof body.order_id !== "number") {
+              return reply.code(400).send({
+                success: false,
+                message: "Valid order ID is required",
+              });
+            }
+
+            if (!body?.items || !Array.isArray(body.items) || body.items.length === 0) {
+              return reply.code(400).send({
+                success: false,
+                message: "Order items are required",
+              });
+            }
+
+            // Validate items
+            for (const item of body.items) {
+              if (
+                !item.name ||
+                typeof item.name !== "string" ||
+                item.name.trim().length === 0
+              ) {
+                return reply
+                  .code(400)
+                  .send({ success: false, message: "Item name is required" });
+              }
+              if (
+                !item.quantity ||
+                typeof item.quantity !== "number" ||
+                item.quantity <= 0
+              ) {
+                return reply.code(400).send({
+                  success: false,
+                  message: "Valid item quantity is required",
+                });
+              }
+              if (typeof item.price !== "number" || isNaN(item.price) || item.price < 0) {
+                return reply.code(400).send({
+                  success: false,
+                  message: "Valid item price is required",
+                });
+              }
+            }
+
+            // Insert order items
+            const orderItems = body.items.map((item: any) => ({
+              order_id: body.order_id,
+              name: item.name.trim(),
+              quantity: item.quantity,
+              price: item.price,
+            }));
+
+            if (orderItems.length > 0) {
+              const values = orderItems
+                .map(
+                  (_, i) =>
+                    `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${
+                      i * 4 + 4
+                    })`
+                )
+                .join(", ");
+              const params = orderItems.flatMap((item) => [
+                item.order_id,
+                item.name,
+                item.quantity,
+                item.price,
+              ]);
+              await pgClient.query(
+                `INSERT INTO ${agentPrefix}_orders_items (order_id, name, quantity, price) VALUES ${values}`,
+                params
+              );
+            }
+
+            return reply.code(201).send({
+              success: true,
+              message: "Order items inserted successfully",
+            });
+          }
+
+          // Validate required fields for creating new order
           if (!customer_id || typeof customer_id !== "number") {
             return reply.code(400).send({
               success: false,
@@ -190,7 +297,7 @@ export default async function manageOrdersRoutes(
                 message: "Valid item quantity is required",
               });
             }
-            if (typeof item.price !== "number" || item.price < 0) {
+            if (typeof item.price !== "number" || isNaN(item.price) || item.price < 0) {
               return reply.code(400).send({
                 success: false,
                 message: "Valid item price is required",
@@ -292,7 +399,8 @@ export default async function manageOrdersRoutes(
 
         case "PUT": {
           const body = parsedBody;
-          const { id, status, notes, shipping_address } = body || {};
+          const { id, status, notes, shipping_address, total_amount } =
+            body || {};
 
           if (!id || typeof id !== "number") {
             return reply
@@ -326,6 +434,12 @@ export default async function manageOrdersRoutes(
             updateData.shipping_address = shipping_address
               ? shipping_address.trim()
               : null;
+          if (
+            total_amount !== undefined &&
+            typeof total_amount === "number" &&
+            total_amount >= 0
+          )
+            updateData.total_amount = total_amount;
 
           const setParts = [];
           const params = [id];
@@ -342,6 +456,14 @@ export default async function manageOrdersRoutes(
           if (shipping_address !== undefined) {
             setParts.push(`shipping_address = $${paramIndex++}`);
             params.push(shipping_address);
+          }
+          if (
+            total_amount !== undefined &&
+            typeof total_amount === "number" &&
+            total_amount >= 0
+          ) {
+            setParts.push(`total_amount = $${paramIndex++}`);
+            params.push(total_amount);
           }
           setParts.push(`updated_at = $${paramIndex++}`);
           params.push(updateData.updated_at);
@@ -369,6 +491,22 @@ export default async function manageOrdersRoutes(
         }
 
         case "DELETE": {
+          const type = url.searchParams.get("type");
+          const orderId = url.searchParams.get("order_id");
+
+          // Handle delete-items type
+          if (type === "delete-items" && orderId) {
+            const sql = `DELETE FROM ${agentPrefix}_orders_items WHERE order_id = $1`;
+
+            await pgClient.query(sql, [parseInt(orderId)]);
+
+            return reply.code(200).send({
+              success: true,
+              message: "Order items deleted successfully",
+            });
+          }
+
+          // Handle full order deletion
           const id = url.searchParams.get("id");
 
           if (!id || typeof id !== "string" || !id.match(/^\d+$/)) {
@@ -377,12 +515,12 @@ export default async function manageOrdersRoutes(
               .send({ success: false, message: "Valid order ID is required" });
           }
 
-          const orderId = parseInt(id);
+          const orderIdNum = parseInt(id);
 
           // Delete order (cascade will delete order items)
           const { rows: orderRows } = await pgClient.query(
             `DELETE FROM ${agentPrefix}_orders WHERE id = $1 RETURNING *`,
-            [orderId]
+            [orderIdNum]
           );
 
           if (orderRows.length === 0) {

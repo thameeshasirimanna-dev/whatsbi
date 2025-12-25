@@ -473,7 +473,6 @@ const InventoryPage: React.FC = () => {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         }
       );
@@ -518,7 +517,6 @@ const InventoryPage: React.FC = () => {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         }
       );
