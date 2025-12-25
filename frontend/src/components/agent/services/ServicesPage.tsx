@@ -542,7 +542,7 @@ const ServicesPage: React.FC = () => {
                     {service.image_urls && service.image_urls.length > 0 ? (
                       <img
                         className="h-12 w-12 rounded-lg object-cover"
-                        src={service.image_urls[0]}
+                        src={service.image_urls[0].startsWith('https://') ? service.image_urls[0] : `https://${service.image_urls[0]}`}
                         alt={service.service_name}
                       />
                     ) : (

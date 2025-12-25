@@ -343,7 +343,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                     {currentImages.map((url, idx) => (
                       <div key={url} className="relative group">
                         <img
-                          src={url}
+                          src={url.startsWith('https://') ? url : `https://${url}`}
                           alt={`Current image ${idx + 1}`}
                           className="w-20 h-20 object-cover rounded"
                         />

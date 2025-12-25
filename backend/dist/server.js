@@ -56,7 +56,7 @@ const server = fastify();
 // Register CORS plugin
 server.register(fastifyCors, {
     origin: true, // Allow all origins
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 });
 // Register multipart plugin
@@ -75,7 +75,7 @@ const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 // CORS headers
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELET E, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 // Helper function
@@ -115,7 +115,7 @@ async function registerRoutes() {
     await chatbotReplyRoutes(server, pgClient);
     await manageServicesRoutes(server, pgClient);
     await manageInventoryRoutes(server, pgClient);
-    await manageCustomersRoutes(server, pgClient);
+    await manageCustomersRoutes(server, pgClient, cacheService);
     await getWhatsappProfilePicRoutes(server, pgClient);
     await uploadServiceImagesRoutes(server, pgClient);
     await setupWhatsappConfigRoutes(server, pgClient);

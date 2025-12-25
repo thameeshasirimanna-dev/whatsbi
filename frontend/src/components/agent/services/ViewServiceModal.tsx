@@ -36,7 +36,9 @@ const ViewServiceModal: React.FC<ViewServiceModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Description
             </label>
-            <p className="text-gray-600 whitespace-pre-wrap">{service.description}</p>
+            <p className="text-gray-600 whitespace-pre-wrap">
+              {service.description}
+            </p>
           </div>
         )}
 
@@ -50,7 +52,7 @@ const ViewServiceModal: React.FC<ViewServiceModalProps> = ({
               {service.image_urls.map((url, index) => (
                 <img
                   key={index}
-                  src={url}
+                  src={url.startsWith("https://") ? url : `https://${url}`}
                   alt={`${service.service_name} image ${index + 1}`}
                   className="w-full h-32 object-cover rounded-lg"
                 />
