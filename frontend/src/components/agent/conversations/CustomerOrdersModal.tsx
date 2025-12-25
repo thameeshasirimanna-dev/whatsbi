@@ -135,8 +135,42 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
       const customerId = customerData.id;
       setCustomerId(customerData.id);
 
-      // TODO: Fetch agent details if needed for invoice generation
-      // For now, using default values
+      // Fetch agent details for invoice generation
+      const token = getToken();
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+
+      const agentResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!agentResponse.ok) {
+        throw new Error("Failed to fetch agent profile");
+      }
+
+      const agentProfile = await agentResponse.json();
+      if (!agentProfile.success || !agentProfile.agent) {
+        throw new Error("Agent not found");
+      }
+
+      const agentData = agentProfile.agent;
+      setInvoiceTemplatePath(agentData.invoice_template_path);
+
+      setAgentDetails({
+        name: agentData.name || "",
+        address: agentData.address || "",
+        business_email: agentData.business_email || "",
+        contact_number: agentData.contact_number || "",
+        website: agentData.website || "",
+      });
 
       // Fetch orders for this customer
       const ordersData = await getOrders({ customer_id: customerId });

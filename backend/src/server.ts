@@ -139,7 +139,7 @@ async function registerRoutes() {
   await getWhatsappProfilePicRoutes(server, pgClient);
   await uploadServiceImagesRoutes(server, pgClient);
   await setupWhatsappConfigRoutes(server, pgClient);
-  await getInvoiceTemplateRoutes(server, pgClient, cacheService);
+  await getInvoiceTemplateRoutes(server, cacheService);
   await uploadInvoiceRoutes(server, pgClient);
   await downloadInvoiceRoutes(server, pgClient);
   await updateAgentRoutes(server, pgClient);

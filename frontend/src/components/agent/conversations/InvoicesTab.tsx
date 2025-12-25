@@ -1,5 +1,6 @@
 import React from "react";
 import { getToken } from "../../../lib/auth";
+import { downloadInvoice } from "../../../lib/api";
 
 interface Invoice {
   id: number;
@@ -38,24 +39,10 @@ const InvoicesTab: React.FC<InvoicesTabProps> = ({
 }) => {
   const handleDownload = async (invoice: Invoice) => {
     try {
-      const response = await fetch(invoice.pdf_url);
-      if (!response.ok) throw new Error("Failed to fetch PDF");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${invoice.name.replace(/[^a-z0-9]/gi, "_")}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      await downloadInvoice(invoice.id);
     } catch (err) {
       console.error("Download error:", err);
-      // Fallback to direct download
-      const link = document.createElement("a");
-      link.href = invoice.pdf_url;
-      link.download = `${invoice.name.replace(/[^a-z0-9]/gi, "_")}.pdf`;
-      link.click();
+      alert("Failed to download invoice. Please try again.");
     }
   };
 

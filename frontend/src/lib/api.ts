@@ -140,7 +140,6 @@ export const deleteOrder = async (id: number): Promise<void> => {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       },
     });
 
@@ -228,7 +227,6 @@ export const deleteInvoice = async (id: number): Promise<void> => {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       },
     });
 
@@ -238,6 +236,48 @@ export const deleteInvoice = async (id: number): Promise<void> => {
     }
   } catch (err) {
     console.error('Delete invoice error:', err);
+    throw err;
+  }
+};
+
+export const downloadInvoice = async (id: number): Promise<void> => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('No token');
+
+    const response = await fetch(`${BACKEND_URL}/download-invoice?invoiceId=${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to download invoice');
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    // Get filename from Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `invoice_${id}.pdf`;
+    if (contentDisposition) {
+      const matches = contentDisposition.match(/filename="([^"]+)"/);
+      if (matches) {
+        filename = matches[1];
+      }
+    }
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Download invoice error:', err);
     throw err;
   }
 };
@@ -369,7 +409,6 @@ export const deleteAppointment = async (id: number): Promise<void> => {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       },
     });
 
@@ -518,7 +557,6 @@ export const deleteCustomer = async (id: number): Promise<void> => {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       },
     });
 
