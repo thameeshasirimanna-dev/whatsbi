@@ -307,7 +307,7 @@ const ConversationsPage: React.FC = () => {
 
       // Send images directly from our side
       const imageResponse = await fetch(
-        "http://localhost:8080/send-product-images",
+        `${import.meta.env.VITE_BACKEND_URL}/send-product-images`,
         {
           method: "POST",
           headers: {
@@ -400,13 +400,16 @@ const ConversationsPage: React.FC = () => {
       formData.append("file", file);
       formData.append("caption", ""); // No caption for header
 
-      const uploadResponse = await fetch("http://localhost:8080/upload-media", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const uploadResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/upload-media`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       const uploadResult = await uploadResponse.json();
       const uploadError = !uploadResponse.ok
         ? { message: uploadResult.error }
@@ -551,7 +554,7 @@ const ConversationsPage: React.FC = () => {
       }
 
       const response = await fetch(
-        "http://localhost:8080/send-whatsapp-message",
+        `${import.meta.env.VITE_BACKEND_URL}/send-whatsapp-message`,
         {
           method: "POST",
           headers: {
@@ -613,7 +616,7 @@ const ConversationsPage: React.FC = () => {
   useEffect(() => {
     if (!agentId) return;
 
-    const newSocket = io("http://localhost:8080", {
+    const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
       transports: ["websocket"],
     });
 
@@ -1839,17 +1842,25 @@ const ConversationsPage: React.FC = () => {
           const compressionTimeout = 30000; // 30 seconds timeout for compression
           const compressionPromise = compressImage(file);
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("Image compression timeout")), compressionTimeout);
+            setTimeout(
+              () => reject(new Error("Image compression timeout")),
+              compressionTimeout
+            );
           });
 
           try {
-            const { whatsappFile, storageFile } = await Promise.race([compressionPromise, timeoutPromise]) as any;
+            const { whatsappFile, storageFile } = (await Promise.race([
+              compressionPromise,
+              timeoutPromise,
+            ])) as any;
             formData.append("purpose", "whatsapp");
             formData.append("file", whatsappFile);
             formData.append("purpose", "storage");
             formData.append("file", storageFile);
           } catch (compressionError: any) {
-            throw new Error(`Failed to compress image ${file.name}: ${compressionError.message}`);
+            throw new Error(
+              `Failed to compress image ${file.name}: ${compressionError.message}`
+            );
           }
         } else {
           formData.append("file", file);
@@ -1869,13 +1880,16 @@ const ConversationsPage: React.FC = () => {
       );
 
       // Use Promise.race for timeout instead of AbortController
-      const uploadPromise = fetch("http://localhost:8080/upload-media", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const uploadPromise = fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/upload-media`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error("Upload timeout")), timeoutMs);
@@ -2013,7 +2027,7 @@ const ConversationsPage: React.FC = () => {
         }
 
         const textResponse = await fetch(
-          "http://localhost:8080/send-whatsapp-message",
+          `${import.meta.env.VITE_BACKEND_URL}/send-whatsapp-message`,
           {
             method: "POST",
             headers: {
@@ -2044,7 +2058,7 @@ const ConversationsPage: React.FC = () => {
               caption: "Product image",
             };
             const imgResponse = await fetch(
-              "http://localhost:8080/send-whatsapp-message",
+              `${import.meta.env.VITE_BACKEND_URL}/send-whatsapp-message`,
               {
                 method: "POST",
                 headers: {
@@ -2170,7 +2184,7 @@ const ConversationsPage: React.FC = () => {
         }
 
         const response = await fetch(
-          "http://localhost:8080/send-whatsapp-message",
+          `${import.meta.env.VITE_BACKEND_URL}/send-whatsapp-message`,
           {
             method: "POST",
             headers: {
@@ -2385,7 +2399,7 @@ const ConversationsPage: React.FC = () => {
         }
 
         const response = await fetch(
-          "http://localhost:8080/send-whatsapp-message",
+          `${import.meta.env.VITE_BACKEND_URL}/send-whatsapp-message`,
           {
             method: "POST",
             headers: {

@@ -29,7 +29,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({
   isEdit = false,
   agentId,
   initialData = {},
-  apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080",
+  apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000",
   createdByUserId,
 }) => {
   const [formData, setFormData] = useState<AgentFormData>({

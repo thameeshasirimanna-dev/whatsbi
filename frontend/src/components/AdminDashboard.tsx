@@ -5,7 +5,7 @@ import { AddAgentModal } from './AddAgentModal';
 import { EditAgentModal } from './EditAgentModal';
 import { WhatsAppSetupModal } from './WhatsAppSetupModal';
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 // Types - Updated for new structure
 interface User {

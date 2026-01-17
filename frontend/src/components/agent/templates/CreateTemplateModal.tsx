@@ -427,7 +427,7 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
     mediaFormData.append("file", file);
     mediaFormData.append("media_type", mediaType);
 
-    const response = await fetch('http://localhost:8080/upload-media-to-meta', {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload-media-to-meta`, {
       method: 'POST',
       body: mediaFormData,
     });

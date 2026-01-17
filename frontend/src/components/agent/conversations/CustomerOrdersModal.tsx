@@ -349,7 +349,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
       };
 
       const response = await fetch(
-        "http://localhost:8080/send-invoice-template",
+        `${import.meta.env.VITE_BACKEND_URL}/send-invoice-template`,
         {
           method: "POST",
           headers: {

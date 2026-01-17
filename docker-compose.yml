@@ -27,7 +27,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_BACKEND_URL: http://localhost:3000
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:3000}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
         VITE_SUPABASE_SERVICE_KEY: ${VITE_SUPABASE_SERVICE_KEY}

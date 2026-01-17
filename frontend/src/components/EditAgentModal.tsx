@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getToken } from "../lib/auth";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 interface EditAgentModalProps {
   isOpen: boolean;

@@ -3,7 +3,7 @@ import { getToken } from "../../../lib/auth";
 import jsPDF from "jspdf";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 const SettingsContent: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -486,7 +486,7 @@ const SettingsContent: React.FC = () => {
 
       // Call backend
       const response = await fetch(
-        "http://localhost:8080/upload-company-overview",
+        `${import.meta.env.VITE_BACKEND_URL}/upload-company-overview`,
         {
           method: "POST",
           body: formData,

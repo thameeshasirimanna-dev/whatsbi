@@ -997,7 +997,7 @@ const InvoicesPage: React.FC = () => {
       // This function now handles both template and free form sending automatically
 
       const response = await fetch(
-        "http://localhost:8080/send-invoice-template",
+        `${import.meta.env.VITE_BACKEND_URL}/send-invoice-template`,
         {
           method: "POST",
           headers: {

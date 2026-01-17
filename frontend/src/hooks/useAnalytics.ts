@@ -31,7 +31,7 @@ export const useAnalytics = () => {
   const [error, setError] = useState<string | null>(null);
 
   const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
   const fetchAnalytics = useCallback(async () => {
     try {

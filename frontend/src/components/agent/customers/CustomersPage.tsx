@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getToken } from "../../../lib/auth";
 import CreateOrderModal from "./CreateOrderModal";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 interface ProfileImage {
   phone: string;

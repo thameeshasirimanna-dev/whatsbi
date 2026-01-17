@@ -135,7 +135,7 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         whatsapp_app_secret: formData.whatsapp_app_secret?.trim() || null,
       };
 
-      const response = await fetch('http://localhost:8080/setup-whatsapp-config', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/setup-whatsapp-config`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
