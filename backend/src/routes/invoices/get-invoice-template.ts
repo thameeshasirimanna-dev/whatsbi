@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { CacheService } from '../../utils/cache';
-import { downloadMediaFromR2 } from "../../utils/s3";
+import { CacheService } from '../../utils/cache.js';
+import { downloadMediaFromR2 } from "../../utils/s3.js";
 
 export default async function getInvoiceTemplateRoutes(
   fastify: FastifyInstance,

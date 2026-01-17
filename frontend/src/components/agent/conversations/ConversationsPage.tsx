@@ -247,7 +247,9 @@ const ConversationsPage: React.FC = () => {
         if (!headers.Authorization) return;
 
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${user.id}`,
+          `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${
+            user.id
+          }`,
           {
             method: "GET",
             headers: {
@@ -1605,11 +1607,12 @@ const ConversationsPage: React.FC = () => {
     return () => clearInterval(listPollInterval);
   }, [agentPrefix, agentId, fetchAgentAndConversations]);
 
-  const resizeImage = (
+  const compressImage = (
     file: File,
-    maxWidth: number = 800,
-    maxHeight: number = 800
-  ): Promise<File> => {
+    maxWidth: number = 1200,
+    maxHeight: number = 1200
+  ): Promise<{ whatsappFile: File; storageFile: File }> => {
+    console.log("Starting compression for", file.name, "size", file.size);
     return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
@@ -1618,10 +1621,21 @@ const ConversationsPage: React.FC = () => {
         img.src = e.target?.result as string;
       };
 
-      reader.onerror = reject;
+      reader.onerror = (error) => {
+        console.error("FileReader error", error);
+        reject(error);
+      };
       reader.readAsDataURL(file);
 
       img.onload = () => {
+        console.log(
+          "Image loaded for",
+          file.name,
+          "dimensions",
+          img.width,
+          "x",
+          img.height
+        );
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d")!;
 
@@ -1645,20 +1659,94 @@ const ConversationsPage: React.FC = () => {
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const resizedFile = new File([blob], file.name, {
-                type: file.type,
-              });
-              resolve(resizedFile);
-            } else {
-              reject(new Error("Failed to resize image"));
+        const whatsappOutputType = "image/jpeg";
+        const storageOutputType = "image/jpeg";
+
+        const createFile = (
+          outputType: string,
+          quality: number | undefined,
+          nameSuffix: string
+        ): Promise<File> => {
+          return new Promise((resolveFile, rejectFile) => {
+            const options: any = { type: outputType };
+            if (quality !== undefined && outputType === "image/jpeg") {
+              options.quality = quality;
             }
-          },
-          file.type,
-          0.8
-        ); // 80% quality
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  let finalName = file.name;
+                  if (
+                    outputType === "image/jpeg" &&
+                    file.type === "image/png"
+                  ) {
+                    finalName = file.name.replace(/\.png$/i, ".jpg");
+                  }
+                  finalName = finalName.replace(
+                    /(\.[^.]+)$/,
+                    `_${nameSuffix}$1`
+                  );
+                  const compressedFile = new File([blob], finalName, {
+                    type: outputType,
+                  });
+                  resolveFile(compressedFile);
+                } else {
+                  rejectFile(new Error("Failed to compress image"));
+                }
+              },
+              options.type,
+              options.quality
+            );
+          });
+        };
+
+        // Create storage file
+        createFile(storageOutputType, 0.6, "storage")
+          .then((storageFile) => {
+            // Create whatsapp file: only compress if >5MB
+            const createWhatsappFile = (): Promise<File> => {
+              if (file.size <= 5 * 1024 * 1024) {
+                // No compression needed
+                const finalName = file.name.replace(
+                  /(\.[^.]+)$/,
+                  `_whatsapp$1`
+                );
+                return Promise.resolve(
+                  new File([file], finalName, { type: file.type })
+                );
+              } else {
+                // Compress by resizing
+                if (whatsappOutputType === "image/jpeg") {
+                  const tryWhatsapp = (quality: number): Promise<File> => {
+                    return createFile(
+                      whatsappOutputType,
+                      quality,
+                      "whatsapp"
+                    ).then((whatsappFile) => {
+                      if (
+                        whatsappFile.size > 5 * 1024 * 1024 &&
+                        quality > 0.5
+                      ) {
+                        return tryWhatsapp(quality - 0.05);
+                      }
+                      return whatsappFile;
+                    });
+                  };
+                  return tryWhatsapp(1.0);
+                } else {
+                  // For other formats like PNG, resize
+                  return createFile(whatsappOutputType, undefined, "whatsapp");
+                }
+              }
+            };
+
+            createWhatsappFile()
+              .then((whatsappFile) => {
+                resolve({ whatsappFile, storageFile });
+              })
+              .catch(reject);
+          })
+          .catch(reject);
       };
 
       img.onerror = reject;
@@ -1666,6 +1754,7 @@ const ConversationsPage: React.FC = () => {
   };
 
   const handleFileSelect = async (files: File[]) => {
+    console.log("handleFileSelect called with", files.length, "files");
     if (!selectedConversationId || !selectedConversation) {
       setSendError("No conversation selected");
       return;
@@ -1733,36 +1822,72 @@ const ConversationsPage: React.FC = () => {
       return;
     }
 
+    console.log("Setting uploading to true");
     setUploading(true);
     setSendError(null);
 
     try {
-      // Resize images client-side
-      const processedFiles = await Promise.all(
-        validFiles.map(async (file) => {
-          if (file.type.startsWith("image/")) {
-            return await resizeImage(file);
-          }
-          return file; // Non-images unchanged
-        })
-      );
-
       const token = getToken();
       if (!token) {
         throw new Error("Not authenticated");
       }
 
       const formData = new FormData();
-      processedFiles.forEach((file) => formData.append("file", file));
+      const appendPromises = validFiles.map(async (file) => {
+        if (file.type.startsWith("image/")) {
+          // Add timeout to compression to prevent hanging
+          const compressionTimeout = 30000; // 30 seconds timeout for compression
+          const compressionPromise = compressImage(file);
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Image compression timeout")), compressionTimeout);
+          });
 
-      const uploadResponse = await fetch("http://localhost:8080/upload-media", {
+          try {
+            const { whatsappFile, storageFile } = await Promise.race([compressionPromise, timeoutPromise]) as any;
+            formData.append("purpose", "whatsapp");
+            formData.append("file", whatsappFile);
+            formData.append("purpose", "storage");
+            formData.append("file", storageFile);
+          } catch (compressionError: any) {
+            throw new Error(`Failed to compress image ${file.name}: ${compressionError.message}`);
+          }
+        } else {
+          formData.append("file", file);
+        }
+      });
+      await Promise.all(appendPromises);
+
+      console.log("Starting upload fetch");
+      // Calculate timeout based on file sizes (allow ~30 seconds per MB)
+      const totalSizeMB =
+        validFiles.reduce((sum, file) => sum + file.size, 0) / (1024 * 1024);
+      const timeoutMs = Math.max(60000, Math.min(totalSizeMB * 30000, 300000)); // Min 60s, max 5min
+      console.log(
+        `Upload timeout set to ${timeoutMs}ms for ${totalSizeMB.toFixed(
+          1
+        )}MB total`
+      );
+
+      // Use Promise.race for timeout instead of AbortController
+      const uploadPromise = fetch("http://localhost:8080/upload-media", {
         method: "POST",
         body: formData,
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Upload timeout")), timeoutMs);
+      });
+
+      const uploadResponse = (await Promise.race([
+        uploadPromise,
+        timeoutPromise,
+      ])) as Response;
+      console.log("Upload response received", uploadResponse.status);
       const uploadResult = await uploadResponse.json();
+      console.log("Upload result:", uploadResult);
       const uploadError = !uploadResponse.ok
         ? { message: uploadResult.error }
         : null;
@@ -1790,10 +1915,11 @@ const ConversationsPage: React.FC = () => {
         throw new Error(`Some uploads failed: ${errorDetails}`);
       }
 
+      console.log("Setting pending media");
       setPendingMedia(
         media.map((item: any) => ({
-          id: item.media_id,
-          url: item.media_download_url,
+          id: item.media_id, // WhatsApp media ID for sending
+          url: item.media_download_url, // R2 URL for dashboard display
           media_type: item.media_type,
           filename: item.filename,
         }))
@@ -1802,8 +1928,16 @@ const ConversationsPage: React.FC = () => {
       // Clear any previous error
       setSendError(null);
     } catch (error: any) {
-      setSendError(`Failed to upload media: ${error.message}`);
+      console.error("Upload error:", error);
+      if (error.message === "Upload timeout") {
+        setSendError(
+          "Upload timed out. Please try with a smaller file or check your connection."
+        );
+      } else {
+        setSendError(`Failed to upload media: ${error.message}`);
+      }
     } finally {
+      console.log("Setting uploading to false");
       setUploading(false);
     }
   };
@@ -2427,7 +2561,9 @@ const ConversationsPage: React.FC = () => {
       const user = userResult.data.user;
 
       const configResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${user.id}`,
+        `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${
+          user.id
+        }`,
         {
           method: "GET",
           headers: {
@@ -2907,6 +3043,7 @@ const ConversationsPage: React.FC = () => {
   );
 };
 export default ConversationsPage;
+
 
 
 

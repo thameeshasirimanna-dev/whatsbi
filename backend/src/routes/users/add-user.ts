@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import bcrypt from 'bcrypt';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function addUserRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/add-user', async (request, reply) => {

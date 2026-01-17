@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function deleteUserRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.delete('/delete-user/:id', async (request, reply) => {

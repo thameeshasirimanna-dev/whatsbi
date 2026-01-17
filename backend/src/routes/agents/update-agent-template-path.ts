@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function updateAgentTemplatePathRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.patch('/update-agent-template-path', async (request, reply) => {

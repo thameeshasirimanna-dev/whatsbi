@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../utils/helpers';
-import { uploadMediaToR2 } from '../utils/s3';
+import { verifyJWT } from '../utils/helpers.js';
+import { uploadMediaToR2 } from '../utils/s3.js';
 
 export default async function uploadInvoiceTemplateRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post("/upload-invoice-template", async (request, reply) => {

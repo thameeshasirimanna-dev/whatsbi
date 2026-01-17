@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
-import { CacheService } from '../../utils/cache';
+import { verifyJWT } from '../../utils/helpers.js';
+import { CacheService } from '../../utils/cache.js';
 
 export default async function getConversationMessagesRoutes(fastify: FastifyInstance, pgClient: any, cacheService: CacheService) {
   fastify.get('/conversations/:customerId/messages', async (request, reply) => {

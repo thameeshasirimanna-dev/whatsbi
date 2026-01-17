@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { uploadMediaToR2 } from '../../utils/s3';
-import { downloadWhatsAppMedia, uploadMediaToStorage } from '../../utils/helpers';
+import { uploadMediaToR2 } from '../../utils/s3.js';
+import { downloadWhatsAppMedia, uploadMediaToStorage } from '../../utils/helpers.js';
 
 const CHATBOT_SECRET = process.env.CHATBOT_SECRET ?? 'default-secret-change-in-prod';
 

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.get('/get-whatsapp-config', async (request, reply) => {

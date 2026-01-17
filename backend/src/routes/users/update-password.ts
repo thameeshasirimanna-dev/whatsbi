@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import bcrypt from 'bcrypt';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function updatePasswordRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.patch('/update-password', async (request, reply) => {

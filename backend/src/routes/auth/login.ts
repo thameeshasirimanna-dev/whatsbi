@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import bcrypt from 'bcrypt';
-import { generateJWT } from '../../utils/helpers';
+import { generateJWT } from '../../utils/helpers.js';
 
 export default async function loginRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/login', async (request, reply) => {

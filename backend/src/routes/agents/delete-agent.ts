@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from "../../utils/helpers";
+import { verifyJWT } from "../../utils/helpers.js";
 
 export default async function deleteAgentRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post('/delete-agent', async (request, reply) => {

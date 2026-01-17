@@ -1,8 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
-import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } from '../../utils/helpers';
-import { uploadMediaToR2 } from "../../utils/s3";
-import { CacheService } from "../../utils/cache";
+import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } from '../../utils/helpers.js';
+import { uploadMediaToR2 } from "../../utils/s3.js";
+import { CacheService } from "../../utils/cache.js";
 
 export default async function sendWhatsappMessageRoutes(
   fastify: FastifyInstance,

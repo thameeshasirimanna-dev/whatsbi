@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/get-whatsapp-profile-pic', async (request, reply) => {

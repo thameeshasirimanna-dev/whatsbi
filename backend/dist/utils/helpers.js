@@ -13,7 +13,7 @@ export async function verifyJWT(request, pgClient) {
     try {
         // Decode the JWT without verification first to get the user ID
         const decoded = jwt.decode(token);
-        if (!decoded || !decoded.sub) {
+        if (!decoded || !decoded.sub || decoded.sub === 'null' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.sub)) {
             console.error('Invalid token structure');
             throw new Error('Invalid token structure');
         }

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function deleteWhatsappConfigRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.delete('/delete-whatsapp-config/:user_id', async (request, reply) => {

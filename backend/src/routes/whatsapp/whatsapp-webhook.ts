@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
-import { processIncomingMessage, processMessageStatus } from '../../utils/helpers';
+import { processIncomingMessage, processMessageStatus } from '../../utils/helpers.js';
 
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? '';
 

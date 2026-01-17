@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function manageTemplatesRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.all('/manage-templates', async (request, reply) => {

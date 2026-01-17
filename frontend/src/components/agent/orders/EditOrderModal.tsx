@@ -257,7 +257,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
           return;
         }
         currentAgentPrefix = agent.agent_prefix;
-        currentAgentId = agent.id;
+        currentAgentId = parseInt(agent.id);
       } catch (err) {
         alert('Failed to get agent information');
         return;

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
+import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function updateAgentRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.patch('/update-agent', async (request, reply) => {

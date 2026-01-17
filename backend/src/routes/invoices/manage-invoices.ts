@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
-import { deleteMediaFromR2 } from "../../utils/s3";
+import { verifyJWT } from '../../utils/helpers.js';
+import { deleteMediaFromR2 } from "../../utils/s3.js";
 
 export default async function manageInvoicesRoutes(
   fastify: FastifyInstance,

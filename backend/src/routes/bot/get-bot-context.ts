@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { verifyJWT } from '../../utils/helpers';
-import { CacheService } from '../../utils/cache';
+import { verifyJWT } from '../../utils/helpers.js';
+import { CacheService } from '../../utils/cache.js';
 
 export default async function getBotContextRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: CacheService) {
   fastify.get('/bot-context/:customerId', async (request, reply) => {
