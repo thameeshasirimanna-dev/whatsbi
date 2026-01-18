@@ -31,10 +31,10 @@ export const removeToken = (): void => {
 // Login function
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/login`, {
-      method: 'POST',
+    const response = await fetch(`/api/login`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password }),
     });
