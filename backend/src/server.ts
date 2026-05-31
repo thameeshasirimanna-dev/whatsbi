@@ -1,4 +1,9 @@
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: "../.env" });
+
+// Pick env-specific vars based on NODE_ENV
+const _envPrefix = process.env.NODE_ENV === "production" ? "PROD_" : "DEV_";
+const _pick = (key: string) => process.env[`${_envPrefix}${key}`] ?? process.env[key] ?? "";
 import fastify from "fastify";
 import { Pool } from "pg";
 import Redis from "ioredis";
@@ -79,7 +84,7 @@ server.register(fastifySocketIO, {
 // Environment variables
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
-const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
+const REDIS_URL = _pick("REDIS_URL") || "redis://localhost:6379";
 
 // CORS headers
 const corsHeaders = {
