@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../lib/auth";
 import { Order, Appointment } from "../../../types/index";
+import { Plus, X, FileText, Calendar } from "lucide-react";
 import {
   getOrders,
   createOrder,
@@ -27,6 +28,7 @@ import OrdersTab from "./OrdersTab";
 import InvoicesTab from "./InvoicesTab";
 import AppointmentsTab from "./AppointmentsTab";
 import GenerateInvoiceModal from "./GenerateInvoiceModal";
+import { useDialog } from "../shared/DialogProvider";
 
 interface CustomerOrdersModalProps {
   isOpen: boolean;
@@ -62,6 +64,9 @@ interface Invoice {
   created_at: string;
 }
 
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
 const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   isOpen,
   onClose,
@@ -70,9 +75,8 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   agentPrefix,
   agentId,
 }) => {
-  const [activeTab, setActiveTab] = useState<
-    "orders" | "invoices" | "appointments"
-  >("orders");
+  const { toast, confirm: dlgConfirm } = useDialog();
+  const [activeTab, setActiveTab] = useState<"orders" | "invoices" | "appointments">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -83,14 +87,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showCreateAppointmentModal, setShowCreateAppointmentModal] =
-    useState(false);
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<Appointment | null>(null);
-  const [showViewAppointmentModal, setShowViewAppointmentModal] =
-    useState(false);
-  const [showEditAppointmentModal, setShowEditAppointmentModal] =
-    useState(false);
+  const [showCreateAppointmentModal, setShowCreateAppointmentModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showViewAppointmentModal, setShowViewAppointmentModal] = useState(false);
+  const [showEditAppointmentModal, setShowEditAppointmentModal] = useState(false);
   const [agentDetails, setAgentDetails] = useState<AgentDetails>({
     name: "",
     address: "",
@@ -98,9 +98,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     contact_number: "",
     website: "",
   });
-  const [invoiceTemplatePath, setInvoiceTemplatePath] = useState<string | null>(
-    null
-  );
+  const [invoiceTemplatePath, setInvoiceTemplatePath] = useState<string | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
@@ -118,12 +116,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     setError(null);
 
     try {
-      // First, find customer_id by phone
       const customers = await getCustomers({ search: customerPhone! });
       const customerData = customers.find((c) => c.phone === customerPhone);
 
       if (!customerData) {
-        // No customer found, no data
         setOrders([]);
         setInvoices([]);
         setAppointments([]);
@@ -135,7 +131,6 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
       const customerId = customerData.id;
       setCustomerId(customerData.id);
 
-      // Fetch agent details for invoice generation
       const token = getToken();
       if (!token) {
         throw new Error("User not authenticated");
@@ -172,7 +167,6 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         website: agentData.website || "",
       });
 
-      // Fetch orders for this customer
       const ordersData = await getOrders({ customer_id: customerId });
 
       setOrders(
@@ -183,7 +177,6 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         }))
       );
 
-      // Fetch invoices for this customer
       const invoicesRaw = await getInvoices();
 
       const transformedInvoices = (invoicesRaw || [])
@@ -200,10 +193,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
       setInvoices(transformedInvoices);
 
-      // Fetch appointments for this customer
-      const appointmentsData = await getAppointments({
-        customer_id: customerId,
-      });
+      const appointmentsData = await getAppointments({ customer_id: customerId });
 
       setAppointments(
         (appointmentsData || []).map((appt: Appointment) => ({
@@ -248,7 +238,6 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   const updateAppointment = async (id: number, data: any) => {
     try {
       await apiUpdateAppointment({ id, ...data });
-
       await fetchCustomerData();
     } catch (err: any) {
       setError("Failed to update appointment: " + err.message);
@@ -257,15 +246,13 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     }
   };
 
-  const deleteAppointment = async (id: number) => {
+  const deleteAppointmentLocal = async (id: number) => {
     try {
       await deleteAppointment(id);
-
       await fetchCustomerData();
     } catch (err: any) {
       setError("Failed to delete appointment: " + err.message);
       console.error("Error deleting appointment:", err);
-      throw err;
     }
   };
 
@@ -285,20 +272,13 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   };
 
   const handleDeleteOrder = async (orderId: number) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete Order #${orderId}? This action cannot be undone.`
-      )
-    ) {
-      try {
-        if (!agentPrefix) {
-          throw new Error("Missing agent prefix");
-        }
-        await deleteOrder(orderId);
-        await fetchCustomerData(); // Refresh the list
-      } catch (err: any) {
-        alert("Failed to delete order: " + err.message);
-      }
+    if (!await dlgConfirm(`Are you sure you want to delete Order #${orderId}? This action cannot be undone.`, { danger: true })) return;
+    try {
+      if (!agentPrefix) throw new Error("Missing agent prefix");
+      await deleteOrder(orderId);
+      await fetchCustomerData();
+    } catch (err: any) {
+      toast("Failed to delete order: " + err.message, 'error');
     }
   };
 
@@ -313,16 +293,11 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   };
 
   const handleDeleteAppointment = async (appointmentId: number) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete this appointment? This action cannot be undone.`
-      )
-    ) {
-      try {
-        await deleteAppointment(appointmentId);
-      } catch (err: any) {
-        alert("Failed to delete appointment: " + err.message);
-      }
+    if (!await dlgConfirm('Are you sure you want to delete this appointment? This action cannot be undone.', { danger: true })) return;
+    try {
+      await deleteAppointmentLocal(appointmentId);
+    } catch (err: any) {
+      toast("Failed to delete appointment: " + err.message, 'error');
     }
   };
 
@@ -366,7 +341,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
       }
 
       if (data && data.success) {
-        alert("Invoice sent successfully via WhatsApp!");
+        toast("Invoice sent successfully via WhatsApp!", 'success');
       } else {
         throw new Error("Failed to send invoice");
       }
@@ -377,13 +352,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   };
 
   const handleDeleteInvoice = async (invoice: Invoice) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete invoice "${invoice.name}"? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
+    if (!await dlgConfirm(`Are you sure you want to delete invoice "${invoice.name}"? This action cannot be undone.`, { danger: true })) return;
 
     if (!agentPrefix) {
       setError("Missing agent prefix");
@@ -393,22 +362,15 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     try {
       setLoading(true);
 
-      // Extract path from public URL
       const urlParts = invoice.pdf_url.split("/invoices/");
       if (urlParts.length < 2) {
         throw new Error("Invalid invoice URL");
       }
-      const filePath = urlParts[1];
 
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-
-      // Delete invoice (backend handles storage)
       await deleteInvoice(invoice.id);
-
-      // Refetch data
       await fetchCustomerData();
 
-      alert("Invoice deleted successfully!");
+      toast("Invoice deleted successfully!", 'success');
     } catch (err: any) {
       setError("Failed to delete invoice: " + err.message);
       console.error("Error deleting invoice:", err);
@@ -426,12 +388,8 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     setUpdatingId(invoice.id);
 
     try {
-      const invoicesTable = `${agentPrefix}_orders_invoices`;
-
       await updateInvoiceStatus(invoice.id, "paid");
-
-      alert("Marked invoice as paid");
-
+      toast("Marked invoice as paid", 'success');
       await fetchCustomerData();
     } catch (err: any) {
       setError("Failed to mark as paid: " + err.message);
@@ -443,97 +401,167 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
   if (!isOpen) return null;
 
+  const TAB_DEFS = [
+    { key: "orders" as const, label: "Orders", count: orders.length, badge: { bg: "rgba(8,145,178,0.1)", color: "#0891b2" } },
+    { key: "invoices" as const, label: "Invoices", count: invoices.length, badge: { bg: "rgba(34,197,94,0.1)", color: "#059669" } },
+    { key: "appointments" as const, label: "Appointments", count: appointments.length, badge: { bg: "rgba(217,119,6,0.1)", color: "#d97706" } },
+  ];
+
+  const actionDisabled = !customerId || loading;
+  const invoiceActionDisabled = !customerId || loading || orders.length === 0;
+
+  const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "8px 16px",
+    background: disabled ? "rgba(34,197,94,0.3)" : "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    cursor: disabled ? "not-allowed" : "pointer",
+    ...DM,
+    fontSize: 13,
+    fontWeight: 600,
+    boxShadow: disabled ? "none" : "0 4px 14px rgba(34,197,94,0.3)",
+    transition: "opacity 0.15s",
+    flexShrink: 0,
+  });
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] flex flex-col overflow-hidden">
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 50,
+        background: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <style>{`@keyframes com-spin { to { transform: rotate(360deg); } }`}</style>
+
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 20,
+          border: "1px solid #ebebeb",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
+          width: "100%",
+          maxWidth: 1100,
+          maxHeight: "95vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
         {/* Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between w-full">
-            <h2 className="text-xl font-semibold text-gray-900">
+        <div
+          style={{
+            flexShrink: 0,
+            borderBottom: "1px solid #ebebeb",
+            padding: "20px 24px 0",
+            background: "#fff",
+          }}
+        >
+          {/* Title row */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 20,
+            }}
+          >
+            <span style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: "#0c1a0e" }}>
               {customerName ? `${customerName}'s Records` : "Customer Records"}
-            </h2>
+            </span>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              style={{
+                width: 32,
+                height: 32,
+                background: "rgba(0,0,0,0.06)",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#71717a",
+                transition: "background 0.15s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.1)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.06)")}
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <X size={16} />
             </button>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex bg-gray-50 rounded-lg p-1 space-x-1 flex-shrink-0">
-              <button
-                onClick={() => setActiveTab("orders")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center ${
-                  activeTab === "orders"
-                    ? "bg-white shadow-sm text-blue-600"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Orders
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">
-                  {orders.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab("invoices")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center ${
-                  activeTab === "invoices"
-                    ? "bg-white shadow-sm text-blue-600"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Invoices
-                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">
-                  {invoices.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab("appointments")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center ${
-                  activeTab === "appointments"
-                    ? "bg-white shadow-sm text-blue-600"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Appointments
-                <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full ml-2">
-                  {appointments.length}
-                </span>
-              </button>
+
+          {/* Tabs + action button row */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", gap: 0 }}>
+              {TAB_DEFS.map(({ key, label, count, badge }) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    style={{
+                      ...DM,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      padding: "10px 16px",
+                      background: "none",
+                      border: "none",
+                      borderBottom: isActive ? "2px solid #22c55e" : "2px solid transparent",
+                      color: isActive ? "#059669" : "#71717a",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 7,
+                      transition: "color 0.15s, border-color 0.15s",
+                      marginBottom: -1,
+                    }}
+                  >
+                    {label}
+                    <span
+                      style={{
+                        ...DM,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "1px 7px",
+                        borderRadius: 9999,
+                        background: badge.bg,
+                        color: badge.color,
+                      }}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex space-x-2 ml-4 flex-shrink-0">
+
+            <div style={{ display: "flex", gap: 8, paddingBottom: 12 }}>
               {activeTab === "orders" && (
                 <button
                   onClick={() => setShowCreateOrderModal(true)}
-                  disabled={!customerId || loading}
-                  className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                  title="Create Order"
+                  disabled={actionDisabled}
+                  style={primaryBtnStyle(actionDisabled)}
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
+                  <Plus size={15} />
+                  New Order
                 </button>
               )}
               {activeTab === "invoices" && (
@@ -542,102 +570,104 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
                     setSelectedOrderId(null);
                     setShowGenerateModal(true);
                   }}
-                  disabled={!customerId || loading || orders.length === 0}
-                  className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                  title="Generate Invoice"
+                  disabled={invoiceActionDisabled}
+                  style={primaryBtnStyle(invoiceActionDisabled)}
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
+                  <FileText size={15} />
+                  Generate Invoice
                 </button>
               )}
               {activeTab === "appointments" && (
                 <button
                   onClick={() => setShowCreateAppointmentModal(true)}
-                  disabled={!customerId || loading}
-                  className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                  title="Create Appointment"
+                  disabled={actionDisabled}
+                  style={primaryBtnStyle(actionDisabled)}
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
+                  <Calendar size={15} />
+                  New Appointment
                 </button>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Content */}
-          <div className="flex-1 p-6 overflow-y-auto">
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-              </div>
-            ) : error ? (
-              <div className="text-center py-8 text-red-600">{error}</div>
-            ) : (
-              <>
-                {activeTab === "orders" && (
-                  <OrdersTab
-                    orders={orders}
-                    customerId={customerId}
-                    loading={loading}
-                    agentPrefix={agentPrefix}
-                    agentId={agentId}
-                    customerName={customerName}
-                    customerPhone={customerPhone}
-                    onViewOrder={handleViewOrder}
-                    onEditOrder={handleEditOrder}
-                    onGenerateInvoice={handleGenerateInvoice}
-                    onDeleteOrder={handleDeleteOrder}
-                    onRefresh={fetchCustomerData}
-                  />
-                )}
-                {activeTab === "invoices" && (
-                  <InvoicesTab
-                    invoices={invoices}
-                    agentPrefix={agentPrefix}
-                    customerPhone={customerPhone}
-                    agentId={agentId}
-                    customerName={customerName}
-                    updatingId={updatingId}
-                    onRefresh={fetchCustomerData}
-                    onSendInvoice={handleSendInvoice}
-                    onDeleteInvoice={handleDeleteInvoice}
-                    onMarkPaid={handleMarkPaid}
-                  />
-                )}
-                {activeTab === "appointments" && (
-                  <AppointmentsTab
-                    appointments={appointments}
-                    loading={loading}
-                    onViewAppointment={handleViewAppointment}
-                    onEditAppointment={handleEditAppointment}
-                    onDeleteAppointment={handleDeleteAppointment}
-                  />
-                )}
-              </>
-            )}
-          </div>
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "48px 0",
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  border: "3px solid rgba(34,197,94,0.2)",
+                  borderTopColor: "#22c55e",
+                  animation: "com-spin 0.8s linear infinite",
+                }}
+              />
+            </div>
+          ) : error ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "48px 0",
+                ...DM,
+                fontSize: 14,
+                color: "#f43f5e",
+              }}
+            >
+              {error}
+            </div>
+          ) : (
+            <>
+              {activeTab === "orders" && (
+                <OrdersTab
+                  orders={orders}
+                  customerId={customerId}
+                  loading={loading}
+                  agentPrefix={agentPrefix}
+                  agentId={agentId}
+                  customerName={customerName}
+                  customerPhone={customerPhone}
+                  onViewOrder={handleViewOrder}
+                  onEditOrder={handleEditOrder}
+                  onGenerateInvoice={handleGenerateInvoice}
+                  onDeleteOrder={handleDeleteOrder}
+                  onRefresh={fetchCustomerData}
+                />
+              )}
+              {activeTab === "invoices" && (
+                <InvoicesTab
+                  invoices={invoices}
+                  agentPrefix={agentPrefix}
+                  customerPhone={customerPhone}
+                  agentId={agentId}
+                  customerName={customerName}
+                  updatingId={updatingId}
+                  onRefresh={fetchCustomerData}
+                  onSendInvoice={handleSendInvoice}
+                  onDeleteInvoice={handleDeleteInvoice}
+                  onMarkPaid={handleMarkPaid}
+                />
+              )}
+              {activeTab === "appointments" && (
+                <AppointmentsTab
+                  appointments={appointments}
+                  loading={loading}
+                  onViewAppointment={handleViewAppointment}
+                  onEditAppointment={handleEditAppointment}
+                  onDeleteAppointment={handleDeleteAppointment}
+                />
+              )}
+            </>
+          )}
         </div>
 
         {showCreateOrderModal && customerId && (

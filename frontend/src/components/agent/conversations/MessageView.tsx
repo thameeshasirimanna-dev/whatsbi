@@ -84,27 +84,15 @@ function renderTemplateHeader(
           />
         )}
         {effectiveMediaType === "document" && (
-          <div className="border rounded-lg p-3 flex items-center space-x-3 bg-gray-50">
-            <div className="p-2 rounded-full bg-gray-200">
-              <svg
-                className="w-5 h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+          <div style={{ border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, background: '#f9f9f9' }}>
+            <div style={{ padding: 8, borderRadius: '50%', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg style={{ width: 18, height: 18, color: '#71717a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">
-                Template Header Document
-              </p>
-              <p className="text-xs text-gray-500">View attached</p>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0c1a0e', margin: 0 }}>Template Header Document</p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#71717a', margin: 0 }}>View attached</p>
             </div>
           </div>
         )}
@@ -131,8 +119,8 @@ function renderTemplateHeader(
       });
     }
     return (
-      <div className="mb-3">
-        <h4 className="text-lg font-semibold text-gray-800">{headerText}</h4>
+      <div style={{ marginBottom: 8 }}>
+        <h4 style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#0c1a0e', margin: 0 }}>{headerText}</h4>
       </div>
     );
   }
@@ -159,8 +147,8 @@ function renderTemplateFooter(template: TemplateData) {
   let footerText = footerComp.text;
   // Footers typically don't have params, but handle if they do
   return (
-    <div className="mt-3 pt-3 border-t border-gray-200">
-      <p className="text-xs text-gray-500 italic">{footerText}</p>
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#a1a1aa', fontStyle: 'italic', margin: 0 }}>{footerText}</p>
     </div>
   );
 }
@@ -179,9 +167,9 @@ function renderTemplateButtons(template: TemplateData) {
         return (
           <button
             key={index}
-            className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors disabled:opacity-50"
-            disabled={true} // Historical, no action
+            disabled={true}
             title="Template button (historical)"
+            style={{ width: '100%', padding: '8px 16px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#059669', cursor: 'default', opacity: 0.7 }}
           >
             {buttonText}
           </button>
@@ -744,35 +732,24 @@ const MessageView: React.FC<MessageViewProps> = ({
     }, 0);
   };
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden relative">
+    <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: '#f8faf8' }}>
       {/* No conversation selected */}
       {!selectedConversation && (
-        <div className="flex flex-col justify-start bg-gradient-to-br from-gray-50 to-gray-100 h-full pt-12">
+        <div className="flex flex-col justify-start h-full pt-12" style={{ background: '#f8faf8' }}>
           <div className="text-center p-12 max-w-lg mx-auto">
-            <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl border border-gray-200">
-              <svg
-                className="w-12 h-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
+            <div style={{ width: 80, height: 80, background: '#f4f4f5', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+              <svg style={{ width: 40, height: 40, color: '#d4d4d8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-3">
+            <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: '#0c1a0e', marginBottom: 10 }}>
               No conversation selected
             </h3>
-            <p className="text-gray-600 text-xl leading-relaxed mb-6">
-              Choose a conversation from the left sidebar to start chatting with
-              your customers
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#71717a', lineHeight: 1.6, marginBottom: 8 }}>
+              Choose a conversation from the left to start chatting with your customers
             </p>
-            <div className="text-sm text-gray-500">
-              <p>💬 Messages will appear here once you select a conversation</p>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#a1a1aa' }}>
+              💬 Messages will appear here once you select a conversation
             </div>
           </div>
         </div>
@@ -780,154 +757,113 @@ const MessageView: React.FC<MessageViewProps> = ({
 
       {/* Chat Header - only show when conversation is selected */}
       {selectedConversation && (
-        <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div
-              className="flex items-center space-x-4 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors flex-1"
-              onClick={onOpenContactDetails}
+        <div style={{ background: '#fff', borderBottom: '1px solid #ebebeb', padding: '14px 20px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1, borderRadius: 10, padding: '4px 8px', margin: '-4px -8px', transition: 'background 0.12s' }}
+            onClick={onOpenContactDetails}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <div style={{ width: 42, height: 42, background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(34,197,94,0.25)', flexShrink: 0 }}>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#fff' }}>
+                {selectedConversation.customerName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedConversation.customerName}
+                </h3>
+                {selectedConversation ? (
+                  !selectedConversation.lastUserMessageTime ? (
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(217,119,6,0.1)', color: '#d97706', flexShrink: 0 }}>
+                      Out of window
+                    </span>
+                  ) : (
+                    (() => {
+                      const lastTime = new Date(selectedConversation.lastUserMessageTime);
+                      const hoursSince = (Date.now() - lastTime.getTime()) / (1000 * 60 * 60);
+                      const isExpired = hoursSince > 24;
+                      return (
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: isExpired ? 'rgba(217,119,6,0.1)' : 'rgba(34,197,94,0.1)', color: isExpired ? '#d97706' : '#059669', flexShrink: 0 }}>
+                          {isExpired ? "Template Required" : "Free Messaging"}
+                        </span>
+                      );
+                    })()
+                  )
+                ) : (
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669', flexShrink: 0 }}>
+                    Free Messaging
+                  </span>
+                )}
+              </div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {selectedConversation.customerPhone}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {currentStageInfo && (
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669' }}>
+                {currentStageInfo.stage}
+              </span>
+            )}
+            <button
+              onClick={() => setShowLeadStageModal(true)}
+              style={{ background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.08)')}
+              title="View Lead Stage"
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
-                <span className="text-white font-bold text-sm">
-                  {selectedConversation.customerName.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="text-xl font-semibold text-gray-900 truncate">
-                      {selectedConversation.customerName}
-                    </h3>
-                    {selectedConversation ? (
-                      !selectedConversation.lastUserMessageTime ? (
-                        <div className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Out of free messages
-                        </div>
-                      ) : (
-                        (() => {
-                          const lastTime = new Date(
-                            selectedConversation.lastUserMessageTime
-                          );
-                          const hoursSince =
-                            (Date.now() - lastTime.getTime()) /
-                            (1000 * 60 * 60);
-                          const isExpired = hoursSince > 24;
-                          return (
-                            <div
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                isExpired
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-green-100 text-green-800"
-                              }`}
-                            >
-                              {isExpired
-                                ? "Template Required"
-                                : "Free Messaging"}
-                            </div>
-                          );
-                        })()
-                      )
-                    ) : (
-                      <div className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Free Messaging
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 truncate">
-                  {selectedConversation.customerPhone}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {currentStageInfo && (
-                <span
-                  className={`text-xs font-medium ${currentStageInfo.className}`}
-                >
-                  {currentStageInfo.stage}
-                </span>
-              )}
-              <button
-                onClick={() => setShowLeadStageModal(true)}
-                className={leadStageButtonClasses}
-                title="View Lead Stage"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => setShowOrdersModal(true)}
-                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center shadow-sm"
-                title="View Orders"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                  />
-                </svg>
-              </button>
-            </div>
+              <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowOrdersModal(true)}
+              style={{ background: 'rgba(8,145,178,0.08)', border: 'none', cursor: 'pointer', width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0891b2', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(8,145,178,0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(8,145,178,0.08)')}
+              title="View Orders"
+            >
+              <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
 
       {/* Messages - only show when conversation is selected */}
       {selectedConversation && (
-        <div className="flex-1 flex flex-col bg-gradient-to-b from-gray-50 to-white overflow-hidden pt-4">
+        <div className="flex-1 flex flex-col overflow-hidden pt-4" style={{ background: '#f8faf8' }}>
           {selectedConversation.messages.length === 0 ? (
             <div className="flex items-center justify-center flex-1">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
+                <div style={{ width: 52, height: 52, background: '#f4f4f5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <svg style={{ width: 26, height: 26, color: '#d4d4d8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 4 }}>
                   No messages yet
                 </h3>
-                <p className="text-gray-500">
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#71717a' }}>
                   Start the conversation by sending a message
                 </p>
               </div>
             </div>
           ) : (
             <div
-              className="flex-1 overflow-y-auto space-y-6 pb-4 pl-4 custom-scrollbar"
+              className="flex-1 overflow-y-auto pb-4 pl-4 custom-scrollbar"
+              style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
               ref={messagesContainerRef}
             >
               {loadingMoreMessages && (
-                <div className="flex justify-center py-4">
-                  <div className="flex items-center space-x-2 text-gray-500">
-                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin"></div>
-                    <span className="text-sm">Loading more messages...</span>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'spin 0.8s linear infinite' }} />
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a' }}>Loading more messages...</span>
                   </div>
                 </div>
               )}
@@ -935,24 +871,25 @@ const MessageView: React.FC<MessageViewProps> = ({
                 const isGroup = messageOrGroup.isGroup || false;
                 const msg = messageOrGroup;
                 const key = isGroup ? `group-${msg.id}` : msg.id;
+                const isAgent = msg.sender === "agent";
 
                 return (
                   <div
                     key={key}
-                    className={`flex mt-4 mb-4 last:mb-20 ${
-                      msg.sender === "customer"
-                        ? "justify-start"
-                        : "justify-end"
-                    } animate-in slide-in-from-${
-                      msg.sender === "customer" ? "left" : "right"
-                    } fade-in duration-300`}
+                    style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', marginTop: 4, marginBottom: 4 }}
                   >
                     <div
-                      className={`max-w-[80%] px-4 py-4 rounded-2xl shadow-md transform transition-all duration-200 mx-2 ${
-                        msg.sender === "customer"
-                          ? "bg-white text-gray-900 rounded-br-lg border border-gray-200"
-                          : "bg-gradient-to-r from-green-50 to-green-100 text-gray-900 rounded-bl-lg border border-green-200"
-                      }`}
+                      style={{
+                        maxWidth: '78%',
+                        padding: '10px 14px',
+                        borderRadius: isAgent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        boxShadow: isAgent ? '0 2px 8px rgba(34,197,94,0.2)' : '0 1px 4px rgba(0,0,0,0.06)',
+                        marginLeft: isAgent ? 0 : 8,
+                        marginRight: isAgent ? 8 : 0,
+                        background: isAgent ? 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' : '#fff',
+                        border: isAgent ? 'none' : '1px solid #ebebeb',
+                        color: isAgent ? '#fff' : '#0c1a0e',
+                      }}
                     >
                       <div className="space-y-3 flex-1">
                         {(() => {
@@ -1006,7 +943,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                                   ))}
                                 </div>
                                 {msg.caption && (msg.caption || "").trim() && (
-                                  <p className="text-xs text-gray-500 mt-2 italic">
+                                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: isAgent ? 'rgba(255,255,255,0.7)' : '#a1a1aa', fontStyle: 'italic', marginTop: 4, marginBottom: 0 }}>
                                     {msg.caption}
                                   </p>
                                 )}
@@ -1048,7 +985,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                                       </div>
                                     )}
                                     {msg.media_type === "audio" && (
-                                      <div className="bg-gray-100 rounded-lg p-3">
+                                      <div style={{ background: '#f4f4f5', borderRadius: 10, padding: '10px 12px' }}>
                                         <audio
                                           src={msg.media_url}
                                           controls
@@ -1061,52 +998,21 @@ const MessageView: React.FC<MessageViewProps> = ({
                                       </div>
                                     )}
                                     {msg.media_type === "document" && (
-                                      <div
-                                        className={`border rounded-lg p-3 flex items-center space-x-3 ${
-                                          msg.sender === "customer"
-                                            ? "border-gray-300 bg-gray-50"
-                                            : "border-gray-300 bg-gray-50"
-                                        }`}
-                                      >
-                                        <div
-                                          className={`p-2 rounded-full ${
-                                            msg.sender === "customer"
-                                              ? "bg-gray-200"
-                                              : "bg-gray-200"
-                                          }`}
-                                        >
-                                          <svg
-                                            className="w-5 h-5 text-gray-600"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              strokeWidth="2"
-                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                            />
+                                      <div style={{ border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, background: isAgent ? 'rgba(255,255,255,0.15)' : '#f9f9f9' }}>
+                                        <div style={{ padding: 8, borderRadius: '50%', background: isAgent ? 'rgba(255,255,255,0.2)' : '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                          <svg style={{ width: 18, height: 18, color: isAgent ? '#fff' : '#71717a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                           </svg>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-sm font-medium text-gray-900 truncate">
-                                            Document
-                                          </p>
-                                          <p className="text-xs text-gray-500">
-                                            Click to view
-                                          </p>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: isAgent ? '#fff' : '#0c1a0e', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Document</p>
+                                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: isAgent ? 'rgba(255,255,255,0.7)' : '#71717a', margin: 0 }}>Click to view</p>
                                         </div>
                                         <button
-                                          onClick={() =>
-                                            msg.media_url &&
-                                            window.open(msg.media_url, "_blank")
-                                          }
-                                          className={`p-2 rounded-full transition-colors ${
-                                            msg.sender === "customer"
-                                              ? "hover:bg-gray-200 text-gray-600"
-                                              : "hover:bg-gray-200 text-gray-600"
-                                          }`}
+                                          onClick={() => msg.media_url && window.open(msg.media_url, "_blank")}
+                                          style={{ padding: 6, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isAgent ? '#fff' : '#71717a' }}
+                                          onMouseEnter={e => (e.currentTarget.style.background = isAgent ? 'rgba(255,255,255,0.2)' : '#f4f4f5')}
+                                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                         >
                                           <svg
                                             className="w-4 h-4"
@@ -1143,7 +1049,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                                 (msg.text || "").trim() &&
                                 !msg.text.startsWith("[") &&
                                 !msg.text.startsWith("Media file") && (
-                                  <p className="text-sm leading-relaxed break-words whitespace-pre-line">
+                                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.55, wordBreak: 'break-word', whiteSpace: 'pre-line', margin: 0, color: isAgent ? '#fff' : '#0c1a0e' }}>
                                     {msg.text}
                                   </p>
                                 )}
@@ -1151,14 +1057,8 @@ const MessageView: React.FC<MessageViewProps> = ({
                           );
                         })()}
                       </div>
-                      <div
-                        className={`mt-2 pt-1 flex ${
-                          msg.sender === "customer"
-                            ? "justify-start"
-                            : "justify-end"
-                        }`}
-                      >
-                        <span className="text-xs text-gray-500 select-none">
+                      <div style={{ marginTop: 6, display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start' }}>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: isAgent ? 'rgba(255,255,255,0.6)' : '#a1a1aa', userSelect: 'none' }}>
                           {msg.timestamp}
                         </span>
                       </div>
@@ -1173,31 +1073,23 @@ const MessageView: React.FC<MessageViewProps> = ({
 
       {/* Message Input - only show when conversation is selected */}
       {selectedConversation && (
-        <div className="bg-white border-t border-gray-200 px-6 py-4 shadow-lg flex-shrink-0">
+        <div style={{ background: '#fff', borderTop: '1px solid #ebebeb', padding: '14px 18px', flexShrink: 0 }}>
           {/* Media Preview */}
           {pendingMedia.length > 0 && (
-            <div className="mb-4 p-4 border border-gray-300 rounded-lg bg-gray-50">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-gray-700">
+            <div style={{ marginBottom: 12, padding: '12px 14px', border: '1px solid #ebebeb', borderRadius: 12, background: '#f9f9f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#3f3f46' }}>
                   Media Preview ({pendingMedia.length} items)
-                </h4>
+                </span>
                 <button
                   onClick={onClearPendingMedia}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a1a1aa', display: 'flex', padding: 3, borderRadius: 5, transition: 'color 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#f43f5e')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#a1a1aa')}
                   title="Remove media"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
+                  <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
@@ -1205,55 +1097,23 @@ const MessageView: React.FC<MessageViewProps> = ({
                 {pendingMedia.map((media, index) => (
                   <div key={index} className="relative w-20 h-20 flex-shrink-0">
                     {media.media_type === "image" && (
-                      <img
-                        src={media.url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg border border-gray-200"
-                      />
+                      <img src={media.url} alt={`Preview ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #ebebeb' }} />
                     )}
-                    {(media.media_type === "video" ||
-                      media.media_type === "audio" ||
-                      media.media_type === "document") && (
-                      <div className="w-full h-full rounded-lg border border-gray-200 flex items-center justify-center bg-gray-100">
+                    {(media.media_type === "video" || media.media_type === "audio" || media.media_type === "document") && (
+                      <div style={{ width: '100%', height: '100%', borderRadius: 8, border: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f4f5' }}>
                         {media.media_type === "video" && (
-                          <svg
-                            className="w-8 h-8 text-gray-500"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                              clipRule="evenodd"
-                            />
+                          <svg style={{ width: 28, height: 28, color: '#71717a' }} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                           </svg>
                         )}
                         {media.media_type === "audio" && (
-                          <svg
-                            className="w-8 h-8 text-gray-500"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M9.383 3.076A1 1 0 0110 4v10a1 1 0 01-.617.921L6 16a1 1 0 01-1.414-1.414l3.536-3.536A1 1 0 019 11V5a1 1 0 01.383-.924z"
-                              clipRule="evenodd"
-                            />
+                          <svg style={{ width: 28, height: 28, color: '#71717a' }} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v10a1 1 0 01-.617.921L6 16a1 1 0 01-1.414-1.414l3.536-3.536A1 1 0 019 11V5a1 1 0 01.383-.924z" clipRule="evenodd" />
                           </svg>
                         )}
                         {media.media_type === "document" && (
-                          <svg
-                            className="w-8 h-6 text-gray-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
+                          <svg style={{ width: 24, height: 24, color: '#71717a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         )}
                       </div>
@@ -1261,26 +1121,29 @@ const MessageView: React.FC<MessageViewProps> = ({
                   </div>
                 ))}
               </div>
-              <div className="text-xs text-gray-600">
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#71717a' }}>
                 💡 Add a caption below - it will apply to all media
               </div>
             </div>
           )}
 
-          <div className="flex items-end space-x-3">
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
             {/* Product Button - only if business type is product */}
             {isProductBusiness && (
               <button
                 onClick={() => setShowProductModal(true)}
                 disabled={sending || uploading || isTemplateRequired}
-                className={`p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md ${
-                  isTemplateRequired
-                    ? "bg-gray-100 text-gray-400"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-                title={
-                  isTemplateRequired ? "Template required" : "Select Product"
-                }
+                style={{
+                  width: 40, height: 40, borderRadius: 10, border: 'none', cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
+                  background: isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
+                  color: isTemplateRequired ? '#d4d4d8' : '#22c55e',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'background 0.15s',
+                  opacity: (sending || uploading) ? 0.5 : 1,
+                }}
+                onMouseEnter={e => { if (!isTemplateRequired) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)'; }}
+                title={isTemplateRequired ? "Template required" : "Select Product"}
               >
                 <svg
                   className="w-5 h-5"
@@ -1301,19 +1164,19 @@ const MessageView: React.FC<MessageViewProps> = ({
             {/* Service Button - only if business type is service */}
             {isServiceBusiness && (
               <button
-                onClick={() => {
-                  setServiceMessage("");
-                  setShowServiceModal(true);
-                }}
+                onClick={() => { setServiceMessage(""); setShowServiceModal(true); }}
                 disabled={sending || uploading || isTemplateRequired}
-                className={`p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md ${
-                  isTemplateRequired
-                    ? "bg-gray-100 text-gray-400"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-                title={
-                  isTemplateRequired ? "Template required" : "Select Service"
-                }
+                style={{
+                  width: 40, height: 40, borderRadius: 10, border: 'none', cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
+                  background: isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
+                  color: isTemplateRequired ? '#d4d4d8' : '#22c55e',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'background 0.15s',
+                  opacity: (sending || uploading) ? 0.5 : 1,
+                }}
+                onMouseEnter={e => { if (!isTemplateRequired) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)'; }}
+                title={isTemplateRequired ? "Template required" : "Select Service"}
               >
                 <svg
                   className="w-5 h-5"
@@ -1332,26 +1195,24 @@ const MessageView: React.FC<MessageViewProps> = ({
             )}
 
             {/* File Upload Button */}
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
               <button
                 ref={attachButtonRef}
                 onClick={() => setShowAttachMenu((prev) => !prev)}
                 disabled={sending || uploading || isTemplateRequired}
-                className={`p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md ${
-                  hasPendingMedia
-                    ? "bg-green-500 text-white hover:bg-green-600"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-                title={
-                  hasPendingMedia
-                    ? "Media attached - click to add more"
-                    : isTemplateRequired
-                    ? "Template required"
-                    : "Attach media"
-                }
+                style={{
+                  width: 40, height: 40, borderRadius: 10, border: 'none', cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
+                  background: hasPendingMedia ? 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' : isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
+                  color: hasPendingMedia ? '#fff' : isTemplateRequired ? '#d4d4d8' : '#22c55e',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'background 0.15s',
+                  opacity: (sending || uploading) ? 0.7 : 1,
+                  boxShadow: hasPendingMedia ? '0 2px 8px rgba(34,197,94,0.3)' : 'none',
+                }}
+                title={hasPendingMedia ? "Media attached - click to add more" : isTemplateRequired ? "Template required" : "Attach media"}
               >
                 {uploading ? (
-                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'spin 0.8s linear infinite' }} />
                 ) : hasPendingMedia ? (
                   <svg
                     className="w-5 h-5"
@@ -1386,94 +1247,27 @@ const MessageView: React.FC<MessageViewProps> = ({
               {showAttachMenu && (
                 <div
                   ref={menuRef}
-                  className="absolute bottom-full left-0 mb-2 z-50 bg-white rounded-xl shadow-2xl border border-gray-200 w-48"
+                  style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 50, background: '#fff', borderRadius: 12, border: '1px solid #ebebeb', boxShadow: '0 8px 28px rgba(0,0,0,0.1)', width: 168, overflow: 'hidden' }}
                 >
-                  <div className="py-1">
+                  {[
+                    { label: 'Images', ref: imageInputRef, icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+                    { label: 'Videos', ref: videoInputRef, icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
+                    { label: 'Audio', ref: audioInputRef, icon: 'M9 5l7 7-7 7V5z' },
+                    { label: 'Documents', ref: documentInputRef, icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                  ].map(item => (
                     <button
-                      onClick={() => {
-                        imageInputRef.current?.click();
-                      }}
-                      className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
+                      key={item.label}
+                      onClick={() => { item.ref.current?.click(); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'background 0.12s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.05)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                     >
-                      <svg
-                        className="w-5 h-5 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
+                      <svg style={{ width: 15, height: 15, flexShrink: 0, color: '#71717a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
                       </svg>
-                      <span>Images</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46' }}>{item.label}</span>
                     </button>
-                    <button
-                      onClick={() => {
-                        videoInputRef.current?.click();
-                      }}
-                      className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
-                    >
-                      <svg
-                        className="w-5 h-5 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                        />
-                      </svg>
-                      <span>Videos</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        audioInputRef.current?.click();
-                      }}
-                      className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
-                    >
-                      <svg
-                        className="w-5 h-5 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M9 5l7 7-7 7V5z"
-                        />
-                      </svg>
-                      <span>Audio</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        documentInputRef.current?.click();
-                      }}
-                      className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
-                    >
-                      <svg
-                        className="w-5 h-5 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      <span>Documents</span>
-                    </button>
-                  </div>
+                  ))}
                 </div>
               )}
 
@@ -1603,41 +1397,40 @@ const MessageView: React.FC<MessageViewProps> = ({
               onChange={onMessageChange}
               onKeyDown={onKeyPress}
               onPaste={handlePaste}
-              placeholder={
-                isTemplateRequired
-                  ? "Template required to message"
-                  : "Type your message..."
-              }
-              className={`flex-1 px-5 py-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 resize-none placeholder-gray-500 min-h-[44px] max-h-32 overflow-y-auto whitespace-pre-wrap ${
-                isTemplateRequired ? "bg-gray-100 cursor-not-allowed" : ""
-              }`}
+              placeholder={isTemplateRequired ? "Template required to message" : "Type your message..."}
+              style={{
+                flex: 1, padding: '10px 14px',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
+                background: isTemplateRequired ? 'rgba(0,0,0,0.03)' : '#f9f9f9',
+                border: '1px solid #ebebeb', borderRadius: 12,
+                outline: 'none', resize: 'none',
+                minHeight: 44, maxHeight: 128,
+                overflowY: 'auto', whiteSpace: 'pre-wrap',
+                cursor: isTemplateRequired ? 'not-allowed' : 'text',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+              onFocus={e => { if (!isTemplateRequired) { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}}
+              onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
               disabled={sending || uploading || isTemplateRequired}
             />
             <button
               onClick={onSendMessage}
-              disabled={
-                (!newMessage.trim() && !hasPendingMedia) ||
-                sending ||
-                uploading ||
-                isTemplateRequired
-              }
-              className="p-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              disabled={(!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired}
+              style={{
+                width: 42, height: 42, borderRadius: 12, border: 'none', flexShrink: 0,
+                background: ((!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired)
+                  ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+                color: '#fff', cursor: ((!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: ((!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired) ? 'none' : '0 4px 12px rgba(34,197,94,0.35)',
+                transition: 'all 0.15s',
+              }}
             >
               {sending ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} />
               ) : (
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                  />
+                <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               )}
             </button>
@@ -1645,7 +1438,9 @@ const MessageView: React.FC<MessageViewProps> = ({
           {isTemplateRequired && onOpenTemplateModal && (
             <button
               onClick={onOpenTemplateModal}
-              className="mt-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors w-full"
+              style={{ marginTop: 8, width: '100%', padding: '9px 0', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 9, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#d97706', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(217,119,6,0.16)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(217,119,6,0.1)')}
             >
               Send Template Message
             </button>
@@ -1689,13 +1484,14 @@ const MessageView: React.FC<MessageViewProps> = ({
           />
 
           {serviceMessage && (
-            <p className="text-xs text-green-600 mt-3 px-1">{serviceMessage}</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#059669', marginTop: 8, paddingLeft: 4 }}>{serviceMessage}</p>
           )}
           {sendError && (
-            <p className="text-xs text-red-500 mt-3 px-1">{sendError}</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#f43f5e', marginTop: 8, paddingLeft: 4 }}>{sendError}</p>
           )}
         </div>
       )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

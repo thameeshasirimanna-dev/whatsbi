@@ -12,7 +12,7 @@ import MessageView from "./MessageView";
 import ContactDetails from "./ContactDetails";
 import ProductSelectorModal from "./ProductSelectorModal";
 import ViewTemplateModal from "../templates/ViewTemplateModal";
-import { EyeIcon } from "@heroicons/react/24/outline";
+import { Eye } from "lucide-react";
 // Auth utilities - JWT token based
 const getToken = () => {
   return localStorage.getItem("auth_token");
@@ -2636,9 +2636,9 @@ const ConversationsPage: React.FC = () => {
 
   return (
     <div
-      className="flex bg-gray-50 overflow-hidden"
+      className="flex overflow-hidden"
       ref={containerRef}
-      style={{ position: "relative" }}
+      style={{ position: "relative", background: '#f8faf8' }}
     >
       <ConversationList
         conversations={conversations}
@@ -2689,37 +2689,25 @@ const ConversationsPage: React.FC = () => {
 
       {/* New Conversation Modal */}
       {showNewConversationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  New Conversation
-                </h3>
-                <button
-                  onClick={() => setShowNewConversationModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
+          <div style={{ background: '#fff', borderRadius: 18, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: '#0c1a0e' }}>
+                New Conversation
+              </span>
+              <button
+                onClick={() => setShowNewConversationModal(false)}
+                style={{ background: 'rgba(0,0,0,0.06)', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', transition: 'background 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.1)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.06)')}
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
 
-            <div className="p-6">
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div style={{ padding: '20px 22px' }}>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Search existing customer
                 </label>
                 <input
@@ -2727,41 +2715,41 @@ const ConversationsPage: React.FC = () => {
                   placeholder="Search by name or phone..."
                   value={searchCustomer}
                   onChange={handleCustomerSearch}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  style={{ width: '100%', padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
 
               {filteredCustomers.length > 0 && (
-                <div className="mb-6 max-h-48 overflow-y-auto">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                <div style={{ marginBottom: 20, maxHeight: 180, overflowY: 'auto' }}>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Existing Customers
-                  </h4>
-                  <div className="space-y-2">
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {filteredCustomers.map((customer) => (
                       <button
                         key={customer.id}
                         onClick={() => handleSelectCustomer(customer)}
-                        className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 10, background: 'none', cursor: 'pointer', transition: 'background 0.12s, border-color 0.12s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.04)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.2)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#ebebeb'; }}
                       >
-                        <div className="font-medium text-gray-900">
-                          {customer.name}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {customer.phone}
-                        </div>
+                        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{customer.name}</div>
+                        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a' }}>{customer.phone}</div>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="border-t border-gray-200 pt-6">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
+              <div style={{ borderTop: '1px solid #f4f4f5', paddingTop: 20 }}>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Or create new customer
-                </h4>
-                <form onSubmit={handleCreateCustomer} className="space-y-3">
+                </div>
+                <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46', display: 'block', marginBottom: 5 }}>
                       Customer Name
                     </label>
                     <input
@@ -2771,20 +2759,20 @@ const ConversationsPage: React.FC = () => {
                       value={customerForm.name}
                       onChange={handleCustomerFormChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      style={{ width: '100%', padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', boxSizing: 'border-box' }}
+                      onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46', display: 'block', marginBottom: 5 }}>
                       Phone Number
                     </label>
-                    <div className="flex space-x-2">
+                    <div style={{ display: 'flex', gap: 8 }}>
                       <select
                         value={selectedConversationCountryCode}
-                        onChange={(e) =>
-                          handleConversationCountryChange(e.target.value)
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-32"
+                        onChange={(e) => handleConversationCountryChange(e.target.value)}
+                        style={{ padding: '9px 8px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', width: 110, flexShrink: 0 }}
                       >
                         <option value="+1">🇺🇸 +1</option>
                         <option value="+44">🇬🇧 +44</option>
@@ -2804,22 +2792,29 @@ const ConversationsPage: React.FC = () => {
                         value={customerForm.phone}
                         onChange={handleCustomerFormChange}
                         required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        style={{ flex: 1, padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none' }}
+                        onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Full number will be: {selectedConversationCountryCode}{" "}
-                      {customerForm.phone}
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>
+                      Full number will be: {selectedConversationCountryCode} {customerForm.phone}
                     </p>
                   </div>
                   <button
                     type="submit"
                     disabled={creatingCustomer}
-                    className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      width: '100%',
+                      background: creatingCustomer ? 'rgba(34,197,94,0.5)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+                      color: '#fff', border: 'none', borderRadius: 10,
+                      padding: '11px 0',
+                      fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600,
+                      cursor: creatingCustomer ? 'not-allowed' : 'pointer',
+                      boxShadow: creatingCustomer ? 'none' : '0 4px 14px rgba(34,197,94,0.3)',
+                    }}
                   >
-                    {creatingCustomer
-                      ? "Creating..."
-                      : "Create Customer & Start Chat"}
+                    {creatingCustomer ? "Creating..." : "Create Customer & Start Chat"}
                   </button>
                 </form>
               </div>
@@ -2830,95 +2825,72 @@ const ConversationsPage: React.FC = () => {
 
       {/* Template Selection Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Template Required
-                </h3>
-                <button
-                  onClick={handleCloseTemplateModal}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
+          <div style={{ background: '#fff', borderRadius: 18, maxWidth: 440, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: '#0c1a0e' }}>
+                Template Required
+              </span>
+              <button
+                onClick={handleCloseTemplateModal}
+                style={{ background: 'rgba(0,0,0,0.06)', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', transition: 'background 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.1)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.06)')}
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
 
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
-                The 24-hour messaging window has expired. Please select an
-                approved template to continue the conversation.
+            <div style={{ padding: '16px 22px 22px' }}>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#71717a', marginBottom: 16, lineHeight: 1.5 }}>
+                The 24-hour messaging window has expired. Please select an approved template to continue the conversation.
               </p>
 
-              <div className="space-y-3 mb-6">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                 {templateError && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                  <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 10, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#f43f5e' }}>
                     {templateError}
                   </div>
                 )}
                 {templates.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <svg
-                      className="w-12 h-12 mx-auto mb-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
+                  <div style={{ textAlign: 'center', padding: '28px 16px' }}>
+                    <svg style={{ width: 40, height: 40, margin: '0 auto 10px', display: 'block', color: '#d4d4d8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <p>No templates available yet</p>
-                    <p className="text-xs">
-                      Templates will appear here once configured
-                    </p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#71717a' }}>No templates available yet</p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#a1a1aa' }}>Templates will appear here once configured</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       Select Template
                     </label>
                     {templates.map((template) => (
                       <div
                         key={template.name}
-                        className={`p-3 border rounded-lg transition-colors ${
-                          selectedTemplate?.name === template.name
-                            ? "border-green-500 bg-green-50"
-                            : "border-gray-200 hover:bg-gray-50"
-                        }`}
+                        style={{
+                          padding: '10px 12px',
+                          border: selectedTemplate?.name === template.name ? '1px solid rgba(34,197,94,0.4)' : '1px solid #ebebeb',
+                          borderRadius: 10,
+                          background: selectedTemplate?.name === template.name ? 'rgba(34,197,94,0.06)' : '#fff',
+                          transition: 'all 0.12s',
+                        }}
                       >
-                        <div className="flex items-center justify-between">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <button
                             onClick={() => handleTemplateSelect(template)}
-                            className="text-left"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
                           >
-                            <div className="font-medium text-gray-900">
+                            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>
                               {template.name.replace(/_/g, " ").toUpperCase()}
                             </div>
                           </button>
                           <button
                             onClick={() => handleViewTemplate(template)}
-                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                            style={{ background: 'rgba(8,145,178,0.08)', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0891b2', flexShrink: 0 }}
                             title="View template"
                           >
-                            <EyeIcon className="h-4 w-4" />
+                            <Eye size={14} />
                           </button>
                         </div>
                       </div>
@@ -2926,73 +2898,48 @@ const ConversationsPage: React.FC = () => {
                   </div>
                 )}
                 {selectedTemplate && (
-                  <div className="space-y-3 mt-4 pt-4 border-t">
+                  <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #f4f4f5', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {requiresMediaHeader && (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46' }}>
                           Media Header (Required)
                         </label>
                         <input
                           type="file"
                           accept={
-                            selectedTemplate.body.components
-                              ?.find((c: any) => c.type === "HEADER")
-                              ?.format.toLowerCase() === "image"
+                            selectedTemplate.body.components?.find((c: any) => c.type === "HEADER")?.format.toLowerCase() === "image"
                               ? "image/*"
-                              : selectedTemplate.body.components
-                                  ?.find((c: any) => c.type === "HEADER")
-                                  ?.format.toLowerCase() === "video"
-                              ? "video/*"
-                              : "*"
+                              : selectedTemplate.body.components?.find((c: any) => c.type === "HEADER")?.format.toLowerCase() === "video"
+                              ? "video/*" : "*"
                           }
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleTemplateMediaSelect(file);
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleTemplateMediaSelect(file); }}
+                          style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13 }}
                         />
-                        {templateMediaUpload && (
-                          <p className="text-sm text-gray-600">
-                            Uploading media...
-                          </p>
-                        )}
-                        {templateMedia && (
-                          <p className="text-sm text-green-600">
-                            Media uploaded: {templateMedia.type.toUpperCase()}
-                          </p>
-                        )}
+                        {templateMediaUpload && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a' }}>Uploading media...</p>}
+                        {templateMedia && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#059669' }}>Media uploaded: {templateMedia.type.toUpperCase()}</p>}
                       </div>
                     )}
                     {selectedTemplate.name === "welcome_template" ? (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Business Name
-                        </label>
-                        <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46' }}>Business Name</label>
+                        <div style={{ padding: '9px 12px', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46' }}>
                           {agentName || "Your Name"}
                         </div>
-                        <p className="text-xs text-gray-500">
-                          This will automatically use your name as the business
-                          name.
-                        </p>
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#a1a1aa' }}>This will automatically use your name as the business name.</p>
                       </div>
                     ) : templateParams.length > 0 ? (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Parameters
-                        </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46' }}>Parameters</label>
                         {templateParams.map((_, index) => (
                           <input
                             key={index}
                             type="text"
                             placeholder={`Parameter ${index + 1}`}
                             value={paramInputs[index] || ""}
-                            onChange={(e) =>
-                              handleParamChange(index, e.target.value)
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            onChange={(e) => handleParamChange(index, e.target.value)}
+                            style={{ width: '100%', padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', boxSizing: 'border-box' }}
+                            onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
+                            onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
                           />
                         ))}
                       </div>
@@ -3001,10 +2948,12 @@ const ConversationsPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 16, borderTop: '1px solid #f4f4f5' }}>
                 <button
                   onClick={handleCloseTemplateModal}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 rounded-lg transition-colors"
+                  style={{ padding: '9px 18px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, color: '#3f3f46', transition: 'background 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.1)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.06)')}
                 >
                   Cancel
                 </button>
@@ -3012,11 +2961,18 @@ const ConversationsPage: React.FC = () => {
                   onClick={sendTemplateMessage}
                   disabled={
                     !selectedTemplate ||
-                    (selectedTemplate.name !== "welcome_template" &&
-                      templateParams.some((p) => !p.trim())) ||
+                    (selectedTemplate.name !== "welcome_template" && templateParams.some((p) => !p.trim())) ||
                     (requiresMediaHeader && !templateMedia)
                   }
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  style={{
+                    padding: '9px 22px',
+                    background: (!selectedTemplate || (selectedTemplate.name !== "welcome_template" && templateParams.some((p) => !p.trim())) || (requiresMediaHeader && !templateMedia))
+                      ? 'rgba(34,197,94,0.4)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+                    color: '#fff', border: 'none', borderRadius: 9,
+                    cursor: (!selectedTemplate) ? 'not-allowed' : 'pointer',
+                    fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 600,
+                    boxShadow: '0 4px 14px rgba(34,197,94,0.3)',
+                  }}
                 >
                   {sending ? "Sending..." : "Send Template"}
                 </button>

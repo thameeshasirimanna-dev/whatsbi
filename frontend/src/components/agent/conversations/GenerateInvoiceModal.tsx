@@ -1,8 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../lib/auth";
 import { getCurrentAgent } from "../../../lib/agent";
+import { X, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import { Order } from "../../../types/index";
+import { useDialog } from "../shared/DialogProvider";
+
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "9px 12px",
+  fontFamily: "'DM Sans', sans-serif",
+  fontSize: 13,
+  color: "#3f3f46",
+  background: "#f9f9f9",
+  border: "1px solid #ebebeb",
+  borderRadius: 9,
+  outline: "none",
+  boxSizing: "border-box",
+  transition: "border-color 0.15s, box-shadow 0.15s",
+};
+const onFocusGreen = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = "#22c55e";
+  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)";
+};
+const onBlurGreen = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = "#ebebeb";
+  e.currentTarget.style.boxShadow = "none";
+};
 
 interface AgentDetails {
   name: string;
@@ -39,6 +66,7 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
   invoiceTemplatePath,
   onSuccess,
 }) => {
+  const { toast } = useDialog();
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [invoiceName, setInvoiceName] = useState("");
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -55,9 +83,7 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
       setSelectedOrderId(propSelectedOrderId);
       const order = orders.find((o) => o.id === propSelectedOrderId);
       if (order) {
-        setInvoiceName(
-          `Invoice for Order #${order.id.toString().padStart(4, "0")}`
-        );
+        setInvoiceName(`Invoice for Order #${order.id.toString().padStart(4, "0")}`);
       }
       setDiscountPercentage(0);
       setError(null);
@@ -70,18 +96,11 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
   }, [isOpen, propSelectedOrderId, orders]);
 
   const handleGenerateInvoice = async () => {
-    if (
-      !customerId ||
-      !agentPrefix ||
-      !agentId ||
-      !selectedOrderId ||
-      !invoiceName.trim()
-    ) {
+    if (!customerId || !agentPrefix || !agentId || !selectedOrderId || !invoiceName.trim()) {
       setError("Missing required information");
       return;
     }
 
-    // Validate discount
     if (discountPercentage < 0 || discountPercentage > 100) {
       setError("Discount percentage must be between 0 and 100");
       return;
@@ -97,23 +116,18 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
         return;
       }
 
-      // Find order details from props
       const order = orders.find((o) => o.id === selectedOrderId);
       if (!order) {
         throw new Error("Order not found");
       }
 
-      // Refetch latest invoice template path to ensure it's up-to-date
       const agent = await getCurrentAgent();
       if (agent) {
         // Update invoiceTemplatePath if needed
       }
 
-      // Fetch order items
       const itemsResponse = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/manage-orders?type=items&order_id=${order.id}`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders?type=items&order_id=${order.id}`,
         {
           method: "GET",
           headers: {
@@ -141,7 +155,6 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
           : (Number(item.quantity) || 0) * (Number(item.price) || 0),
       }));
 
-      // Fetch template if available
       let templateBase64: string | null = null;
       if (agent?.invoice_template_path || invoiceTemplatePath) {
         const currentPath = agent?.invoice_template_path || invoiceTemplatePath;
@@ -150,9 +163,7 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
             console.warn("No template path available");
           } else {
             const templateResponse = await fetch(
-              `${
-                import.meta.env.VITE_BACKEND_URL
-              }/get-invoice-template?path=${encodeURIComponent(currentPath)}`,
+              `${import.meta.env.VITE_BACKEND_URL}/get-invoice-template?path=${encodeURIComponent(currentPath)}`,
               {
                 method: "GET",
                 headers: {
@@ -170,8 +181,8 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
                 img.onload = () => {
                   const canvas = document.createElement("canvas");
                   const ctx = canvas.getContext("2d")!;
-                  const DPI = 150; // A4 width at 72 DPI
-                  const a4WidthPt = 595; // A4 height at 72 DPI
+                  const DPI = 150;
+                  const a4WidthPt = 595;
                   const a4HeightPt = 842;
                   const scaleFactor = DPI / 72;
                   const canvasWidth = a4WidthPt * scaleFactor;
@@ -179,31 +190,22 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
                   canvas.width = canvasWidth;
                   canvas.height = canvasHeight;
 
-                  // Calculate scale to fit A4 while preserving aspect ratio at high DPI
                   const scaleX = canvasWidth / img.width;
                   const scaleY = canvasHeight / img.height;
                   const scale = Math.min(scaleX, scaleY);
                   const scaledWidth = img.width * scale;
                   const scaledHeight = img.height * scale;
 
-                  // Center the image
                   const offsetX = (canvasWidth - scaledWidth) / 2;
                   const offsetY = (canvasHeight - scaledHeight) / 2;
 
-                  // Fill canvas with white background for JPEG compatibility
                   ctx.fillStyle = "white";
                   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                   ctx.imageSmoothingEnabled = true;
                   ctx.imageSmoothingQuality = "high";
-                  ctx.drawImage(
-                    img,
-                    offsetX,
-                    offsetY,
-                    scaledWidth,
-                    scaledHeight
-                  );
-                  templateBase64 = canvas.toDataURL("image/jpeg", 0.95); // JPEG for better compression while maintaining quality
+                  ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+                  templateBase64 = canvas.toDataURL("image/jpeg", 0.95);
                   URL.revokeObjectURL(url);
                   resolve(null);
                 };
@@ -221,7 +223,6 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
         }
       }
 
-      // Create PDF
       const doc = new jsPDF();
       const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
         let binary = "";
@@ -233,12 +234,9 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
         return window.btoa(binary);
       };
 
-      // Load Poppins fonts (using TTF from GitHub for jsPDF compatibility)
       try {
-        const regularFontUrl =
-          "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf";
-        const boldFontUrl =
-          "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Bold.ttf";
+        const regularFontUrl = "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf";
+        const boldFontUrl = "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Bold.ttf";
         const [regularFontBuffer, boldFontBuffer] = await Promise.all([
           fetch(regularFontUrl).then((res) => res.arrayBuffer()),
           fetch(boldFontUrl).then((res) => res.arrayBuffer()),
@@ -255,17 +253,14 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
-      // Add background template if available
       if (templateBase64) {
         doc.addImage(templateBase64, "JPEG", 0, 0, pageWidth, pageHeight);
       }
 
-      // Header
       doc.setFontSize(16);
       doc.setFont("Poppins", "bold");
       doc.text(invoiceName, pageWidth / 2, 20, { align: "center" });
 
-      // Agent details
       doc.setFontSize(10);
       doc.setFont("Poppins", "normal");
       let currentY = 60;
@@ -292,41 +287,25 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
         currentY += 10;
       }
 
-      // Invoice details (right aligned)
       const rightX = doc.internal.pageSize.getWidth() - 20;
       doc.setFont("Poppins", "bold");
       doc.text("Invoice Details", rightX, 60, { align: "right" });
       doc.setFont("Poppins", "normal");
-      doc.text(
-        `Date: ${new Date(order.created_at).toLocaleDateString()}`,
-        rightX,
-        80,
-        { align: "right" }
-      );
-      doc.text(
-        `Order #: #${order.id.toString().padStart(4, "0")}`,
-        rightX,
-        90,
-        { align: "right" }
-      );
-      doc.text(`Status: ${capitalizeFirst(order.status)}`, rightX, 100, {
-        align: "right",
-      });
+      doc.text(`Date: ${new Date(order.created_at).toLocaleDateString()}`, rightX, 80, { align: "right" });
+      doc.text(`Order #: #${order.id.toString().padStart(4, "0")}`, rightX, 90, { align: "right" });
+      doc.text(`Status: ${capitalizeFirst(order.status)}`, rightX, 100, { align: "right" });
 
-      // Customer details
       doc.setFont("Poppins", "bold");
       doc.text("Bill To:", 20, 120);
       doc.setFont("Poppins", "normal");
       doc.text(customerName || "Unknown Customer", 20, 130);
 
-      // Items table without borders - reduced width with wrapping
       let yPosition = 145;
       const colPositions = { desc: 20, qty: 90, price: 120, total: 150 };
-      const descWidth = 55; // Width for description wrapping with small right padding
-      const rowHeight = 10; // Standard row height
-      const lineSpacing = 6; // Tighter spacing for wrapped text lines
+      const descWidth = 55;
+      const rowHeight = 10;
+      const lineSpacing = 6;
 
-      // Header texts
       doc.setFontSize(9);
       doc.setFont("Poppins", "bold");
       doc.text("Item Description", colPositions.desc, yPosition);
@@ -334,68 +313,50 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
       doc.text("Unit Price", colPositions.price, yPosition);
       doc.text("Total", 190, yPosition, { align: "right" });
 
-      yPosition += rowHeight + 2; // Extra padding after header
+      yPosition += rowHeight + 2;
 
       doc.setFont("Poppins", "normal");
       doc.setFontSize(10);
       items.forEach((item) => {
         if (yPosition > 750) {
           doc.addPage();
-          // Add background to new page
           if (templateBase64) {
             doc.addImage(templateBase64, "JPEG", 0, 0, pageWidth, pageHeight);
           }
-          // Redraw table headers
-          yPosition = 35; // Adjusted for new page, moved up
+          yPosition = 35;
           doc.setFont("Poppins", "bold");
           doc.text("Item Description", colPositions.desc, yPosition);
           doc.text("Qty", colPositions.qty + 5, yPosition);
           doc.text("Unit Price", colPositions.price, yPosition);
           doc.text("Total", 195, yPosition, { align: "right" });
-          yPosition += rowHeight + 2; // Extra padding after header
+          yPosition += rowHeight + 2;
           doc.setFont("Poppins", "normal");
         }
 
-        // Row data with wrapping for description
         const descLines = doc.splitTextToSize(item.name, descWidth);
-        let currentY = yPosition;
-        descLines.forEach((line: string, index: number) => {
-          doc.text(line, colPositions.desc, currentY);
-          currentY += lineSpacing;
+        let lineY = yPosition;
+        descLines.forEach((line: string) => {
+          doc.text(line, colPositions.desc, lineY);
+          lineY += lineSpacing;
         });
         const maxDescLines = Math.max(1, descLines.length);
-        const effectiveRowHeight = Math.max(
-          rowHeight,
-          (maxDescLines - 1) * lineSpacing + rowHeight
-        );
-        const itemY = yPosition + ((maxDescLines - 1) * lineSpacing) / 2; // Align other fields to middle of description height
+        const effectiveRowHeight = Math.max(rowHeight, (maxDescLines - 1) * lineSpacing + rowHeight);
+        const itemY = yPosition + ((maxDescLines - 1) * lineSpacing) / 2;
         doc.text(item.quantity.toString(), colPositions.qty + 5, itemY);
         doc.text(`LKR ${item.price.toFixed(2)}`, colPositions.price, itemY);
-        doc.text(
-          `LKR ${(item.total || item.quantity * item.price).toFixed(2)}`,
-          190,
-          itemY,
-          { align: "right" }
-        );
+        doc.text(`LKR ${(item.total || item.quantity * item.price).toFixed(2)}`, 190, itemY, { align: "right" });
 
-        yPosition += effectiveRowHeight + 2; // Extra padding after row
+        yPosition += effectiveRowHeight + 2;
       });
 
-      // Horizontal line at bottom of table
       doc.setLineWidth(0.1);
       doc.line(20, yPosition, 190, yPosition);
-      yPosition += 5; // Padding after line
+      yPosition += 5;
 
-      // Calculate subtotal
-      const subtotal = items.reduce(
-        (sum, item) => sum + (item.total || item.quantity * item.price),
-        0
-      );
-
+      const subtotal = items.reduce((sum, item) => sum + (item.total || item.quantity * item.price), 0);
       const discountAmount = subtotal * (discountPercentage / 100);
       const total = subtotal - discountAmount;
 
-      // Totals section positioned after table with 5 padding
       let totalsY = yPosition + 5;
 
       doc.setFont("Poppins", "bold");
@@ -406,9 +367,7 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
       doc.setFont("Poppins", "normal");
       doc.setFontSize(9);
       doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
-      doc.text(`-LKR ${discountAmount.toFixed(2)}`, 190, totalsY, {
-        align: "right",
-      });
+      doc.text(`-LKR ${discountAmount.toFixed(2)}`, 190, totalsY, { align: "right" });
       totalsY += 10;
       doc.setFont("Poppins", "bold");
       doc.setFontSize(10);
@@ -416,9 +375,8 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
       doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
       totalsY += 15;
 
-      yPosition = totalsY + 20; // Update yPosition for notes
+      yPosition = totalsY + 20;
 
-      // Notes
       if (order.notes) {
         doc.setFont("Poppins", "normal");
         doc.setFontSize(9);
@@ -432,24 +390,18 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
         yPosition = notesY + 10;
       }
 
-      // Footer at bottom
       const footerY = pageHeight - 20;
       doc.setFontSize(10);
       doc.setFont("Poppins", "normal");
-      doc.text("Thank you for your business!", pageWidth / 2, footerY, {
-        align: "center",
-      });
+      doc.text("Thank you for your business!", pageWidth / 2, footerY, { align: "center" });
 
-      // Generate blob for upload
       const pdfBlob = doc.output("blob");
 
-      // Sanitize invoice name for file name
       const sanitizeFileName = (name: string): string => {
         return name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
       };
       const sanitizedFileName = sanitizeFileName(invoiceName);
 
-      // Upload to storage
       const pdfBase64 = arrayBufferToBase64(await pdfBlob.arrayBuffer());
       const uploadResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/upload-invoice`,
@@ -479,8 +431,7 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
         throw new Error("Failed to upload invoice");
       }
 
-      // Success
-      alert("Invoice generated successfully!");
+      toast("Invoice generated successfully!", 'success');
       onClose();
       onSuccess();
     } catch (err: any) {
@@ -502,58 +453,57 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
   if (!isOpen) return null;
 
   const currentOrder = orders.find((o) => o.id === selectedOrderId);
+  const submitDisabled = generating || !invoiceName.trim() || !selectedOrderId;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col overflow-hidden">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Generate Invoice
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Fill in the details to generate an invoice for the selected order.
-          </p>
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #ebebeb", boxShadow: "0 24px 64px rgba(0,0,0,0.15)", width: "100%", maxWidth: 460, maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+        {/* Header */}
+        <div style={{ flexShrink: 0, padding: "20px 24px 16px", borderBottom: "1px solid #ebebeb", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div>
+            <span style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: "#0c1a0e", display: "block", marginBottom: 4 }}>Generate Invoice</span>
+            <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>Fill details to generate an invoice for the selected order.</span>
+          </div>
+          <button onClick={handleClose} style={{ width: 30, height: 30, background: "rgba(0,0,0,0.06)", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginLeft: 12 }}>
+            <X size={15} style={{ color: "#71717a" }} />
+          </button>
         </div>
-        <div className="flex-1 p-6 overflow-y-auto">
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+            <div style={{ padding: "10px 14px", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.15)", borderRadius: 9, ...DM, fontSize: 13, color: "#f43f5e", marginBottom: 16 }}>
               {error}
             </div>
           )}
-          <div className="space-y-4">
-            {/* Order Selection */}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Order selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Order
-              </label>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6 }}>Select Order</label>
               <select
                 value={selectedOrderId || ""}
-                onChange={(e) =>
-                  setSelectedOrderId(parseInt(e.target.value) || null)
-                }
+                onChange={(e) => setSelectedOrderId(parseInt(e.target.value) || null)}
                 disabled={propSelectedOrderId !== undefined}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  propSelectedOrderId !== undefined
-                    ? "border-gray-300 bg-gray-100 cursor-not-allowed"
-                    : "border-gray-300"
-                }`}
+                style={{ ...inputStyle, background: propSelectedOrderId !== undefined ? "#f4f4f5" : "#f9f9f9", cursor: propSelectedOrderId !== undefined ? "not-allowed" : "pointer" }}
+                onFocus={onFocusGreen}
+                onBlur={onBlurGreen}
               >
                 {propSelectedOrderId ? (
                   currentOrder ? (
                     <option value={currentOrder.id}>
-                      Order #{currentOrder.id.toString().padStart(4, "0")} - LKR{" "}
-                      {Number(currentOrder.total_amount)?.toFixed(2) || "0.00"}
+                      Order #{currentOrder.id.toString().padStart(4, "0")} — LKR {Number(currentOrder.total_amount)?.toFixed(2) || "0.00"}
                     </option>
                   ) : (
                     <option value="">No order selected</option>
                   )
                 ) : (
                   <>
-                    <option value="">Choose an order...</option>
+                    <option value="">Choose an order…</option>
                     {orders.map((order) => (
                       <option key={order.id} value={order.id}>
-                        Order #{order.id.toString().padStart(4, "0")} - LKR{" "}
-                        {Number(order.total_amount)?.toFixed(2) || "0.00"}
+                        Order #{order.id.toString().padStart(4, "0")} — LKR {Number(order.total_amount)?.toFixed(2) || "0.00"}
                       </option>
                     ))}
                   </>
@@ -561,87 +511,58 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
               </select>
             </div>
 
-            {/* Customer Display (disabled) */}
+            {/* Customer display */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Customer
-              </label>
-              <input
-                type="text"
-                value={customerName}
-                disabled={true}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                readOnly
-              />
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6 }}>Customer</label>
+              <input type="text" value={customerName} disabled readOnly style={{ ...inputStyle, background: "#f4f4f5", cursor: "not-allowed", color: "#71717a" }} />
             </div>
 
-            {/* Invoice Name */}
+            {/* Invoice name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Invoice Name
-              </label>
-              <input
-                type="text"
-                value={invoiceName}
-                onChange={(e) => setInvoiceName(e.target.value)}
-                placeholder="e.g., Invoice for Order #0001"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6 }}>Invoice Name</label>
+              <input type="text" value={invoiceName} onChange={(e) => setInvoiceName(e.target.value)} placeholder="e.g., Invoice for Order #0001" required style={inputStyle} onFocus={onFocusGreen} onBlur={onBlurGreen} />
             </div>
 
-            {/* Discount Percentage */}
+            {/* Discount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Discount Percentage (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={discountPercentage}
-                onChange={(e) =>
-                  setDiscountPercentage(parseFloat(e.target.value) || 0)
-                }
-                placeholder="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6 }}>Discount Percentage (%)</label>
+              <input type="number" min="0" max="100" step="0.01" value={discountPercentage} onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)} placeholder="0" style={inputStyle} onFocus={onFocusGreen} onBlur={onBlurGreen} />
             </div>
 
-            {/* Generate Button */}
+            {/* Generate button */}
             <button
               onClick={handleGenerateInvoice}
-              disabled={generating || !invoiceName.trim() || !selectedOrderId}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+              disabled={submitDisabled}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                padding: "11px 20px",
+                background: submitDisabled ? "rgba(34,197,94,0.3)" : "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                cursor: submitDisabled ? "not-allowed" : "pointer",
+                ...DM,
+                fontSize: 14,
+                fontWeight: 600,
+                boxShadow: submitDisabled ? "none" : "0 4px 14px rgba(34,197,94,0.3)",
+                marginTop: 4,
+              }}
             >
-              {generating ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-              )}
-              <span>{generating ? "Generating..." : "Generate Invoice"}</span>
+              <FileText size={16} />
+              {generating ? "Generating…" : "Generate Invoice"}
+            </button>
+
+            <button
+              onClick={handleClose}
+              disabled={generating}
+              style={{ padding: "10px 20px", background: "rgba(0,0,0,0.06)", color: "#3f3f46", border: "none", borderRadius: 10, cursor: generating ? "not-allowed" : "pointer", ...DM, fontSize: 13, fontWeight: 600, opacity: generating ? 0.5 : 1 }}
+            >
+              Cancel
             </button>
           </div>
-          <button
-            onClick={handleClose}
-            disabled={generating}
-            className="mt-4 w-full px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50 border border-gray-300 rounded-md"
-          >
-            Cancel
-          </button>
         </div>
       </div>
     </div>

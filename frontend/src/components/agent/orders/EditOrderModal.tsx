@@ -3,6 +3,33 @@ import React, { useState, useEffect } from 'react';
 import { getToken } from "../../../lib/auth";
 import { getCurrentAgent } from "../../../lib/agent";
 import { Order, OrderItem } from "../../../types/index";
+import { X, Plus, Trash2 } from 'lucide-react';
+import { useDialog } from '../shared/DialogProvider';
+
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 10px',
+  fontFamily: "'DM Sans', sans-serif",
+  fontSize: 13,
+  color: '#3f3f46',
+  background: '#f9f9f9',
+  border: '1px solid #ebebeb',
+  borderRadius: 8,
+  outline: 'none',
+  boxSizing: 'border-box',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+};
+const onFocusG = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#22c55e';
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
+};
+const onBlurG = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#ebebeb';
+  e.currentTarget.style.boxShadow = 'none';
+};
 
 interface InventoryItem {
   id: number;
@@ -32,30 +59,25 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   agentPrefix,
   agentId,
 }) => {
-  const [editStatus, setEditStatus] = useState(order?.status || "");
-  const [shippingAddress, setShippingAddress] = useState(
-    order?.shipping_address || ""
-  );
+  const { toast } = useDialog();
+  const [editStatus, setEditStatus] = useState(order?.status || '');
+  const [shippingAddress, setShippingAddress] = useState(order?.shipping_address || '');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [newItemName, setNewItemName] = useState("");
+  const [newItemName, setNewItemName] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [newItemPrice, setNewItemPrice] = useState(0);
   const [fetchLoading, setFetchLoading] = useState(true);
-  const [businessType, setBusinessType] = useState<
-    "service" | "product" | null
-  >(null);
+  const [businessType, setBusinessType] = useState<'service' | 'product' | null>(null);
   const [businessTypeLoading, setBusinessTypeLoading] = useState(true);
-  const [businessTypeError, setBusinessTypeError] = useState<string | null>(
-    null
-  );
+  const [businessTypeError, setBusinessTypeError] = useState<string | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [inventorySearchTerm, setInventorySearchTerm] = useState("");
+  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
   const [defaultAddQuantity, setDefaultAddQuantity] = useState(1);
 
   useEffect(() => {
     if (order && agentPrefix) {
-      setShippingAddress(order.shipping_address || "");
+      setShippingAddress(order.shipping_address || '');
       fetchOrderItems();
     }
   }, [order, agentPrefix]);
@@ -68,14 +90,14 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
         const agent = await getCurrentAgent();
         if (!agent) {
-          setBusinessTypeError("Agent not found");
+          setBusinessTypeError('Agent not found');
           return;
         }
 
-        setBusinessType(agent.business_type as "service" | "product");
+        setBusinessType(agent.business_type as 'service' | 'product');
       } catch (err: any) {
-        console.error("Error fetching business type:", err);
-        setBusinessTypeError(err.message || "Failed to load business type");
+        console.error('Error fetching business type:', err);
+        setBusinessTypeError(err.message || 'Failed to load business type');
       } finally {
         setBusinessTypeLoading(false);
       }
@@ -86,17 +108,17 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   useEffect(() => {
     const fetchInventory = async () => {
-      if (businessType !== "product") return;
+      if (businessType !== 'product') return;
       try {
         const token = getToken();
         if (!token) return;
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/manage-inventory`,
           {
-            method: "GET",
+            method: 'GET',
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json',
             },
           }
         );
@@ -109,7 +131,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         }
         setInventoryItems(data.items || []);
       } catch (err) {
-        console.error("Failed to fetch inventory:", err);
+        console.error('Failed to fetch inventory:', err);
       }
     };
 
@@ -136,8 +158,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
           method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+          },
         }
       );
 
@@ -159,7 +181,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         })) as OrderItem[]
       );
     } catch (err) {
-      console.error("Failed to fetch order items:", err);
+      console.error('Failed to fetch order items:', err);
     } finally {
       setFetchLoading(false);
     }
@@ -198,9 +220,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   };
 
   const addItem = () => {
-    if (businessType === "service") {
-      if (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0)
-        return;
+    if (businessType === 'service') {
+      if (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0) return;
 
       const newItem = {
         id: 0,
@@ -213,7 +234,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
       } as OrderItem;
 
       setItems([...items, newItem]);
-      setNewItemName("");
+      setNewItemName('');
       setNewItemQuantity(1);
       setNewItemPrice(0);
     }
@@ -245,7 +266,6 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const handleUpdateOrder = async () => {
     if (!order) return;
 
-    // Get agent info if not provided
     let currentAgentPrefix = agentPrefix;
     let currentAgentId = agentId;
 
@@ -253,29 +273,28 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
       try {
         const agent = await getCurrentAgent();
         if (!agent) {
-          alert('Agent information not available');
+          toast('Agent information not available', 'error');
           return;
         }
         currentAgentPrefix = agent.agent_prefix;
         currentAgentId = parseInt(agent.id);
       } catch (err) {
-        alert('Failed to get agent information');
+        toast('Failed to get agent information', 'error');
         return;
       }
     }
 
-    // Validate items before sending request
     for (const item of items) {
       if (!item.name || item.name.trim().length === 0) {
-        alert('All items must have a name');
+        toast('All items must have a name', 'error');
         return;
       }
       if (!item.quantity || item.quantity <= 0) {
-        alert('All items must have a valid quantity');
+        toast('All items must have a valid quantity', 'error');
         return;
       }
       if (typeof item.price !== 'number' || isNaN(item.price) || item.price < 0) {
-        alert('All items must have a valid price');
+        toast('All items must have a valid price', 'error');
         return;
       }
     }
@@ -284,30 +303,26 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
     try {
       const token = getToken();
       if (!token) {
-        alert('User not authenticated');
+        toast('User not authenticated', 'error');
         return;
       }
 
-      // Update main order
       const orderResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/manage-orders`,
         {
           method: 'PUT',
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             id: order.id,
             status: editStatus,
-            total_amount: items.reduce(
-              (sum, item) => sum + item.quantity * item.price,
-              0
-            ),
+            total_amount: items.reduce((sum, item) => sum + item.quantity * item.price, 0),
             notes: order.notes || null,
             shipping_address: shippingAddress.trim() || null,
             updated_at: new Date().toISOString(),
-          })
+          }),
         }
       );
 
@@ -320,14 +335,13 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         throw new Error('Failed to update order');
       }
 
-      // Replace order items (delete old, insert new)
       const deleteResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/manage-orders?type=delete-items&order_id=${order.id}`,
         {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -342,7 +356,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               order_id: order.id,
@@ -350,8 +364,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
                 name: item.name,
                 quantity: item.quantity,
                 price: item.price,
-              }))
-            })
+              })),
+            }),
           }
         );
 
@@ -368,18 +382,29 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      console.error("Update order error:", err);
-      alert("Failed to update order: " + err.message);
+      console.error('Update order error:', err);
+      toast('Failed to update order: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+
+  const overlayStyle: React.CSSProperties = {
+    position: 'fixed', inset: 0, zIndex: 60,
+    background: 'rgba(0,0,0,0.5)',
+    backdropFilter: 'blur(4px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 16,
+  };
+
   if (!order || fetchLoading || businessTypeLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white rounded-xl p-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div style={overlayStyle}>
+        <style>{`@keyframes eom-spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', padding: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'eom-spin 0.8s linear infinite' }} />
         </div>
       </div>
     );
@@ -387,89 +412,44 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   if (businessTypeError) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white rounded-xl p-6 text-center">
-          <p className="text-red-600 mb-4">
-            Unable to load business type: {businessTypeError}
-          </p>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-          >
-            Close
-          </button>
+      <div style={overlayStyle}>
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', padding: '32px 24px', maxWidth: 360, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <p style={{ ...DM, fontSize: 14, color: '#f43f5e' }}>Unable to load business type: {businessTypeError}</p>
+          <button onClick={onClose} style={{ padding: '9px 20px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 10, ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46', cursor: 'pointer' }}>Close</button>
         </div>
       </div>
     );
   }
 
-  const totalAmount = items.reduce(
-    (sum, item) => sum + item.quantity * item.price,
-    0
-  );
+  const itemRowStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '10px 12px',
+    background: '#f9f9f9',
+    borderRadius: 10,
+    border: '1px solid #ebebeb',
+  };
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-          aria-hidden="true"
-        />
+    <div style={overlayStyle}>
+      <style>{`@keyframes eom-spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 860, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        <div className="relative w-full max-w-6xl mx-auto my-4 max-h-[90vh] flex flex-col bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl ring-1 ring-black/10 animate-in fade-in-0 zoom-in-95 duration-300 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 lg:px-4 py-3 lg:py-3.5 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-blue-50/50 backdrop-blur-sm">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-2xl">
-                <svg
-                  className="w-6 h-6 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 01-2-2m0 13l6-6m-6 6V5a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 001 1.732V19a2 2 0 01-2 2h-1v-6a1 1 0 00-1-1H9a1 1 0 00-1 1v6H7a2 2 0 01-2-2v-4a2 2 0 011.732-1.732M9 5a2 2 0 002 2h2a2 2 0 002-2m0 4v-6a1 1 0 00-1-1H9a1 1 0 00-1 1v6H7"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Edit Order #{order.id}
-              </h2>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
+        {/* Header */}
+        <div style={{ flexShrink: 0, padding: '18px 24px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e' }}>Edit Order #{order.id}</span>
+          <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={15} style={{ color: '#71717a' }} />
+          </button>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-            {/* Order Status */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Order Status
-              </label>
-              <select
-                value={editStatus}
-                onChange={handleStatusChange}
-                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Status */}
+            <div>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Order Status</label>
+              <select value={editStatus} onChange={handleStatusChange} style={inputStyle} onFocus={onFocusG} onBlur={onBlurG}>
                 <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="processing">Processing</option>
@@ -479,273 +459,135 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
               </select>
             </div>
 
-            {/* Order Items */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Order Items
-                </h3>
-                {items.length > 0 && (
-                  <span className="text-sm text-gray-500">
-                    {items.length} item(s)
-                  </span>
-                )}
+            {/* Items */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>Order Items</span>
+                {items.length > 0 && <span style={{ ...DM, fontSize: 12, color: '#a1a1aa' }}>{items.length} item(s)</span>}
               </div>
 
-              {/* Items List */}
-              <div className="space-y-3 mb-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
                 {items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl"
-                  >
-                    <div className="flex-1">
+                  <div key={index} style={itemRowStyle}>
+                    <div style={{ flex: 1 }}>
                       <input
                         type="text"
                         value={item.name}
-                        onChange={(e) =>
-                          businessType === "service"
-                            ? handleItemNameChange(index, e.target.value)
-                            : undefined
-                        }
+                        onChange={(e) => businessType === 'service' ? handleItemNameChange(index, e.target.value) : undefined}
                         placeholder="Item name"
-                        className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          businessType === "product"
-                            ? "bg-gray-100 cursor-not-allowed"
-                            : ""
-                        }`}
-                        readOnly={businessType === "product"}
+                        readOnly={businessType === 'product'}
+                        style={{ ...inputStyle, background: businessType === 'product' ? '#f4f4f5' : '#f9f9f9', cursor: businessType === 'product' ? 'not-allowed' : 'text', color: businessType === 'product' ? '#71717a' : '#3f3f46' }}
+                        onFocus={onFocusG}
+                        onBlur={onBlurG}
                       />
                     </div>
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleItemQuantityChange(
-                            index,
-                            parseInt(e.target.value) || 1
-                          )
-                        }
-                        min="1"
-                        placeholder="Qty"
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
-                      />
+                    <div style={{ width: 68 }}>
+                      <input type="number" value={item.quantity} onChange={(e) => handleItemQuantityChange(index, parseInt(e.target.value) || 1)} min="1" placeholder="Qty" style={{ ...inputStyle, textAlign: 'center' }} onFocus={onFocusG} onBlur={onBlurG} />
                     </div>
-                    <div className="w-24">
+                    <div style={{ width: 88 }}>
                       <input
                         type="number"
                         value={item.price}
-                        onChange={(e) =>
-                          businessType === "service"
-                            ? handleItemPriceChange(
-                                index,
-                                parseFloat(e.target.value) || 0
-                              )
-                            : undefined
-                        }
-                        min="0"
-                        step="0.01"
-                        placeholder="Price"
-                        className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right ${
-                          businessType === "product"
-                            ? "bg-gray-100 cursor-not-allowed"
-                            : ""
-                        }`}
-                        readOnly={businessType === "product"}
+                        onChange={(e) => businessType === 'service' ? handleItemPriceChange(index, parseFloat(e.target.value) || 0) : undefined}
+                        min="0" step="0.01" placeholder="Price"
+                        readOnly={businessType === 'product'}
+                        style={{ ...inputStyle, textAlign: 'right', background: businessType === 'product' ? '#f4f4f5' : '#f9f9f9', cursor: businessType === 'product' ? 'not-allowed' : 'text', color: businessType === 'product' ? '#71717a' : '#3f3f46' }}
+                        onFocus={onFocusG}
+                        onBlur={onBlurG}
                       />
                     </div>
-                    <div className="w-24 text-right font-medium text-gray-900">
+                    <div style={{ width: 88, ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', textAlign: 'right', flexShrink: 0 }}>
                       LKR {(item.quantity * item.price).toFixed(2)}
                     </div>
-                    <button
-                      onClick={() => removeItem(index)}
-                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
+                    <button onClick={() => removeItem(index)} style={{ width: 30, height: 30, background: 'rgba(244,63,94,0.08)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e', flexShrink: 0 }}>
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 ))}
               </div>
 
-              {/* Add New Item */}
-              {businessType === "service" ? (
-                <div className="flex items-end space-x-3 p-3 bg-blue-50 rounded-xl">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={newItemName}
-                      onChange={(e) => setNewItemName(e.target.value)}
-                      placeholder="Add new item"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+              {/* Add item / Inventory picker */}
+              {businessType === 'service' ? (
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '12px 14px', background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="New item name" style={inputStyle} onFocus={onFocusG} onBlur={onBlurG} />
                   </div>
-                  <div className="w-20">
-                    <input
-                      type="number"
-                      value={newItemQuantity}
-                      onChange={(e) =>
-                        setNewItemQuantity(parseInt(e.target.value) || 1)
-                      }
-                      min="1"
-                      placeholder="Qty"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
-                    />
+                  <div style={{ width: 68 }}>
+                    <input type="number" value={newItemQuantity} onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)} min="1" placeholder="Qty" style={{ ...inputStyle, textAlign: 'center' }} onFocus={onFocusG} onBlur={onBlurG} />
                   </div>
-                  <div className="w-24">
-                    <input
-                      type="number"
-                      value={newItemPrice}
-                      onChange={(e) =>
-                        setNewItemPrice(parseFloat(e.target.value) || 0)
-                      }
-                      min="0"
-                      step="0.01"
-                      placeholder="Price"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
-                    />
+                  <div style={{ width: 88 }}>
+                    <input type="number" value={newItemPrice} onChange={(e) => setNewItemPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" placeholder="Price" style={{ ...inputStyle, textAlign: 'right' }} onFocus={onFocusG} onBlur={onBlurG} />
                   </div>
                   <button
                     onClick={addItem}
-                    disabled={
-                      !newItemName.trim() ||
-                      newItemQuantity <= 0 ||
-                      newItemPrice <= 0
-                    }
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    disabled={!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', background: (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 8, cursor: (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0) ? 'not-allowed' : 'pointer', ...DM, fontSize: 13, fontWeight: 600, flexShrink: 0 }}
                   >
-                    Add
+                    <Plus size={14} /> Add
                   </button>
                 </div>
-              ) : businessType === "product" ? (
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Add Products from Inventory
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Search products by name or SKU..."
-                    value={inventorySearchTerm}
-                    onChange={(e) => setInventorySearchTerm(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <div className="flex items-center space-x-3 mb-3">
-                    <label className="text-sm font-medium text-gray-700">
-                      Default Quantity:
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={defaultAddQuantity}
-                      onChange={(e) =>
-                        setDefaultAddQuantity(parseInt(e.target.value) || 1)
-                      }
-                      className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
-                    />
+              ) : businessType === 'product' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46' }}>Add from Inventory</label>
+                  <input type="text" placeholder="Search by name or SKU…" value={inventorySearchTerm} onChange={(e) => setInventorySearchTerm(e.target.value)} style={inputStyle} onFocus={onFocusG} onBlur={onBlurG} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46' }}>Default Qty:</span>
+                    <input type="number" min="1" value={defaultAddQuantity} onChange={(e) => setDefaultAddQuantity(parseInt(e.target.value) || 1)} style={{ ...inputStyle, width: 72 }} onFocus={onFocusG} onBlur={onBlurG} />
                   </div>
                   {filteredInventory.length > 0 ? (
-                    <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
+                    <div style={{ border: '1px solid #ebebeb', borderRadius: 10, maxHeight: 180, overflowY: 'auto' }}>
                       {filteredInventory.map((invItem) => (
-                        <div
-                          key={invItem.id}
-                          className="flex items-center justify-between p-2 hover:bg-gray-100 rounded"
+                        <div key={invItem.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                             {invItem.image_urls?.[0] && (
-                              <img
-                                src={invItem.image_urls[0]}
-                                alt={invItem.name}
-                                className="w-10 h-10 object-cover rounded flex-shrink-0"
-                              />
+                              <img src={invItem.image_urls[0]} alt={invItem.name} style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                             )}
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium truncate">
-                                {invItem.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                LKR {invItem.price.toFixed(2)}
-                              </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invItem.name}</div>
+                              <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>LKR {invItem.price.toFixed(2)}</div>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              addFromInventory(invItem, defaultAddQuantity)
-                            }
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm ml-2 flex-shrink-0"
-                          >
+                          <button type="button" onClick={() => addFromInventory(invItem, defaultAddQuantity)} style={{ flexShrink: 0, marginLeft: 8, padding: '4px 10px', background: 'rgba(34,197,94,0.1)', color: '#059669', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 7, cursor: 'pointer', ...DM, fontSize: 12, fontWeight: 600 }}>
                             Add
                           </button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-gray-500 border rounded-lg">
-                      {inventorySearchTerm
-                        ? "No products found"
-                        : "No inventory items available."}
+                    <div style={{ textAlign: 'center', padding: '16px 0', ...DM, fontSize: 13, color: '#a1a1aa', border: '1px solid #ebebeb', borderRadius: 10 }}>
+                      {inventorySearchTerm ? 'No products found' : 'No inventory items available.'}
                     </div>
                   )}
                 </div>
               ) : null}
             </div>
 
-            {/* Shipping Address */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Shipping Address (Optional)
-              </label>
-              <textarea
-                value={shippingAddress}
-                onChange={(e) => setShippingAddress(e.target.value)}
-                rows={3}
-                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-                placeholder="Enter shipping address..."
-              />
+            {/* Shipping address */}
+            <div>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Shipping Address (Optional)</label>
+              <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} rows={3} placeholder="Enter shipping address…" style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocusG} onBlur={onBlurG} />
             </div>
 
             {/* Total */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-gray-900">
-                  Total Amount:
-                </span>
-                <span className="text-2xl font-bold text-blue-600">
-                  LKR {totalAmount.toFixed(2)}
-                </span>
-              </div>
+            <div style={{ padding: '14px 16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#3f3f46' }}>Total Amount</span>
+              <span style={{ ...SYNE, fontSize: 20, fontWeight: 700, color: '#059669' }}>LKR {totalAmount.toFixed(2)}</span>
             </div>
           </div>
+        </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 px-4 py-4 bg-gray-50 border-t border-gray-100">
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleUpdateOrder}
-              disabled={loading || items.length === 0}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
-            >
-              {loading ? "Updating..." : "Update Order"}
-            </button>
-          </div>
+        {/* Footer */}
+        <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #ebebeb', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={onClose} disabled={loading} style={{ padding: '10px 20px', background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer', ...DM, fontSize: 13, fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
+            Cancel
+          </button>
+          <button onClick={handleUpdateOrder} disabled={loading || items.length === 0}
+            style={{ padding: '10px 20px', background: (loading || items.length === 0) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, cursor: (loading || items.length === 0) ? 'not-allowed' : 'pointer', ...DM, fontSize: 13, fontWeight: 600, boxShadow: (loading || items.length === 0) ? 'none' : '0 4px 14px rgba(34,197,94,0.3)' }}>
+            {loading ? 'Updating…' : 'Update Order'}
+          </button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getToken } from "../../../lib/auth";
+import { X, TrendingUp } from "lucide-react";
 import { getCustomers, updateCustomer } from "../../../lib/api";
 
 export type LeadStage =
@@ -30,6 +30,47 @@ interface LeadStageModalProps {
   onRefreshConversations?: () => void;
 }
 
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
+const selectStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 12px',
+  fontFamily: "'DM Sans', sans-serif",
+  fontSize: 13,
+  color: '#3f3f46',
+  background: '#f9f9f9',
+  border: '1px solid #ebebeb',
+  borderRadius: 9,
+  outline: 'none',
+  boxSizing: 'border-box',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+  appearance: 'none',
+  cursor: 'pointer',
+};
+
+const disabledSelectStyle: React.CSSProperties = {
+  ...selectStyle,
+  background: '#f4f4f5',
+  color: '#a1a1aa',
+  cursor: 'not-allowed',
+};
+
+const onFocus = (e: React.FocusEvent<HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#22c55e';
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
+};
+const onBlur = (e: React.FocusEvent<HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#ebebeb';
+  e.currentTarget.style.boxShadow = 'none';
+};
+
+const getProgressStyle = (type: 'conversion' | 'interest' | 'lead'): React.CSSProperties => {
+  if (type === 'conversion') return { background: 'rgba(34,197,94,0.1)', color: '#059669', border: '1px solid rgba(34,197,94,0.2)' };
+  if (type === 'interest') return { background: 'rgba(217,119,6,0.1)', color: '#d97706', border: '1px solid rgba(217,119,6,0.2)' };
+  return { background: 'rgba(8,145,178,0.1)', color: '#0891b2', border: '1px solid rgba(8,145,178,0.2)' };
+};
+
 const LeadStageModal: React.FC<LeadStageModalProps> = ({
   isOpen,
   onClose,
@@ -43,48 +84,18 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<number | null>(null);
-  const [currentLeadStage, setCurrentLeadStage] = useState<LeadStage | null>(
-    null
-  );
-  const [currentInterestStage, setCurrentInterestStage] =
-    useState<InterestStage | null>(null);
-  const [currentConversionStage, setCurrentConversionStage] =
-    useState<ConversionStage | null>(null);
-  const [selectedLeadStage, setSelectedLeadStage] = useState<LeadStage>(
-    "New Lead"
-  );
-  const [selectedInterestStage, setSelectedInterestStage] =
-    useState<InterestStage | null>(null);
-  const [selectedConversionStage, setSelectedConversionStage] =
-    useState<ConversionStage | null>(null);
+  const [currentLeadStage, setCurrentLeadStage] = useState<LeadStage | null>(null);
+  const [currentInterestStage, setCurrentInterestStage] = useState<InterestStage | null>(null);
+  const [currentConversionStage, setCurrentConversionStage] = useState<ConversionStage | null>(null);
+  const [selectedLeadStage, setSelectedLeadStage] = useState<LeadStage>("New Lead");
+  const [selectedInterestStage, setSelectedInterestStage] = useState<InterestStage | null>(null);
+  const [selectedConversionStage, setSelectedConversionStage] = useState<ConversionStage | null>(null);
   const [updating, setUpdating] = useState(false);
 
-  const leadStages: LeadStage[] = [
-    "New Lead",
-    "Contacted",
-    "Not Responding",
-    "Follow-up Needed",
-  ];
+  const leadStages: LeadStage[] = ["New Lead", "Contacted", "Not Responding", "Follow-up Needed"];
+  const interestStages: InterestStage[] = ["Interested", "Quotation Sent", "Asked for More Info"];
+  const conversionStages: ConversionStage[] = ["Payment Pending", "Paid", "Order Confirmed"];
 
-  const interestStages: InterestStage[] = [
-    "Interested",
-    "Quotation Sent",
-    "Asked for More Info",
-  ];
-
-  const conversionStages: ConversionStage[] = [
-    "Payment Pending",
-    "Paid",
-    "Order Confirmed",
-  ];
-
-  const currentColor = currentConversionStage
-    ? "green"
-    : currentInterestStage
-    ? "yellow"
-    : "blue";
-
-  // Handle cascading stage logic
   const handleStageChange = (
     field: "lead_stage" | "interest_stage" | "conversion_stage",
     value: string
@@ -97,9 +108,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
       }
     } else if (field === "interest_stage") {
       setSelectedInterestStage(value ? (value as InterestStage) : null);
-      if (!value) {
-        setSelectedConversionStage(null);
-      }
+      if (!value) setSelectedConversionStage(null);
     } else if (field === "conversion_stage") {
       setSelectedConversionStage(value ? (value as ConversionStage) : null);
     }
@@ -118,7 +127,6 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
     setError(null);
 
     try {
-      // Find customer by phone
       const customers = await getCustomers({ search: customerPhone! });
       const customerData = customers.find((c) => c.phone === customerPhone);
 
@@ -129,23 +137,12 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
       }
 
       setCustomerId(customerData.id);
-
       setCurrentLeadStage((customerData.lead_stage as LeadStage) || "New Lead");
-      setCurrentInterestStage(
-        (customerData.interest_stage as InterestStage) || null
-      );
-      setCurrentConversionStage(
-        (customerData.conversion_stage as ConversionStage) || null
-      );
-      setSelectedLeadStage(
-        (customerData.lead_stage as LeadStage) || "New Lead"
-      );
-      setSelectedInterestStage(
-        (customerData.interest_stage as InterestStage) || null
-      );
-      setSelectedConversionStage(
-        (customerData.conversion_stage as ConversionStage) || null
-      );
+      setCurrentInterestStage((customerData.interest_stage as InterestStage) || null);
+      setCurrentConversionStage((customerData.conversion_stage as ConversionStage) || null);
+      setSelectedLeadStage((customerData.lead_stage as LeadStage) || "New Lead");
+      setSelectedInterestStage((customerData.interest_stage as InterestStage) || null);
+      setSelectedConversionStage((customerData.conversion_stage as ConversionStage) || null);
     } catch (err: any) {
       setError("Failed to fetch customer data: " + err.message);
       console.error("Error fetching customer data:", err);
@@ -168,12 +165,10 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
         conversion_stage: selectedConversionStage,
       });
 
-      // Update local state
       setCurrentLeadStage(selectedLeadStage);
       setCurrentInterestStage(selectedInterestStage);
       setCurrentConversionStage(selectedConversionStage);
 
-      // Notify parent
       if (onStageUpdate) {
         onStageUpdate({
           lead_stage: selectedLeadStage,
@@ -182,7 +177,6 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
         });
       }
 
-      // Refresh conversations to show updated stages immediately
       if (onRefreshConversations) {
         onRefreshConversations();
       }
@@ -198,156 +192,156 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
 
   if (!isOpen) return null;
 
+  const submitDisabled = !selectedLeadStage || updating || loading;
+
+  const progressType = currentConversionStage ? 'conversion' : currentInterestStage ? 'interest' : 'lead';
+  const progressLabel = currentConversionStage || currentInterestStage || currentLeadStage || 'New Lead';
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {customerName ? `${customerName}'s Lead Stage` : "Lead Stage"}
-            </h2>
+    <>
+      <style>{`@keyframes lsm-spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* Header */}
+          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <TrendingUp size={16} style={{ color: '#22c55e' }} />
+              </div>
+              <div>
+                <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>
+                  {customerName ? `${customerName}'s Stage` : 'Lead Stage'}
+                </span>
+                <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>Update customer progression</span>
+              </div>
+            </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <X size={15} style={{ color: '#71717a' }} />
             </button>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : error ? (
-            <div className="text-center py-8 text-red-600">{error}</div>
-          ) : (
-            <>
-              {/* Current Progress */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">
-                  Current Progress
-                </h3>
-                <div className="space-y-1">
-                  {currentConversionStage ? (
-                    <span className="text-sm font-medium text-green-600">
-                      🟢 {currentConversionStage}
-                    </span>
-                  ) : currentInterestStage ? (
-                    <span className="text-sm font-medium text-yellow-600">
-                      🟡 {currentInterestStage}
-                    </span>
-                  ) : (
-                    <span className="text-sm font-medium text-blue-600">
-                      🔵 {currentLeadStage || "New Lead"}
-                    </span>
-                  )}
-                </div>
+          {/* Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+            {loading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #ebebeb', borderTopColor: '#22c55e', animation: 'lsm-spin 0.7s linear infinite' }} />
               </div>
+            ) : error ? (
+              <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
+                {error}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-              {/* Customer Progress Stages */}
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                  Customer Progress Stages
-                </h4>
-                <div className="space-y-3">
+                {/* Current Progress */}
+                <div style={{ background: '#f9f9f9', borderRadius: 12, border: '1px solid #ebebeb', padding: '14px 16px' }}>
+                  <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Current Progress</span>
+                  <span style={{ ...DM, fontSize: 13, fontWeight: 600, padding: '4px 10px', borderRadius: 20, display: 'inline-block', ...getProgressStyle(progressType) }}>
+                    {progressLabel}
+                  </span>
+                </div>
+
+                {/* Stage Selects */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
                   {/* Lead Stage */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Lead Stage 🔵
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
+                      Lead Stage
+                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, ...getProgressStyle('lead') }}>Initial</span>
                     </label>
-                    <select
-                      value={selectedLeadStage || ""}
-                      onChange={(e) =>
-                        handleStageChange("lead_stage", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      disabled={loading || updating}
-                    >
-                      {leadStages.map((stage) => (
-                        <option key={stage} value={stage}>
-                          {stage}
-                        </option>
-                      ))}
-                    </select>
+                    <div style={{ position: 'relative' }}>
+                      <select
+                        value={selectedLeadStage || ""}
+                        onChange={(e) => handleStageChange("lead_stage", e.target.value)}
+                        disabled={loading || updating}
+                        style={loading || updating ? disabledSelectStyle : selectStyle}
+                        onFocus={onFocus}
+                        onBlur={onBlur}
+                      >
+                        {leadStages.map((stage) => (
+                          <option key={stage} value={stage}>{stage}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   {/* Interest Stage */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Interest Stage 🟡
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
+                      Interest Stage
+                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, ...getProgressStyle('interest') }}>Optional</span>
                     </label>
                     <select
                       value={selectedInterestStage || ""}
-                      onChange={(e) =>
-                        handleStageChange("interest_stage", e.target.value)
-                      }
-                      disabled={
-                        selectedLeadStage === "New Lead" || loading || updating
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      onChange={(e) => handleStageChange("interest_stage", e.target.value)}
+                      disabled={selectedLeadStage === "New Lead" || loading || updating}
+                      style={(selectedLeadStage === "New Lead" || loading || updating) ? disabledSelectStyle : selectStyle}
+                      onFocus={onFocus}
+                      onBlur={onBlur}
                     >
-                      <option value="">Select Interest Stage</option>
+                      <option value="">No interest stage</option>
                       {interestStages.map((stage) => (
-                        <option key={stage} value={stage}>
-                          {stage}
-                        </option>
+                        <option key={stage} value={stage}>{stage}</option>
                       ))}
                     </select>
                   </div>
 
                   {/* Conversion Stage */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Conversion Stage 🟢
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
+                      Conversion Stage
+                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, ...getProgressStyle('conversion') }}>Optional</span>
                     </label>
                     <select
                       value={selectedConversionStage || ""}
-                      onChange={(e) =>
-                        handleStageChange("conversion_stage", e.target.value)
-                      }
+                      onChange={(e) => handleStageChange("conversion_stage", e.target.value)}
                       disabled={!selectedInterestStage || loading || updating}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      style={(!selectedInterestStage || loading || updating) ? disabledSelectStyle : selectStyle}
+                      onFocus={onFocus}
+                      onBlur={onBlur}
                     >
-                      <option value="">Select Conversion Stage</option>
+                      <option value="">No conversion stage</option>
                       {conversionStages.map((stage) => (
-                        <option key={stage} value={stage}>
-                          {stage}
-                        </option>
+                        <option key={stage} value={stage}>{stage}</option>
                       ))}
                     </select>
                   </div>
                 </div>
-              </div>
 
-              {/* Update Button */}
-              <button
-                onClick={handleStageUpdate}
-                disabled={!selectedLeadStage || updating || loading}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {updating ? "Updating..." : "Update Stages"}
-              </button>
-            </>
-          )}
+                {/* Footer Buttons */}
+                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleStageUpdate}
+                    disabled={submitDisabled}
+                    style={{ flex: 1, background: submitDisabled ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: submitDisabled ? 'not-allowed' : 'pointer', boxShadow: submitDisabled ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    {updating ? (
+                      <>
+                        <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'lsm-spin 0.7s linear infinite' }} />
+                        Updating…
+                      </>
+                    ) : 'Update Stages'}
+                  </button>
+                </div>
+
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

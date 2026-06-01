@@ -1,23 +1,23 @@
 import React from 'react';
+import { Users } from 'lucide-react';
 
 interface CustomerAnalyticsProps {
   totalCustomers: number;
 }
 
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
 const CustomerAnalytics: React.FC<CustomerAnalyticsProps> = ({ totalCustomers }) => {
   return (
-    <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center">
-          <div className="p-3 rounded-full bg-green-100">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Total Customers</p>
-            <p className="text-2xl font-bold text-gray-900">{totalCustomers}</p>
-          </div>
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '20px 22px', display: 'inline-flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 11, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Users size={18} style={{ color: '#22c55e' }} />
+        </div>
+        <div>
+          <div style={{ ...DM, fontSize: 12, fontWeight: 500, color: '#71717a', marginBottom: 2 }}>Total Customers</div>
+          <div style={{ ...SYNE, fontSize: 26, fontWeight: 800, color: '#0c1a0e', lineHeight: 1 }}>{totalCustomers}</div>
         </div>
       </div>
     </div>

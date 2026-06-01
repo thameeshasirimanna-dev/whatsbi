@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X, Pencil, CheckCircle } from 'lucide-react';
 import { getToken } from "../lib/auth";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
@@ -6,15 +7,15 @@ const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 interface EditAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void; // Callback for successful agent update
+  onSuccess?: () => void;
   agentId: string;
   initialData: {
     agent_name: string;
     email: string;
     business_type?: "product" | "service";
   };
-  supabaseUrl?: string; // Edge Function base URL
-  createdByUserId?: string; // Admin's users table ID (UUID)
+  supabaseUrl?: string;
+  createdByUserId?: string;
 }
 
 interface AgentFormData {
@@ -27,6 +28,26 @@ interface AgentFormData {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_STRENGTH_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
 
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '9px 12px',
+  fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
+  background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9,
+  outline: 'none', boxSizing: 'border-box',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+};
+
+const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#22c55e';
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
+};
+const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#ebebeb';
+  e.currentTarget.style.boxShadow = 'none';
+};
+
 const EditAgentModal: React.FC<EditAgentModalProps> = ({
   isOpen,
   onClose,
@@ -34,7 +55,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   agentId,
   initialData,
   supabaseUrl = 'https://itvaqysqzdmwhucllktz.supabase.co',
-  createdByUserId
+  createdByUserId,
 }) => {
   const [formData, setFormData] = useState<AgentFormData>({
     agent_name: initialData.agent_name,
@@ -47,7 +68,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Update form data when initialData changes
   useEffect(() => {
     if (isOpen && initialData) {
       setFormData({
@@ -60,9 +80,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     }
   }, [isOpen, initialData]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -96,8 +114,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
       agent_id: agentId,
       updated_by: createdByUserId,
     };
-    
-    // Only include password if provided
+
     if (formData.temp_password && formData.temp_password.trim()) {
       submitData.temp_password = formData.temp_password;
     }
@@ -111,9 +128,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Get current user token for authentication
       const token = getToken();
-
       if (!token) {
         setError("User not authenticated. Please log in again.");
         setIsLoading(false);
@@ -122,10 +137,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
 
       const res = await fetch(`${backendUrl}/update-agent`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(submitData),
       });
       const data = await res.json();
@@ -133,13 +145,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
       if (res.ok && data.success) {
         setSuccessMessage("Agent updated successfully!");
         setShowSuccess(true);
+        if (onSuccess) onSuccess();
 
-        // Call success callback immediately
-        if (onSuccess) {
-          onSuccess();
-        }
-
-        // Close modal after success display
         setTimeout(() => {
           setShowSuccess(false);
           onClose();
@@ -159,12 +166,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   const handleClose = () => {
     if (!isLoading && !showSuccess) {
       setError('');
-      setFormData({
-        agent_name: initialData.agent_name,
-        email: initialData.email,
-        business_type: initialData.business_type || "product",
-        temp_password: "",
-      });
+      setFormData({ agent_name: initialData.agent_name, email: initialData.email, business_type: initialData.business_type || "product", temp_password: "" });
       setShowSuccess(false);
       onClose();
     }
@@ -173,175 +175,96 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        {showSuccess ? (
-          // Success popup view
-          <div className="p-6 text-center">
-            <div className="mb-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-8 h-8 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+    <>
+      <style>{`@keyframes eam-spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 460, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {showSuccess ? (
+            <div style={{ padding: '48px 32px', textAlign: 'center' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <CheckCircle size={28} style={{ color: '#22c55e' }} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {successMessage}
-              </h3>
-            </div>
-            <div className="text-sm text-gray-500 mb-6">
-              You will be redirected to the agents list shortly...
-            </div>
-            <div className="flex justify-center space-x-3">
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
+              <div style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#0c1a0e', marginBottom: 8 }}>{successMessage}</div>
+              <div style={{ ...DM, fontSize: 12, color: '#a1a1aa', marginBottom: 20 }}>Redirecting to agents list shortly…</div>
+              <button onClick={handleClose} style={{ background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '10px 24px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 Close
               </button>
             </div>
-          </div>
-        ) : (
-          // Form view - Only original agent fields
-          <>
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Edit Agent
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Update agent basic information. WhatsApp configuration managed
-                separately.
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6">
-              {/* Agent Basic Information */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-3 border-b border-gray-200 pb-2">
-                  Agent Information
-                </h3>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Agent Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="agent_name"
-                    value={formData.agent_name}
-                    onChange={handleInputChange}
-                    placeholder="Enter agent full name"
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
+          ) : (
+            <>
+              <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Pencil size={15} style={{ color: '#22c55e' }} />
+                  </div>
+                  <div>
+                    <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>Edit Agent</span>
+                    <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>Update basic info. WhatsApp managed separately.</span>
+                  </div>
                 </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="agent@example.com"
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Type *
-                  </label>
-                  <select
-                    name="business_type"
-                    value={formData.business_type}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  >
-                    <option value="service">Service</option>
-                    <option value="product">Product</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select the type of business this agent manages
-                  </p>
-                </div>
-
-                {/* Optional Password Field */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    New Password (Optional)
-                  </label>
-                  <input
-                    type="password"
-                    name="temp_password"
-                    value={formData.temp_password}
-                    onChange={handleInputChange}
-                    placeholder="Leave empty to keep current password"
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Enter a new password to reset the agent's password. Leave
-                    empty to keep current password.
-                  </p>
-                </div>
-              </div>
-
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
-                  {error}
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    isLoading
-                      ? "bg-gray-400 cursor-not-allowed text-white"
-                      : "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500"
-                  }`}
-                >
-                  {isLoading ? "Updating..." : "Update Agent"}
+                <button onClick={handleClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
+                  <X size={15} style={{ color: '#71717a' }} />
                 </button>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 text-center">
-                <p>
-                  WhatsApp configuration is managed separately from agent basic
-                  information.
-                </p>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                {error && (
+                  <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Agent Name *</label>
+                    <input type="text" name="agent_name" value={formData.agent_name} onChange={handleInputChange} placeholder="Enter agent full name" disabled={isLoading} required style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9' }} onFocus={onFocus} onBlur={onBlur} />
+                  </div>
+
+                  <div>
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Email Address *</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="agent@example.com" disabled={isLoading} required style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9' }} onFocus={onFocus} onBlur={onBlur} />
+                  </div>
+
+                  <div>
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Business Type *</label>
+                    <select name="business_type" value={formData.business_type} onChange={handleInputChange} disabled={isLoading} required style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9', appearance: 'none', cursor: isLoading ? 'not-allowed' : 'pointer' }} onFocus={onFocus} onBlur={onBlur}>
+                      <option value="service">Service</option>
+                      <option value="product">Product</option>
+                    </select>
+                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>Select the type of business this agent manages</div>
+                  </div>
+
+                  <div>
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>New Password (Optional)</label>
+                    <input type="password" name="temp_password" value={formData.temp_password} onChange={handleInputChange} placeholder="Leave empty to keep current password" disabled={isLoading} style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9' }} onFocus={onFocus} onBlur={onBlur} />
+                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>Leave empty to keep current password.</div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, paddingTop: 6 }}>
+                    <button type="button" onClick={handleClose} disabled={isLoading} style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.5 : 1 }}>
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isLoading} style={{ flex: 1, background: isLoading ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', boxShadow: isLoading ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      {isLoading ? (
+                        <>
+                          <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'eam-spin 0.7s linear infinite' }} />
+                          Updating…
+                        </>
+                      ) : "Update Agent"}
+                    </button>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid #f4f4f5', paddingTop: 12, textAlign: 'center', ...DM, fontSize: 11, color: '#a1a1aa' }}>
+                    WhatsApp configuration is managed separately from agent basic information.
+                  </div>
+                </form>
               </div>
-            </form>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

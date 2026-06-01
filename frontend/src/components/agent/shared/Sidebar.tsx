@@ -1,22 +1,22 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  HomeIcon,
-  ChatBubbleLeftRightIcon,
-  UserGroupIcon,
-  ShoppingBagIcon,
-  ChartBarIcon,
-  CogIcon,
-  DocumentTextIcon,
-  DocumentDuplicateIcon,
-  ArchiveBoxIcon,
-  CalendarIcon,
-  Bars3Icon,
-  XMarkIcon,
-  ChevronRightIcon,
-  ChevronLeftIcon,
-  BriefcaseIcon
-} from '@heroicons/react/24/outline';
+  LayoutDashboard,
+  MessageSquare,
+  Users,
+  ShoppingBag,
+  BarChart3,
+  Settings,
+  FileText,
+  Files,
+  Package,
+  Calendar,
+  X,
+  ChevronRight,
+  ChevronLeft,
+  Briefcase,
+  type LucideIcon,
+} from 'lucide-react';
 
 interface SidebarProps {
   agent?: any;
@@ -28,31 +28,33 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
-agent,
-unreadCount = 0,
-isOpen = true,
-open = true,
-collapsed = true,
-onCollapseToggle,
-onClose
-}) => {
-const sidebarOpen = open || isOpen || true;
-const [isMobileOpen, setIsMobileOpen] = useState(false);
-const location = useLocation();
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
-  const baseNavigation = [
-    { name: 'Dashboard', href: '/agent', icon: HomeIcon },
-    { name: 'Conversations', href: '/agent/conversations', icon: ChatBubbleLeftRightIcon },
-    { name: 'Customers', href: '/agent/customers', icon: UserGroupIcon },
-    { name: 'Orders', href: '/agent/orders', icon: ShoppingBagIcon },
-    { name: 'Invoices', href: '/agent/invoices', icon: DocumentTextIcon },
-    { name: 'Inventory', href: '/agent/inventory', icon: ArchiveBoxIcon },
-    { name: 'Services', href: '/agent/services', icon: BriefcaseIcon },
-    { name: 'Appointments', href: '/agent/appointments', icon: CalendarIcon },
-    { name: 'Templates', href: '/agent/templates', icon: DocumentDuplicateIcon },
-    { name: 'Analytics', href: '/agent/analytics', icon: ChartBarIcon },
-    { name: 'Settings', href: '/agent/settings', icon: CogIcon },
+const Sidebar: React.FC<SidebarProps> = ({
+  agent,
+  unreadCount = 0,
+  isOpen = true,
+  open = true,
+  collapsed = true,
+  onCollapseToggle,
+  onClose,
+}) => {
+  const [isMobileOpen] = useState(false);
+  const location = useLocation();
+
+  const baseNavigation: { name: string; href: string; icon: LucideIcon }[] = [
+    { name: 'Dashboard', href: '/agent', icon: LayoutDashboard },
+    { name: 'Conversations', href: '/agent/conversations', icon: MessageSquare },
+    { name: 'Customers', href: '/agent/customers', icon: Users },
+    { name: 'Orders', href: '/agent/orders', icon: ShoppingBag },
+    { name: 'Invoices', href: '/agent/invoices', icon: FileText },
+    { name: 'Inventory', href: '/agent/inventory', icon: Package },
+    { name: 'Services', href: '/agent/services', icon: Briefcase },
+    { name: 'Appointments', href: '/agent/appointments', icon: Calendar },
+    { name: 'Templates', href: '/agent/templates', icon: Files },
+    { name: 'Analytics', href: '/agent/analytics', icon: BarChart3 },
+    { name: 'Settings', href: '/agent/settings', icon: Settings },
   ];
 
   const navigation = baseNavigation.filter(item => {
@@ -63,150 +65,269 @@ const location = useLocation();
     }
   });
 
-  // Tooltips for icon-only mode
-  const getTooltip = (name: string) => {
-    const tooltips = {
-      'Dashboard': 'Dashboard Overview',
-      'Conversations': 'Manage Conversations',
-      'Customers': 'Customer Directory',
-      'Orders': 'Order Management',
-      'Appointments': 'Manage Appointments',
-      'Templates': 'WhatsApp Templates',
-      'Analytics': 'Performance Analytics',
-      'Settings': 'Account Settings',
-      'Inventory': 'Manage Products',
-      'Services': 'Manage Services'
-    };
-    return tooltips[name as keyof typeof tooltips] || name;
-  };
+  const handleNavClick = () => {};
 
-  const handleNavClick = () => {
-    setIsMobileOpen(false);
+  const isVisible = open || isOpen || isMobileOpen;
+
+  const getInitials = (name: string) => {
+    if (!name) return 'WA';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   };
 
   return (
     <>
-      {/* Mobile menu button */}
-      <div className="md:hidden">
-        <button
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="p-4 text-gray-300 hover:text-white fixed top-4 left-4 z-50 bg-gray-900/80 backdrop-blur-sm rounded-lg"
-        >
-          {isMobileOpen ? (
-            <XMarkIcon className="h-6 w-6" />
-          ) : (
-            <Bars3Icon className="h-6 w-6" />
-          )}
-        </button>
-      </div>
-
-      {/* Sidebar */}
       <div
-        className={`
-          fixed inset-y-0 left-0 z-50 transform
-          bg-gradient-to-b from-gray-900/95 to-gray-800/95 shadow-2xl backdrop-blur-sm
-          transition-all duration-300 ease-in-out border-r border-gray-700/30 overflow-hidden
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0 md:static md:inset-0
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${collapsed ? 'w-16 md:w-16' : 'w-64 md:w-64'}
-        `}
+        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col ${isVisible ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        style={{
+          width: collapsed ? 64 : 220,
+          background: '#0c1a0e',
+          borderRight: '1px solid rgba(255,255,255,0.06)',
+          flexShrink: 0,
+          transition: 'width 0.25s ease, transform 0.25s ease',
+          overflow: 'hidden',
+        }}
       >
-        {/* Sidebar content */}
-        <div className="flex h-full flex-col bg-gray-900/95 backdrop-blur-sm overflow-hidden">
-          {/* Sidebar header */}
-          <div className="flex h-16 shrink-0 items-center justify-between px-3 md:px-4 border-b border-gray-700/50 bg-gradient-to-r from-gray-900 to-gray-800 backdrop-blur-sm">
-            <div className="flex-1" />
-            <div className="flex items-center space-x-2">
+        {/* Header */}
+        <div style={{
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 16px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          flexShrink: 0,
+          gap: 10,
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            flexShrink: 0,
+            background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+            </svg>
+          </div>
+
+          {!collapsed && (
+            <>
+              <span style={{ ...SYNE, fontWeight: 700, fontSize: 16, color: '#fff', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                WhatsBi
+              </span>
               <button
                 onClick={onCollapseToggle}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/10 transition-colors duration-200 md:block hidden"
-                title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className="hidden md:flex"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  color: 'rgba(255,255,255,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 6,
+                  flexShrink: 0,
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
               >
-                {collapsed ? (
-                  <ChevronRightIcon className="h-5 w-5" />
-                ) : (
-                  <ChevronLeftIcon className="h-5 w-5" />
-                )}
+                <ChevronLeft size={15} />
               </button>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 md:hidden transition-colors duration-200"
+                className="md:hidden"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  color: 'rgba(255,255,255,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 6,
+                  flexShrink: 0,
+                }}
               >
-                <XMarkIcon className="h-6 w-6" />
+                <X size={16} />
               </button>
-            </div>
-            <div className="flex-1" />
-          </div>
+            </>
+          )}
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex flex-1 flex-col overflow-y-auto py-6 overflow-x-hidden">
-            <ul role="list" className="space-y-2 px-1 md:px-2">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const isCurrent = item.name === 'Dashboard'
-                  ? location.pathname === item.href
-                  : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
-                const isConversations = item.name === 'Conversations';
-                const showUnreadBadge = isConversations && unreadCount > 0;
-                return (
-                  <li key={item.name}>
-                    <Link
-                      to={item.href}
-                      className={`
-                        group relative flex items-center rounded-lg py-3 text-sm font-medium transition-all duration-200
-                        ${collapsed ? 'justify-center px-3.5 w-16' : 'justify-start px-4 flex-1 min-w-0'}
-                        ${isCurrent
-                          ? 'bg-gradient-to-r from-green-500/10 to-teal-500/10 text-green-400 border border-green-500/30 shadow-lg'
-                          : 'text-gray-400 hover:bg-white/10 hover:text-gray-200 hover:border-gray-600/30 border border-transparent/50'
-                        }
-                        ${isMobileOpen ? 'justify-start w-full px-4' : ''}
-                        hover:shadow-md
-                        no-underline
-                        max-w-full
-                      `}
-                      title={getTooltip(item.name)}
-                      onClick={handleNavClick}
-                    >
-                      <Icon
-                        className={`
-                          h-5 w-5 flex-shrink-0 transition-transform duration-200
-                          ${collapsed ? 'mx-0.5' : 'mr-3 ml-0'}
-                          ${isCurrent ? 'text-green-400 scale-110' : 'text-gray-400 group-hover:text-gray-200 group-hover:scale-110'}
-                          ${isCurrent ? 'drop-shadow-sm' : ''}
-                        `}
-                        aria-hidden="true"
-                      />
-                      {/* Unread badge for Conversations */}
-                      {showUnreadBadge && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold min-w-[20px]">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                      )}
-                      {/* Active indicator for mobile */}
-                      {isCurrent && isMobileOpen && (
-                        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-green-500 rounded-r-full" />
-                      )}
-                      {/* Collapsed state text - only visible when expanded */}
-                      {!collapsed && !isMobileOpen && (
-                        <span className="ml-2.5 whitespace-nowrap font-medium text-gray-200 opacity-90 min-w-0 truncate max-w-full">
-                          {item.name}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+        {/* Nav */}
+        <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 8px' }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {navigation.map(item => {
+              const Icon = item.icon;
+              const isCurrent = item.name === 'Dashboard'
+                ? location.pathname === item.href
+                : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+              const isConversations = item.name === 'Conversations';
+              const showUnreadBadge = isConversations && unreadCount > 0;
+
+              return (
+                <li key={item.name}>
+                  <Link
+                    to={item.href}
+                    onClick={handleNavClick}
+                    title={collapsed ? item.name : undefined}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: collapsed ? 0 : 10,
+                      padding: collapsed ? '10px 0' : '9px 12px',
+                      justifyContent: collapsed ? 'center' : 'flex-start',
+                      borderRadius: 10,
+                      textDecoration: 'none',
+                      position: 'relative',
+                      background: isCurrent ? 'rgba(34,197,94,0.12)' : 'transparent',
+                      transition: 'background 0.15s',
+                    }}
+                    className={!isCurrent ? 'hover:bg-white/[0.05]' : ''}
+                  >
+                    {isCurrent && (
+                      <div style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 3,
+                        height: 18,
+                        background: '#4ade80',
+                        borderRadius: '0 3px 3px 0',
+                      }} />
+                    )}
+
+                    <Icon
+                      size={17}
+                      style={{ color: isCurrent ? '#4ade80' : 'rgba(255,255,255,0.28)', flexShrink: 0 }}
+                    />
+
+                    {!collapsed && (
+                      <span style={{
+                        ...DM,
+                        fontSize: 13.5,
+                        fontWeight: isCurrent ? 600 : 400,
+                        color: isCurrent ? '#fff' : 'rgba(255,255,255,0.42)',
+                        whiteSpace: 'nowrap',
+                        flex: 1,
+                      }}>
+                        {item.name}
+                      </span>
+                    )}
+
+                    {!collapsed && showUnreadBadge && (
+                      <span style={{
+                        background: '#22c55e',
+                        color: '#fff',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        borderRadius: 9999,
+                        minWidth: 18,
+                        height: 18,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 5px',
+                        flexShrink: 0,
+                      }}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+
+                    {collapsed && showUnreadBadge && (
+                      <span style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: '#22c55e',
+                      }} />
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Bottom */}
+        <div style={{
+          padding: '12px 8px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          flexShrink: 0,
+        }}>
+          {collapsed ? (
+            <button
+              onClick={onCollapseToggle}
+              className="hidden md:flex w-full items-center justify-center"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px 0',
+                color: 'rgba(255,255,255,0.3)',
+                borderRadius: 8,
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+            >
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            agent?.name && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 10px',
+                borderRadius: 10,
+                background: 'rgba(255,255,255,0.04)',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: 'rgba(34,197,94,0.15)',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <span style={{ ...SYNE, fontSize: 10, fontWeight: 700, color: '#4ade80' }}>
+                    {getInitials(agent.name)}
+                  </span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...DM, fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {agent.name}
+                  </div>
+                  <div style={{ ...DM, fontSize: 10, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {agent.role || 'Agent'}
+                  </div>
+                </div>
+              </div>
+            )
+          )}
         </div>
       </div>
 
       {/* Mobile overlay */}
-      {isMobileOpen && (
+      {isVisible && (
         <div
-          className="fixed inset-0 z-40 bg-gray-900/60 md:hidden backdrop-blur-md"
-          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 z-40 md:hidden"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={onClose}
         />
       )}
     </>

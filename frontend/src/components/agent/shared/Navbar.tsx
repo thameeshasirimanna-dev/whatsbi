@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from "react-router-dom";
-import {
-  BellIcon,
-  UserCircleIcon,
-  ArrowRightOnRectangleIcon,
-  Bars3Icon,
-  CurrencyDollarIcon,
-} from "@heroicons/react/24/outline";
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Bell, LogOut, Menu, Coins } from 'lucide-react';
 
 interface Notification {
   id: number;
@@ -33,256 +27,313 @@ interface NavbarProps {
   collapsed?: boolean;
 }
 
-const Navbar: React.FC<NavbarProps> = ({
-  agent,
-  onMenuClick,
-  onLogout,
-  collapsed = false,
-}) => {
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
+const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
-  const toggleNotifications = () => {
-    setIsNotificationOpen(!isNotificationOpen);
-  };
+  const toggleNotifications = () => setIsNotificationOpen(v => !v);
+  const closeNotifications = () => setIsNotificationOpen(false);
 
-  const closeNotifications = () => {
-    setIsNotificationOpen(false);
-  };
   const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   };
 
   const getPageTitle = () => {
     const path = location.pathname;
-    const segments = path.split("/").filter(Boolean);
-
-    if (segments.length < 2) return "Dashboard";
-    const pageSegment = segments[1];
-    if (pageSegment === "dashboard") return "Dashboard";
-    if (pageSegment === "conversations") return "Conversations";
-    if (pageSegment === "customers") return "Customers";
-    if (pageSegment === "orders")
-      return segments.length > 2 ? "Order Details" : "Orders";
-    if (pageSegment === "appointments") return "Appointments";
-    if (pageSegment === "services") return "Services";
-    if (pageSegment === "inventory") return "Inventory";
-    if (pageSegment === "invoices") return "Invoices";
-    if (pageSegment === "templates") return "Templates";
-    if (pageSegment === "analytics") return "Analytics";
-    if (pageSegment === "settings") return "Settings";
-
-    return "Dashboard";
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length < 2) return 'Dashboard';
+    const s = segments[1];
+    if (s === 'dashboard') return 'Dashboard';
+    if (s === 'conversations') return 'Conversations';
+    if (s === 'customers') return 'Customers';
+    if (s === 'orders') return segments.length > 2 ? 'Order Details' : 'Orders';
+    if (s === 'appointments') return 'Appointments';
+    if (s === 'services') return 'Services';
+    if (s === 'inventory') return 'Inventory';
+    if (s === 'invoices') return 'Invoices';
+    if (s === 'templates') return 'Templates';
+    if (s === 'analytics') return 'Analytics';
+    if (s === 'settings') return 'Settings';
+    return 'Dashboard';
   };
 
   const getPageSubtitle = () => {
     const path = location.pathname;
-    const segments = path.split("/").filter(Boolean);
-
-    if (segments.length < 2) return "Overview of your business";
-    const pageSegment = segments[1];
-    if (pageSegment === "dashboard") return "Overview of your business";
-    if (pageSegment === "conversations") return "Manage your conversations";
-    if (pageSegment === "customers")
-      return "Manage your customer base and insights";
-    if (pageSegment === "orders")
-      return segments.length > 2 ? "Order details" : "Manage your orders";
-    if (pageSegment === "appointments")
-      return "Schedule and manage appointments";
-    if (pageSegment === "services") return "Manage your services";
-    if (pageSegment === "inventory") return "Manage your inventory";
-    if (pageSegment === "invoices") return "Create and send invoices";
-    if (pageSegment === "templates") return "Manage message templates";
-    if (pageSegment === "analytics") return "View your analytics";
-    if (pageSegment === "settings") return "Configure your settings";
-
-    return "Overview of your business";
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length < 2) return 'Overview of your business';
+    const s = segments[1];
+    if (s === 'dashboard') return 'Overview of your business';
+    if (s === 'conversations') return 'Manage your conversations';
+    if (s === 'customers') return 'Manage your customer base and insights';
+    if (s === 'orders') return segments.length > 2 ? 'Order details' : 'Manage your orders';
+    if (s === 'appointments') return 'Schedule and manage appointments';
+    if (s === 'services') return 'Manage your services';
+    if (s === 'inventory') return 'Manage your inventory';
+    if (s === 'invoices') return 'Create and send invoices';
+    if (s === 'templates') return 'Manage message templates';
+    if (s === 'analytics') return 'View your analytics';
+    if (s === 'settings') return 'Configure your settings';
+    return 'Overview of your business';
   };
 
   const pageTitle = getPageTitle();
   const pageSubtitle = getPageSubtitle();
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 py-2">
-      <div
-        className={`
-        w-full
-        px-4 sm:px-6
-        md:${collapsed ? "pl-16 pr-6" : "pl-64 pr-6"}
-        lg:${collapsed ? "pl-16 pr-8" : "pl-64 pr-8"}
-      `}
-      >
-        <div className="flex justify-between h-16 items-center w-full">
-          {/* Left: Menu Button (Mobile) and Logo */}
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={onMenuClick}
-              className="md:hidden p-2 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label="Open sidebar"
-            >
-              <Bars3Icon className="h-6 w-6" />
-            </button>
+    <nav style={{
+      background: '#fff',
+      borderBottom: '1px solid #ebebeb',
+      height: 60,
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 20px 0 24px',
+      justifyContent: 'space-between',
+      flexShrink: 0,
+      zIndex: 30,
+      position: 'relative',
+    }}>
+      {/* Left */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button
+          onClick={onMenuClick}
+          className="md:hidden flex items-center"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 6,
+            color: '#71717a',
+            borderRadius: 8,
+          }}
+        >
+          <Menu size={20} />
+        </button>
 
-            <div className="block">
-              <span className="text-xl font-bold text-gray-900 block">
-                {pageTitle}
-              </span>
-              <span className="text-sm text-gray-600 block">
-                {pageSubtitle}
-              </span>
-            </div>
+        <div>
+          <div style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e', lineHeight: 1.2 }}>
+            {pageTitle}
           </div>
-
-          {/* Right: Notifications, User Menu */}
-          <div className="flex items-center space-x-4">
-            {/* Credits */}
-            <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
-              <CurrencyDollarIcon className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">
-                Credits: {agent.credits}
-              </span>
-            </div>
-
-            {/* Notifications */}
-            <div className="relative">
-              <button
-                onClick={toggleNotifications}
-                className="relative p-2.5 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <BellIcon className="h-5 w-5" />
-                {agent.unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold ring-2 ring-white">
-                    {agent.unreadCount > 99 ? "99+" : agent.unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Dropdown */}
-              {isNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 z-50 max-h-96 overflow-y-auto">
-                  <div className="px-4 py-2 border-b border-gray-200">
-                    <h3 className="text-sm font-medium text-gray-900">
-                      Notifications
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      {agent.unreadCount} unread messages
-                    </p>
-                  </div>
-                  {agent.recentNotifications.length > 0 ? (
-                    agent.recentNotifications.map((notification) => (
-                      <button
-                        key={notification.id}
-                        onClick={() => {
-                          agent.onNotificationClick(notification);
-                          closeNotifications();
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 font-medium text-sm">
-                                {notification.customerName
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()
-                                  .slice(0, 2)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {notification.customerName}
-                            </p>
-                            <p className="text-sm text-gray-500 truncate mt-1">
-                              {notification.preview}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {notification.timestamp}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-4 text-center text-gray-500">
-                      <BellIcon className="mx-auto h-6 w-6 text-gray-400 mb-2" />
-                      <p className="text-sm">No new notifications</p>
-                    </div>
-                  )}
-                  <div className="px-4 py-2 border-t border-gray-200">
-                    <button
-                      onClick={() => {
-                        navigate("/agent/conversations");
-                        closeNotifications();
-                      }}
-                      className="w-full text-left text-sm text-blue-600 hover:text-blue-500 font-medium"
-                    >
-                      View all conversations
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Click outside to close */}
-              {isNotificationOpen && (
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={closeNotifications}
-                />
-              )}
-            </div>
-
-            {/* User Menu */}
-            <div className="flex items-center space-x-3">
-              <div className="hidden md:flex flex-col items-end">
-                <span className="text-sm font-medium text-gray-900">
-                  {agent.name}
-                </span>
-                <span className="text-xs text-gray-500">{agent.email}</span>
-              </div>
-
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  agent.name
-                    ? "bg-green-100 text-green-800"
-                    : "bg-gray-300 text-gray-600"
-                }`}
-              >
-                {agent.name ? (
-                  getInitials(agent.name)
-                ) : (
-                  <UserCircleIcon className="h-6 w-6" />
-                )}
-              </div>
-            </div>
-
-            {/* Logout Button */}
-            <button
-              onClick={onLogout}
-              className="hidden md:flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
-            >
-              <ArrowRightOnRectangleIcon className="h-4 w-4" />
-              <span>Logout</span>
-            </button>
-
-            {/* Mobile Logout */}
-            <button
-              onClick={onLogout}
-              className="md:hidden p-2 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label="Logout"
-            >
-              <ArrowRightOnRectangleIcon className="h-6 w-6" />
-            </button>
+          <div style={{ ...DM, fontSize: 12, color: '#71717a', lineHeight: 1.2, marginTop: 1 }}>
+            {pageSubtitle}
           </div>
         </div>
+      </div>
+
+      {/* Right */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Credits */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '5px 12px',
+          borderRadius: 9999,
+          background: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+        }}>
+          <Coins size={13} style={{ color: '#059669' }} />
+          <span style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#15803d' }}>
+            {agent.credits}
+          </span>
+        </div>
+
+        {/* Bell */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={toggleNotifications}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 8,
+              color: '#71717a',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: 8,
+              position: 'relative',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.05)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >
+            <Bell size={18} />
+            {agent.unreadCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                minWidth: 16,
+                height: 16,
+                background: '#22c55e',
+                color: '#fff',
+                fontSize: 9,
+                fontWeight: 700,
+                borderRadius: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 3px',
+                border: '1.5px solid #fff',
+              }}>
+                {agent.unreadCount > 99 ? '99+' : agent.unreadCount}
+              </span>
+            )}
+          </button>
+
+          {isNotificationOpen && (
+            <>
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 8px)',
+                width: 320,
+                background: '#fff',
+                borderRadius: 12,
+                border: '1px solid #ebebeb',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                zIndex: 50,
+                maxHeight: 380,
+                overflowY: 'auto',
+              }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #ebebeb' }}>
+                  <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>Notifications</div>
+                  <div style={{ ...DM, fontSize: 12, color: '#71717a', marginTop: 2 }}>
+                    {agent.unreadCount} unread
+                  </div>
+                </div>
+
+                {agent.recentNotifications.length > 0 ? (
+                  agent.recentNotifications.map(notification => (
+                    <button
+                      key={notification.id}
+                      onClick={() => { agent.onNotificationClick(notification); closeNotifications(); }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '12px 16px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: '1px solid #f4f4f5',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    >
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: '#f0fdf4',
+                        border: '1.5px solid #bbf7d0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <span style={{ ...SYNE, fontSize: 11, fontWeight: 700, color: '#059669' }}>
+                          {notification.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {notification.customerName}
+                        </div>
+                        <div style={{ ...DM, fontSize: 12, color: '#71717a', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {notification.preview}
+                        </div>
+                        <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 2 }}>
+                          {notification.timestamp}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+                    <Bell size={24} style={{ color: '#d4d4d8', margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ ...DM, fontSize: 13, color: '#a1a1aa' }}>No new notifications</div>
+                  </div>
+                )}
+
+                <div style={{ padding: '10px 16px', borderTop: '1px solid #ebebeb' }}>
+                  <button
+                    onClick={() => { navigate('/agent/conversations'); closeNotifications(); }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      ...DM,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: '#059669',
+                      padding: 0,
+                    }}
+                  >
+                    View all conversations →
+                  </button>
+                </div>
+              </div>
+              <div className="fixed inset-0 z-40" onClick={closeNotifications} />
+            </>
+          )}
+        </div>
+
+        {/* Avatar + name */}
+        <div className="flex items-center" style={{ gap: 10 }}>
+          <div className="hidden md:block" style={{ textAlign: 'right' }}>
+            <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e', lineHeight: 1.2 }}>
+              {agent.name}
+            </div>
+            <div style={{ ...DM, fontSize: 11, color: '#71717a', lineHeight: 1.2 }}>
+              {agent.email}
+            </div>
+          </div>
+          <div style={{
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            background: '#f0fdf4',
+            border: '1.5px solid #bbf7d0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <span style={{ ...SYNE, fontSize: 12, fontWeight: 700, color: '#059669' }}>
+              {getInitials(agent.name)}
+            </span>
+          </div>
+        </div>
+
+        {/* Logout — single responsive button */}
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-2"
+          style={{
+            background: 'none',
+            border: '1px solid #e4e4e7',
+            borderRadius: 8,
+            padding: '7px 10px',
+            cursor: 'pointer',
+            color: '#71717a',
+            ...DM,
+            fontSize: 13,
+            fontWeight: 500,
+            transition: 'border-color 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#fecdd3'; e.currentTarget.style.color = '#f43f5e'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#e4e4e7'; e.currentTarget.style.color = '#71717a'; }}
+        >
+          <LogOut size={14} />
+          <span className="hidden md:inline">Logout</span>
+        </button>
       </div>
     </nav>
   );

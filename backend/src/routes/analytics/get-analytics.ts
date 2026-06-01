@@ -46,7 +46,7 @@ export default async function getAnalyticsRoutes(
         ordersData?.filter((order) => order.status === "completed").length || 0;
       const totalRevenue =
         ordersData?.reduce(
-          (sum, order) => sum + (order.total_amount || 0),
+          (sum, order) => sum + (parseFloat(order.total_amount) || 0),
           0
         ) || 0;
 
@@ -75,7 +75,7 @@ export default async function getAnalyticsRoutes(
         });
 
         const monthRevenue = monthOrders.reduce(
-          (sum, order) => sum + (order.total_amount || 0),
+          (sum, order) => sum + (parseFloat(order.total_amount) || 0),
           0
         );
         monthlyRevenue.push({

@@ -1,104 +1,100 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 
-export default async function updateUserRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function updateUserRoutes(fastify: FastifyInstance, pgClient: any) {
+  // Admin: POST /update-user — used by AdminDashboard (confirm email, etc.)
+  fastify.post('/update-user', async (request, reply) => {
+    try {
+      const authenticatedUser = await verifyJWT(request, pgClient);
+
+      if (authenticatedUser.role !== 'admin') {
+        return reply.code(403).send({ success: false, message: 'Access denied. Admin role required.' });
+      }
+
+      const body = request.body as any;
+
+      if (!body.user_id) {
+        return reply.code(400).send({ success: false, message: 'user_id is required' });
+      }
+
+      const updates = body.updates || {};
+
+      const fields: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
+
+      if (updates.name)           { fields.push(`name = $${idx++}`);           values.push(updates.name); }
+      if (updates.email)          { fields.push(`email = $${idx++}`);          values.push(updates.email); }
+      if (updates.role)           { fields.push(`role = $${idx++}`);           values.push(updates.role); }
+      if (updates.email_verified !== undefined) {
+        fields.push(`email_verified = $${idx++}`);
+        values.push(updates.email_verified);
+      }
+
+      if (fields.length === 0) {
+        return reply.code(400).send({ success: false, message: 'No valid fields provided for update' });
+      }
+
+      values.push(body.user_id);
+      const { rows, rowCount } = await pgClient.query(
+        `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, name, email, role`,
+        values
+      );
+
+      if (rowCount === 0) {
+        return reply.code(404).send({ success: false, message: 'User not found' });
+      }
+
+      return reply.code(200).send({ success: true, message: 'User updated successfully', user: rows[0] });
+    } catch (err) {
+      console.error('Update user error:', err);
+      return reply.code(500).send({ success: false, message: 'Server error: ' + (err as Error).message });
+    }
+  });
+
+  // Admin: PUT /update-user/:id — legacy form
   fastify.put('/update-user/:id', async (request, reply) => {
     try {
-      // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
+
+      if (authenticatedUser.role !== 'admin') {
+        return reply.code(403).send({ success: false, message: 'Access denied. Admin role required.' });
+      }
 
       const { id } = request.params as any;
       const body = request.body as any;
-      console.log('=== UPDATE-USER FUNCTION START ===');
-      console.log('Method:', request.method);
-      console.log('Headers:', request.headers);
-      console.log('Authenticated User:', authenticatedUser.id);
-      console.log('Target User ID:', id);
+      const { name, email, role } = body;
 
-      // Check if user is admin
-      if (authenticatedUser.role !== 'admin') {
-        return reply.code(403).send({
-          success: false,
-          message: 'Access denied. Admin role required.'
-        });
-      }
-
-      const {
-        name,
-        email,
-        role
-      } = body;
-
-      // Validate that at least one field is provided
       if (!name && !email && !role) {
-        return reply.code(400).send({
-          success: false,
-          message: "At least one field (name, email, or role) must be provided for update"
-        });
+        return reply.code(400).send({ success: false, message: 'At least one field (name, email, role) must be provided' });
       }
 
-      // Validate role if provided
       if (role && !['admin', 'agent', 'user'].includes(role)) {
-        return reply.code(400).send({
-          success: false,
-          message: "role must be 'admin', 'agent', or 'user'"
-        });
+        return reply.code(400).send({ success: false, message: "role must be 'admin', 'agent', or 'user'" });
       }
 
-      // Prepare update data
-      const updateData: any = {};
-      if (name) updateData.name = name;
-      if (email) updateData.email = email;
-      if (role) updateData.role = role;
+      const fields: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
 
-      // Update users table
-      const { data: user, error: userError } = await supabaseClient
-        .from("users")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single();
+      if (name)  { fields.push(`name = $${idx++}`);  values.push(name); }
+      if (email) { fields.push(`email = $${idx++}`); values.push(email); }
+      if (role)  { fields.push(`role = $${idx++}`);  values.push(role); }
 
-      if (userError || !user) {
-        return reply.code(400).send({
-          success: false,
-          message: "Failed to update user: " + userError?.message
-        });
+      values.push(id);
+      const { rows, rowCount } = await pgClient.query(
+        `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, name, email, role`,
+        values
+      );
+
+      if (rowCount === 0) {
+        return reply.code(404).send({ success: false, message: 'User not found' });
       }
 
-      // Update auth user metadata if name or email changed
-      if (name || email) {
-        const authUpdateData: any = {};
-        if (name) {
-          authUpdateData.user_metadata = { name: name };
-        }
-        if (email) {
-          authUpdateData.email = email;
-        }
-
-        const { error: authError } = await supabaseClient.auth.admin.updateUserById(id, authUpdateData);
-
-        if (authError) {
-          console.error('Failed to update auth user:', authError);
-          // Continue without failing the entire operation
-        }
-      }
-
-      console.log('User updated successfully:', user);
-
-      // Return success response
-      return reply.code(200).send({
-        success: true,
-        message: "User updated successfully",
-        user
-      });
-
+      return reply.code(200).send({ success: true, message: 'User updated successfully', user: rows[0] });
     } catch (err) {
-      console.error("Update user error:", err);
-      return reply.code(500).send({
-        success: false,
-        message: "Server error: " + (err as Error).message
-      });
+      console.error('Update user error:', err);
+      return reply.code(500).send({ success: false, message: 'Server error: ' + (err as Error).message });
     }
   });
 }

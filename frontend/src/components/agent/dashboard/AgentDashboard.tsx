@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useLocation } from 'react-router-dom';
 import { getToken } from '../../../lib/auth';
 import {
-  ChatBubbleLeftRightIcon,
-  UserGroupIcon,
-  ShoppingBagIcon,
-  ClockIcon,
-  ChartBarIcon,
-  CogIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  MagnifyingGlassIcon,
-  PlusIcon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
-  ChevronRightIcon
-} from '@heroicons/react/24/outline';
+  MessageSquare,
+  Users,
+  ShoppingBag,
+  Clock,
+  BarChart3,
+  Settings,
+  TrendingUp,
+  TrendingDown,
+  Search,
+  Plus,
+  AlertTriangle,
+  ChevronRight,
+} from 'lucide-react';
 
-// Types
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
 interface Metric {
   title: string;
   value: string | number;
@@ -38,8 +38,13 @@ interface RecentActivity {
   status: 'new' | 'active' | 'completed';
 }
 
+const METRIC_META = [
+  { iconColor: '#22c55e', iconBg: 'rgba(34,197,94,0.1)', Icon: MessageSquare },
+  { iconColor: '#059669', iconBg: 'rgba(5,150,105,0.1)', Icon: Users },
+  { iconColor: '#0891b2', iconBg: 'rgba(8,145,178,0.1)', Icon: ShoppingBag },
+  { iconColor: '#d97706', iconBg: 'rgba(217,119,6,0.1)', Icon: Clock },
+];
 
-// Enhanced Dashboard content component for /agent route
 const DashboardContent: React.FC = () => {
   const [metrics, setMetrics] = useState<Metric[]>([
     {
@@ -47,8 +52,8 @@ const DashboardContent: React.FC = () => {
       value: "0",
       change: "+0",
       trend: "up" as const,
-      color: "bg-blue-100 border-blue-200 text-blue-800",
-      icon: <ChatBubbleLeftRightIcon className="h-6 w-6" />,
+      color: "",
+      icon: null,
       description: "Live customer conversations"
     },
     {
@@ -56,8 +61,8 @@ const DashboardContent: React.FC = () => {
       value: "0",
       change: "+0",
       trend: "up" as const,
-      color: "bg-green-100 border-green-200 text-green-800",
-      icon: <UserGroupIcon className="h-6 w-6" />,
+      color: "",
+      icon: null,
       description: "Registered customers"
     },
     {
@@ -65,8 +70,8 @@ const DashboardContent: React.FC = () => {
       value: "0",
       change: "0",
       trend: "down" as const,
-      color: "bg-purple-100 border-purple-200 text-purple-800",
-      icon: <ShoppingBagIcon className="h-6 w-6" />,
+      color: "",
+      icon: null,
       description: "New orders received"
     },
     {
@@ -74,8 +79,8 @@ const DashboardContent: React.FC = () => {
       value: "0 min",
       change: "0",
       trend: "down" as const,
-      color: "bg-orange-100 border-orange-200 text-orange-800",
-      icon: <ClockIcon className="h-6 w-6" />,
+      color: "",
+      icon: null,
       description: "Average reply time"
     }
   ]);
@@ -83,6 +88,12 @@ const DashboardContent: React.FC = () => {
   const [agent, setAgent] = useState<{ name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -119,38 +130,19 @@ const DashboardContent: React.FC = () => {
         const data = dashboardResponse.data;
 
         setAgent(data.agent);
-
         setRecentActivity(data.recentActivity);
 
-        // Update metrics with fetched data
         setMetrics(prev => [
-          {
-            ...prev[0],
-            value: data.metrics.activeConversations,
-            change: `+${data.metrics.activeConversations}`
-          },
-          {
-            ...prev[1],
-            value: data.metrics.totalCustomers,
-            change: `+${data.metrics.totalCustomers}`
-          },
-          {
-            ...prev[2],
-            value: data.metrics.ordersToday,
-            change: `+${data.metrics.ordersToday}`
-          },
-          {
-            ...prev[3],
-            value: data.metrics.avgResponseTime,
-            change: "-0.4"
-          }
+          { ...prev[0], value: data.metrics.activeConversations, change: `+${data.metrics.activeConversations}` },
+          { ...prev[1], value: data.metrics.totalCustomers, change: `+${data.metrics.totalCustomers}` },
+          { ...prev[2], value: data.metrics.ordersToday, change: `+${data.metrics.ordersToday}` },
+          { ...prev[3], value: data.metrics.avgResponseTime, change: "-0.4" }
         ]);
 
         setError(null);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
         setError('Failed to load dashboard data');
-        // Keep mock data as fallback
       } finally {
         setLoading(false);
       }
@@ -161,29 +153,52 @@ const DashboardContent: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div style={{ minHeight: '100%', background: '#f8faf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: '50%',
+            border: '3px solid rgba(34,197,94,0.15)',
+            borderTopColor: '#22c55e',
+            animation: 'spin 0.9s linear infinite',
+          }} />
+          <span style={{ ...DM, fontSize: 14, color: '#71717a' }}>Loading dashboard...</span>
         </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="text-red-600 mb-4">
-            <ExclamationTriangleIcon className="h-12 w-12 mx-auto" />
+      <div style={{ minHeight: '100%', background: '#f8faf8', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ textAlign: 'center', maxWidth: 360 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%',
+            background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}>
+            <AlertTriangle size={24} style={{ color: '#f43f5e' }} />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <div style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#0c1a0e', marginBottom: 8 }}>
+            Error Loading Dashboard
+          </div>
+          <div style={{ ...DM, fontSize: 14, color: '#71717a', marginBottom: 24 }}>{error}</div>
           <button
             onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 9999,
+              padding: '10px 24px',
+              ...SYNE,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
+            }}
           >
-            <ArrowTrendingUpIcon className="h-4 w-4" />
             Retry
           </button>
         </div>
@@ -191,139 +206,231 @@ const DashboardContent: React.FC = () => {
     );
   }
 
-  const getTrendIcon = (trend: "up" | "down") => 
-    trend === "up" ? <ArrowTrendingUpIcon className="h-4 w-4" /> : <ArrowTrendingDownIcon className="h-4 w-4" />;
+  const getTrendIcon = (trend: "up" | "down") =>
+    trend === "up"
+      ? <TrendingUp size={12} />
+      : <TrendingDown size={12} />;
 
-  const getStatusColor = (status: RecentActivity['status']) => {
+  const getStatusColor = (status: RecentActivity['status']): React.CSSProperties => {
     switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-800';
-      case 'active': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'new': return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
+      case 'active': return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
+      case 'completed': return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
+      default: return { background: 'rgba(113,113,122,0.1)', color: '#71717a' };
     }
   };
 
+  const getActivityIconColor = (type: RecentActivity['type']): { bg: string; color: string } => {
+    switch (type) {
+      case 'conversation': return { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' };
+      case 'order': return { bg: 'rgba(8,145,178,0.1)', color: '#0891b2' };
+      case 'customer': return { bg: 'rgba(5,150,105,0.1)', color: '#059669' };
+    }
+  };
+
+  const quickActions = [
+    { Icon: MessageSquare, title: "Start New Conversation", description: "Message a customer", href: "/agent/conversations", iconColor: '#22c55e', iconBg: 'rgba(34,197,94,0.1)' },
+    { Icon: Users, title: "View Customer Profile", description: "Access customer details", href: "/agent/customers", iconColor: '#059669', iconBg: 'rgba(5,150,105,0.1)' },
+    { Icon: ShoppingBag, title: "Create Order", description: "Process new order", href: "/agent/orders", iconColor: '#0891b2', iconBg: 'rgba(8,145,178,0.1)' },
+    { Icon: BarChart3, title: "View Analytics", description: "Performance reports", href: "/agent/analytics", iconColor: '#7c3aed', iconBg: 'rgba(124,58,237,0.1)' },
+    { Icon: Settings, title: "Account Settings", description: "Update preferences", href: "/agent/settings", iconColor: '#71717a', iconBg: 'rgba(113,113,122,0.1)' },
+  ];
+
   return (
-    <div className="space-y-8 p-4 md:p-6">
-      {/* Welcome Header */}
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* Welcome Banner */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white p-6 md:p-8 rounded-2xl shadow-xl"
+        transition={{ duration: 0.4 }}
+        style={{
+          background: '#0c1a0e',
+          borderRadius: 16,
+          padding: '28px 32px',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}
       >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Welcome back, {agent?.name || 'Agent'}!</h1>
-            <p className="text-blue-100 text-sm md:text-lg">
-              Monitor your WhatsApp business performance and customer interactions
-            </p>
+        {/* Glow orbs */}
+        <div style={{ position: 'absolute', top: -40, right: 80, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(34,197,94,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -30, left: 120, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(5,150,105,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px rgba(74,222,128,0.6)' }} />
+            <span style={{ ...DM, fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Live Dashboard</span>
           </div>
-          <div className="text-right">
-            <p className="text-lg md:text-xl font-semibold">Real-time Dashboard</p>
-            <p className="text-xs md:text-sm text-blue-200">Updated {new Date().toLocaleTimeString()}</p>
+          <h1 style={{ ...SYNE, fontSize: 24, fontWeight: 700, color: '#fff', margin: 0, marginBottom: 4 }}>
+            Welcome back, {agent?.name || 'Agent'}!
+          </h1>
+          <p style={{ ...DM, fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+            Monitor your WhatsApp business performance and customer interactions
+          </p>
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'right' }}>
+          <div style={{ ...SYNE, fontSize: 22, fontWeight: 700, color: '#4ade80', letterSpacing: '0.02em' }}>
+            {currentTime}
+          </div>
+          <div style={{ ...DM, fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
         </div>
       </motion.div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {metrics.map((metric, index) => (
-          <motion.div
-            key={metric.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group relative"
-            whileHover={{ y: -2 }}
-          >
-            {/* Icon background */}
-            <div className={`absolute -top-2 -right-2 w-16 h-16 ${metric.color} rounded-full opacity-20 group-hover:opacity-30 transition-opacity`}></div>
-            
-            <div className="flex items-center justify-between mb-4 relative z-10">
-              <div className={`p-3 rounded-xl ${metric.color}`}>
-                {metric.icon}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {metrics.map((metric, index) => {
+          const meta = METRIC_META[index];
+          const Icon = meta.Icon;
+          return (
+            <motion.div
+              key={metric.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.08, duration: 0.35 }}
+              whileHover={{ y: -3, transition: { duration: 0.15 } }}
+              style={{
+                background: '#fff',
+                borderRadius: 14,
+                padding: '20px 22px',
+                border: '1px solid #ebebeb',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                cursor: 'default',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10,
+                  background: meta.iconBg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={18} style={{ color: meta.iconColor }} />
+                </div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '3px 8px', borderRadius: 9999,
+                  background: metric.trend === 'up' ? 'rgba(34,197,94,0.08)' : 'rgba(244,63,94,0.08)',
+                  color: metric.trend === 'up' ? '#059669' : '#f43f5e',
+                  ...DM, fontSize: 11, fontWeight: 600,
+                }}>
+                  {getTrendIcon(metric.trend)}
+                  {metric.change}
+                </div>
               </div>
-              <div
-                className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${
-                  metric.trend === "up"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {getTrendIcon(metric.trend)}
-                {metric.change}
-              </div>
-            </div>
-            
-            <div className="relative z-10">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                {metric.title}
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 mb-1">
+              <div style={{ ...SYNE, fontSize: 28, fontWeight: 700, color: '#0c1a0e', lineHeight: 1, marginBottom: 4 }}>
                 {metric.value}
-              </p>
-              <p className="text-sm text-gray-500">{metric.description}</p>
-            </div>
-          </motion.div>
-        ))}
+              </div>
+              <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#3f3f46', marginBottom: 2 }}>
+                {metric.title}
+              </div>
+              <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>
+                {metric.description}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Activity + Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
         {/* Recent Activity */}
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
+          initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+          transition={{ delay: 0.25, duration: 0.4 }}
+          className="lg:col-span-2"
+          style={{
+            background: '#fff',
+            borderRadius: 14,
+            border: '1px solid #ebebeb',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+          }}
         >
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <ClockIcon className="h-5 w-5 text-gray-500" />
-              Recent Activity
-            </h2>
+          <div style={{
+            padding: '18px 22px',
+            borderBottom: '1px solid #f4f4f5',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(34,197,94,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={15} style={{ color: '#22c55e' }} />
+            </div>
+            <div>
+              <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>Recent Activity</div>
+              <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>{recentActivity.length} events</div>
+            </div>
           </div>
-          
-          <div className="divide-y divide-gray-200">
-            {recentActivity.map((activity, index) => (
-              <motion.div
-                key={activity.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + index * 0.1 }}
-                className="p-6 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start gap-4">
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                    getStatusColor(activity.status)
-                  }`}>
-                    {activity.type === 'conversation' && <ChatBubbleLeftRightIcon className="h-5 w-5 text-current" />}
-                    {activity.type === 'order' && <ShoppingBagIcon className="h-5 w-5 text-current" />}
-                    {activity.type === 'customer' && <UserGroupIcon className="h-5 w-5 text-current" />}
+
+          <div>
+            {recentActivity.map((activity, index) => {
+              const actColor = getActivityIconColor(activity.type);
+              const statusStyle = getStatusColor(activity.status);
+              return (
+                <motion.div
+                  key={activity.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + index * 0.07 }}
+                  style={{
+                    padding: '14px 22px',
+                    borderBottom: '1px solid #f9f9f9',
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    transition: 'background 0.12s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: actColor.bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {activity.type === 'conversation' && <MessageSquare size={16} style={{ color: actColor.color }} />}
+                    {activity.type === 'order' && <ShoppingBag size={16} style={{ color: actColor.color }} />}
+                    {activity.type === 'customer' && <Users size={16} style={{ color: actColor.color }} />}
                   </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+                      <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {activity.title}
-                      </h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        getStatusColor(activity.status)
-                      }`}>
+                      </span>
+                      <span style={{
+                        ...DM, fontSize: 10, fontWeight: 600,
+                        padding: '2px 7px', borderRadius: 9999,
+                        ...statusStyle,
+                        textTransform: 'capitalize',
+                        flexShrink: 0,
+                      }}>
                         {activity.status}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">{activity.description}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+                    <div style={{ ...DM, fontSize: 12, color: '#71717a', marginBottom: 2 }}>{activity.description}</div>
+                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>{activity.time}</div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-            
+                </motion.div>
+              );
+            })}
+
             {recentActivity.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
-                <MagnifyingGlassIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-lg font-medium">No recent activity</p>
-                <p className="mt-1">Your activity will appear here as you interact with customers</p>
+              <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%',
+                  background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 12px',
+                }}>
+                  <Search size={20} style={{ color: '#d4d4d8' }} />
+                </div>
+                <div style={{ ...DM, fontSize: 14, fontWeight: 500, color: '#3f3f46', marginBottom: 4 }}>No recent activity</div>
+                <div style={{ ...DM, fontSize: 12, color: '#a1a1aa' }}>Your activity will appear here as you interact with customers</div>
               </div>
             )}
           </div>
@@ -331,71 +438,69 @@ const DashboardContent: React.FC = () => {
 
         {/* Quick Actions */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+          transition={{ delay: 0.3, duration: 0.4 }}
+          style={{
+            background: '#fff',
+            borderRadius: 14,
+            border: '1px solid #ebebeb',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+          }}
         >
-          <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-            <PlusIcon className="h-5 w-5 text-gray-500" />
-            Quick Actions
-          </h2>
-          
-          <div className="space-y-3">
-            {[
-              {
-                icon: ChatBubbleLeftRightIcon,
-                title: "Start New Conversation",
-                description: "Message a customer",
-                action: "#",
-                color: "from-blue-500 to-blue-600"
-              },
-              {
-                icon: UserGroupIcon,
-                title: "View Customer Profile",
-                description: "Access customer details",
-                action: "#",
-                color: "from-green-500 to-green-600"
-              },
-              {
-                icon: ShoppingBagIcon,
-                title: "Create Order",
-                description: "Process new order",
-                action: "#",
-                color: "from-purple-500 to-purple-600"
-              },
-              {
-                icon: ChartBarIcon,
-                title: "View Analytics",
-                description: "Performance reports",
-                action: "/agent/analytics",
-                color: "from-indigo-500 to-indigo-600"
-              },
-              {
-                icon: CogIcon,
-                title: "Account Settings",
-                description: "Update preferences",
-                action: "/agent/settings",
-                color: "from-gray-500 to-gray-600"
-              }
-            ].map((action, index) => (
+          <div style={{
+            padding: '18px 22px',
+            borderBottom: '1px solid #f4f4f5',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(34,197,94,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Plus size={15} style={{ color: '#22c55e' }} />
+            </div>
+            <div>
+              <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>Quick Actions</div>
+              <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>Jump to key areas</div>
+            </div>
+          </div>
+
+          <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {quickActions.map((action, index) => (
               <motion.a
                 key={action.title}
-                href={action.action}
-                initial={{ opacity: 0, x: 10 }}
+                href={action.href}
+                initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + index * 0.05 }}
-                className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all duration-200 border border-gray-100 hover:border-gray-200"
+                transition={{ delay: 0.35 + index * 0.05 }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1px solid transparent',
+                  textDecoration: 'none',
+                  transition: 'all 0.15s',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(34,197,94,0.04)';
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(34,197,94,0.15)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'transparent';
+                }}
               >
-                <div className={`p-2 rounded-lg bg-gradient-to-r ${action.color} group-hover:scale-105 transition-transform`}>
-                  <action.icon className="h-5 w-5 text-white" />
+                <div style={{
+                  width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                  background: action.iconBg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <action.Icon size={16} style={{ color: action.iconColor }} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-gray-700">
-                    {action.title}
-                  </p>
-                  <p className="text-xs text-gray-500">{action.description}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e' }}>{action.title}</div>
+                  <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>{action.description}</div>
                 </div>
-                <ChevronRightIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                <ChevronRight size={14} style={{ color: '#d4d4d8', flexShrink: 0 }} />
               </motion.a>
             ))}
           </div>
@@ -404,37 +509,63 @@ const DashboardContent: React.FC = () => {
 
       {/* Performance Overview */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+        transition={{ delay: 0.4, duration: 0.4 }}
+        style={{
+          background: '#fff',
+          borderRadius: 14,
+          border: '1px solid #ebebeb',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+        }}
       >
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <ChartBarIcon className="h-5 w-5 text-gray-500" />
-            Performance Overview
-          </h2>
-        </div>
-        
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-            <div className="border-r border-gray-200 pr-6 md:pr-8">
-              <p className="text-3xl font-bold text-blue-600">{typeof metrics[0]?.value === 'number' && metrics[0].value > 0 ? '98%' : 'N/A'}</p>
-              <p className="text-sm text-gray-600 mt-1">Customer Satisfaction</p>
-            </div>
-            <div className="border-r border-gray-200 pr-6 md:pr-8">
-              <p className="text-3xl font-bold text-green-600">2.3 min</p>
-              <p className="text-sm text-gray-600 mt-1">Avg First Response</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-purple-600">{typeof metrics[2]?.value === 'number' && metrics[2].value > 0 ? '99%' : 'N/A'}</p>
-              <p className="text-sm text-gray-600 mt-1">Messages Delivered</p>
-            </div>
+        <div style={{
+          padding: '18px 22px',
+          borderBottom: '1px solid #f4f4f5',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(34,197,94,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <BarChart3 size={15} style={{ color: '#22c55e' }} />
           </div>
-          
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
+          <div>
+            <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>Performance Overview</div>
+            <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>Key delivery metrics</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3" style={{ padding: '24px 28px', gap: 0 }}>
+          {[
+            { value: typeof metrics[0]?.value === 'number' && metrics[0].value > 0 ? '98%' : 'N/A', label: 'Customer Satisfaction', color: '#22c55e' },
+            { value: '2.3 min', label: 'Avg First Response', color: '#0891b2' },
+            { value: typeof metrics[2]?.value === 'number' && metrics[2].value > 0 ? '99%' : 'N/A', label: 'Messages Delivered', color: '#7c3aed' },
+          ].map((stat, i) => (
+            <div
+              key={stat.label}
+              style={{
+                textAlign: 'center',
+                padding: '8px 24px',
+                borderRight: i < 2 ? '1px solid #f4f4f5' : 'none',
+              }}
+            >
+              <div style={{ ...SYNE, fontSize: 32, fontWeight: 800, color: stat.color, lineHeight: 1, marginBottom: 6 }}>
+                {stat.value}
+              </div>
+              <div style={{ ...DM, fontSize: 13, color: '#71717a' }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{
+          padding: '14px 28px',
+          borderTop: '1px solid #f4f4f5',
+          background: '#fafafa',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} />
+            <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>
               Your performance is excellent! Keep up the great work with your customers.
-            </p>
+            </span>
           </div>
         </div>
       </motion.div>
@@ -442,7 +573,6 @@ const DashboardContent: React.FC = () => {
   );
 };
 
-// Main AgentDashboard component - now only renders dashboard content
 const AgentDashboard: React.FC = () => {
   return <DashboardContent />;
 };

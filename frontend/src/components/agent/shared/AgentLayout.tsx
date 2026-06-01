@@ -5,12 +5,19 @@ import Navbar from './Navbar';
 import { Agent } from '../../../types';
 import { getCurrentAgent } from '../../../lib/agent';
 import { logout } from '../../../lib/auth';
+import { useDialog } from './DialogProvider';
+
+const FONT_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap');
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
 
 interface AgentLayoutProps {
   children?: React.ReactNode;
 }
 
 const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
+  const { confirm: dlgConfirm } = useDialog();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -61,37 +68,28 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
 
   useEffect(() => {
     const fetchAgent = async () => {
-      if (agentFetchedRef.current) {
-        return;
-      }
+      if (agentFetchedRef.current) return;
       setLoading(true);
       const currentAgent = await getCurrentAgent();
       setAgent(currentAgent);
       agentFetchedRef.current = true;
       setLoading(false);
-
-      // TODO: Implement unread count and notifications fetching via backend API
-      // For now, set to 0 and empty array
       setUnreadCount(0);
       setRecentNotifications([]);
     };
-
     fetchAgent();
   }, []);
 
-  // TODO: Implement realtime subscription for unread notifications via WebSocket
-
-  // Listen for bulk read events from ConversationsPage
   useEffect(() => {
     const handleUnreadMarked = (event: CustomEvent) => {
-      const { customerId, count } = event.detail;
-      setUnreadCount((prev) => Math.max(0, prev - count));
-      setRecentNotifications((prev) => prev.filter((n) => n.customerId !== customerId));
+      const { count } = event.detail;
+      setUnreadCount(prev => Math.max(0, prev - count));
+      setRecentNotifications(prev => prev.filter(n => n.customerId !== event.detail.customerId));
     };
 
     const handleUnreadReceived = (event: CustomEvent) => {
       const { count, messageData } = event.detail;
-      setUnreadCount((prev) => prev + count);
+      setUnreadCount(prev => prev + count);
       if (messageData) {
         const notif = {
           id: messageData.id,
@@ -101,7 +99,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
           preview: messageData.message.length > 50 ? `${messageData.message.substring(0, 50)}...` : messageData.message,
           timestamp: messageData.timestamp,
         };
-        setRecentNotifications((prev) => {
+        setRecentNotifications(prev => {
           const updated = [notif, ...prev];
           return updated.length > 5 ? updated.slice(0, 5) : updated;
         });
@@ -119,50 +117,85 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading agent...</p>
+      <>
+        <style>{FONT_CSS}</style>
+        <div style={{
+          minHeight: '100vh',
+          background: '#0c1a0e',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: "'DM Sans', sans-serif",
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              border: '3px solid rgba(255,255,255,0.1)',
+              borderTopColor: '#4ade80',
+              animation: 'spin 0.9s linear infinite',
+            }} />
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
+              Loading...
+            </span>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!agent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Agent Not Found</h2>
-          <p className="text-gray-600 mb-4">Please log in as an agent or contact administrator.</p>
-          <button
-            onClick={() => window.location.href = '/login'}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Go to Login
-          </button>
+      <>
+        <style>{FONT_CSS}</style>
+        <div style={{
+          minHeight: '100vh',
+          background: '#0c1a0e',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <div style={{ textAlign: 'center', padding: 32 }}>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+              Agent Not Found
+            </div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 24 }}>
+              Please log in as an agent or contact administrator.
+            </div>
+            <button
+              onClick={() => window.location.href = '/login'}
+              style={{
+                background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 9999,
+                padding: '10px 24px',
+                fontFamily: "'Syne', sans-serif",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
+              }}
+            >
+              Go to Login
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col">
-      {/* Top Navbar */}
-      <Navbar
-        agent={navbarProps}
-        collapsed={sidebarCollapsed}
-        onMenuClick={() => setSidebarOpen(true)}
-        onLogout={async () => {
-          // Handle logout
-          if (confirm('Are you sure you want to logout?')) {
-            logout();
-            window.location.href = '/login';
-          }
-        }}
-      />
-      
-      <div className="flex flex-1 overflow-hidden h-full">
-        {/* Sidebar */}
+    <>
+      <style>{FONT_CSS}</style>
+      <div style={{
+        display: 'flex',
+        height: '100vh',
+        overflow: 'hidden',
+        background: '#f8faf8',
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
         <Sidebar
           agent={displayAgent}
           unreadCount={unreadCount}
@@ -171,21 +204,26 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
           onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onClose={() => setSidebarOpen(false)}
         />
-        
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto relative z-0 transition-all duration-300 h-full ease-in-out">
-          <div className="h-full">
-            <div className="w-full h-full">
-              {/* Page content */}
-              <div className="h-full">
-                <Outlet />
-                {children}
-              </div>
-            </div>
-          </div>
-        </main>
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+          <Navbar
+            agent={navbarProps}
+            collapsed={sidebarCollapsed}
+            onMenuClick={() => setSidebarOpen(true)}
+            onLogout={async () => {
+              if (await dlgConfirm('Are you sure you want to logout?')) {
+                logout();
+                window.location.href = '/login';
+              }
+            }}
+          />
+          <main style={{ flex: 1, overflowY: 'auto', background: '#f8faf8' }}>
+            <Outlet />
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

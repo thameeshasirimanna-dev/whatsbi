@@ -1,42 +1,43 @@
 import React, { useState, useEffect } from "react";
-import type {
-  Service,
-  ServiceWithPackages,
-  Package,
-  Agent,
-} from "../../../types";
+import type { Service, ServiceWithPackages, Package, Agent } from "../../../types";
+import { motion } from "framer-motion";
+import { Search, Plus, Eye, Pencil, Trash2, Briefcase } from "lucide-react";
 
 import CreateServiceModal from "./CreateServiceModal";
 import EditServiceModal from "./EditServiceModal";
 import DeleteServiceModal from "./DeleteServiceModal";
 import ViewServiceModal from "./ViewServiceModal";
 
-import { Menu, Transition } from "@headlessui/react";
-import { motion } from "framer-motion";
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
-const sortByOptions = [
-  { value: "created_at" as "price" | "created_at", label: "Sort by Date" },
-  { value: "price" as "price" | "created_at", label: "Sort by Price" },
-];
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '9px 12px',
+  fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
+  background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9,
+  outline: 'none', boxSizing: 'border-box',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+};
+const selectStyle: React.CSSProperties = { ...inputStyle, appearance: 'none', cursor: 'pointer', width: 'auto', minWidth: 130 };
 
-const sortOrderOptions = [
-  { value: "desc" as "asc" | "desc", label: "Descending" },
-  { value: "asc" as "asc" | "desc", label: "Ascending" },
-];
+const onFocusG = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#22c55e';
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
+};
+const onBlurG = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderColor = '#ebebeb';
+  e.currentTarget.style.boxShadow = 'none';
+};
 
 const ServicesPage: React.FC = () => {
   const [services, setServices] = useState<ServiceWithPackages[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingService, setEditingService] =
-    useState<ServiceWithPackages | null>(null);
+  const [editingService, setEditingService] = useState<ServiceWithPackages | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(
-    null
-  );
-  const [viewingService, setViewingService] =
-    useState<ServiceWithPackages | null>(null);
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
+  const [viewingService, setViewingService] = useState<ServiceWithPackages | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [filters, setFilters] = useState({
     service_name: "",
@@ -45,38 +46,21 @@ const ServicesPage: React.FC = () => {
     sort_order: "desc" as "asc" | "desc",
   });
 
-  // Fetch services
-  useEffect(() => {
-    fetchServices();
-  }, [filters]);
+  useEffect(() => { fetchServices(); }, [filters]);
 
-  // Fetch agent
   useEffect(() => {
     const fetchAgent = async () => {
       try {
         const token = localStorage.getItem("auth_token");
         if (!token) return;
-
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        });
         const data = await response.json();
-        if (response.ok && data.success) {
-          setAgent(data.agent);
-        }
-      } catch (error) {
-        console.error("Failed to fetch agent:", error);
-      }
+        if (response.ok && data.success) setAgent(data.agent);
+      } catch (error) { console.error("Failed to fetch agent:", error); }
     };
-
     fetchAgent();
   }, []);
 
@@ -84,601 +68,255 @@ const ServicesPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-
       const token = localStorage.getItem("auth_token");
-      if (!token) {
-        setError("Not authenticated");
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            operation: "get",
-            ...filters,
-          }),
-        }
-      );
-
+      if (!token) { setError("Not authenticated"); setLoading(false); return; }
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ operation: "get", ...filters }),
+      });
       const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.message || "Failed to fetch services");
-      } else {
-        setServices(result.data || []);
-      }
-    } catch (error) {
-      setError("Failed to fetch services");
-    } finally {
-      setLoading(false);
-    }
+      if (!response.ok) setError(result.message || "Failed to fetch services");
+      else setServices(result.data || []);
+    } catch { setError("Failed to fetch services"); }
+    finally { setLoading(false); }
   };
 
-  // Create service - modified to return success boolean
   const handleCreateService = async (formData: {
     service_name: string;
     description?: string;
-    images?: Array<{
-      fileName: string;
-      fileBase64: string;
-      fileType: string;
-    }>;
-    packages: Array<{
-      package_name: string;
-      price: number;
-      currency?: string;
-      discount?: number;
-      description?: string;
-    }>;
+    images?: Array<{ fileName: string; fileBase64: string; fileType: string; }>;
+    packages: Array<{ package_name: string; price: number; currency?: string; discount?: number; description?: string; }>;
   }): Promise<boolean> => {
     try {
       const token = localStorage.getItem("auth_token");
-      if (!token) {
-        setError("Not authenticated");
-        return false;
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            operation: "create",
-            ...formData,
-          }),
-        }
-      );
-
+      if (!token) { setError("Not authenticated"); return false; }
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ operation: "create", ...formData }),
+      });
       const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.message || "Failed to create service");
-        return false;
-      } else {
-        setShowCreateModal(false);
-        fetchServices(); // Refresh list
-        setError(null);
-        return true;
-      }
-    } catch (error) {
-      setError("Failed to create service");
-      return false;
-    }
+      if (!response.ok) { setError(result.message || "Failed to create service"); return false; }
+      setShowCreateModal(false);
+      fetchServices();
+      setError(null);
+      return true;
+    } catch { setError("Failed to create service"); return false; }
   };
 
-  // Update service or package
-  const handleUpdateService = async (
-    type: "service" | "package",
-    id: string,
-    updates: any
-  ) => {
+  const handleUpdateService = async (type: "service" | "package", id: string, updates: any) => {
     try {
       const token = localStorage.getItem("auth_token");
-      if (!token) {
-        setError("Not authenticated");
-        return;
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            operation: "update",
-            type,
-            id,
-            updates,
-          }),
-        }
-      );
-
+      if (!token) { setError("Not authenticated"); return; }
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ operation: "update", type, id, updates }),
+      });
       const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.message || "Failed to update service");
-      } else {
-        setEditingService(null);
-        fetchServices(); // Refresh list
-      }
-    } catch (error) {
-      setError("Failed to update service");
-    }
+      if (!response.ok) setError(result.message || "Failed to update service");
+      else { setEditingService(null); fetchServices(); }
+    } catch { setError("Failed to update service"); }
   };
 
-  // Delete service (permanent only)
   const handleDeleteService = async (id: string) => {
     try {
       const token = localStorage.getItem("auth_token");
-      if (!token) {
-        setError("Not authenticated");
-        return;
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            operation: "delete",
-            id,
-          }),
-        }
-      );
-
+      if (!token) { setError("Not authenticated"); return; }
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ operation: "delete", id }),
+      });
       const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.message || "Failed to permanently delete service");
-      } else {
-        setShowDeleteModal(false);
-        setDeletingServiceId(null);
-        fetchServices(); // Refresh list
-        setError(null);
-      }
-    } catch (error) {
-      setError("Failed to permanently delete service");
-    }
+      if (!response.ok) setError(result.message || "Failed to permanently delete service");
+      else { setShowDeleteModal(false); setDeletingServiceId(null); fetchServices(); setError(null); }
+    } catch { setError("Failed to permanently delete service"); }
   };
 
-  const confirmDelete = (id: string) => {
-    setDeletingServiceId(id);
-    setShowDeleteModal(true);
-  };
+  const confirmDelete = (id: string) => { setDeletingServiceId(id); setShowDeleteModal(true); };
+
+  const filteredServices = services.filter(service =>
+    service.service_name.toLowerCase().includes(filters.service_name.toLowerCase()) ||
+    service.packages.some(pkg => pkg.package_name.toLowerCase().includes(filters.package_name.toLowerCase()))
+  );
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 320 }}>
+        <style>{`@keyframes sp-spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.15)', borderTopColor: '#22c55e', animation: 'sp-spin 0.8s linear infinite' }} />
+          <span style={{ ...DM, fontSize: 13, color: '#71717a' }}>Loading services…</span>
         </div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-6 text-center">
-          Error: {error}
-        </div>
-      </div>
-    );
-  }
-
-  const filteredServices = services.filter(
-    (service) =>
-      service.service_name
-        .toLowerCase()
-        .includes(filters.service_name.toLowerCase()) ||
-      service.packages.some((pkg) =>
-        pkg.package_name
-          .toLowerCase()
-          .includes(filters.package_name.toLowerCase())
-      )
-  );
 
   return (
-    <div className="p-6">
-      {/* Toolbar */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.2 }}
-        className="bg-white rounded-xl border border-gray-200 p-4 mb-6"
-      >
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          {/* Search */}
-          <motion.div
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.15, delay: 0.25 }}
-            className="flex-1 min-w-0"
-          >
-            <div className="relative">
-              <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search services or packages..."
-                value={
-                  `${filters.service_name} ${filters.package_name}`.trim() || ""
-                }
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFilters({
-                    ...filters,
-                    service_name: value,
-                    package_name: value,
-                  });
-                }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-          </motion.div>
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <style>{`@keyframes sp-spin { to { transform: rotate(360deg); } }`}</style>
 
-          {/* Controls */}
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.15, delay: 0.3 }}
-            className="flex flex-wrap gap-2 items-center min-w-max"
-          >
-            {/* Sort By Dropdown */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.1, delay: 0.35 }}
-            >
-              <Menu as="div" className="relative">
-                <Menu.Button className="flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                  {sortByOptions.find((opt) => opt.value === filters.sort_by)
-                    ?.label || "Sort by Date"}
-                  <svg
-                    className="w-4 h-4 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </Menu.Button>
-                <Transition
-                  enter="transition ease-out duration-100"
-                  enterFrom="transform opacity-0 scale-95"
-                  enterTo="transform opacity-100 scale-100"
-                  leave="transition ease-in duration-75"
-                  leaveFrom="transform opacity-100 scale-100"
-                  leaveTo="transform opacity-0 scale-95"
-                >
-                  <Menu.Items className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
-                    {sortByOptions.map((option) => (
-                      <Menu.Item key={option.value}>
-                        {({ active }) => (
-                          <button
-                            className={`w-full text-left px-4 py-2 text-sm ${
-                              active ? "bg-gray-100" : ""
-                            } ${
-                              filters.sort_by === option.value
-                                ? "bg-green-50 text-green-700"
-                                : ""
-                            }`}
-                            onClick={() =>
-                              setFilters({ ...filters, sort_by: option.value })
-                            }
-                          >
-                            {option.label}
-                          </button>
-                        )}
-                      </Menu.Item>
-                    ))}
-                  </Menu.Items>
-                </Transition>
-              </Menu>
-            </motion.div>
-
-            {/* Sort Order Dropdown */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.1, delay: 0.4 }}
-            >
-              <Menu as="div" className="relative">
-                <Menu.Button className="flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                  {sortOrderOptions.find(
-                    (opt) => opt.value === filters.sort_order
-                  )?.label || "Descending"}
-                  <svg
-                    className="w-4 h-4 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </Menu.Button>
-                <Transition
-                  enter="transition ease-out duration-100"
-                  enterFrom="transform opacity-0 scale-95"
-                  enterTo="transform opacity-100 scale-100"
-                  leave="transition ease-in duration-75"
-                  leaveFrom="transform opacity-100 scale-100"
-                  leaveTo="transform opacity-0 scale-95"
-                >
-                  <Menu.Items className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
-                    {sortOrderOptions.map((option) => (
-                      <Menu.Item key={option.value}>
-                        {({ active }) => (
-                          <button
-                            className={`w-full text-left px-4 py-2 text-sm ${
-                              active ? "bg-gray-100" : ""
-                            } ${
-                              filters.sort_order === option.value
-                                ? "bg-green-50 text-green-700"
-                                : ""
-                            }`}
-                            onClick={() =>
-                              setFilters({
-                                ...filters,
-                                sort_order: option.value,
-                              })
-                            }
-                          >
-                            {option.label}
-                          </button>
-                        )}
-                      </Menu.Item>
-                    ))}
-                  </Menu.Items>
-                </Transition>
-              </Menu>
-            </motion.div>
-
-            {/* Add Service Button */}
-            <motion.button
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.1, delay: 0.45 }}
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Add Service
-            </motion.button>
-          </motion.div>
+      {error && (
+        <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e' }}>
+          {error}
         </div>
+      )}
+
+      {/* Toolbar */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}
+        style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '14px 18px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}
+      >
+        <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
+          <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="Search services or packages…"
+            value={`${filters.service_name} ${filters.package_name}`.trim() || ""}
+            onChange={e => { const v = e.target.value; setFilters({ ...filters, service_name: v, package_name: v }); }}
+            style={{ ...inputStyle, paddingLeft: 30 }}
+            onFocus={onFocusG} onBlur={onBlurG}
+          />
+        </div>
+
+        <select value={filters.sort_by} onChange={e => setFilters({ ...filters, sort_by: e.target.value as "price" | "created_at" })} style={selectStyle} onFocus={onFocusG} onBlur={onBlurG}>
+          <option value="created_at">Sort by Date</option>
+          <option value="price">Sort by Price</option>
+        </select>
+
+        <select value={filters.sort_order} onChange={e => setFilters({ ...filters, sort_order: e.target.value as "asc" | "desc" })} style={selectStyle} onFocus={onFocusG} onBlur={onBlurG}>
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
+
+        <button onClick={() => setShowCreateModal(true)}
+          style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <Plus size={14} /> Add Service
+        </button>
       </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Table */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}
+      >
         {filteredServices.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                />
-              </svg>
+          <div style={{ padding: '56px 24px', textAlign: 'center' }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <Briefcase size={22} style={{ color: '#d4d4d8' }} />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {filters.service_name || filters.package_name
-                ? "No services found"
-                : "No services yet"}
-            </h3>
-            <p className="text-gray-500">
-              {filters.service_name || filters.package_name
-                ? `No services match your search`
-                : "Start by adding your first service"}
-            </p>
+            <div style={{ ...SYNE, fontSize: 15, fontWeight: 600, color: '#0c1a0e', marginBottom: 6 }}>
+              {filters.service_name || filters.package_name ? "No services found" : "No services yet"}
+            </div>
+            <div style={{ ...DM, fontSize: 13, color: '#71717a', marginBottom: 20 }}>
+              {filters.service_name || filters.package_name ? "No services match your search" : "Start by adding your first service"}
+            </div>
+            {!filters.service_name && !filters.package_name && (
+              <button onClick={() => setShowCreateModal(true)}
+                style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34,197,94,0.25)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Plus size={14} /> Add Service
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-            {filteredServices.map((service) => (
-              <div
-                key={service.id}
-                className="w-full border border-gray-200 rounded-lg shadow-sm p-4 bg-white hover:shadow-md transition-shadow duration-150"
-              >
-                {/* Service Header */}
-                <div className="flex items-start space-x-3 mb-3">
-                  <div className="flex-shrink-0">
-                    {service.image_urls && service.image_urls.length > 0 ? (
-                      <img
-                        className="h-12 w-12 rounded-lg object-cover"
-                        src={service.image_urls[0].startsWith('https://') ? service.image_urls[0] : `https://${service.image_urls[0]}`}
-                        alt={service.service_name}
-                      />
-                    ) : (
-                      <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
-                        <svg
-                          className="h-5 w-5 text-gray-500"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M10 9a3 3 0 100-6 3 3 0 000 6z" />
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-gray-900 mb-1">
-                      {service.service_name}
-                    </h3>
-                    {service.description && (
-                      <p className="text-sm text-gray-500 line-clamp-2">
-                        {service.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Service', 'Description', 'Price Range', 'Actions'].map((h, i) => (
+                    <th key={h} style={{
+                      padding: '10px 16px', ...DM, fontSize: 11, fontWeight: 600,
+                      color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em',
+                      textAlign: i === 3 ? 'right' : 'left',
+                      background: '#fafafa', borderBottom: '1px solid #ebebeb',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredServices.map((service, index) => {
+                  const prices = service.packages.map(p => p.price).filter(p => p > 0);
+                  const minPrice = prices.length ? Math.min(...prices) : null;
+                  const maxPrice = prices.length ? Math.max(...prices) : null;
+                  const currency = service.packages[0]?.currency || 'LKR';
+                  const priceLabel = minPrice === null ? '—'
+                    : minPrice === maxPrice ? `${currency} ${minPrice.toFixed(2)}`
+                    : `${currency} ${minPrice.toFixed(2)} – ${maxPrice!.toFixed(2)}`;
 
-                {/* Packages */}
-                <div className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-900 mb-1.5 uppercase tracking-wide">
-                    Packages
-                  </h4>
-                  <div className="space-y-2 max-h-24 overflow-y-auto">
-                    {service.packages.map((pkg) => (
-                      <div
-                        key={pkg.id}
-                        className="flex justify-between items-start bg-gray-50 p-2 rounded"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {pkg.package_name}
-                          </p>
-                          {pkg.description && (
-                            <p className="text-xs text-gray-500 truncate">
-                              {pkg.description}
-                            </p>
+                  return (
+                    <motion.tr key={service.id}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
+                      style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
+                    >
+                      {/* Service */}
+                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {service.image_urls && service.image_urls.length > 0 ? (
+                            <img
+                              src={service.image_urls[0].startsWith('https://') ? service.image_urls[0] : `https://${service.image_urls[0]}`}
+                              alt={service.service_name}
+                              style={{ width: 36, height: 36, borderRadius: 9, objectFit: 'cover', flexShrink: 0, border: '1px solid #ebebeb' }}
+                            />
+                          ) : (
+                            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Briefcase size={16} style={{ color: '#22c55e' }} />
+                            </div>
                           )}
+                          <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>{service.service_name}</span>
                         </div>
-                        <div className="text-right ml-2 flex-shrink-0">
-                          <p className="text-sm font-medium text-gray-900">
-                            {pkg.currency} {pkg.price.toFixed(2)}
-                          </p>
-                          {pkg.discount && pkg.discount > 0 && (
-                            <p className="text-xs text-green-600">
-                              ({pkg.discount}% off)
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {service.packages.length === 0 && (
-                      <p className="text-sm text-gray-500 italic">
-                        No packages
-                      </p>
-                    )}
-                  </div>
-                </div>
+                      </td>
 
-                {/* Actions */}
-                <div className="flex justify-end space-x-2 pt-1">
-                  <button
-                    onClick={() => setViewingService(service)}
-                    className="text-blue-600 hover:text-blue-900 text-xs font-medium transition-colors"
-                  >
-                    View
-                  </button>
-                  <button
-                    onClick={() => setEditingService(service)}
-                    className="text-indigo-600 hover:text-indigo-900 text-xs font-medium transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => confirmDelete(service.id)}
-                    className="text-red-600 hover:text-red-900 text-xs font-medium transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+                      {/* Description */}
+                      <td style={{ padding: '14px 16px', maxWidth: 220 }}>
+                        <span style={{ ...DM, fontSize: 12, color: '#71717a', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {service.description || <span style={{ color: '#a1a1aa' }}>—</span>}
+                        </span>
+                      </td>
+
+                      {/* Price Range */}
+                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#059669' }}>{priceLabel}</span>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
+                          {[
+                            { Icon: Eye, label: 'View', color: '#0891b2', bg: 'rgba(8,145,178,0.08)', hbg: 'rgba(8,145,178,0.15)', onClick: () => setViewingService(service) },
+                            { Icon: Pencil, label: 'Edit', color: '#059669', bg: 'rgba(34,197,94,0.08)', hbg: 'rgba(34,197,94,0.15)', onClick: () => setEditingService(service) },
+                            { Icon: Trash2, label: 'Delete', color: '#f43f5e', bg: 'rgba(244,63,94,0.06)', hbg: 'rgba(244,63,94,0.12)', onClick: () => confirmDelete(service.id) },
+                          ].map(({ Icon, label, color, bg, hbg, onClick }) => (
+                            <button key={label} onClick={onClick} title={label}
+                              style={{ width: 28, height: 28, borderRadius: 7, background: bg, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.1s' }}
+                              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = hbg}
+                              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = bg}
+                            >
+                              <Icon size={13} style={{ color }} />
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      {showCreateModal && (
-        <CreateServiceModal
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreateService}
-          setError={setError}
-        />
-      )}
+      {showCreateModal && <CreateServiceModal onClose={() => setShowCreateModal(false)} onCreate={handleCreateService} setError={setError} />}
       {editingService && agent && (
-        <EditServiceModal
-          editingService={editingService}
-          agent={agent}
-          onClose={() => setEditingService(null)}
-          onSuccess={() => {
-            setEditingService(null);
-            fetchServices();
-            setError(null);
-          }}
-          setError={setError}
-        />
+        <EditServiceModal editingService={editingService} agent={agent} onClose={() => setEditingService(null)}
+          onSuccess={() => { setEditingService(null); fetchServices(); setError(null); }} setError={setError} />
       )}
       {showDeleteModal && (
-        <DeleteServiceModal
-          deletingServiceId={deletingServiceId}
-          services={services}
-          onClose={() => {
-            setShowDeleteModal(false);
-            setDeletingServiceId(null);
-          }}
-          onDelete={handleDeleteService}
-        />
+        <DeleteServiceModal deletingServiceId={deletingServiceId} services={services}
+          onClose={() => { setShowDeleteModal(false); setDeletingServiceId(null); }} onDelete={handleDeleteService} />
       )}
-      {viewingService && (
-        <ViewServiceModal
-          service={viewingService}
-          onClose={() => setViewingService(null)}
-        />
-      )}
+      {viewingService && <ViewServiceModal service={viewingService} onClose={() => setViewingService(null)} />}
     </div>
   );
 };

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { X, Search, Briefcase } from "lucide-react";
 import { getToken } from "../../../lib/auth";
-import { getCurrentAgent } from "../../../lib/agent";
+
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 interface Package {
   id: string;
@@ -25,82 +28,50 @@ interface ServiceSelectorModalProps {
 }
 
 const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
-  isOpen,
-  onClose,
-  onSelectService,
+  isOpen, onClose, onSelectService,
 }) => {
   const [services, setServices] = useState<Service[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchServices();
-    }
-  }, [isOpen]);
+  useEffect(() => { if (isOpen) fetchServices(); }, [isOpen]);
 
   useEffect(() => {
-    const filtered = services.filter((service) =>
-      service.service_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredServices(filtered);
+    setFilteredServices(services.filter(s => s.service_name.toLowerCase().includes(searchTerm.toLowerCase())));
   }, [searchTerm, services]);
 
   const fetchServices = async () => {
     setLoading(true);
     try {
       const token = getToken();
-      if (!token) {
-        console.error("User not authenticated");
-        setLoading(false);
-        return;
-      }
+      if (!token) { setLoading(false); return; }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/manage-services`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            operation: "get",
-          }),
-        }
-      );
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-services`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ operation: "get" }),
+      });
 
-      if (!response.ok) {
-        console.error("Failed to fetch services");
-        setServices([]);
-        setLoading(false);
-        return;
-      }
+      if (!response.ok) { setServices([]); setLoading(false); return; }
 
       const servicesData = await response.json();
       if (servicesData.status !== "success") {
-        console.error("Error fetching services:", servicesData.message);
         setServices([]);
       } else {
-        // Map the data to Service interface
-        const servicesWithPackages: Service[] = (servicesData.data || []).map(
-          (service: any) => ({
-            id: service.id,
-            service_name: service.service_name,
-            description: service.description,
-            packages: (service.packages || []).map((pkg: any) => ({
-              id: pkg.id,
-              package_name: pkg.package_name,
-              price: Number(pkg.price),
-              currency: pkg.currency || "USD",
-              discount: pkg.discount ? Number(pkg.discount) : undefined,
-              description: pkg.description,
-            })),
-          })
-        );
-
-        setServices(servicesWithPackages);
+        setServices((servicesData.data || []).map((service: any) => ({
+          id: service.id,
+          service_name: service.service_name,
+          description: service.description,
+          packages: (service.packages || []).map((pkg: any) => ({
+            id: pkg.id,
+            package_name: pkg.package_name,
+            price: Number(pkg.price),
+            currency: pkg.currency || "USD",
+            discount: pkg.discount ? Number(pkg.discount) : undefined,
+            description: pkg.description,
+          })),
+        })));
       }
     } catch (err) {
       console.error("Unexpected error fetching services:", err);
@@ -113,68 +84,69 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <style>{`@keyframes ss-spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Select Service</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <div style={{ flexShrink: 0, padding: '18px 20px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(8,145,178,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Briefcase size={15} style={{ color: '#0891b2' }} />
+            </div>
+            <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>Select Service</span>
+          </div>
+          <button onClick={onClose} style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={14} style={{ color: '#71717a' }} />
           </button>
         </div>
 
         {/* Search */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="relative">
+        <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #ebebeb' }}>
+          <div style={{ position: 'relative' }}>
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa' }} />
             <input
               type="text"
               placeholder="Search services..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              style={{ width: '100%', padding: '8px 12px 8px 32px', border: '1px solid #ebebeb', borderRadius: 8, fontSize: 13, background: '#f9f9f9', color: '#0c1a0e', outline: 'none', ...DM, boxSizing: 'border-box' }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.12)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
             />
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
           </div>
         </div>
 
-        {/* Services List */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-              <span className="ml-2 text-gray-500">Loading services...</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: 10 }}>
+              <div style={{ width: 24, height: 24, border: '2px solid #ebebeb', borderTopColor: '#0891b2', borderRadius: '50%', animation: 'ss-spin 0.8s linear infinite' }} />
+              <span style={{ ...DM, fontSize: 13, color: '#71717a' }}>Loading services...</span>
             </div>
           ) : filteredServices.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div style={{ textAlign: 'center', padding: '32px 0', ...DM, fontSize: 13, color: '#71717a' }}>
               {searchTerm ? "No services found." : "No services available."}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {filteredServices.map((service) => (
                 <div
                   key={service.id}
-                  className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    onSelectService(service);
-                    onClose();
-                  }}
+                  onClick={() => { onSelectService(service); onClose(); }}
+                  style={{ padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 12, cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.04)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.25)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#ebebeb'; }}
                 >
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate">{service.service_name}</h4>
-                    {service.description && (
-                      <p className="text-sm text-gray-500 truncate">{service.description}</p>
-                    )}
-                    <p className="text-xs text-gray-500">
-                      Packages: {service.packages.map(p => p.package_name).join(', ')}
-                    </p>
-                  </div>
+                  <div style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{service.service_name}</div>
+                  {service.description && (
+                    <div style={{ ...DM, fontSize: 12, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{service.description}</div>
+                  )}
+                  {service.packages.length > 0 && (
+                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>
+                      {service.packages.map(p => p.package_name).join(' · ')}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -182,11 +154,8 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-          >
+        <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #ebebeb', background: '#fafafa' }}>
+          <button onClick={onClose} style={{ width: '100%', padding: '9px 0', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 9, cursor: 'pointer', ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>
             Cancel
           </button>
         </div>

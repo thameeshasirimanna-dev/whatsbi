@@ -1,5 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import { Conversation } from "./ConversationsPage";
+import { Search, Plus, MessageSquare } from "lucide-react";
+
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -40,155 +44,377 @@ const ConversationList: React.FC<ConversationListProps> = ({
     if (conversionStage) {
       return {
         stage: conversionStage,
-        className: "bg-green-100 text-green-800",
+        style: { background: "rgba(34,197,94,0.1)", color: "#059669" },
       };
     } else if (interestStage) {
       return {
         stage: interestStage,
-        className: "bg-yellow-100 text-yellow-800",
+        style: { background: "rgba(217,119,6,0.1)", color: "#d97706" },
       };
     } else if (leadStage) {
-      return { stage: leadStage, className: "bg-blue-100 text-blue-800" };
+      return {
+        stage: leadStage,
+        style: { background: "rgba(8,145,178,0.1)", color: "#0891b2" },
+      };
     } else {
-      return { stage: null, className: "" };
+      return { stage: null, style: {} };
     }
   };
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-lg h-full">
+    <div
+      style={{
+        width: 320,
+        flexShrink: 0,
+        background: "#fff",
+        borderRight: "1px solid #ebebeb",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        boxShadow: "1px 0 4px rgba(0,0,0,0.03)",
+      }}
+    >
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50 flex-shrink-0">
-        <div className="flex items-stretch justify-between">
-          <div className="flex flex-col space-y-1">
-            <h2 className="text-2xl font-bold text-gray-900">Messages</h2>
-            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">
-              {totalUnread} unread
-            </span>
-          </div>
-          {onNewConversation && (
-            <button
-              onClick={onNewConversation}
-              className="flex items-center justify-center ml-4 h-16 w-16 text-green-600 bg-green-100 hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded-lg"
-            >
-              <svg
-                className="w-7 h-7"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-            </button>
-          )}
+      <div
+        style={{
+          padding: "16px 16px 12px",
+          borderBottom: "1px solid #f4f4f5",
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span
+            style={{
+              ...SYNE,
+              fontSize: 20,
+              fontWeight: 700,
+              color: "#0c1a0e",
+              lineHeight: 1.2,
+            }}
+          >
+            Messages
+          </span>
+          <span
+            style={{
+              ...DM,
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "2px 8px",
+              borderRadius: 9999,
+              background: "rgba(34,197,94,0.1)",
+              color: "#059669",
+              alignSelf: "flex-start",
+            }}
+          >
+            {totalUnread} unread
+          </span>
         </div>
+        {onNewConversation && (
+          <button
+            onClick={onNewConversation}
+            style={{
+              width: 36,
+              height: 36,
+              background: "rgba(34,197,94,0.1)",
+              border: "none",
+              borderRadius: 10,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "rgba(34,197,94,0.18)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "rgba(34,197,94,0.1)")
+            }
+          >
+            <Plus size={17} style={{ color: "#22c55e" }} />
+          </button>
+        )}
       </div>
 
       {/* Search */}
-      <div className="px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
-        <input
-          type="text"
-          value={searchConversations}
-          onChange={onSearchChange}
-          placeholder="Search conversations..."
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50/50 placeholder-gray-500"
-        />
+      <div
+        style={{
+          padding: "10px 12px",
+          borderBottom: "1px solid #f4f4f5",
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ position: "relative" }}>
+          <Search
+            size={13}
+            style={{
+              position: "absolute",
+              left: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#a1a1aa",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
+            value={searchConversations}
+            onChange={onSearchChange}
+            placeholder="Search conversations..."
+            style={{
+              width: "100%",
+              padding: "8px 10px 8px 30px",
+              ...DM,
+              fontSize: 13,
+              color: "#3f3f46",
+              background: "#f9f9f9",
+              border: "1px solid #ebebeb",
+              borderRadius: 9,
+              outline: "none",
+              boxSizing: "border-box",
+              transition: "border-color 0.15s, box-shadow 0.15s",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "#22c55e";
+              e.currentTarget.style.boxShadow =
+                "0 0 0 3px rgba(34,197,94,0.1)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "#ebebeb";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          />
+        </div>
       </div>
 
-      {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      {/* List */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
         {conversations.length === 0 ? (
-          <div className="flex items-center justify-center h-full p-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-8 h-8 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              padding: 24,
+            }}
+          >
+            <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  background: "#f4f4f5",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 12px",
+                }}
+              >
+                <MessageSquare size={22} style={{ color: "#d4d4d8" }} />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <div
+                style={{
+                  ...SYNE,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#0c1a0e",
+                  marginBottom: 4,
+                }}
+              >
                 No conversations yet
-              </h3>
-              <p className="text-gray-500 text-sm">
+              </div>
+              <div style={{ ...DM, fontSize: 12, color: "#a1a1aa" }}>
                 Start a conversation with your customers
-              </p>
+              </div>
             </div>
           </div>
         ) : (
-          <>
-            {filteredConversations.map((conversation, index) => (
+          filteredConversations.map((conversation, index) => {
+            const stageInfo = getCurrentStageInfo(conversation);
+            const isSelected = selectedConversationId === conversation.id;
+            return (
               <div
                 key={`${conversation.id}-${index}`}
-                ref={
-                  selectedConversationId === conversation.id
-                    ? selectedConversationRef
-                    : null
-                }
-                className={`px-4 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
-                  selectedConversationId === conversation.id
-                    ? "bg-green-50 border-r-4 border-green-500 shadow-md"
-                    : ""
-                }`}
+                ref={isSelected ? selectedConversationRef : null}
                 onClick={() => onSelectConversation(conversation)}
+                style={{
+                  padding: "11px 16px 11px 13px",
+                  borderBottom: "1px solid #f9f9f9",
+                  cursor: "pointer",
+                  background: isSelected
+                    ? "rgba(34,197,94,0.08)"
+                    : "transparent",
+                  borderLeft: isSelected
+                    ? "3px solid #22c55e"
+                    : "3px solid transparent",
+                  transition: "background 0.12s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected)
+                    (e.currentTarget as HTMLDivElement).style.background =
+                      "rgba(34,197,94,0.04)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected)
+                    (e.currentTarget as HTMLDivElement).style.background =
+                      "transparent";
+                }}
               >
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-md">
-                    <span className="text-white font-bold text-sm">
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      flexShrink: 0,
+                      background:
+                        "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 6px rgba(34,197,94,0.2)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        ...SYNE,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#fff",
+                      }}
+                    >
                       {conversation.customerName.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate pr-4 mr-auto">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 3,
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...SYNE,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#0c1a0e",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          flex: 1,
+                          marginRight: 6,
+                        }}
+                      >
                         {conversation.customerName}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const stageInfo = getCurrentStageInfo(conversation);
-                          return stageInfo.stage ? (
-                            <span
-                              className={`w-20 truncate px-2 py-0.5 rounded-full text-xs font-medium ${stageInfo.className} flex-shrink-0`}
-                            >
-                              {stageInfo.stage}
-                            </span>
-                          ) : null;
-                        })()}
+                      </span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {stageInfo.stage && (
+                          <span
+                            style={{
+                              ...DM,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              padding: "2px 6px",
+                              borderRadius: 9999,
+                              maxWidth: 72,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              ...stageInfo.style,
+                            }}
+                          >
+                            {stageInfo.stage}
+                          </span>
+                        )}
                         {conversation.unreadCount > 0 && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-600 text-white shadow-sm">
+                          <span
+                            style={{
+                              background: "#22c55e",
+                              color: "#fff",
+                              ...DM,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              minWidth: 18,
+                              height: 18,
+                              borderRadius: 9999,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "0 5px",
+                            }}
+                          >
                             {conversation.unreadCount}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 truncate max-w-[200px] font-medium">
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...DM,
+                          fontSize: 12,
+                          color: "#71717a",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          flex: 1,
+                          marginRight: 6,
+                        }}
+                      >
                         {conversation.lastMessage}
-                      </p>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                      </span>
+                      <span
+                        style={{
+                          ...DM,
+                          fontSize: 11,
+                          color: "#a1a1aa",
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {conversation.lastMessageTime}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400 mt-2 truncate">
+                    <div
+                      style={{
+                        ...DM,
+                        fontSize: 11,
+                        color: "#d4d4d8",
+                        marginTop: 2,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {conversation.customerPhone}
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </>
+            );
+          })
         )}
       </div>
     </div>

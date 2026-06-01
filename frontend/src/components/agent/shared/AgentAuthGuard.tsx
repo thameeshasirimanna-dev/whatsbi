@@ -44,10 +44,11 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking authentication...</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf8' }}>
+        <style>{`@keyframes aag-spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, border: '3px solid #ebebeb', borderTopColor: '#22c55e', borderRadius: '50%', animation: 'aag-spin 0.8s linear infinite', margin: '0 auto 14px' }} />
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#71717a', margin: 0 }}>Checking authentication...</p>
         </div>
       </div>
     );

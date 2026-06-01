@@ -1,6 +1,10 @@
 import React from "react";
-import { getToken } from "../../../lib/auth";
 import { downloadInvoice } from "../../../lib/api";
+import { Eye, Download, Send, CheckCircle, Trash2 } from "lucide-react";
+import { useDialog } from "../shared/DialogProvider";
+
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 interface Invoice {
   id: number;
@@ -37,92 +41,213 @@ const InvoicesTab: React.FC<InvoicesTabProps> = ({
   onDeleteInvoice,
   onMarkPaid,
 }) => {
+  const { toast } = useDialog();
+
   const handleDownload = async (invoice: Invoice) => {
     try {
       await downloadInvoice(invoice.id);
     } catch (err) {
       console.error("Download error:", err);
-      alert("Failed to download invoice. Please try again.");
+      toast("Failed to download invoice. Please try again.", 'error');
     }
   };
 
-  const handleDelete = async (invoice: Invoice) => {
-    onDeleteInvoice(invoice);
+  const getStatusStyle = (status: string): React.CSSProperties => {
+    if (status === "paid") return { background: "rgba(34,197,94,0.1)", color: "#059669" };
+    if (status === "sent") return { background: "rgba(217,119,6,0.1)", color: "#d97706" };
+    if (status === "generated") return { background: "rgba(8,145,178,0.1)", color: "#0891b2" };
+    return { background: "#f4f4f5", color: "#71717a" };
   };
 
   return (
     <>
       {invoices.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
+        <div
+          style={{
+            textAlign: "center",
+            padding: "48px 0",
+            ...DM,
+            fontSize: 14,
+            color: "#71717a",
+          }}
+        >
           No invoices found for this customer.
         </div>
       ) : (
-        <div className="space-y-4">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {invoices.map((invoice) => (
             <div
               key={invoice.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow"
+              style={{
+                background: "#fff",
+                borderRadius: 14,
+                border: "1px solid #ebebeb",
+                padding: "16px 18px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                transition: "box-shadow 0.15s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)")
+              }
             >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium text-gray-900">
-                  {invoice.name} - #{invoice.id.toString().padStart(4, "0")}
-                </h3>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: 8,
+                }}
+              >
+                <span style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: "#0c1a0e" }}>
+                  {invoice.name} — #{invoice.id.toString().padStart(4, "0")}
+                </span>
                 <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    invoice.status === "paid"
-                      ? "bg-green-100 text-green-800"
-                      : invoice.status === "sent"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : invoice.status === "generated"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
+                  style={{
+                    ...DM,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "3px 9px",
+                    borderRadius: 9999,
+                    ...getStatusStyle(invoice.status),
+                  }}
                 >
                   {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 mb-2">
-                Total: LKR {invoice.total_amount?.toFixed(2) || "0.00"}
+
+              <p style={{ ...DM, fontSize: 13, color: "#3f3f46", marginBottom: 4 }}>
+                Total:{" "}
+                <span style={{ fontWeight: 600, color: "#0c1a0e" }}>
+                  LKR {invoice.total_amount?.toFixed(2) || "0.00"}
+                </span>
               </p>
-              <p className="text-xs text-gray-500 mb-4">
+              <p style={{ ...DM, fontSize: 12, color: "#a1a1aa", marginBottom: 12 }}>
                 Created on: {new Date(invoice.created_at).toLocaleDateString()}
               </p>
-              <div className="flex flex-wrap gap-2">
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 <button
                   onClick={() => window.open(invoice.pdf_url, "_blank")}
-                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 12px",
+                    background: "rgba(8,145,178,0.08)",
+                    color: "#0891b2",
+                    border: "1px solid rgba(8,145,178,0.15)",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    ...DM,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(8,145,178,0.14)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(8,145,178,0.08)")}
                 >
+                  <Eye size={13} />
                   View
                 </button>
+
                 <button
                   onClick={() => handleDownload(invoice)}
-                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 12px",
+                    background: "rgba(34,197,94,0.08)",
+                    color: "#059669",
+                    border: "1px solid rgba(34,197,94,0.15)",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    ...DM,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.14)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.08)")}
                 >
+                  <Download size={13} />
                   Download
                 </button>
+
                 <button
                   onClick={() => onSendInvoice(invoice)}
-                  className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 12px",
+                    background: "rgba(34,197,94,0.08)",
+                    color: "#059669",
+                    border: "1px solid rgba(34,197,94,0.15)",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    ...DM,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.14)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.08)")}
                 >
+                  <Send size={13} />
                   Send
                 </button>
+
                 {(invoice.status === "generated" || invoice.status === "sent") && (
                   <button
                     onClick={() => onMarkPaid(invoice)}
                     disabled={updatingId === invoice.id}
-                    className={`px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors ${
-                      updatingId === invoice.id
-                        ? "opacity-50 cursor-not-allowed"
-                        : ""
-                    }`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 12px",
+                      background: updatingId === invoice.id ? "rgba(34,197,94,0.04)" : "rgba(34,197,94,0.08)",
+                      color: "#059669",
+                      border: "1px solid rgba(34,197,94,0.15)",
+                      borderRadius: 8,
+                      cursor: updatingId === invoice.id ? "not-allowed" : "pointer",
+                      opacity: updatingId === invoice.id ? 0.6 : 1,
+                      ...DM,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      transition: "background 0.15s",
+                    }}
                   >
-                    {updatingId === invoice.id ? "Updating..." : "Mark Paid"}
+                    <CheckCircle size={13} />
+                    {updatingId === invoice.id ? "Updating…" : "Mark Paid"}
                   </button>
                 )}
+
                 <button
-                  onClick={() => handleDelete(invoice)}
-                  className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                  onClick={() => onDeleteInvoice(invoice)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 12px",
+                    background: "rgba(244,63,94,0.06)",
+                    color: "#f43f5e",
+                    border: "1px solid rgba(244,63,94,0.15)",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    ...DM,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(244,63,94,0.12)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(244,63,94,0.06)")}
                 >
+                  <Trash2 size={13} />
                   Delete
                 </button>
               </div>

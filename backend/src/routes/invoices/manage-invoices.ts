@@ -55,14 +55,14 @@ export default async function manageInvoicesRoutes(
             const orderTotals = new Map<number, number>();
             items.forEach((item: any) => {
               const orderId = item.order_id;
-              const itemTotal = item.total || 0;
+              const itemTotal = parseFloat(item.total) || 0;
               orderTotals.set(orderId, (orderTotals.get(orderId) || 0) + itemTotal);
             });
 
             // Process invoices with calculated totals
             const processedInvoices = invoices.map((inv: any) => {
               const subtotal = orderTotals.get(inv.order_id) || 0;
-              const discount = inv.discount_percentage || 0;
+              const discount = parseFloat(inv.discount_percentage) || 0;
               const total = subtotal * (1 - discount / 100);
 
               return {

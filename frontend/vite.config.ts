@@ -19,5 +19,18 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-ui': ['framer-motion', 'lucide-react', '@headlessui/react'],
+            'vendor-pdf': ['jspdf', 'html2canvas'],
+            'vendor-charts': ['chart.js', 'react-chartjs-2'],
+            'vendor-misc': ['socket.io-client', 'dompurify'],
+          },
+        },
+      },
+    },
   }
 })

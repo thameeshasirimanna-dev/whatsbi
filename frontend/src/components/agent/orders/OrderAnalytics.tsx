@@ -1,4 +1,5 @@
 import React from 'react';
+import { ShoppingBag, Clock, CheckCircle } from 'lucide-react';
 
 interface OrderAnalyticsProps {
   totalOrders: number;
@@ -6,52 +7,29 @@ interface OrderAnalyticsProps {
   completedOrders: number;
 }
 
-const OrderAnalytics: React.FC<OrderAnalyticsProps> = ({ 
-  totalOrders, 
-  pendingOrders, 
-  completedOrders 
-}) => {
+const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
+const OrderAnalytics: React.FC<OrderAnalyticsProps> = ({ totalOrders, pendingOrders, completedOrders }) => {
+  const cards = [
+    { Icon: ShoppingBag, label: 'Total Orders', value: totalOrders, iconColor: '#22c55e', iconBg: 'rgba(34,197,94,0.1)' },
+    { Icon: Clock, label: 'Pending Orders', value: pendingOrders, iconColor: '#d97706', iconBg: 'rgba(217,119,6,0.1)' },
+    { Icon: CheckCircle, label: 'Completed Orders', value: completedOrders, iconColor: '#0891b2', iconBg: 'rgba(8,145,178,0.1)' },
+  ];
+
   return (
-    <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center">
-          <div className="p-3 rounded-full bg-green-100">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5" style={{ marginBottom: 24 }}>
+      {cards.map(({ Icon, label, value, iconColor, iconBg }) => (
+        <div key={label} style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 11, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon size={18} style={{ color: iconColor }} />
           </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Total Orders</p>
-            <p className="text-2xl font-bold text-gray-900">{totalOrders}</p>
+          <div>
+            <div style={{ ...DM, fontSize: 12, fontWeight: 500, color: '#71717a', marginBottom: 2 }}>{label}</div>
+            <div style={{ ...SYNE, fontSize: 26, fontWeight: 800, color: '#0c1a0e', lineHeight: 1 }}>{value}</div>
           </div>
         </div>
-      </div>
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center">
-          <div className="p-3 rounded-full bg-yellow-100">
-            <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-            <p className="text-2xl font-bold text-gray-900">{pendingOrders}</p>
-          </div>
-        </div>
-      </div>
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center">
-          <div className="p-3 rounded-full bg-blue-100">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Completed Orders</p>
-            <p className="text-2xl font-bold text-gray-900">{completedOrders}</p>
-          </div>
-        </div>
-      </div>
+      ))}
     </div>
   );
 };
