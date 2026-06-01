@@ -9,7 +9,7 @@ services:
       - "3000:8080"
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
+      - REDIS_URL=${PROD_REDIS_URL}
       - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
@@ -19,7 +19,6 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - redis
-      - postgres
     restart: unless-stopped
 
   frontend:
@@ -27,10 +26,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:3000}
-        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
-        VITE_SUPABASE_SERVICE_KEY: ${VITE_SUPABASE_SERVICE_KEY}
+        VITE_BACKEND_URL: ${PROD_VITE_BACKEND_URL:-http://localhost:3000}
     ports:
       - "8080:80"
     depends_on:
@@ -40,16 +36,3 @@ services:
   redis:
     image: redis:alpine
     restart: unless-stopped
-
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-volumes:
-  postgres_data:

@@ -29,9 +29,6 @@ RUN npm ci --only=production --legacy-peer-deps
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy environment file
-COPY --from=builder /app/.env ./
-
 # Expose port 8080
 EXPOSE 8080
 

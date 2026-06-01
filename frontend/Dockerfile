@@ -1,11 +1,8 @@
 # Stage 1: Build the React application
 FROM node:18-alpine AS builder
 
-# Build arguments for environment variables
+# Build argument for backend URL
 ARG VITE_BACKEND_URL
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
-ARG VITE_SUPABASE_SERVICE_KEY
 
 WORKDIR /app
 
@@ -15,11 +12,8 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Set environment variables for build
+# Set environment variable for build
 ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-ENV VITE_SUPABASE_SERVICE_KEY=$VITE_SUPABASE_SERVICE_KEY
 
 # Copy source code
 COPY . .

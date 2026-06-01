@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     envDir: '..',
     define: {
       'import.meta.env.VITE_BACKEND_URL': JSON.stringify(
-        env[`${prefix}VITE_BACKEND_URL`] ?? 'http://localhost:8080'
+        env[`${prefix}VITE_BACKEND_URL`] ?? process.env.VITE_BACKEND_URL ?? 'http://localhost:8080'
       ),
     },
     resolve: {
