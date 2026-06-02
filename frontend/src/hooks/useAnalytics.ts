@@ -12,6 +12,15 @@ export interface AnalyticsData {
   monthlyOrders: { month: string; count: number }[];
   monthlyRevenue: { month: string; revenue: number }[];
   orderStatuses: { status: string; count: number }[];
+  leadStages: { stage: string; count: number }[];
+  monthlyMessages: { month: string; inbound: number; outbound: number }[];
+  customerGrowth: string;
+  orderGrowth: string;
+  revenueGrowth: string;
+  appointmentGrowth: string;
+  profit: number;
+  expense: number;
+  paymentGateways: { name: string; amount: number }[];
 }
 
 export const useAnalytics = () => {
@@ -26,6 +35,15 @@ export const useAnalytics = () => {
     monthlyOrders: [],
     monthlyRevenue: [],
     orderStatuses: [],
+    leadStages: [],
+    monthlyMessages: [],
+    customerGrowth: "0%",
+    orderGrowth: "0%",
+    revenueGrowth: "0%",
+    appointmentGrowth: "0%",
+    profit: 0,
+    expense: 0,
+    paymentGateways: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

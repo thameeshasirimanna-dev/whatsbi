@@ -2,138 +2,394 @@ import React from 'react';
 import { motion } from "framer-motion";
 import { useAnalytics, AnalyticsData } from "../../../hooks/useAnalytics";
 import Loader from "../shared/Loader";
-import { Users, ShoppingBag, DollarSign, Clock, CheckCircle2, CalendarClock, CalendarDays } from 'lucide-react';
+import {
+  Users,
+  ShoppingBag,
+  DollarSign,
+  Clock,
+  CheckCircle2,
+  CalendarClock,
+  CalendarDays,
+  Download,
+  BarChart3,
+  MessageSquare
+} from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+} from 'chart.js';
+import { Bar, Line, Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+);
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 const SalesOverviewChart: React.FC<{ profit: number; expense: number }> = ({ profit, expense }) => {
+  const data = {
+    labels: ['Profit', 'Expense'],
+    datasets: [
+      {
+        data: [profit, expense],
+        backgroundColor: ['#22c55e', '#f43f5e'],
+        hoverBackgroundColor: ['#15803d', '#be123c'],
+        borderWidth: 2,
+        borderColor: '#ffffff',
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const val = context.raw as number;
+            return ` $${val.toLocaleString()}`;
+          }
+        }
+      }
+    },
+    cutout: '75%',
+  };
+
   const total = profit + expense;
   const profitPercent = total > 0 ? (profit / total) * 100 : 0;
-  const expensePercent = 100 - profitPercent;
 
   return (
-    <div style={{ position: 'relative', width: 128, height: 128, margin: '0 auto' }}>
-      <svg viewBox="0 0 36 36" style={{ width: 128, height: 128 }}>
-        <path
-          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none"
-          stroke="#ebebeb"
-          strokeWidth="3"
-        />
-        <motion.path
-          d={`M18 2.0845 a 15.9155 15.9155 0 0 1 ${profitPercent * 0.36} 31.831`}
-          fill="none"
-          stroke="url(#profitGradient)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-        />
-        <motion.path
-          d={`M18 2.0845 a 15.9155 15.9155 0 0 1 ${(profitPercent + expensePercent) * 0.36} 31.831 a 15.9155 15.9155 0 0 1 0 -31.831`}
-          fill="none"
-          stroke="url(#expenseGradient)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
-        />
-        <defs>
-          <linearGradient id="profitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: "#22c55e" }} />
-            <stop offset="100%" style={{ stopColor: "#059669" }} />
-          </linearGradient>
-          <linearGradient id="expenseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: "#f43f5e" }} />
-            <stop offset="100%" style={{ stopColor: "#e11d48" }} />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#059669' }}>
+    <div style={{ position: 'relative', width: 130, height: 130, margin: '0 auto' }}>
+      <Doughnut data={data} options={options} />
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ ...SYNE, fontSize: 18, fontWeight: 800, color: '#059669', lineHeight: 1 }}>
           {profitPercent.toFixed(0)}%
         </span>
+        <span style={{ ...DM, fontSize: 9, color: '#71717a', marginTop: 2 }}>Profit</span>
       </div>
     </div>
   );
 };
 
-const RevenueBarChart: React.FC<{ data: { month: string; revenue: number }[] }> = ({ data }) => {
-  const maxRevenue = Math.max(...data.map(d => d.revenue), 1);
+const RevenueBarChart: React.FC<{ data: { month: string; revenue: number }[] }> = ({ data: rawData }) => {
+  const data = {
+    labels: rawData.map(d => d.month),
+    datasets: [
+      {
+        label: 'Revenue',
+        data: rawData.map(d => d.revenue),
+        backgroundColor: '#059669',
+        hoverBackgroundColor: '#047857',
+        borderRadius: 6,
+        borderSkipped: false,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            return ` $${context.raw.toLocaleString()}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 9,
+          },
+          color: '#71717a',
+        }
+      },
+      y: {
+        grid: {
+          color: '#f4f4f5',
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 9,
+          },
+          color: '#71717a',
+          callback: (value: any) => `$${value >= 1000 ? (value / 1000) + 'k' : value}`
+        }
+      }
+    }
+  };
 
   return (
-    <div style={{ position: 'relative', height: 192, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', gap: 4, padding: '0 8px' }}>
-      {data.map((item, index) => {
-        const height = (item.revenue / maxRevenue) * 80;
-        return (
-          <motion.div
-            key={item.month}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 32 }}
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ duration: 0.8, delay: index * 0.1 }}
-          >
-            <div style={{ background: 'linear-gradient(to top, #059669, #22c55e)', borderRadius: 6, width: '100%', height: `${height}px`, position: 'relative' }}>
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, textAlign: 'center', background: 'rgba(0,0,0,0.35)', padding: '2px 0', borderRadius: '0 0 6px 6px', ...DM, fontSize: 9, color: '#fff' }}>
-                ${(item.revenue / 1000).toFixed(0)}k
-              </div>
-            </div>
-            <span style={{ ...DM, fontSize: 10, color: '#71717a', textAlign: 'center', width: 32, display: 'block' }}>{item.month.slice(0, 3)}</span>
-          </motion.div>
-        );
-      })}
+    <div style={{ height: 180 }}>
+      <Bar data={data} options={options as any} />
     </div>
   );
 };
 
-const YearlySalesLineChart: React.FC<{ data: { month: string; count: number }[] }> = ({ data }) => {
-  const maxCount = Math.max(...data.map(d => d.count), 1);
-  const width = 100;
-  const height = 80;
-  const points = data.map((item, index) => {
-    const x = (index / (data.length - 1)) * width;
-    const y = height - (item.count / maxCount) * height;
-    return `${x},${y}`;
-  }).join(' ');
+const YearlySalesLineChart: React.FC<{ data: { month: string; count: number }[] }> = ({ data: rawData }) => {
+  const data = {
+    labels: rawData.map(d => d.month),
+    datasets: [
+      {
+        label: 'Orders',
+        data: rawData.map(d => d.count),
+        borderColor: '#059669',
+        backgroundColor: 'rgba(34, 197, 94, 0.06)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#059669',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1.5,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            return ` ${context.raw} orders`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 9,
+          },
+          color: '#71717a',
+        }
+      },
+      y: {
+        grid: {
+          color: '#f4f4f5',
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 9,
+          },
+          color: '#71717a',
+          precision: 0,
+        }
+      }
+    }
+  };
 
   return (
-    <div style={{ position: 'relative', height: 192, background: '#f9f9f9', borderRadius: 8, padding: 16 }}>
-      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 128, display: 'block', margin: '0 auto' }}>
-        <polyline
-          points={points}
-          fill="none"
-          stroke="url(#lineGradient)"
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
-        <defs>
-          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style={{ stopColor: "#22c55e" }} />
-            <stop offset="100%" style={{ stopColor: "#059669" }} />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0 8px' }}>
-        {data.map(item => <span key={item.month} style={{ ...DM, fontSize: 10, color: '#71717a' }}>{item.month.slice(0, 3)}</span>)}
-      </div>
+    <div style={{ height: 180 }}>
+      <Line data={data} options={options as any} />
+    </div>
+  );
+};
+
+const CRMFunnelChart: React.FC<{ data: { stage: string; count: number }[] }> = ({ data: rawData }) => {
+  const stageOrder = ["New Lead", "Contacted", "Follow-up Needed", "Not Responding"];
+  const sortedData = [...rawData].sort((a, b) => {
+    return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
+  });
+
+  const colors = ['#9333ea', '#3b82f6', '#f59e0b', '#f43f5e'];
+
+  const data = {
+    labels: sortedData.map(d => d.stage),
+    datasets: [
+      {
+        data: sortedData.map(d => d.count),
+        backgroundColor: colors,
+        hoverBackgroundColor: colors.map(c => c + 'dd'),
+        borderRadius: 6,
+        barThickness: 16,
+      },
+    ],
+  };
+
+  const options = {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          color: '#f4f4f5',
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 9,
+          },
+          color: '#71717a',
+          precision: 0,
+        }
+      },
+      y: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 10,
+            weight: 'bold',
+          },
+          color: '#0c1a0e',
+        }
+      }
+    }
+  };
+
+  return (
+    <div style={{ height: 180 }}>
+      <Bar data={data} options={options as any} />
+    </div>
+  );
+};
+
+const MessageActivityChart: React.FC<{ data: { month: string; inbound: number; outbound: number }[] }> = ({ data: rawData }) => {
+  const data = {
+    labels: rawData.map(d => d.month),
+    datasets: [
+      {
+        label: 'Inbound',
+        data: rawData.map(d => d.inbound),
+        borderColor: '#22c55e',
+        backgroundColor: 'transparent',
+        tension: 0.35,
+        pointBackgroundColor: '#22c55e',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1.5,
+        pointRadius: 3,
+      },
+      {
+        label: 'Outbound',
+        data: rawData.map(d => d.outbound),
+        borderColor: '#3b82f6',
+        backgroundColor: 'transparent',
+        tension: 0.35,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1.5,
+        pointRadius: 3,
+      }
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 10,
+          },
+          color: '#52525b',
+          boxWidth: 8,
+        }
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 9,
+          },
+          color: '#71717a',
+        }
+      },
+      y: {
+        grid: {
+          color: '#f4f4f5',
+        },
+        ticks: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 9,
+          },
+          color: '#71717a',
+          precision: 0,
+        }
+      }
+    }
+  };
+
+  return (
+    <div style={{ height: 180 }}>
+      <Line data={data} options={options as any} />
     </div>
   );
 };
 
 const ActiveUserMap: React.FC<{ totalUsers: number }> = ({ totalUsers }) => {
   return (
-    <div style={{ position: 'relative', height: 192, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(34,197,94,0.04)', borderRadius: 8 }}>
-      <svg viewBox="0 0 200 100" style={{ width: 192, height: 192 }}>
-        <path d="M50 30 Q70 20 90 30 Q100 40 90 50 Q70 60 50 50 Z" fill="rgba(34,197,94,0.1)" stroke="#22c55e" strokeWidth="0.5" />
-        <path d="M110 40 Q130 30 150 40 Q160 50 150 60 Q130 70 110 60 Z" fill="rgba(34,197,94,0.1)" stroke="#22c55e" strokeWidth="0.5" />
+    <div style={{ position: 'relative', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(34,197,94,0.03)', borderRadius: 12 }}>
+      <svg viewBox="0 0 200 100" style={{ width: 160, height: 100 }}>
+        <path d="M50 30 Q70 20 90 30 Q100 40 90 50 Q70 60 50 50 Z" fill="rgba(34,197,94,0.08)" stroke="#22c55e" strokeWidth="0.5" />
+        <path d="M110 40 Q130 30 150 40 Q160 50 150 60 Q130 70 110 60 Z" fill="rgba(34,197,94,0.08)" stroke="#22c55e" strokeWidth="0.5" />
         {[...Array(8)].map((_, i) => (
           <motion.circle
             key={i}
-            cx={30 + Math.random() * 160}
-            cy={20 + Math.random() * 60}
+            cx={30 + Math.random() * 140}
+            cy={20 + Math.random() * 50}
             r="1.5"
             fill="url(#dotGradient)"
             initial={{ opacity: 0, scale: 0 }}
@@ -148,43 +404,121 @@ const ActiveUserMap: React.FC<{ totalUsers: number }> = ({ totalUsers }) => {
           </radialGradient>
         </defs>
       </svg>
-      <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', textAlign: 'center' }}>
+      <div style={{ position: 'absolute', textAlign: 'center' }}>
         <p style={{ ...SYNE, fontSize: 24, fontWeight: 700, color: '#059669' }}>{totalUsers}</p>
-        <p style={{ ...DM, fontSize: 12, color: '#71717a' }}>Active Users</p>
+        <p style={{ ...DM, fontSize: 11, color: '#71717a' }}>Active CRM Contacts</p>
       </div>
     </div>
   );
 };
 
-const PaymentGatewaysList: React.FC = () => {
-  const gateways = [
-    { name: 'Visa', icon: 'M13 10V3L4 14h7v7l9-11h-7z', amount: 1200, gradient: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)' },
-    { name: 'Mastercard', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z', amount: 800, gradient: 'linear-gradient(135deg, #f87171 0%, #dc2626 100%)' },
-    { name: 'PayPal', icon: 'M9 8.5h6v1h-6v-1zm0 3h6v1h-6v-1z', amount: 500, gradient: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)' },
-    { name: 'Stripe', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-5.52 0-10-4.48-10-10S6.48 2 12 2s10 4.48 10 10-4.48 10-10 10z', amount: 300, gradient: 'linear-gradient(135deg, #c084fc 0%, #9333ea 100%)' },
-  ];
+const PaymentGatewaysList: React.FC<{ gateways: { name: string; amount: number }[] }> = ({ gateways }) => {
+  const icons: Record<string, string> = {
+    Visa: 'M13 10V3L4 14h7v7l9-11h-7z',
+    Mastercard: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+    PayPal: 'M9 8.5h6v1h-6v-1zm0 3h6v1h-6v-1z',
+    Stripe: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-5.52 0-10-4.48-10-10S6.48 2 12 2s10 4.48 10 10-4.48 10-10 10z',
+  };
+  const gradients: Record<string, string> = {
+    Visa: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)',
+    Mastercard: 'linear-gradient(135deg, #f87171 0%, #dc2626 100%)',
+    PayPal: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+    Stripe: 'linear-gradient(135deg, #c084fc 0%, #9333ea 100%)',
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {gateways.map((gateway, index) => (
         <motion.div
           key={gateway.name}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#fff', border: '1px solid #ebebeb', borderRadius: 10 }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#fff', border: '1px solid #ebebeb', borderRadius: 10 }}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.1, duration: 0.5 }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ padding: 10, borderRadius: '50%', background: gateway.gradient, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg style={{ width: 20, height: 20, color: '#fff' }} fill="currentColor" viewBox="0 0 20 20">
-                <path d={gateway.icon} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: 8, borderRadius: '50%', background: gradients[gateway.name] || 'grey', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg style={{ width: 16, height: 16, color: '#fff' }} fill="currentColor" viewBox="0 0 20 20">
+                <path d={icons[gateway.name] || 'M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z'} />
               </svg>
             </div>
-            <span style={{ ...DM, fontWeight: 600, color: '#0c1a0e' }}>{gateway.name}</span>
+            <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{gateway.name}</span>
           </div>
-          <span style={{ ...SYNE, fontWeight: 700, fontSize: 16, color: '#0c1a0e' }}>${gateway.amount.toLocaleString()}+</span>
+          <span style={{ ...SYNE, fontWeight: 700, fontSize: 14, color: '#0c1a0e' }}>
+            ${gateway.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </span>
         </motion.div>
       ))}
+    </div>
+  );
+};
+
+const OrderStatusChart: React.FC<{ data: { status: string; count: number }[] }> = ({ data: rawData }) => {
+  const statusColorMap: Record<string, string> = {
+    pending: '#d97706',
+    completed: '#22c55e',
+    processing: '#0891b2',
+    shipped: '#3b82f6',
+    cancelled: '#f43f5e',
+    unknown: '#71717a',
+  };
+
+  const labels = rawData.map(d => d.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()));
+  const colors = rawData.map(d => statusColorMap[d.status] || statusColorMap.unknown);
+
+  const data = {
+    labels,
+    datasets: [
+      {
+        data: rawData.map(d => d.count),
+        backgroundColor: colors,
+        hoverOffset: 4,
+        borderWidth: 2,
+        borderColor: '#ffffff',
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right' as const,
+        labels: {
+          font: {
+            family: "'DM Sans', sans-serif",
+            size: 11,
+          },
+          color: '#52525b',
+          boxWidth: 12,
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const count = context.raw as number;
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const percentage = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
+            return ` ${context.label}: ${count} (${percentage}%)`;
+          }
+        }
+      }
+    },
+    cutout: '65%',
+  };
+
+  const totalOrders = rawData.reduce((sum, item) => sum + item.count, 0);
+
+  return (
+    <div style={{ position: 'relative', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100%', height: '100%' }}>
+        <Doughnut data={data} options={options} />
+      </div>
+      <div style={{ position: 'absolute', left: '30%', top: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <span style={{ ...SYNE, fontSize: 22, fontWeight: 700, color: '#0c1a0e', lineHeight: 1 }}>{totalOrders}</span>
+        <span style={{ ...DM, fontSize: 10, color: '#71717a', marginTop: 2 }}>Orders</span>
+      </div>
     </div>
   );
 };
@@ -211,29 +545,31 @@ const AnalyticsPage: React.FC = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
+        staggerChildren: 0.05,
+        delayChildren: 0.1,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 15, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
       transition: {
         type: "spring",
-        stiffness: 100,
+        stiffness: 120,
       },
     },
   };
 
   const statusColorMap: Record<string, { dot: string; bg: string; border: string; gradient: string }> = {
-    pending: { dot: '#d97706', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.2)', gradient: 'linear-gradient(135deg, #fbbf24, #d97706)' },
-    completed: { dot: '#22c55e', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.2)', gradient: 'linear-gradient(135deg, #22c55e, #059669)' },
-    in_progress: { dot: '#0891b2', bg: 'rgba(8,145,178,0.06)', border: 'rgba(8,145,178,0.2)', gradient: 'linear-gradient(135deg, #22d3ee, #0891b2)' },
-    unknown: { dot: '#71717a', bg: 'rgba(113,113,122,0.06)', border: 'rgba(113,113,122,0.2)', gradient: 'linear-gradient(135deg, #a1a1aa, #71717a)' },
+    pending: { dot: '#d97706', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.15)', gradient: 'linear-gradient(135deg, #fbbf24, #d97706)' },
+    completed: { dot: '#22c55e', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.15)', gradient: 'linear-gradient(135deg, #22c55e, #059669)' },
+    processing: { dot: '#0891b2', bg: 'rgba(8,145,178,0.06)', border: 'rgba(8,145,178,0.15)', gradient: 'linear-gradient(135deg, #22d3ee, #0891b2)' },
+    shipped: { dot: '#3b82f6', bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.15)', gradient: 'linear-gradient(135deg, #60a5fa, #3b82f6)' },
+    cancelled: { dot: '#f43f5e', bg: 'rgba(244,63,94,0.06)', border: 'rgba(244,63,94,0.15)', gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)' },
+    unknown: { dot: '#71717a', bg: 'rgba(113,113,122,0.06)', border: 'rgba(113,113,122,0.15)', gradient: 'linear-gradient(135deg, #a1a1aa, #71717a)' },
   };
 
   return (
@@ -243,171 +579,208 @@ const AnalyticsPage: React.FC = () => {
       initial="hidden"
       animate="visible"
     >
-      <div>
-        {/* Metric Cards */}
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-7"
-          variants={containerVariants}
+      {/* Top Controls (Title is handled by Top Navbar) */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+        <button
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+            boxShadow: '0 4px 14px rgba(34, 197, 94, 0.25)',
+            border: 'none',
+            color: '#fff',
+            padding: '8px 16px',
+            borderRadius: 9999,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+          onClick={() => window.print()}
         >
-          <motion.div variants={itemVariants}>
-            <MetricCard title="Total Customers" value={analytics.totalCustomers.toString()} percentage="+12%" icon={<Users size={20} />} iconBg="rgba(34,197,94,0.1)" iconColor="#059669" />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard title="Total Orders" value={analytics.totalOrders.toString()} percentage="+8%" icon={<ShoppingBag size={20} />} iconBg="rgba(8,145,178,0.1)" iconColor="#0891b2" />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard title="Total Revenue" value={`$${analytics.totalRevenue.toLocaleString()}`} percentage="+15%" icon={<DollarSign size={20} />} iconBg="rgba(34,197,94,0.1)" iconColor="#059669" />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard title="Pending Orders" value={analytics.pendingOrders.toString()} percentage="-2%" icon={<Clock size={20} />} iconBg="rgba(217,119,6,0.1)" iconColor="#d97706" />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard title="Completed Orders" value={analytics.completedOrders.toString()} percentage="+20%" icon={<CheckCircle2 size={20} />} iconBg="rgba(34,197,94,0.1)" iconColor="#059669" />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard title="Upcoming Appointments" value={analytics.upcomingAppointments.toString()} percentage="+5%" icon={<CalendarClock size={20} />} iconBg="rgba(79,70,229,0.1)" iconColor="#4f46e5" />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard title="Total Appointments" value={analytics.totalAppointments.toString()} percentage="+10%" icon={<CalendarDays size={20} />} iconBg="rgba(37,99,235,0.1)" iconColor="#2563eb" />
-          </motion.div>
+          <Download size={14} />
+          Export Report
+        </button>
+      </div>
+
+      {/* Metric Cards Grid */}
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-7"
+        variants={containerVariants}
+      >
+        <motion.div variants={itemVariants}>
+          <MetricCard title="Total Customers" value={analytics.totalCustomers.toString()} percentage={analytics.customerGrowth} icon={<Users size={18} />} iconBg="rgba(34,197,94,0.08)" iconColor="#059669" />
         </motion.div>
-
-        {/* Charts Row */}
-        <motion.div
-          className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {/* Sales Overview */}
-          <motion.div
-            variants={itemVariants}
-            style={{ background: '#fff', padding: 24, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-          >
-            <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 16 }}>Sales Overview</h3>
-            {(() => {
-              const profit = analytics.totalRevenue * 0.7;
-              const expense = analytics.totalRevenue * 0.3;
-              return (
-                <>
-                  <SalesOverviewChart profit={profit} expense={expense} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
-                    <div style={{ textAlign: 'center', padding: 10, background: 'rgba(34,197,94,0.06)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.15)' }}>
-                      <p style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#059669' }}>${profit.toLocaleString()}+</p>
-                      <p style={{ ...DM, fontSize: 11, color: '#22c55e' }}>Profit</p>
-                    </div>
-                    <div style={{ textAlign: 'center', padding: 10, background: 'rgba(244,63,94,0.06)', borderRadius: 8, border: '1px solid rgba(244,63,94,0.15)' }}>
-                      <p style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#f43f5e' }}>${expense.toLocaleString()}+</p>
-                      <p style={{ ...DM, fontSize: 11, color: '#f43f5e' }}>Expense</p>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </motion.div>
-
-          {/* Revenue Updates */}
-          <motion.div
-            variants={itemVariants}
-            style={{ background: '#fff', padding: 24, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-          >
-            <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 16 }}>Revenue Updates</h3>
-            <RevenueBarChart data={analytics.monthlyRevenue.slice(-6)} />
-          </motion.div>
-
-          {/* Yearly Sales */}
-          <motion.div
-            variants={itemVariants}
-            style={{ background: '#fff', padding: 24, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-          >
-            <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 16 }}>Yearly Sales</h3>
-            <YearlySalesLineChart data={analytics.monthlyOrders.slice(-12)} />
-          </motion.div>
+        <motion.div variants={itemVariants}>
+          <MetricCard title="Total Orders" value={analytics.totalOrders.toString()} percentage={analytics.orderGrowth} icon={<ShoppingBag size={18} />} iconBg="rgba(8,145,178,0.08)" iconColor="#0891b2" />
         </motion.div>
-
-        {/* Bottom Row */}
-        <motion.div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-7"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div
-            variants={itemVariants}
-            style={{ background: '#fff', padding: 24, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-            className="order-2 lg:order-1"
-          >
-            <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 16 }}>Active Users</h3>
-            <ActiveUserMap totalUsers={analytics.totalCustomers} />
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            style={{ background: '#fff', padding: 24, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-            className="order-1 lg:order-2"
-          >
-            <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 16 }}>Payment Gateways</h3>
-            <PaymentGatewaysList />
-          </motion.div>
+        <motion.div variants={itemVariants}>
+          <MetricCard title="Total Revenue" value={`$${analytics.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} percentage={analytics.revenueGrowth} icon={<DollarSign size={18} />} iconBg="rgba(34,197,94,0.08)" iconColor="#059669" />
         </motion.div>
+        <motion.div variants={itemVariants}>
+          <MetricCard title="Total Appointments" value={analytics.totalAppointments.toString()} percentage={analytics.appointmentGrowth} icon={<CalendarDays size={18} />} iconBg="rgba(37,99,235,0.08)" iconColor="#2563eb" />
+        </motion.div>
+      </motion.div>
 
-        {/* Order Status Breakdown */}
+      {/* Primary Row Charts */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"
+        variants={containerVariants}
+      >
+        {/* Sales Overview (Doughnut) */}
         <motion.div
-          style={{ background: '#fff', padding: 24, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
         >
-          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 20 }}>Order Status Breakdown</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-            <div style={{ position: 'relative', width: 160, height: 160 }}>
-              {analytics.orderStatuses.map((status, index) => {
-                const total = analytics.orderStatuses.reduce((sum, s) => sum + s.count, 0);
-                const percentage = total > 0 ? (status.count / total) * 360 : 0;
-                const sc = statusColorMap[status.status] || statusColorMap.unknown;
-                return (
-                  <motion.div
-                    key={status.status}
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      clipPath: `polygon(0 0, ${percentage}deg 0, 50% 50%)`,
-                      background: sc.gradient,
-                      zIndex: index,
-                    }}
-                    initial={{ rotate: -180 }}
-                    animate={{ rotate: percentage / 2 }}
-                    transition={{ duration: 1.5, delay: index * 0.2 }}
-                  />
-                );
-              })}
-              <div style={{ width: 96, height: 96, background: '#fff', borderRadius: '50%', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #fff', margin: '32px auto 0' }}>
-                <span style={{ ...SYNE, fontSize: 22, fontWeight: 700, color: '#0c1a0e' }}>{analytics.totalOrders}</span>
-              </div>
+          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>Sales Overview</h3>
+          <SalesOverviewChart profit={analytics.profit} expense={analytics.expense} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
+            <div style={{ textAlign: 'center', padding: 8, background: 'rgba(34,197,94,0.04)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.1)' }}>
+              <p style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#059669' }}>${analytics.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              <p style={{ ...DM, fontSize: 10, color: '#22c55e', marginTop: 2 }}>Profit (70%)</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-              {analytics.orderStatuses.map((status, index) => {
-                const sc = statusColorMap[status.status] || statusColorMap.unknown;
-                return (
-                  <motion.div
-                    key={status.status}
-                    style={{ textAlign: 'center', padding: 12, background: sc.bg, borderRadius: 10, border: `1px solid ${sc.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: (index + 2) * 0.1 }}
-                    whileHover={{ scale: 1.03, y: -2 }}
-                  >
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
-                    <div>
-                      <div style={{ ...SYNE, fontWeight: 700, color: '#0c1a0e' }}>{status.count}</div>
-                      <div style={{ ...DM, fontSize: 11, color: '#71717a', textTransform: 'capitalize' }}>{status.status.replace('_', ' ')}</div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+            <div style={{ textAlign: 'center', padding: 8, background: 'rgba(244,63,94,0.04)', borderRadius: 8, border: '1px solid rgba(244,63,94,0.1)' }}>
+              <p style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#f43f5e' }}>${analytics.expense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              <p style={{ ...DM, fontSize: 10, color: '#f43f5e', marginTop: 2 }}>Expense (30%)</p>
             </div>
           </div>
         </motion.div>
-      </div>
+
+        {/* Revenue Updates (Bar) */}
+        <motion.div
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+        >
+          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>Revenue Updates</h3>
+          <RevenueBarChart data={analytics.monthlyRevenue.slice(-6)} />
+        </motion.div>
+
+        {/* Yearly Sales (Line) */}
+        <motion.div
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+        >
+          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>Yearly Sales</h3>
+          <YearlySalesLineChart data={analytics.monthlyOrders.slice(-12)} />
+        </motion.div>
+      </motion.div>
+
+      {/* CRM Funnel and Message volume Row */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"
+        variants={containerVariants}
+      >
+        {/* CRM Pipeline Funnel */}
+        <motion.div
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+        >
+          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>CRM Pipeline Funnel (Lead Stage)</h3>
+          <CRMFunnelChart data={analytics.leadStages} />
+        </motion.div>
+
+        {/* Message volume trend */}
+        <motion.div
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+        >
+          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>WhatsApp Message Volume (Inbound vs Outbound)</h3>
+          <MessageActivityChart data={analytics.monthlyMessages.slice(-12)} />
+        </motion.div>
+      </motion.div>
+
+      {/* Bottom Grid: Map, Payments and Status Breakdown */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"
+        variants={containerVariants}
+      >
+        {/* Active Users Map */}
+        <motion.div
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+        >
+          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>Contact Distribution Map</h3>
+          <ActiveUserMap totalUsers={analytics.totalCustomers} />
+        </motion.div>
+
+        {/* Payment Gateways */}
+        <motion.div
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+        >
+          <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>Payment Gateways</h3>
+          <PaymentGatewaysList gateways={analytics.paymentGateways} />
+        </motion.div>
+
+        {/* Appointments stats */}
+        <motion.div
+          variants={itemVariants}
+          style={{ background: '#fff', padding: 20, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+          className="flex flex-col justify-between"
+        >
+          <div>
+            <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 12 }}>Appointments Status</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(37,99,235,0.03)', border: '1px solid rgba(37,99,235,0.1)', borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <CalendarClock size={16} color="#2563eb" />
+                  <span style={{ ...DM, fontWeight: 600, color: '#0c1a0e', fontSize: 13 }}>Upcoming Appointments</span>
+                </div>
+                <span style={{ ...SYNE, fontWeight: 700, color: '#2563eb', fontSize: 16 }}>{analytics.upcomingAppointments}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(34,197,94,0.03)', border: '1px solid rgba(34,197,94,0.1)', borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <CheckCircle2 size={16} color="#22c55e" />
+                  <span style={{ ...DM, fontWeight: 600, color: '#0c1a0e', fontSize: 13 }}>Completed Orders</span>
+                </div>
+                <span style={{ ...SYNE, fontWeight: 700, color: '#22c55e', fontSize: 16 }}>{analytics.completedOrders}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(217,119,6,0.03)', border: '1px solid rgba(217,119,6,0.1)', borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Clock size={16} color="#d97706" />
+                  <span style={{ ...DM, fontWeight: 600, color: '#0c1a0e', fontSize: 13 }}>Pending Orders</span>
+                </div>
+                <span style={{ ...SYNE, fontWeight: 700, color: '#d97706', fontSize: 16 }}>{analytics.pendingOrders}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Order Status Breakdown */}
+      <motion.div
+        style={{ background: '#fff', padding: 24, borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h3 style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 16 }}>Order Status Distribution</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <OrderStatusChart data={analytics.orderStatuses} />
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {analytics.orderStatuses.map((status, index) => {
+              const sc = statusColorMap[status.status] || statusColorMap.unknown;
+              return (
+                <motion.div
+                  key={status.status}
+                  style={{ textAlign: 'center', padding: '10px 8px', background: sc.bg, borderRadius: 10, border: `1px solid ${sc.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ scale: 1.02, y: -1 }}
+                >
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ ...SYNE, fontWeight: 700, color: '#0c1a0e', fontSize: 13, lineHeight: 1.1 }}>{status.count}</div>
+                    <div style={{ ...DM, fontSize: 10, color: '#71717a', textTransform: 'capitalize', marginTop: 2 }}>{status.status.replace('_', ' ')}</div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
@@ -424,33 +797,33 @@ interface MetricCardProps {
 const MetricCard: React.FC<MetricCardProps> = ({ title, value, percentage, icon, iconBg, iconColor }) => {
   return (
     <motion.div
-      style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: 20, position: 'relative', overflow: 'hidden' }}
-      whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
+      style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.02)', padding: 18, position: 'relative', overflow: 'hidden' }}
+      whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}
       initial={{ y: 10, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: iconColor }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: iconColor }}>
             {icon}
           </div>
           <div>
-            <p style={{ ...DM, fontSize: 13, color: '#71717a', marginBottom: 4 }}>{title}</p>
-            <p style={{ ...SYNE, fontSize: 26, fontWeight: 700, color: '#0c1a0e', lineHeight: 1 }}>{value}</p>
+            <p style={{ ...DM, fontSize: 12, color: '#71717a', marginBottom: 2 }}>{title}</p>
+            <p style={{ ...SYNE, fontSize: 24, fontWeight: 700, color: '#0c1a0e', lineHeight: 1 }}>{value}</p>
           </div>
         </div>
         {percentage && (
           <span style={{
             ...DM,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: 600,
-            padding: '4px 10px',
+            padding: '3px 8px',
             borderRadius: 20,
             whiteSpace: 'nowrap',
-            background: percentage.startsWith('+') ? 'rgba(34,197,94,0.08)' : 'rgba(244,63,94,0.08)',
+            background: percentage.startsWith('+') ? 'rgba(34,197,94,0.06)' : 'rgba(244,63,94,0.06)',
             color: percentage.startsWith('+') ? '#059669' : '#f43f5e',
-            border: `1px solid ${percentage.startsWith('+') ? 'rgba(34,197,94,0.2)' : 'rgba(244,63,94,0.2)'}`,
+            border: `1px solid ${percentage.startsWith('+') ? 'rgba(34,197,94,0.12)' : 'rgba(244,63,94,0.12)'}`,
           }}>
             {percentage}
           </span>
