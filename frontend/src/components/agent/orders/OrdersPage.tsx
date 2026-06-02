@@ -13,6 +13,7 @@ import ViewOrderModal from "./ViewOrderModal";
 import CreateOrderModal from "../customers/CreateOrderModal";
 import { Order } from "../../../types";
 import { useDialog } from "../shared/DialogProvider";
+import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -68,6 +69,7 @@ const OrdersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount">("newest");
+  const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -188,7 +190,8 @@ const OrdersPage: React.FC = () => {
       order.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
       extractOrderText(order).includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "" || order.status.toLowerCase() === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesTime = matchesTimeRange(order.created_at, timeRange);
+    return matchesSearch && matchesStatus && matchesTime;
   });
 
   filteredOrders = [...filteredOrders].sort((a, b) => {
@@ -401,6 +404,8 @@ const OrdersPage: React.FC = () => {
             <option value="oldest">Oldest First</option>
             <option value="amount">Amount (High → Low)</option>
           </select>
+
+          <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
 
           <button onClick={() => setShowCustomerSelect(true)} style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             <Plus size={14} /> New Order

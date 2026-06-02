@@ -7,6 +7,7 @@ import {
   X, DollarSign, Clock,
 } from "lucide-react";
 import { useDialog } from "../shared/DialogProvider";
+import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -88,6 +89,7 @@ const InvoicesPage: React.FC = () => {
   const [agentPrefix, setAgentPrefix] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCustomerFilter, setSelectedCustomerFilter] = useState<number | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [generating, setGenerating] = useState<number | null>(null);
   const [updating, setUpdating] = useState<number | null>(null);
   const [invoiceTemplatePath, setInvoiceTemplatePath] = useState<string | null>(null);
@@ -218,7 +220,8 @@ const InvoicesPage: React.FC = () => {
       invoice.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.order_number.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCustomer && matchesSearch;
+    const matchesTime = matchesTimeRange(invoice.generated_at, timeRange);
+    return matchesCustomer && matchesSearch && matchesTime;
   });
 
   const capitalizeFirst = (str: string): string => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
@@ -844,6 +847,8 @@ const InvoicesPage: React.FC = () => {
           <option value="">All Customers</option>
           {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+
         <button onClick={() => setIsModalOpen(true)} style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <Plus size={14} /> Create Invoice
         </button>

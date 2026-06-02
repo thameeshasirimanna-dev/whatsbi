@@ -51,14 +51,6 @@ export default async function manageCustomersRoutes(
           const limit = parseInt(url.searchParams.get("limit") || "50");
           const offset = parseInt(url.searchParams.get("offset") || "0");
 
-          // console.log("Customers fetch params:", {
-          //   search,
-          //   phone,
-          //   limit,
-          //   offset,
-          //   agentPrefix,
-          // });
-
           // If phone is provided, get single customer
           if (phone) {
             const customerQuery = `
@@ -133,6 +125,7 @@ export default async function manageCustomersRoutes(
             lead_stage,
             interest_stage,
             conversion_stage,
+            lead_stage_note,
             language,
             ai_enabled,
           } = body || {};
@@ -206,14 +199,15 @@ export default async function manageCustomersRoutes(
             lead_stage: lead_stage || "New Lead",
             interest_stage: interest_stage || null,
             conversion_stage: conversion_stage || null,
+            lead_stage_note: lead_stage_note ? lead_stage_note.trim() : null,
             language: language || "en",
             ai_enabled: ai_enabled !== undefined ? ai_enabled : true,
             last_user_message_time: new Date().toISOString(),
           };
 
           const insertQuery = `
-            INSERT INTO ${agentPrefix}_customers (name, phone, email, address, lead_stage, interest_stage, conversion_stage, language, ai_enabled, last_user_message_time)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            INSERT INTO ${agentPrefix}_customers (name, phone, email, address, lead_stage, interest_stage, conversion_stage, lead_stage_note, language, ai_enabled, last_user_message_time)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING *
           `;
           const insertParams = [
@@ -224,6 +218,7 @@ export default async function manageCustomersRoutes(
             customerData.lead_stage,
             customerData.interest_stage,
             customerData.conversion_stage,
+            customerData.lead_stage_note,
             customerData.language,
             customerData.ai_enabled,
             customerData.last_user_message_time,
@@ -263,6 +258,7 @@ export default async function manageCustomersRoutes(
             lead_stage,
             interest_stage,
             conversion_stage,
+            lead_stage_note,
             language,
             ai_enabled,
           } = body || {};
@@ -347,6 +343,10 @@ export default async function manageCustomersRoutes(
           if (conversion_stage !== undefined) {
             updateFields.push(`conversion_stage = $${updateValues.length + 1}`);
             updateValues.push(conversion_stage);
+          }
+          if (lead_stage_note !== undefined) {
+            updateFields.push(`lead_stage_note = $${updateValues.length + 1}`);
+            updateValues.push(lead_stage_note !== null ? String(lead_stage_note).trim() || null : null);
           }
           if (language !== undefined) {
             updateFields.push(`language = $${updateValues.length + 1}`);

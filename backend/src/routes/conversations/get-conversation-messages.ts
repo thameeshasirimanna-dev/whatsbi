@@ -51,7 +51,6 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
       // Check cache first
       const cachedData = await cacheService.get(cacheKey);
       if (cachedData) {
-        // console.log('Returning cached messages for conversation', agentId, customerId, limit, offset);
         return JSON.parse(cachedData);
       }
 

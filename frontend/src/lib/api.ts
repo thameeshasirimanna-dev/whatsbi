@@ -432,6 +432,7 @@ export interface Customer {
   lead_stage: string;
   interest_stage?: string;
   conversion_stage?: string;
+  lead_stage_note?: string | null;
   language: string;
   ai_enabled: boolean;
   profile_image?: string;
@@ -520,6 +521,7 @@ export const updateCustomer = async (customerData: {
   lead_stage?: string;
   interest_stage?: string | null;
   conversion_stage?: string | null;
+  lead_stage_note?: string | null;
   language?: string;
   ai_enabled?: boolean;
 }): Promise<Customer> => {

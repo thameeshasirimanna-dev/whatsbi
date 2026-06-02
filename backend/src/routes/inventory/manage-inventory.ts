@@ -216,14 +216,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
               return reply.code(400).send({ error: 'Invalid color format (use hex #RRGGBB or #RGB)' });
             }
 
-            console.log('Calling update_category RPC with params:', {
-              p_agent_prefix: agentPrefix,
-              p_category_id: id,
-              p_name: name ? name.trim() : null,
-              p_description: description || null,
-              p_color: color || null
-            });
-
             // Call the update_category function
             const { data: result, error: updateError } = await supabaseClient.rpc('update_category', {
               p_agent_prefix: agentPrefix,
@@ -271,18 +263,13 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
 
             // Handle image deletions from storage if provided
             if (removed_image_urls && Array.isArray(removed_image_urls) && removed_image_urls.length > 0) {
-              console.log('Starting image deletion for removed_image_urls:', removed_image_urls.length, 'images');
               for (const url of removed_image_urls) {
-                console.log('Processing URL for deletion:', url);
                 if (typeof url === 'string' && url.includes('supabase.co/storage')) {
                   try {
                     const pathname = new URL(url).pathname;
-                    console.log('URL pathname:', pathname);
                     const parts = pathname.split('/').slice(5); // After ['', 'storage', 'v1', 'object', 'public']
-                    console.log('Parsed parts:', parts);
                     if (parts.length > 1 && parts[0] === 'inventory-images') {
                       const filePath = parts.slice(1).join('/');
-                      console.log('Constructed filePath:', filePath);
                       if (filePath) {
                         const { error: deleteError } = await supabaseClient.storage
                           .from('inventory-images')
@@ -290,11 +277,7 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
                         if (deleteError) {
                           console.error('Failed to delete image from storage:', deleteError, 'Path:', filePath);
                           // Continue with update even if delete fails, but log error
-                        } else {
-                          console.log('Successfully deleted image from storage:', filePath);
                         }
-                      } else {
-                        console.log('No filePath constructed for URL:', url);
                       }
                     } else {
                       console.error('Invalid URL format for deletion (wrong bucket or structure):', url, 'parts[0]:', parts[0]);
@@ -302,13 +285,8 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
                   } catch (err) {
                     console.error('Error processing URL for deletion:', err, 'URL:', url);
                   }
-                } else {
-                  console.log('Skipping non-storage URL or invalid type:', typeof url, url ? url.includes('supabase.co/storage') : 'no url');
                 }
               }
-              console.log('Finished processing removed_image_urls');
-            } else {
-              console.log('No removed_image_urls provided or invalid format');
             }
 
             // Call the update_inventory_item function
@@ -381,7 +359,6 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
             const itemId = entityId;
 
             // Get current item images for cleanup
-            console.log('Starting item deletion - fetching current images for cleanup, itemId:', itemId, 'agent_id:', agent.id);
             if (agent.id) {
               const { data: currentItemData, error: queryError } = await supabaseClient
                 .from(`${agentPrefix}_inventory_items`)
@@ -392,36 +369,24 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
 
               if (queryError) {
                 console.error('Failed to fetch current item data for deletion:', queryError);
-              } else {
-                console.log('Current item data fetched:', currentItemData ? 'success' : 'no data');
-                console.log('Image URLs from DB:', currentItemData ? currentItemData.image_urls : 'null');
               }
 
               if (currentItemData && currentItemData.image_urls && Array.isArray(currentItemData.image_urls)) {
                 const imageUrls = currentItemData.image_urls as string[];
-                console.log('Found', imageUrls.length, 'image URLs to delete on item deletion');
                 for (const url of imageUrls) {
-                  console.log('Processing URL for deletion on item delete:', url);
                   if (typeof url === 'string' && url.includes('supabase.co/storage')) {
                     try {
                       const pathname = new URL(url).pathname;
-                      console.log('URL pathname for item delete:', pathname);
                       const parts = pathname.split('/').slice(5); // After ['', 'storage', 'v1', 'object', 'public']
-                      console.log('Parsed parts for item delete:', parts);
                       if (parts.length > 1 && parts[0] === 'inventory-images') {
                         const filePath = parts.slice(1).join('/');
-                        console.log('Constructed filePath for item delete:', filePath);
                         if (filePath) {
                           const { error: deleteError } = await supabaseClient.storage
                             .from('inventory-images')
                             .remove([filePath]);
                           if (deleteError) {
                             console.error('Failed to delete image on item delete:', deleteError, 'Path:', filePath);
-                          } else {
-                            console.log('Successfully deleted image on item delete:', filePath);
                           }
-                        } else {
-                          console.log('No filePath constructed for URL on item delete:', url);
                         }
                       } else {
                         console.error('Invalid URL format for deletion on item delete (wrong bucket or structure):', url, 'parts[0]:', parts ? parts[0] : 'no parts');
@@ -429,16 +394,9 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, su
                     } catch (err) {
                       console.error('Error processing URL for deletion on item delete:', err, 'URL:', url);
                     }
-                  } else {
-                    console.log('Skipping non-storage URL or invalid type on item delete:', typeof url, url ? url.includes('supabase.co/storage') : 'no url');
                   }
                 }
-                console.log('Finished processing image deletions on item delete');
-              } else {
-                console.log('No valid image_urls found for deletion on item delete');
               }
-            } else {
-              console.log('No agentData.id available for querying item images');
             }
 
             // Call the delete_inventory_item function

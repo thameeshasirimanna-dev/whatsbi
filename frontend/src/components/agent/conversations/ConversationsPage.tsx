@@ -129,6 +129,9 @@ const ConversationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchConversations, setSearchConversations] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "unread" | "ai" | "orders">("all");
+  const [stageFilter, setStageFilter] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<"today" | "yesterday" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<number | null>(null);
@@ -873,16 +876,54 @@ const ConversationsPage: React.FC = () => {
   };
 
   const filteredConversations = useMemo(() => {
-    const searchTerm = searchConversations.toLowerCase().trim();
-    if (!searchTerm) return conversations;
+    let result = conversations;
 
-    return conversations.filter(
-      (conversation) =>
-        conversation.customerName.toLowerCase().includes(searchTerm) ||
-        conversation.customerPhone.includes(searchTerm) ||
-        conversation.lastMessage.toLowerCase().includes(searchTerm)
-    );
-  }, [conversations, searchConversations]);
+    if (activeTab === "unread") {
+      result = result.filter((c) => c.unreadCount > 0);
+    } else if (activeTab === "ai") {
+      result = result.filter((c) => c.aiEnabled);
+    } else if (activeTab === "orders") {
+      result = result.filter((c) => c.conversionStage === "Order Confirmed");
+    }
+
+    if (stageFilter) {
+      result = result.filter(
+        (c) =>
+          c.leadStage === stageFilter ||
+          c.interestStage === stageFilter ||
+          c.conversionStage === stageFilter
+      );
+    }
+
+    if (timeFilter) {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const startOfYesterday = startOfToday - 86400000;
+      const startOfWeek = startOfToday - now.getDay() * 86400000;
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+      result = result.filter((c) => {
+        const ts = c.rawLastTimestamp;
+        if (timeFilter === "today") return ts >= startOfToday;
+        if (timeFilter === "yesterday") return ts >= startOfYesterday && ts < startOfToday;
+        if (timeFilter === "week") return ts >= startOfWeek;
+        if (timeFilter === "month") return ts >= startOfMonth;
+        return true;
+      });
+    }
+
+    const searchTerm = searchConversations.toLowerCase().trim();
+    if (searchTerm) {
+      result = result.filter(
+        (c) =>
+          c.customerName.toLowerCase().includes(searchTerm) ||
+          c.customerPhone.includes(searchTerm) ||
+          c.lastMessage.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    return result;
+  }, [conversations, searchConversations, activeTab, stageFilter, timeFilter]);
 
   const handleNewConversation = () => {
     setShowNewConversationModal(true);
@@ -2647,9 +2688,15 @@ const ConversationsPage: React.FC = () => {
         selectedConversationId={selectedConversationId}
         totalUnread={totalUnread}
         displayedConversations={displayedConversations}
+        activeTab={activeTab}
+        stageFilter={stageFilter}
+        timeFilter={timeFilter}
         onSearchChange={handleConversationsSearch}
         onSelectConversation={selectConversation}
         onNewConversation={handleNewConversation}
+        onTabChange={setActiveTab}
+        onStageFilterChange={setStageFilter}
+        onTimeFilterChange={setTimeFilter}
       />
 
       <MessageView

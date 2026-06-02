@@ -90,6 +90,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
   const [selectedLeadStage, setSelectedLeadStage] = useState<LeadStage>("New Lead");
   const [selectedInterestStage, setSelectedInterestStage] = useState<InterestStage | null>(null);
   const [selectedConversionStage, setSelectedConversionStage] = useState<ConversionStage | null>(null);
+  const [leadStageNote, setLeadStageNote] = useState<string>("");
   const [updating, setUpdating] = useState(false);
 
   const leadStages: LeadStage[] = ["New Lead", "Contacted", "Not Responding", "Follow-up Needed"];
@@ -143,6 +144,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
       setSelectedLeadStage((customerData.lead_stage as LeadStage) || "New Lead");
       setSelectedInterestStage((customerData.interest_stage as InterestStage) || null);
       setSelectedConversionStage((customerData.conversion_stage as ConversionStage) || null);
+      setLeadStageNote(customerData.lead_stage_note || "");
     } catch (err: any) {
       setError("Failed to fetch customer data: " + err.message);
       console.error("Error fetching customer data:", err);
@@ -163,6 +165,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
         lead_stage: selectedLeadStage,
         interest_stage: selectedInterestStage,
         conversion_stage: selectedConversionStage,
+        lead_stage_note: leadStageNote.trim() || null,
       });
 
       setCurrentLeadStage(selectedLeadStage);
@@ -310,6 +313,39 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                         <option key={stage} value={stage}>{stage}</option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Note */}
+                  <div>
+                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
+                      Note
+                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, background: 'rgba(113,113,122,0.08)', color: '#71717a', border: '1px solid rgba(113,113,122,0.15)' }}>Optional</span>
+                    </label>
+                    <textarea
+                      value={leadStageNote}
+                      onChange={(e) => setLeadStageNote(e.target.value)}
+                      disabled={loading || updating}
+                      placeholder="Add a note about this lead's current stage…"
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '9px 12px',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontSize: 13,
+                        color: loading || updating ? '#a1a1aa' : '#3f3f46',
+                        background: loading || updating ? '#f4f4f5' : '#f9f9f9',
+                        border: '1px solid #ebebeb',
+                        borderRadius: 9,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        resize: 'vertical',
+                        cursor: loading || updating ? 'not-allowed' : 'text',
+                        transition: 'border-color 0.15s, box-shadow 0.15s',
+                        lineHeight: 1.5,
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
+                    />
                   </div>
                 </div>
 

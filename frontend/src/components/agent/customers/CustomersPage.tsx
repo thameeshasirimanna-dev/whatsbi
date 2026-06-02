@@ -7,6 +7,7 @@ import {
   MessageCircle, Pencil, X,
 } from 'lucide-react';
 import CreateOrderModal from "./CreateOrderModal";
+import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
@@ -131,6 +132,7 @@ const CustomersPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "orders">("newest");
+  const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [progressCategory, setProgressCategory] = useState<"all" | "lead" | "interest" | "conversion">("all");
   const [progressStage, setProgressStage] = useState<string>("");
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -408,7 +410,8 @@ const CustomersPage: React.FC = () => {
         if (progressStage) matchesProgress = matchesProgress && customer.conversion_stage === progressStage;
       }
     }
-    return matchesSearch && matchesProgress;
+    const matchesTime = matchesTimeRange(customer.created_at, timeRange);
+    return matchesSearch && matchesProgress && matchesTime;
   });
 
   const sortedCustomers = [...filteredCustomers].sort((a: Customer, b: Customer) => {
@@ -684,6 +687,8 @@ const CustomersPage: React.FC = () => {
           <option value="oldest">Oldest First</option>
           <option value="orders">Most Orders</option>
         </select>
+
+        <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
 
         <button
           onClick={() => setShowCreateModal(true)}

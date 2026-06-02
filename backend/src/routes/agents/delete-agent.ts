@@ -47,14 +47,6 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
           } else {
             const droppedTables = data?.dropped_tables || [];
             const errors = data?.errors || [];
-
-            console.log(`Table cleanup for prefix ${prefix}:`);
-            console.log(`- Dropped tables: [${droppedTables.join(", ")}]`);
-            if (errors.length > 0) {
-              console.log(`- Errors: [${errors.join(", ")}]`);
-            } else {
-              console.log("- No errors");
-            }
           }
         } catch (rpcError) {
           console.error("Exception during table cleanup RPC:", rpcError);
@@ -103,10 +95,6 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
           customerIds = agentCustomers.map((ac: any) => ac.customer_id);
         }
       } catch (acErr) {
-        console.log(
-          "Could not fetch agent_customers (likely already cascaded):",
-          acErr
-        );
         // Try to find customers by looking at central customers table if needed
       }
 
@@ -120,10 +108,6 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
         if (customerDeleteError) {
           console.error("Error deleting customers:", customerDeleteError);
           // Continue - customer deletion is important but shouldn't block agent deletion
-        } else {
-          console.log(
-            `Deleted ${customerIds.length} customers and their messages`
-          );
         }
       }
 
@@ -153,9 +137,6 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
         });
       }
 
-      console.log(
-        `Agent ${agent_id} deleted successfully, including user ${user.id} and ${customerIds.length} customers`
-      );
 
       return reply.code(200).send({
         success: true,

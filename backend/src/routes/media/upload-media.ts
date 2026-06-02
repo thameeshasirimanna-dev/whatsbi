@@ -16,20 +16,12 @@ export default async function uploadMediaRoutes(
   pgClient: any
 ) {
   fastify.post("/upload-media", async (request, reply) => {
-    console.log("Upload-media route called");
     const startTime = Date.now();
 
     try {
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, pgClient);
       const userId = authenticatedUser.id;
-
-      // Log client type for debugging
-      console.log(
-        "pgClient type:",
-        typeof pgClient,
-        pgClient?.constructor?.name
-      );
 
       // Get agent info
       const { rows: agentRows } = await pgClient.query(
@@ -92,7 +84,7 @@ export default async function uploadMediaRoutes(
           caption = part.value as string;
         }
       }
-      console.log(`Parsed ${files.length} files and caption: ${caption}`);
+
 
       if (files.length === 0) {
         console.error("❌ No files provided in request");
@@ -127,23 +119,8 @@ export default async function uploadMediaRoutes(
           let contentType = file.mimetype || "application/octet-stream";
           let filename = file.filename || `upload_${Date.now()}`;
 
-          // Images are already compressed by frontend, just log for debugging
-          console.log(
-            `Processing ${filename}, size: ${buffer.length} bytes, contentType: ${contentType}, purpose: ${purpose}`
-          );
-
           if (purpose === "whatsapp") {
-            console.log(
-              `Uploading ${filename} to WhatsApp, size: ${buffer.length} bytes`
-            );
-
             // Upload to WhatsApp instead of our storage
-            console.log(
-              `Making WhatsApp API call to: https://graph.facebook.com/v20.0/${phoneNumberId}/media`
-            );
-            console.log(
-              `Content-Type: ${contentType}, File size: ${buffer.length}`
-            );
 
             const whatsappController = new AbortController();
             const whatsappTimeout = setTimeout(
@@ -174,9 +151,7 @@ export default async function uploadMediaRoutes(
             );
             clearTimeout(whatsappTimeout);
 
-            console.log(`WhatsApp response status: ${whatsappResponse.status}`);
             const responseText = await whatsappResponse.text();
-            console.log(`WhatsApp response body: ${responseText}`);
 
             if (!whatsappResponse.ok) {
               throw new Error(
@@ -194,13 +169,9 @@ export default async function uploadMediaRoutes(
             }
 
             const mediaId = whatsappData.id;
-            console.log(`Got WhatsApp media ID: ${mediaId}`);
 
             if (mediaId) {
               // Also upload to our storage for dashboard purposes
-              console.log(
-                `Uploading ${filename} to R2 storage for dashboard...`
-              );
               const storageUrl = await uploadMediaToStorage(
                 pgClient,
                 agentPrefix,
@@ -208,7 +179,6 @@ export default async function uploadMediaRoutes(
                 filename,
                 contentType
               );
-              console.log(`R2 storage URL: ${storageUrl}`);
               if (!storageUrl) {
                 console.error(`Failed to upload ${filename} to storage`);
               }
@@ -220,9 +190,6 @@ export default async function uploadMediaRoutes(
                 media_type: getMediaType(contentType),
                 size: buffer.length,
               });
-              console.log(
-                `Successfully uploaded ${filename} to WhatsApp (ID: ${mediaId})`
-              );
             } else {
               errors.push(
                 `Failed to get media ID from WhatsApp for ${filename}`
@@ -230,7 +197,6 @@ export default async function uploadMediaRoutes(
             }
           } else if (purpose === "storage") {
             // Upload to storage only
-            console.log(`Uploading ${filename} to R2 storage...`);
             const storageUrl = await uploadMediaToStorage(
               pgClient,
               agentPrefix,
@@ -238,7 +204,6 @@ export default async function uploadMediaRoutes(
               filename,
               contentType
             );
-            console.log(`R2 storage URL: ${storageUrl}`);
             if (!storageUrl) {
               console.error(`Failed to upload ${filename} to storage`);
             }
@@ -251,9 +216,6 @@ export default async function uploadMediaRoutes(
         }
       }
 
-      console.log(
-        `Upload-media completed successfully, uploaded: ${uploadedMedia.length}, errors: ${errors.length}`
-      );
       return reply.code(200).send({
         success: true,
         uploaded: uploadedMedia.length,

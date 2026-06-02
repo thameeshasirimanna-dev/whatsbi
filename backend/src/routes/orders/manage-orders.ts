@@ -50,15 +50,7 @@ export default async function manageOrdersRoutes(
           const orderId = url.searchParams.get("order_id");
           const type = url.searchParams.get("type");
 
-          console.log("Orders fetch params:", {
-            search,
-            limit,
-            offset,
-            customerId,
-            orderId,
-            type,
-            agentPrefix,
-          });
+
 
           // If type=items and order_id is provided, fetch only order items
           if (type === "items" && orderId) {

@@ -6,9 +6,6 @@ export default async function addUserRoutes(fastify: FastifyInstance, pgClient: 
   fastify.post('/add-user', async (request, reply) => {
     try {
       const body = request.body as any;
-      console.log('=== ADD-USER FUNCTION START ===');
-      console.log('Method:', request.method);
-      console.log('Headers:', request.headers);
 
       const {
         name,
@@ -60,7 +57,6 @@ export default async function addUserRoutes(fastify: FastifyInstance, pgClient: 
       if (!isFirstAdmin) {
         // Verify JWT and get authenticated user
         const authenticatedUser = await verifyJWT(request, pgClient);
-        console.log('Authenticated User:', authenticatedUser.id);
 
         // Get user role from database
         const { rows: userRows } = await pgClient.query(
@@ -98,7 +94,6 @@ export default async function addUserRoutes(fastify: FastifyInstance, pgClient: 
       }
 
       const user = userRows[0];
-      console.log('User created successfully:', user);
 
       // Return success response
       return reply.code(200).send({

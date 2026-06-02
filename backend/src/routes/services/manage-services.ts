@@ -108,7 +108,6 @@ export default async function manageServicesRoutes(
           if (images && Array.isArray(images) && images.length > 0) {
             // Note: Image processing logic would need to be ported from Edge Function
             // For now, skip images
-            console.log("Image upload not implemented yet");
           }
 
           return reply.code(201).send({
@@ -193,7 +192,6 @@ export default async function manageServicesRoutes(
             removed_image_urls.length > 0
           ) {
             // Note: Image deletion logic would need to be ported
-            console.log("Image deletion not implemented yet");
             if (!updates.image_urls) updates.image_urls = {};
             if (!updates.image_urls.remove) updates.image_urls.remove = [];
             updates.image_urls.remove.push(...removed_image_urls);
@@ -207,7 +205,6 @@ export default async function manageServicesRoutes(
             updates.images.length > 0
           ) {
             // Note: Image upload logic would need to be ported
-            console.log("Image upload not implemented yet");
           }
 
           // Call database function

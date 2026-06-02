@@ -8,11 +8,6 @@ export default async function deleteUserRoutes(fastify: FastifyInstance, supabas
       const authenticatedUser = await verifyJWT(request, supabaseClient);
 
       const { id } = request.params as any;
-      console.log('=== DELETE-USER FUNCTION START ===');
-      console.log('Method:', request.method);
-      console.log('Headers:', request.headers);
-      console.log('Authenticated User:', authenticatedUser.id);
-      console.log('Target User ID:', id);
 
       // Check if user is admin
       if (authenticatedUser.role !== 'admin') {
@@ -73,7 +68,6 @@ export default async function deleteUserRoutes(fastify: FastifyInstance, supabas
         // Continue since user record is already deleted
       }
 
-      console.log('User deleted successfully:', id);
 
       // Return success response
       return reply.code(200).send({

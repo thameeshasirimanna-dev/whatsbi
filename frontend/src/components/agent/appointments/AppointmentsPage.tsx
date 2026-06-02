@@ -12,6 +12,7 @@ import {
   ChevronDown, X, Users, AlertTriangle,
 } from "lucide-react";
 import { useDialog } from "../shared/DialogProvider";
+import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -63,6 +64,7 @@ const AppointmentsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [customerFilter, setCustomerFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [allCustomers, setAllCustomers] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -165,7 +167,8 @@ const AppointmentsPage: React.FC = () => {
       a.status.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCustomer = customerFilter === "" || a.customer_name === customerFilter;
     const matchesStatus = statusFilter === "" || a.status.toLowerCase() === statusFilter;
-    return matchesSearch && matchesCustomer && matchesStatus;
+    const matchesTime = matchesTimeRange(a.appointment_date, timeRange);
+    return matchesSearch && matchesCustomer && matchesStatus && matchesTime;
   });
 
   const allCustomerList = Object.values(customerMap) as any[];
@@ -321,6 +324,8 @@ const AppointmentsPage: React.FC = () => {
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle} onFocus={onFocusG} onBlur={onBlurG}>
             {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+
+          <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
 
           {(searchTerm || customerFilter || statusFilter) && (
             <button onClick={() => { setSearchTerm(""); setCustomerFilter(""); setStatusFilter(""); }}

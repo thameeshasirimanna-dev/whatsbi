@@ -5,18 +5,13 @@ import { uploadMediaToR2 } from '../utils/s3.js';
 export default async function uploadInvoiceTemplateRoutes(fastify: FastifyInstance, supabaseClient: any) {
   fastify.post("/upload-invoice-template", async (request, reply) => {
     try {
-      console.log("Upload invoice template request received");
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, supabaseClient);
-      console.log("JWT verified, user:", authenticatedUser.id);
 
       // Parse JSON body
       const body = request.body as any;
       const agentId = body.agentId;
       const fileData = body.file;
-
-      console.log("agentId:", agentId);
-      console.log("fileData:", fileData?.fileName, fileData?.fileType);
 
       if (!agentId) {
         return reply.code(400).send({

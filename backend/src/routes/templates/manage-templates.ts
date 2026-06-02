@@ -42,7 +42,7 @@ export default async function manageTemplatesRoutes(fastify: FastifyInstance, su
           const offset = parseInt(url.searchParams.get('offset') || '0');
           const isActive = url.searchParams.get('is_active');
 
-          console.log('Templates fetch params:', { search, limit, offset, isActive, agentPrefix });
+
 
           // Query the templates table
           let query = supabaseClient

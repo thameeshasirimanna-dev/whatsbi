@@ -8,10 +8,6 @@ export default async function addAgentRoutes(fastify: FastifyInstance, supabaseC
       const authenticatedUser = await verifyJWT(request, supabaseClient);
 
       const body = request.body as any;
-      console.log('=== ADD-AGENT FUNCTION START ===');
-      console.log('Method:', request.method);
-      console.log('Headers:', request.headers);
-      console.log('Authenticated User:', authenticatedUser.id);
 
       const {
         agent_name,
@@ -135,7 +131,6 @@ export default async function addAgentRoutes(fastify: FastifyInstance, supabaseC
         whatsappConfig = { info: "WhatsApp configuration not provided. Agent created successfully. Set up WhatsApp integration separately." };
       }
 
-      console.log('Agent created successfully:', agentData);
 
       // 5️⃣ Create agent-specific tables using RPC
       const agentPrefixLower = agentPrefix.toLowerCase();
