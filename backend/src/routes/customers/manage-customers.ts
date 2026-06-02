@@ -120,8 +120,6 @@ export default async function manageCustomersRoutes(
           const {
             name,
             phone,
-            email,
-            address,
             lead_stage,
             interest_stage,
             conversion_stage,
@@ -194,8 +192,6 @@ export default async function manageCustomersRoutes(
           const customerData = {
             name: name.trim(),
             phone: phone.trim(),
-            email: email ? email.trim() : null,
-            address: address ? address.trim() : null,
             lead_stage: lead_stage || "New Lead",
             interest_stage: interest_stage || null,
             conversion_stage: conversion_stage || null,
@@ -206,15 +202,13 @@ export default async function manageCustomersRoutes(
           };
 
           const insertQuery = `
-            INSERT INTO ${agentPrefix}_customers (name, phone, email, address, lead_stage, interest_stage, conversion_stage, lead_stage_note, language, ai_enabled, last_user_message_time)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            INSERT INTO ${agentPrefix}_customers (name, phone, lead_stage, interest_stage, conversion_stage, lead_stage_note, language, ai_enabled, last_user_message_time)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
           `;
           const insertParams = [
             customerData.name,
             customerData.phone,
-            customerData.email,
-            customerData.address,
             customerData.lead_stage,
             customerData.interest_stage,
             customerData.conversion_stage,
@@ -253,8 +247,6 @@ export default async function manageCustomersRoutes(
             id,
             name,
             phone,
-            email,
-            address,
             lead_stage,
             interest_stage,
             conversion_stage,
@@ -323,14 +315,6 @@ export default async function manageCustomersRoutes(
           if (phone !== undefined) {
             updateFields.push(`phone = $${updateValues.length + 1}`);
             updateValues.push(phone.trim());
-          }
-          if (email !== undefined) {
-            updateFields.push(`email = $${updateValues.length + 1}`);
-            updateValues.push(email ? email.trim() : null);
-          }
-          if (address !== undefined) {
-            updateFields.push(`address = $${updateValues.length + 1}`);
-            updateValues.push(address ? address.trim() : null);
           }
           if (lead_stage !== undefined) {
             updateFields.push(`lead_stage = $${updateValues.length + 1}`);
