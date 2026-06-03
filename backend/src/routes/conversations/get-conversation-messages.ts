@@ -93,12 +93,7 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
         id: msg.id,
         text: processMessageText(msg.message, msg.direction, msg.media_type, msg.caption),
         sender: msg.direction === 'inbound' ? 'customer' : 'agent',
-        timestamp: new Date(msg.timestamp).toLocaleString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          day: 'numeric',
-          month: 'short',
-        }),
+        timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
         rawTimestamp: new Date(msg.timestamp).getTime(),
         isRead: msg.is_read ?? msg.direction === 'outbound',
         media_type: msg.media_type || 'none',

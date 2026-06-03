@@ -2,11 +2,11 @@ import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 import { CacheService } from '../../utils/cache.js';
 
-export default async function getBotContextRoutes(fastify: FastifyInstance, supabaseClient: any, cacheService: CacheService) {
+export default async function getBotContextRoutes(fastify: FastifyInstance, pgClient: any, cacheService: CacheService) {
   fastify.get('/bot-context/:customerId', async (request, reply) => {
     try {
       // Verify JWT and get user
-      const user = await verifyJWT(request, supabaseClient);
+      const user = await verifyJWT(request, pgClient);
 
       const params = request.params as any;
       const customerId = params.customerId;
@@ -18,29 +18,29 @@ export default async function getBotContextRoutes(fastify: FastifyInstance, supa
       }
 
       // Verify agent ownership
-      const { data: agentData, error: agentError } = await supabaseClient
-        .from("agents")
-        .select("agent_prefix, id")
-        .eq("id", parseInt(agentId))
-        .eq("user_id", user.id)
-        .single();
+      const agentQuery = "SELECT agent_prefix, id FROM agents WHERE id = $1 AND user_id = $2";
+      const { rows: agentRows } = await pgClient.query(agentQuery, [parseInt(agentId), user.id]);
 
-      if (agentError || !agentData) {
+      if (agentRows.length === 0) {
         return reply.code(403).send("Agent not found or access denied");
       }
 
+      const agentData = agentRows[0];
+
       // Verify customer belongs to agent
       const customersTable = `${agentData.agent_prefix}_customers`;
-      const { data: customer, error: customerError } = await supabaseClient
-        .from(customersTable)
-        .select("id, ai_enabled, lead_stage, interest_stage, conversion_stage")
-        .eq("id", parseInt(customerId))
-        .eq("agent_id", parseInt(agentId))
-        .single();
+      const customerQuery = `
+        SELECT id, ai_enabled, lead_stage, interest_stage, conversion_stage
+        FROM ${customersTable}
+        WHERE id = $1 AND agent_id = $2
+      `;
+      const { rows: customerRows } = await pgClient.query(customerQuery, [parseInt(customerId), parseInt(agentId)]);
 
-      if (customerError || !customer) {
+      if (customerRows.length === 0) {
         return reply.code(404).send("Customer not found");
       }
+
+      const customer = customerRows[0];
 
       const cacheKey = CacheService.botContextKey(
         parseInt(agentId),
@@ -54,15 +54,11 @@ export default async function getBotContextRoutes(fastify: FastifyInstance, supa
       }
 
       // Cache miss - fetch from DB
-
-      // For now, bot context includes AI enabled status and stages
-      // This can be extended to include conversation history summary or AI state
       const botContext = {
         aiEnabled: customer.ai_enabled || false,
         leadStage: customer.lead_stage,
         interestStage: customer.interest_stage,
         conversionStage: customer.conversion_stage,
-        // Could add more AI context here like conversation summary, etc.
       };
 
       // Cache the result (5-10 min TTL, using 7.5 min average)

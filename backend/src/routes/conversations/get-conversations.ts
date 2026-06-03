@@ -97,18 +97,9 @@ export default async function getConversationsRoutes(
             )
           : "No messages yet";
         const lastMessageTime = lastMessage
-          ? new Date(lastMessage.timestamp).toLocaleString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "numeric",
-              month: "short",
-            })
-          : new Date(customer.created_at).toLocaleString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "numeric",
-              month: "short",
-            });
+          ? new Date(lastMessage.timestamp).toISOString()
+          : (customer.created_at ? new Date(customer.created_at).toISOString() : new Date().toISOString());
+
 
         const rawLastTimestamp = lastMessage
           ? new Date(lastMessage.timestamp).getTime()

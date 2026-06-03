@@ -625,7 +625,8 @@ const ConversationsPage: React.FC = () => {
 
     newSocket.on("connect", () => {
       // Join agent room
-      newSocket.emit("join-agent-room", { agentId, token: "dummy-token" }); // TODO: Add proper JWT token
+      const token = getToken();
+      newSocket.emit("join-agent-room", { agentId, token });
     });
 
     newSocket.on("connect_error", (error) => {
@@ -642,13 +643,7 @@ const ConversationsPage: React.FC = () => {
         id: messageData.id,
         text: messageData.message || "",
         sender: messageData.sender_type,
-        timestamp: new Date(messageData.timestamp).toLocaleString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          day: "numeric",
-          month: "short",
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }),
+        timestamp: messageData.timestamp ? new Date(messageData.timestamp).toISOString() : new Date().toISOString(),
         rawTimestamp: new Date(messageData.timestamp).getTime(),
         isRead: messageData.sender_type === "agent",
         media_type: messageData.media_type || "none",
@@ -1049,12 +1044,7 @@ const ConversationsPage: React.FC = () => {
       lastUserMessageTime: lastUserMessageTime || null,
       aiEnabled: false,
       lastMessage: "New conversation started",
-      lastMessageTime: new Date().toLocaleString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "numeric",
-        month: "short",
-      }),
+      lastMessageTime: new Date().toISOString(),
       rawLastTimestamp: Date.now(),
       unreadCount: 0,
       messages: [],
@@ -1269,20 +1259,31 @@ const ConversationsPage: React.FC = () => {
         setConversations((prev) => {
           const updatedConversations = conversationsList.map((newConv: any) => {
             const existingConv = prev.find((c) => c.id === newConv.id);
+            
+            let mergedConv = { ...newConv, messages: existingConv?.messages || [] };
+            
+            // If the local conversation has a newer message (e.g. from an optimistic update or a real-time event),
+            // preserve the newer message info to prevent flickering/blinking.
+            if (existingConv && existingConv.rawLastTimestamp > newConv.rawLastTimestamp) {
+              mergedConv = {
+                ...mergedConv,
+                lastMessage: existingConv.lastMessage,
+                lastMessageTime: existingConv.lastMessageTime,
+                rawLastTimestamp: existingConv.rawLastTimestamp,
+                unreadCount: existingConv.unreadCount,
+              };
+            }
+
             // If this conversation is currently selected and has unreadCount 0, preserve it
             if (
               existingConv &&
               selectedConversationId === newConv.id &&
               existingConv.unreadCount === 0
             ) {
-              return {
-                ...newConv,
-                unreadCount: 0,
-                messages: existingConv.messages || [],
-              };
+              mergedConv.unreadCount = 0;
             }
-            // Ensure new conversations have messages array
-            return { ...newConv, messages: existingConv?.messages || [] };
+
+            return mergedConv;
           });
 
           const finalConversations = updatedConversations.sort(
@@ -1397,12 +1398,7 @@ const ConversationsPage: React.FC = () => {
           : "No messages yet";
         const lastMessageTime = lastMsg
           ? lastMsg.timestamp
-          : new Date().toLocaleString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "numeric",
-              month: "short",
-            });
+          : new Date().toISOString();
         const rawLastTimestamp = lastMsg ? lastMsg.rawTimestamp : Date.now();
 
         const updatedConv = {
@@ -2161,13 +2157,7 @@ const ConversationsPage: React.FC = () => {
         id: `temp-${baseTimestamp + i}`,
         text: caption || `[${mediaType.toUpperCase()}]`,
         sender: "agent" as const,
-        timestamp: new Date(baseTimestamp + i * 100).toLocaleString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          day: "numeric",
-          month: "short",
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }),
+        timestamp: new Date(baseTimestamp + i * 100).toISOString(),
         rawTimestamp: baseTimestamp + i * 100,
         isRead: true,
         media_type: media.media_type as
@@ -2389,13 +2379,7 @@ const ConversationsPage: React.FC = () => {
         id: tempMessageId,
         text: messageText,
         sender: "agent" as const,
-        timestamp: new Date().toLocaleString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          day: "numeric",
-          month: "short",
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }),
+        timestamp: new Date().toISOString(),
         rawTimestamp: Date.now(),
         isRead: true,
       };
@@ -2409,6 +2393,7 @@ const ConversationsPage: React.FC = () => {
                 messages: [...conv.messages, optimisticMsg],
                 lastMessage: messageText,
                 lastMessageTime: "Just now",
+                rawLastTimestamp: optimisticMsg.rawTimestamp,
               }
             : conv
         )

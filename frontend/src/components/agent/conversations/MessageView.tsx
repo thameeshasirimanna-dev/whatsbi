@@ -6,6 +6,18 @@ import ServiceSelectorModal from "./ServiceSelectorModal";
 import CustomerOrdersModal from "./CustomerOrdersModal";
 import LeadStageModal from "./LeadStageModal";
 
+const formatMessageTime = (timeStr: string) => {
+  if (!timeStr) return "";
+  const date = new Date(timeStr);
+  if (isNaN(date.getTime())) return timeStr;
+  return date.toLocaleString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "numeric",
+    month: "short",
+  });
+};
+
 interface TemplateData {
   is_template: boolean;
   name: string;
@@ -1059,7 +1071,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                       </div>
                       <div style={{ marginTop: 6, display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start' }}>
                         <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: isAgent ? 'rgba(255,255,255,0.6)' : '#a1a1aa', userSelect: 'none' }}>
-                          {msg.timestamp}
+                          {formatMessageTime(msg.timestamp)}
                         </span>
                       </div>
                     </div>

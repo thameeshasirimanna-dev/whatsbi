@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify';
+import crypto from 'crypto';
 import { verifyJWT } from '../../utils/helpers.js';
 import { uploadMediaToR2 } from "../../utils/s3.js";
 
@@ -61,11 +62,7 @@ export default async function uploadServiceImagesRoutes(
             new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
             ""
           );
-          const binaryString = atob(base64Data);
-          let bytes = Buffer.alloc(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
+          const bytes = Buffer.from(base64Data, "base64");
 
           const uniqueId = crypto.randomUUID();
           const extension = image.fileName.split(".").pop() || "jpg";

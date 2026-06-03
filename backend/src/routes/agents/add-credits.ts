@@ -3,13 +3,20 @@ import { verifyJWT } from '../../utils/helpers.js';
 
 export default async function addCreditsRoutes(
   fastify: FastifyInstance,
-  supabaseClient: any,
+  pgClient: any,
   emitAgentStatusUpdate: (agentId: number, statusData: any) => void
 ) {
   fastify.post("/add-credits", async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
+
+      // Check if user is admin
+      if (authenticatedUser.role !== 'admin') {
+        return reply.code(403).send({
+          error: "Access denied. Admin role required.",
+        });
+      }
 
       const { agent_id, amount } = request.body as any;
 
@@ -20,40 +27,30 @@ export default async function addCreditsRoutes(
         });
       }
 
-      // Check if agent exists
-      const { data: agent, error: agentError } = await supabaseClient
-        .from("agents")
-        .select("id")
-        .eq("id", agent_id)
-        .single();
+      // Update credits directly
+      const updateQuery = "UPDATE agents SET credits = credits + $1 WHERE id = $2 RETURNING credits";
+      const { rows: updateRows } = await pgClient.query(updateQuery, [
+        parseFloat(amount),
+        parseInt(agent_id)
+      ]);
 
-      if (agentError || !agent) {
-        return reply.code(400).send({
+      if (updateRows.length === 0) {
+        return reply.code(404).send({
           error: "Agent not found",
         });
       }
 
-      // Call the RPC function to add credits
-      const { data, error } = await supabaseClient.rpc("add_credits", {
-        p_agent_id: agent_id,
-        p_amount: amount,
-      });
-
-      if (error) {
-        return reply.code(400).send({
-          error: error.message,
-        });
-      }
+      const newCredits = parseFloat(updateRows[0].credits);
 
       // Emit agent status update
       emitAgentStatusUpdate(agent_id, {
         type: "credits_updated",
-        credits: data,
+        credits: newCredits,
       });
 
       return reply.code(200).send({
         message: "Credits added successfully",
-        credits: data,
+        credits: newCredits,
       });
     } catch (error) {
       console.error(error);

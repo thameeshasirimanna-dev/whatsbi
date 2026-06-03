@@ -52,11 +52,7 @@ export default async function uploadInventoryImagesRoutes(fastify: FastifyInstan
             new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
             ""
           );
-          const binaryString = atob(base64Data);
-          let bytes = Buffer.alloc(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
+          const bytes = Buffer.from(base64Data, "base64");
 
           // TODO: Add image resizing/compression using sharp or similar
           // For now, upload as is

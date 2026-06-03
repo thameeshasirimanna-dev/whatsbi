@@ -39,6 +39,32 @@ export async function verifyJWT(request: any, pgClient: any) {
   }
 }
 
+export async function verifySocketToken(token: string, agentId: number, pgClient: any): Promise<boolean> {
+  try {
+    const secret = process.env.JWT_SECRET ?? "";
+    if (!secret) {
+      console.error("JWT_SECRET not configured");
+      return false;
+    }
+    // Verify token signature first
+    const decoded = jwt.verify(token, secret) as any;
+    if (!decoded || !decoded.sub) {
+      return false;
+    }
+    const userId = decoded.sub;
+
+    // Check if the user exists and owns the agent with agentId
+    const { rows } = await pgClient.query(
+      "SELECT id FROM agents WHERE id = $1 AND user_id = $2",
+      [agentId, userId]
+    );
+    return rows.length > 0;
+  } catch (error) {
+    console.error("Socket JWT verification error:", error);
+    return false;
+  }
+}
+
 export function generateJWT(userId: string): string {
   const secret = process.env.JWT_SECRET ?? "";
   if (!secret) {

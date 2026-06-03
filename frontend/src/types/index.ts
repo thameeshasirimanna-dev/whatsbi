@@ -77,17 +77,6 @@ export interface Customer {
   type?: 'customer';
 }
 
-export interface Message {
-  id: string;
-  sender_name: string;
-  sender_phone: string;
-  message_text: string;
-  status: 'sent' | 'delivered' | 'read' | 'failed' | 'unread';
-  direction: 'incoming' | 'outgoing';
-  created_at: string;
-  read_at?: string;
-  type?: 'message';
-}
 
 export interface DashboardStats {
   totalOrders: number;

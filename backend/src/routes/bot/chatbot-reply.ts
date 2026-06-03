@@ -1,10 +1,9 @@
 import { FastifyInstance } from 'fastify';
-import { uploadMediaToR2 } from '../../utils/s3.js';
 import { downloadWhatsAppMedia, uploadMediaToStorage } from '../../utils/helpers.js';
 
 const CHATBOT_SECRET = process.env.CHATBOT_SECRET ?? 'default-secret-change-in-prod';
 
-export default async function chatbotReplyRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function chatbotReplyRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/chatbot-reply', async (request, reply) => {
     try {
       const body = request.body as any;
@@ -33,52 +32,52 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, supab
       }
 
       // Validate user exists
-      const { data: user, error: userError } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('id', user_id)
-        .single();
+      const { rows: userRows } = await pgClient.query(
+        "SELECT id FROM users WHERE id = $1",
+        [user_id]
+      );
 
-      if (userError || !user) {
+      if (userRows.length === 0) {
         return reply.code(404).send({ error: 'User not found' });
       }
 
       // Get WhatsApp config
-      const { data: whatsappConfig, error: configError } = await supabaseClient
-        .from('whatsapp_configuration')
-        .select('api_key, phone_number_id, user_id')
-        .eq('user_id', user_id)
-        .eq('is_active', true)
-        .single();
+      const { rows: configRows } = await pgClient.query(
+        "SELECT api_key, phone_number_id, user_id FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true",
+        [user_id]
+      );
 
-      if (configError || !whatsappConfig) {
+      if (configRows.length === 0) {
         return reply.code(404).send({ error: 'WhatsApp configuration not found' });
       }
 
-      // Get agent
-      const { data: agent, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('id, agent_prefix')
-        .eq('user_id', user_id)
-        .single();
+      const whatsappConfig = configRows[0];
 
-      if (agentError || !agent) {
+      // Get agent
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+        [user_id]
+      );
+
+      if (agentRows.length === 0) {
         return reply.code(404).send({ error: 'Agent not found' });
       }
 
+      const agent = agentRows[0];
       const customersTable = `${agent.agent_prefix}_customers`;
       const messagesTable = `${agent.agent_prefix}_messages`;
 
       // Find customer
-      const { data: customer, error: customerError } = await supabaseClient
-        .from(customersTable)
-        .select('id, phone')
-        .eq('phone', customer_phone)
-        .single();
+      const { rows: customerRows } = await pgClient.query(
+        `SELECT id, phone FROM ${customersTable} WHERE phone = $1`,
+        [customer_phone]
+      );
 
-      if (customerError || !customer) {
+      if (customerRows.length === 0) {
         return reply.code(404).send({ error: 'Customer not found' });
       }
+
+      const customer = customerRows[0];
 
       // Normalize phone number
       let normalizedPhone = customer.phone.replace(/\D/g, '');
@@ -93,7 +92,6 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, supab
       const accessToken = whatsappConfig.api_key;
       const phoneNumberId = whatsappConfig.phone_number_id;
 
-      let mediaUrl: string | null = null;
       let storedMediaUrl: string | null = null;
 
       // Handle media if present
@@ -122,7 +120,7 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, supab
           }
 
           storedMediaUrl = await uploadMediaToStorage(
-            supabaseClient,
+            pgClient,
             agent.agent_prefix,
             mediaBuffer,
             filename,
@@ -191,43 +189,37 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, supab
       const messageId = result.messages?.[0]?.id;
 
       // Store message in database
-      const messageData = {
-        customer_id: customer.id,
-        message: message || `[${type.toUpperCase()}] Media file`,
-        direction: 'outbound',
-        timestamp: new Date().toISOString(),
-        is_read: true,
-        media_type: type === 'text' ? 'none' : type,
-        media_url: storedMediaUrl,
-        caption: caption,
-        sent_by: 'chatbot', // Mark as sent by chatbot
-      };
+      const messageText = message || `[${type.toUpperCase()}] Media file`;
+      const mediaTypeVal = type === 'text' ? 'none' : type;
 
-      const { error: insertError } = await supabaseClient
-        .from(messagesTable)
-        .insert(messageData);
-
-      if (insertError) {
-        console.error('Error storing chatbot message:', insertError);
-      }
+      await pgClient.query(
+        `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption)
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP, true, $4, $5, $6)`,
+        [
+          customer.id,
+          messageText,
+          'outbound',
+          mediaTypeVal,
+          storedMediaUrl,
+          caption || null
+        ]
+      );
 
       // Log to whatsapp_message_logs
       if (messageId) {
-        const { error: logError } = await supabaseClient
-          .from('whatsapp_message_logs')
-          .insert({
-            user_id: user_id,
-            agent_id: agent.id,
-            customer_phone: customer_phone,
-            message_type: type,
-            category: 'chatbot',
-            status: 'sent',
-            whatsapp_message_id: messageId,
-          });
-
-        if (logError) {
-          console.error('Error logging chatbot message:', logError);
-        }
+        await pgClient.query(
+          `INSERT INTO whatsapp_message_logs (user_id, agent_id, customer_phone, message_type, category, status, whatsapp_message_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            user_id,
+            agent.id,
+            customer_phone,
+            type,
+            'chatbot',
+            'sent',
+            messageId
+          ]
+        );
       }
 
       return reply.code(200).send({

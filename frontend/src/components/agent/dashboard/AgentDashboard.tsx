@@ -19,6 +19,35 @@ import {
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
+const formatRelativeTime = (timeStr: string) => {
+  if (!timeStr) return "";
+  const date = new Date(timeStr);
+  if (isNaN(date.getTime())) return timeStr;
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 1) {
+    return "Just now";
+  } else if (diffMins < 60) {
+    return `${diffMins}m ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  } else {
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.round((todayMidnight.getTime() - targetMidnight.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      return "Yesterday";
+    } else {
+      return date.toLocaleDateString([], { month: "short", day: "numeric" });
+    }
+  }
+};
+
 interface Metric {
   title: string;
   value: string | number;
@@ -414,7 +443,7 @@ const DashboardContent: React.FC = () => {
                       </span>
                     </div>
                     <div style={{ ...DM, fontSize: 12, color: '#71717a', marginBottom: 2 }}>{activity.description}</div>
-                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>{activity.time}</div>
+                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>{formatRelativeTime(activity.time)}</div>
                   </div>
                 </motion.div>
               );

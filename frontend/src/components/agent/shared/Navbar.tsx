@@ -30,6 +30,22 @@ interface NavbarProps {
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
+const formatNotificationTime = (timeStr: string) => {
+  if (!timeStr) return "";
+  const date = new Date(timeStr);
+  if (isNaN(date.getTime())) return timeStr;
+
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (targetMidnight.getTime() === todayMidnight.getTime()) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else {
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+};
+
 const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -250,7 +266,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
                           {notification.preview}
                         </div>
                         <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 2 }}>
-                          {notification.timestamp}
+                          {formatNotificationTime(notification.timestamp)}
                         </div>
                       </div>
                     </button>

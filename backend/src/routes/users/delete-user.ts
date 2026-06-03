@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 
-export default async function deleteUserRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function deleteUserRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.delete('/delete-user/:id', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       const { id } = request.params as any;
 
@@ -26,18 +26,19 @@ export default async function deleteUserRoutes(fastify: FastifyInstance, supabas
       }
 
       // Check if user exists
-      const { data: existingUser, error: checkError } = await supabaseClient
-        .from('users')
-        .select('id, role')
-        .eq('id', id)
-        .single();
+      const { rows: existingUserRows } = await pgClient.query(
+        'SELECT id, role FROM users WHERE id = $1',
+        [id]
+      );
 
-      if (checkError || !existingUser) {
+      if (existingUserRows.length === 0) {
         return reply.code(404).send({
           success: false,
           message: 'User not found.'
         });
       }
+
+      const existingUser = existingUserRows[0];
 
       // Prevent deleting other admins
       if (existingUser.role === 'admin') {
@@ -47,29 +48,19 @@ export default async function deleteUserRoutes(fastify: FastifyInstance, supabas
         });
       }
 
-      // Delete from users table first
-      const { error: userError } = await supabaseClient
-        .from('users')
-        .delete()
-        .eq('id', id);
+      // Delete from users table (cascades agents, config, etc.)
+      const { rowCount: userDeleted } = await pgClient.query(
+        'DELETE FROM users WHERE id = $1',
+        [id]
+      );
 
-      if (userError) {
+      if (userDeleted === 0) {
         return reply.code(500).send({
           success: false,
-          message: 'Failed to delete user from database: ' + userError.message
+          message: 'Failed to delete user from database.'
         });
       }
 
-      // Delete from auth
-      const { error: authError } = await supabaseClient.auth.admin.deleteUser(id);
-
-      if (authError) {
-        console.error('Failed to delete auth user:', authError);
-        // Continue since user record is already deleted
-      }
-
-
-      // Return success response
       return reply.code(200).send({
         success: true,
         message: 'User deleted successfully'

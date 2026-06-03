@@ -8,3 +8,13 @@ html, body, #root {
   margin: 0;
   padding: 0;
 }
+
+/* Hide scrollbar for all elements while maintaining scroll functionality */
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}

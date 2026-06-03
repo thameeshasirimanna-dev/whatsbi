@@ -5,6 +5,31 @@ import { Search, Plus, MessageSquare, ChevronDown } from "lucide-react";
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
+const formatLastMessageTime = (timeStr: string) => {
+  if (!timeStr) return "";
+  if (timeStr === "Just now") return "Just now";
+  const date = new Date(timeStr);
+  if (isNaN(date.getTime())) return timeStr;
+
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const targetMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const diffTime = todayMidnight.getTime() - targetMidnight.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (targetMidnight.getTime() === todayMidnight.getTime()) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } else if (targetMidnight.getTime() === yesterdayMidnight.getTime()) {
+    return "Yesterday";
+  } else if (diffDays < 7 && diffDays > 0) {
+    return date.toLocaleDateString([], { weekday: "long" });
+  } else {
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  }
+};
+
 type TabType = "all" | "unread" | "ai" | "orders";
 type TimeFilterType = "today" | "yesterday" | "week" | "month" | null;
 
@@ -604,7 +629,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {conversation.lastMessageTime}
+                        {formatLastMessageTime(conversation.lastMessageTime)}
                       </span>
                     </div>
                     <div

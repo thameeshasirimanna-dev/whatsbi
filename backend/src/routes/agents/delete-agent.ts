@@ -1,11 +1,19 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from "../../utils/helpers.js";
 
-export default async function deleteAgentRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function deleteAgentRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.post('/delete-agent', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
+
+      // Check if user is admin
+      if (authenticatedUser.role !== 'admin') {
+        return reply.code(403).send({
+          success: false,
+          message: 'Access denied. Admin role required.'
+        });
+      }
 
       const body = request.body as any;
       const { agent_id } = body;
@@ -18,133 +26,72 @@ export default async function deleteAgentRoutes(fastify: FastifyInstance, supaba
       }
 
       // 1️⃣ Get agent details including user_id and agent_prefix
-      const { data: agent, error: agentError } = await supabaseClient
-        .from("agents")
-        .select("id, user_id, agent_prefix")
-        .eq("id", agent_id)
-        .single();
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, user_id, agent_prefix FROM agents WHERE id = $1",
+        [parseInt(agent_id)]
+      );
 
-      if (agentError || !agent) {
+      if (agentRows.length === 0) {
         return reply.code(404).send({
           success: false,
-          message: "Agent not found: " + agentError?.message,
+          message: "Agent not found",
         });
       }
 
-      // 2️⃣ Drop dynamic per-agent tables using RPC function
+      const agent = agentRows[0];
+
+      // 2️⃣ Drop dynamic per-agent tables using database function
       if (agent.agent_prefix) {
         const prefix = agent.agent_prefix.toLowerCase();
         try {
-          const { data, error } = await supabaseClient.rpc(
-            "drop_agent_tables",
-            {
-              p_agent_prefix: prefix,
-            }
-          );
-
-          if (error) {
-            console.error("RPC error dropping agent tables:", error);
-          } else {
-            const droppedTables = data?.dropped_tables || [];
-            const errors = data?.errors || [];
-          }
+          await pgClient.query("SELECT drop_agent_tables($1)", [prefix]);
         } catch (rpcError) {
           console.error("Exception during table cleanup RPC:", rpcError);
           // Continue with other deletion steps - table cleanup is best-effort
         }
       }
 
-      // 3️⃣ Get user details including auth id
-      const { data: user, error: userError } = await supabaseClient
-        .from("users")
-        .select("id, email")
-        .eq("id", agent.user_id)
-        .single();
+      // 3️⃣ Get user details
+      const { rows: userRows } = await pgClient.query(
+        "SELECT id, email FROM users WHERE id = $1",
+        [agent.user_id]
+      );
 
-      if (userError || !user) {
-        return reply.code(404).send({
-          success: false,
-          message: "User not found for agent: " + userError?.message,
-        });
-      }
+      // 4️⃣ Delete agent first
+      const { rowCount: agentDeleted } = await pgClient.query(
+        "DELETE FROM agents WHERE id = $1",
+        [parseInt(agent_id)]
+      );
 
-      // 3️⃣ Delete agent first (cascades agent_customers due to FK)
-      const { error: agentDeleteError } = await supabaseClient
-        .from("agents")
-        .delete()
-        .eq("id", agent_id);
-
-      if (agentDeleteError) {
-        console.error("Error deleting agent:", agentDeleteError);
+      if (agentDeleted === 0) {
         return reply.code(500).send({
           success: false,
-          message: "Failed to delete agent: " + agentDeleteError.message,
+          message: "Failed to delete agent",
         });
       }
 
-      // 4️⃣ Find assigned customers via agent_customers (before agent deletion cascades it away)
-      // Note: This query might fail if agent_customers already cascaded, which is fine
-      let customerIds: number[] = [];
-      try {
-        const { data: agentCustomers, error: acError } = await supabaseClient
-          .from("agent_customers")
-          .select("customer_id")
-          .eq("agent_id", agent_id);
+      // 5️⃣ Delete user (cascades whatsapp_configuration, etc.)
+      if (userRows.length > 0) {
+        const user = userRows[0];
+        const { rowCount: userDeleted } = await pgClient.query(
+          "DELETE FROM users WHERE id = $1",
+          [user.id]
+        );
 
-        if (!acError && agentCustomers) {
-          customerIds = agentCustomers.map((ac: any) => ac.customer_id);
-        }
-      } catch (acErr) {
-        // Try to find customers by looking at central customers table if needed
-      }
-
-      // 5️⃣ Delete assigned customers (cascades to messages) - if we have customer IDs
-      if (customerIds.length > 0) {
-        const { error: customerDeleteError } = await supabaseClient
-          .from("customers")
-          .delete()
-          .in("id", customerIds);
-
-        if (customerDeleteError) {
-          console.error("Error deleting customers:", customerDeleteError);
-          // Continue - customer deletion is important but shouldn't block agent deletion
+        if (userDeleted === 0) {
+          return reply.code(500).send({
+            success: false,
+            message: "Failed to delete user record",
+          });
         }
       }
-
-      // 6️⃣ Now delete user (no longer referenced by agents table due to CASCADE)
-      const { error: usersDeleteError } = await supabaseClient
-        .from("users")
-        .delete()
-        .eq("id", user.id);
-
-      if (usersDeleteError) {
-        console.error("Error deleting user:", usersDeleteError);
-        return reply.code(500).send({
-          success: false,
-          message: "Failed to delete user: " + usersDeleteError.message,
-        });
-      }
-
-      // 7️⃣ Delete auth user
-      const { error: authDeleteError } =
-        await supabaseClient.auth.admin.deleteUser(user.id);
-
-      if (authDeleteError) {
-        console.error("Error deleting auth user:", authDeleteError);
-        return reply.code(500).send({
-          success: false,
-          message: "Failed to delete auth user: " + authDeleteError.message,
-        });
-      }
-
 
       return reply.code(200).send({
         success: true,
         message: "Agent deleted successfully",
         deleted: {
           agent_id,
-          user_id: user.id,
-          customers_count: customerIds.length,
+          user_id: agent.user_id
         },
       });
     } catch (err) {

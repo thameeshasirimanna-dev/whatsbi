@@ -73,12 +73,8 @@ export default async function getDashboardDataRoutes(
         id: msg.id.toString(),
         type: 'conversation' as const,
         title: `Message from ${msg.customer_name || `Customer ${msg.customer_id}`}`,
-        description: msg.message.substring(0, 50) + (msg.message.length > 50 ? '...' : ''),
-        time: new Date(msg.timestamp).toLocaleString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        }) + ' ago',
+        description: msg.message ? (msg.message.substring(0, 50) + (msg.message.length > 50 ? '...' : '')) : '[Media]',
+        time: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
         status: msg.is_read ? 'completed' : 'new'
       }));
 

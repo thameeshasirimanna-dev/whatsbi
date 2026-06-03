@@ -1,26 +1,26 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 
-export default async function manageTemplatesRoutes(fastify: FastifyInstance, supabaseClient: any) {
+export default async function manageTemplatesRoutes(fastify: FastifyInstance, pgClient: any) {
   fastify.all('/manage-templates', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
-      const authenticatedUser = await verifyJWT(request, supabaseClient);
+      const authenticatedUser = await verifyJWT(request, pgClient);
 
       // Get agent
-      const { data: agent, error: agentError } = await supabaseClient
-        .from('agents')
-        .select('id, agent_prefix')
-        .eq('user_id', authenticatedUser.id)
-        .single();
+      const { rows: agentRows } = await pgClient.query(
+        'SELECT id, agent_prefix FROM agents WHERE user_id = $1',
+        [authenticatedUser.id]
+      );
 
-      if (agentError || !agent) {
+      if (agentRows.length === 0) {
         return reply.code(403).send({
           success: false,
           message: 'Agent not found'
         });
       }
 
+      const agent = agentRows[0];
       const agentPrefix = agent.agent_prefix;
       const method = request.method;
       const url = new URL(request.url, `http://${request.headers.host}`);
@@ -42,36 +42,32 @@ export default async function manageTemplatesRoutes(fastify: FastifyInstance, su
           const offset = parseInt(url.searchParams.get('offset') || '0');
           const isActive = url.searchParams.get('is_active');
 
+          let sql = `SELECT * FROM ${agentPrefix}_templates WHERE 1=1`;
+          const params: any[] = [];
 
-
-          // Query the templates table
-          let query = supabaseClient
-            .from(`${agentPrefix}_templates`)
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (isActive !== null) {
-            query = query.eq('is_active', isActive === 'true');
+          if (isActive !== null && isActive !== undefined) {
+            params.push(isActive === 'true');
+            sql += ` AND is_active = $${params.length}`;
           }
 
           if (search) {
-            query = query.or(`name.ilike.%${search}%,body->>text.ilike.%${search}%`);
+            params.push(`%${search}%`);
+            sql += ` AND (name ILIKE $${params.length} OR body::text ILIKE $${params.length})`;
           }
 
+          sql += ` ORDER BY created_at DESC`;
+
           if (limit > 0) {
-            query = query.limit(limit);
+            params.push(limit);
+            sql += ` LIMIT $${params.length}`;
           }
 
           if (offset > 0) {
-            query = query.offset(offset);
+            params.push(offset);
+            sql += ` OFFSET $${params.length}`;
           }
 
-          const { data: templates, error: getError } = await query;
-
-          if (getError) {
-            console.error('Get templates error:', getError);
-            return reply.code(500).send({ success: false, message: getError.message });
-          }
+          const { rows: templates } = await pgClient.query(sql, params);
 
           return reply.code(200).send({
             success: true,
@@ -92,28 +88,20 @@ export default async function manageTemplatesRoutes(fastify: FastifyInstance, su
             return reply.code(400).send({ success: false, message: 'Template body is required' });
           }
 
-          const templateData = {
-            name: name.trim(),
-            body: templateBody,
-            is_active: is_active !== undefined ? is_active : true,
-            updated_at: new Date().toISOString()
-          };
-
-          const { data: template, error: createError } = await supabaseClient
-            .from(`${agentPrefix}_templates`)
-            .insert(templateData)
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('Create template error:', createError);
-            return reply.code(500).send({ success: false, message: createError.message });
-          }
+          const { rows: templateRows } = await pgClient.query(
+            `INSERT INTO ${agentPrefix}_templates (agent_id, name, body, is_active, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING *`,
+            [
+              agent.id,
+              name.trim(),
+              JSON.stringify(templateBody),
+              is_active !== undefined ? is_active : true
+            ]
+          );
 
           return reply.code(201).send({
             success: true,
             message: 'Template created successfully',
-            template
+            template: templateRows[0]
           });
         }
 
@@ -126,33 +114,35 @@ export default async function manageTemplatesRoutes(fastify: FastifyInstance, su
           }
 
           const updateData: any = {
-            updated_at: new Date().toISOString()
+            updated_at: new Date()
           };
 
           if (name !== undefined) updateData.name = name ? name.trim() : null;
           if (templateBody !== undefined) updateData.body = templateBody;
           if (is_active !== undefined) updateData.is_active = is_active;
 
-          const { data: template, error: updateError } = await supabaseClient
-            .from(`${agentPrefix}_templates`)
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
+          const setClauses: string[] = [];
+          const queryParams: any[] = [];
+          Object.keys(updateData).forEach((key) => {
+            const val = updateData[key];
+            queryParams.push(key === 'body' && typeof val === 'object' ? JSON.stringify(val) : val);
+            setClauses.push(`${key} = $${queryParams.length}`);
+          });
 
-          if (updateError) {
-            console.error('Update template error:', updateError);
-            return reply.code(500).send({ success: false, message: updateError.message });
-          }
+          queryParams.push(id);
+          const { rows: templateRows } = await pgClient.query(
+            `UPDATE ${agentPrefix}_templates SET ${setClauses.join(', ')} WHERE id = $${queryParams.length} RETURNING *`,
+            queryParams
+          );
 
-          if (!template) {
+          if (templateRows.length === 0) {
             return reply.code(404).send({ success: false, message: 'Template not found' });
           }
 
           return reply.code(200).send({
             success: true,
             message: 'Template updated successfully',
-            template
+            template: templateRows[0]
           });
         }
 
@@ -165,19 +155,12 @@ export default async function manageTemplatesRoutes(fastify: FastifyInstance, su
 
           const templateId = parseInt(id);
 
-          const { data: template, error: deleteError } = await supabaseClient
-            .from(`${agentPrefix}_templates`)
-            .delete()
-            .eq('id', templateId)
-            .select()
-            .single();
+          const { rows: templateRows } = await pgClient.query(
+            `DELETE FROM ${agentPrefix}_templates WHERE id = $1 RETURNING *`,
+            [templateId]
+          );
 
-          if (deleteError) {
-            console.error('Delete template error:', deleteError);
-            return reply.code(500).send({ success: false, message: deleteError.message });
-          }
-
-          if (!template) {
+          if (templateRows.length === 0) {
             return reply.code(404).send({ success: false, message: 'Template not found' });
           }
 
