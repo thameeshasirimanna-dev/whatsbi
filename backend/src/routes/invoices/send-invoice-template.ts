@@ -1,7 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 
-export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance, pgClient: any) {
+export default async function sendInvoiceTemplateRoutes(
+  fastify: FastifyInstance,
+  pgClient: any,
+  emitNewMessage?: (agentId: number, messageData: any) => void
+) {
   fastify.post('/send-invoice-template', async (request, reply) => {
     try {
       // Verify JWT and get authenticated user
@@ -56,7 +60,7 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
 
       // Find customer
       const { rows: customerRows } = await pgClient.query(
-        `SELECT id, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1`,
+        `SELECT id, name, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1`,
         [customer_phone]
       );
 
@@ -291,16 +295,36 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
         }
         stored_message = renderedText;
 
+        let insertedMessage;
         try {
-          await pgClient.query(
-            `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          const { rows: msgRows } = await pgClient.query(
+            `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
             [customer.id, stored_message, "outbound", messageTimestamp, true, "none", null, null]
           );
+          if (msgRows.length > 0) {
+            insertedMessage = msgRows[0];
+          }
         } catch (msgError) {
           return reply.code(500).send({
             error: "Failed to store message in database",
             details: (msgError as Error).message,
           });
+        }
+
+        if (emitNewMessage && insertedMessage) {
+          const messageDataForSocket = {
+            id: insertedMessage.id,
+            customer_id: insertedMessage.customer_id,
+            customer_name: customer.name || customer.phone,
+            customer_phone: customer.phone,
+            message: insertedMessage.message,
+            sender_type: "agent",
+            timestamp: insertedMessage.timestamp,
+            media_type: insertedMessage.media_type,
+            media_url: insertedMessage.media_url,
+            caption: insertedMessage.caption,
+          };
+          emitNewMessage(agent.id, messageDataForSocket);
         }
 
         return reply.code(200).send({
@@ -421,16 +445,36 @@ Thank you for your business!`;
         stored_media_type = "document";
         stored_media_url = storedMediaUrl;
 
+        let insertedMessage;
         try {
-          await pgClient.query(
-            `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          const { rows: msgRows } = await pgClient.query(
+            `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
             [customer.id, stored_message, "outbound", messageTimestamp, true, stored_media_type, stored_media_url, stored_caption]
           );
+          if (msgRows.length > 0) {
+            insertedMessage = msgRows[0];
+          }
         } catch (msgError) {
           return reply.code(500).send({
             error: "Failed to store message in database",
             details: msgError.message,
           });
+        }
+
+        if (emitNewMessage && insertedMessage) {
+          const messageDataForSocket = {
+            id: insertedMessage.id,
+            customer_id: insertedMessage.customer_id,
+            customer_name: customer.name || customer.phone,
+            customer_phone: customer.phone,
+            message: insertedMessage.message,
+            sender_type: "agent",
+            timestamp: insertedMessage.timestamp,
+            media_type: insertedMessage.media_type,
+            media_url: insertedMessage.media_url,
+            caption: insertedMessage.caption,
+          };
+          emitNewMessage(agent.id, messageDataForSocket);
         }
 
         return reply.code(200).send({

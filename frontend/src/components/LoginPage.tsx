@@ -210,7 +210,7 @@ const LoginPage: React.FC = () => {
         <div style={{
           ...DM,
           minHeight: '100vh',
-          background: '#0c1a0e',
+          backgroundColor: '#0c1a0e',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -249,7 +249,7 @@ const LoginPage: React.FC = () => {
       <div style={{
         ...DM,
         minHeight: '100vh',
-        background: '#0c1a0e',
+        backgroundColor: '#0c1a0e',
         backgroundImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(34,197,94,0.13) 0%, rgba(34,197,94,0.03) 50%, transparent 75%)',
         display: 'flex',
         alignItems: 'center',

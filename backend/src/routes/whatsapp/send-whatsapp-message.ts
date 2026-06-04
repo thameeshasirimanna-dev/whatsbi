@@ -7,7 +7,8 @@ import { CacheService } from "../../utils/cache.js";
 export default async function sendWhatsappMessageRoutes(
   fastify: FastifyInstance,
   pgClient: any,
-  cacheService: CacheService
+  cacheService: CacheService,
+  emitNewMessage?: (agentId: number, messageData: any) => void
 ) {
   fastify.post("/send-whatsapp-message", async (request, reply) => {
     try {
@@ -709,8 +710,8 @@ export default async function sendWhatsappMessageRoutes(
           messageText = templateName || "";
           // TODO: handle template media if needed
         }
-        await pgClient.query(
-          `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        const { rows: insertedMessageRows } = await pgClient.query(
+          `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
           [
             customer.id,
             messageText,
@@ -723,6 +724,23 @@ export default async function sendWhatsappMessageRoutes(
           ]
         );
         storedCount++;
+
+        if (emitNewMessage && insertedMessageRows.length > 0) {
+          const insertedMessage = insertedMessageRows[0];
+          const messageDataForSocket = {
+            id: insertedMessage.id,
+            customer_id: insertedMessage.customer_id,
+            customer_name: customer.name || customer.phone,
+            customer_phone: customer.phone,
+            message: insertedMessage.message,
+            sender_type: "agent",
+            timestamp: insertedMessage.timestamp,
+            media_type: insertedMessage.media_type,
+            media_url: insertedMessage.media_url,
+            caption: insertedMessage.caption,
+          };
+          emitNewMessage(agent.id, messageDataForSocket);
+        }
       }
 
       // Invalidate cache for the conversation and chat list

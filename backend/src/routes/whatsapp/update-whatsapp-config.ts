@@ -9,10 +9,12 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
 
       const body = request.body as any;
 
+      const targetUserId = authenticatedUser.role === 'admin' ? (body.user_id || authenticatedUser.id) : authenticatedUser.id;
+
       // Get agent details (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
         "SELECT id, agent_prefix, user_id FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
-        [authenticatedUser.id]
+        [targetUserId]
       );
 
       if (agentRows.length === 0) {
@@ -24,11 +26,11 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
 
       const agentData = agentRows[0];
 
-      // Only the agent owner can manage WhatsApp settings
-      if (agentData.user_id !== authenticatedUser.id) {
+      // Only the agent owner or admin can manage WhatsApp settings
+      if (authenticatedUser.role !== 'admin' && agentData.user_id !== authenticatedUser.id) {
         return reply.code(403).send({
           success: false,
-          message: "Access denied. Only the agent owner can manage WhatsApp settings."
+          message: "Access denied. Only the agent owner or administrator can manage WhatsApp settings."
         });
       }
 

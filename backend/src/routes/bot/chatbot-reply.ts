@@ -3,7 +3,11 @@ import { downloadWhatsAppMedia, uploadMediaToStorage } from '../../utils/helpers
 
 const CHATBOT_SECRET = process.env.CHATBOT_SECRET ?? 'default-secret-change-in-prod';
 
-export default async function chatbotReplyRoutes(fastify: FastifyInstance, pgClient: any) {
+export default async function chatbotReplyRoutes(
+  fastify: FastifyInstance,
+  pgClient: any,
+  emitNewMessage?: (agentId: number, messageData: any) => void
+) {
   fastify.post('/chatbot-reply', async (request, reply) => {
     try {
       const body = request.body as any;
@@ -69,7 +73,7 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, pgCli
 
       // Find customer
       const { rows: customerRows } = await pgClient.query(
-        `SELECT id, phone FROM ${customersTable} WHERE phone = $1`,
+        `SELECT id, name, phone FROM ${customersTable} WHERE phone = $1`,
         [customer_phone]
       );
 
@@ -192,9 +196,9 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, pgCli
       const messageText = message || `[${type.toUpperCase()}] Media file`;
       const mediaTypeVal = type === 'text' ? 'none' : type;
 
-      await pgClient.query(
+      const { rows: insertedMessageRows } = await pgClient.query(
         `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP, true, $4, $5, $6)`,
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP, true, $4, $5, $6) RETURNING *`,
         [
           customer.id,
           messageText,
@@ -204,6 +208,23 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, pgCli
           caption || null
         ]
       );
+
+      if (emitNewMessage && insertedMessageRows.length > 0) {
+        const insertedMessage = insertedMessageRows[0];
+        const messageDataForSocket = {
+          id: insertedMessage.id,
+          customer_id: insertedMessage.customer_id,
+          customer_name: customer.name || customer.phone,
+          customer_phone: customer.phone,
+          message: insertedMessage.message,
+          sender_type: "agent",
+          timestamp: insertedMessage.timestamp,
+          media_type: insertedMessage.media_type,
+          media_url: insertedMessage.media_url,
+          caption: insertedMessage.caption,
+        };
+        emitNewMessage(agent.id, messageDataForSocket);
+      }
 
       // Log to whatsapp_message_logs
       if (messageId) {

@@ -122,7 +122,7 @@ async function registerRoutes() {
     emitNewMessage,
     emitAgentStatusUpdate
   );
-  await sendWhatsappMessageRoutes(server, pgClient, cacheService);
+  await sendWhatsappMessageRoutes(server, pgClient, cacheService, emitNewMessage);
   await getMediaPreviewRoutes(server, pgClient);
   await uploadInventoryImagesRoutes(server, pgClient);
   await uploadMediaRoutes(server, pgClient);
@@ -137,7 +137,7 @@ async function registerRoutes() {
   await getConversationMessagesRoutes(server, pgClient, cacheService);
   await markMessagesReadRoutes(server, pgClient, cacheService);
   await getBotContextRoutes(server, pgClient, cacheService);
-  await chatbotReplyRoutes(server, pgClient);
+  await chatbotReplyRoutes(server, pgClient, emitNewMessage);
   await manageServicesRoutes(server, pgClient);
   await manageInventoryRoutes(server, pgClient);
   await manageCustomersRoutes(server, pgClient, cacheService);
@@ -148,7 +148,7 @@ async function registerRoutes() {
   await uploadInvoiceRoutes(server, pgClient);
   await downloadInvoiceRoutes(server, pgClient);
   await updateAgentRoutes(server, pgClient);
-  await sendInvoiceTemplateRoutes(server, pgClient);
+  await sendInvoiceTemplateRoutes(server, pgClient, emitNewMessage);
   await manageInvoicesRoutes(server, pgClient);
   await getUsersRoutes(server, pgClient);
   await addUserRoutes(server, pgClient);
