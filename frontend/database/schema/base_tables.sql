@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS agents (
     CONSTRAINT agents_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Add agent_id relation to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS agent_id BIGINT REFERENCES agents(id) ON DELETE SET NULL;
+
 -- WhatsApp Configuration table
 CREATE TABLE IF NOT EXISTS whatsapp_configuration (
     id BIGSERIAL PRIMARY KEY,

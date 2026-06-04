@@ -33,7 +33,7 @@ export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, 
 
       // Validate user exists
       const { rows: userRows } = await pgClient.query(
-        "SELECT id, email FROM users WHERE id = $1",
+        "SELECT id, email, agent_id FROM users WHERE id = $1",
         [userId]
       );
 
@@ -46,10 +46,22 @@ export default async function getWhatsappConfigRoutes(fastify: FastifyInstance, 
 
       const userExists = userRows[0];
 
+      // If user is a sub-user of an agent, resolve to agent owner's user_id
+      let configUserId = userId;
+      if (userExists.agent_id) {
+        const { rows: agentOwnerRows } = await pgClient.query(
+          "SELECT user_id FROM agents WHERE id = $1",
+          [userExists.agent_id]
+        );
+        if (agentOwnerRows.length > 0 && agentOwnerRows[0].user_id) {
+          configUserId = agentOwnerRows[0].user_id;
+        }
+      }
+
       // Get WhatsApp configuration using function
       const { rows: configRows } = await pgClient.query(
         "SELECT * FROM get_whatsapp_config($1)",
-        [userId]
+        [configUserId]
       );
 
       const configData = configRows.length > 0 ? configRows[0].config : null;

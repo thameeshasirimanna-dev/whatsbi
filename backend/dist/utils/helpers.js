@@ -31,6 +31,28 @@ export async function verifyJWT(request, pgClient) {
         throw new Error('Invalid or expired token');
     }
 }
+export async function verifySocketToken(token, agentId, pgClient) {
+    try {
+        const secret = process.env.JWT_SECRET ?? "";
+        if (!secret) {
+            console.error("JWT_SECRET not configured");
+            return false;
+        }
+        // Verify token signature first
+        const decoded = jwt.verify(token, secret);
+        if (!decoded || !decoded.sub) {
+            return false;
+        }
+        const userId = decoded.sub;
+        // Check if the user exists and belongs to the agent with agentId
+        const { rows } = await pgClient.query("SELECT id FROM agents WHERE id = $1 AND (user_id = $2 OR id = (SELECT agent_id FROM users WHERE id = $2))", [agentId, userId]);
+        return rows.length > 0;
+    }
+    catch (error) {
+        console.error("Socket JWT verification error:", error);
+        return false;
+    }
+}
 export function generateJWT(userId) {
     const secret = process.env.JWT_SECRET ?? "";
     if (!secret) {

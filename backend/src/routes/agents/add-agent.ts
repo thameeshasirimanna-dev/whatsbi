@@ -101,6 +101,12 @@ export default async function addAgentRoutes(fastify: FastifyInstance, pgClient:
 
       const agentData = agentRows[0];
 
+      // Update owner user's agent_id to point to the new agent
+      await pgClient.query(
+        'UPDATE users SET agent_id = $1 WHERE id = $2',
+        [agentData.id, authUserId]
+      );
+
       let whatsappConfig: any = null;
 
       // 4️⃣ Optionally create WhatsApp configuration if provided

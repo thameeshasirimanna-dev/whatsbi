@@ -18,9 +18,9 @@ export default async function getMediaPreviewRoutes(
         return reply.code(400).send({ error: "media_id is required" });
       }
 
-      // Get agent info
+      // Get agent info (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
-        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+        "SELECT id, agent_prefix, user_id FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
         [userId]
       );
 
@@ -32,10 +32,10 @@ export default async function getMediaPreviewRoutes(
 
       const agent = agentRows[0];
 
-      // Get WhatsApp config
+      // Get WhatsApp config using agent owner's user_id
       const { rows: whatsappConfigRows } = await pgClient.query(
         "SELECT api_key, phone_number_id FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true",
-        [userId]
+        [agent.user_id]
       );
 
       if (whatsappConfigRows.length === 0) {

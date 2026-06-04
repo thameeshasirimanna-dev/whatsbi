@@ -19,8 +19,8 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
         return reply.code(400).send('Customer ID and Agent ID required');
       }
 
-      // Verify agent ownership
-      const agentQuery = 'SELECT agent_prefix, id FROM agents WHERE id = $1 AND user_id = $2';
+      // Verify agent ownership (support sub-users)
+      const agentQuery = 'SELECT agent_prefix, id, user_id FROM agents WHERE id = $1 AND (user_id = $2 OR id = (SELECT agent_id FROM users WHERE id = $2))';
       const agentResult = await pgClient.query(agentQuery, [parseInt(agentId), user.id]);
 
       if (agentResult.rows.length === 0) {

@@ -14,8 +14,8 @@ import sendWhatsappMessageRoutes from "./routes/whatsapp/send-whatsapp-message.j
 import getMediaPreviewRoutes from "./routes/media/get-media-preview.js";
 import uploadInventoryImagesRoutes from "./routes/inventory/upload-inventory-images.js";
 import uploadMediaRoutes from "./routes/media/upload-media.js";
-import authenticatedMessagesStreamRoutes from "./routes/conversations/authenticated-messages-stream.js";
 import addAgentRoutes from "./routes/agents/add-agent.js";
+import { verifySocketToken } from "./utils/helpers.js";
 import getAgentsRoutes from "./routes/agents/get-agents.js";
 import getWhatsappConfigRoutes from "./routes/whatsapp/get-whatsapp-config.js";
 import updateWhatsappConfigRoutes from "./routes/whatsapp/update-whatsapp-config.js";
@@ -44,6 +44,7 @@ import addUserRoutes from "./routes/users/add-user.js";
 import updateUserRoutes from "./routes/users/update-user.js";
 import deleteUserRoutes from "./routes/users/delete-user.js";
 import updatePasswordRoutes from "./routes/users/update-password.js";
+import manageAgentUsersRoutes from "./routes/users/manage-agent-users.js";
 import manageOrdersRoutes from "./routes/orders/manage-orders.js";
 import manageAppointmentsRoutes from "./routes/appointments/manage-appointments.js";
 import manageTemplatesRoutes from "./routes/templates/manage-templates.js";
@@ -106,7 +107,6 @@ async function registerRoutes() {
     await getMediaPreviewRoutes(server, pgClient);
     await uploadInventoryImagesRoutes(server, pgClient);
     await uploadMediaRoutes(server, pgClient);
-    await authenticatedMessagesStreamRoutes(server, pgClient);
     await addAgentRoutes(server, pgClient);
     await getAgentsRoutes(server, pgClient);
     await getWhatsappConfigRoutes(server, pgClient);
@@ -136,6 +136,7 @@ async function registerRoutes() {
     await updateUserRoutes(server, pgClient);
     await deleteUserRoutes(server, pgClient);
     await updatePasswordRoutes(server, pgClient);
+    await manageAgentUsersRoutes(server, pgClient);
     await manageOrdersRoutes(server, pgClient);
     await manageAppointmentsRoutes(server, pgClient);
     await manageTemplatesRoutes(server, pgClient);
@@ -224,15 +225,19 @@ const start = async () => {
         server.ready().then(() => {
             server.io.on("connection", (socket) => {
                 // console.log("Client connected:", socket.id);
-                socket.on("join-agent-room", (data) => {
+                socket.on("join-agent-room", async (data) => {
                     const { agentId, token } = data;
                     if (agentId && token) {
-                        // Verify JWT token
-                        // For now, just join the room - proper auth will be added
-                        socket.join(`agent-${agentId}`);
-                        // console.log(
-                        //   `Socket ${socket.id} joined agent room: agent-${agentId}`
-                        // );
+                        const isValid = await verifySocketToken(token, parseInt(agentId), pgClient);
+                        if (isValid) {
+                            socket.join(`agent-${agentId}`);
+                        }
+                        else {
+                            socket.emit("error", { message: "Unauthorized agent room join request" });
+                        }
+                    }
+                    else {
+                        socket.emit("error", { message: "agentId and token are required" });
                     }
                 });
                 socket.on("disconnect", (reason) => {

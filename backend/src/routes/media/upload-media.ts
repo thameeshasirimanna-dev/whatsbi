@@ -23,9 +23,9 @@ export default async function uploadMediaRoutes(
       const authenticatedUser = await verifyJWT(request, pgClient);
       const userId = authenticatedUser.id;
 
-      // Get agent info
+      // Get agent info (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
-        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+        "SELECT id, agent_prefix, user_id FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
         [userId]
       );
       const agent = agentRows[0];
@@ -44,10 +44,10 @@ export default async function uploadMediaRoutes(
         return reply.code(400).send({ error: "Agent prefix not configured" });
       }
 
-      // Get WhatsApp config
+      // Get WhatsApp config using agent owner's user_id
       const { rows: configRows } = await pgClient.query(
         "SELECT api_key, phone_number_id FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true",
-        [userId]
+        [agent.user_id]
       );
       const whatsappConfig = configRows[0];
       const configError = configRows.length === 0 ? "Config not found" : null;

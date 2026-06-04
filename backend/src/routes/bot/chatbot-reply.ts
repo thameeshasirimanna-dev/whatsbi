@@ -53,9 +53,9 @@ export default async function chatbotReplyRoutes(fastify: FastifyInstance, pgCli
 
       const whatsappConfig = configRows[0];
 
-      // Get agent
+      // Get agent (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
-        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+        "SELECT id, agent_prefix FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
         [user_id]
       );
 

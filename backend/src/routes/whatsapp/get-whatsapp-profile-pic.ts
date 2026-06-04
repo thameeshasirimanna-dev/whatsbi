@@ -17,9 +17,9 @@ export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstan
         });
       }
 
-      // Get agent
+      // Get agent (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
-        'SELECT id, agent_prefix FROM agents WHERE user_id = $1',
+        'SELECT id, agent_prefix, user_id FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)',
         [authenticatedUser.id]
       );
 
@@ -32,10 +32,10 @@ export default async function getWhatsappProfilePicRoutes(fastify: FastifyInstan
 
       const agent = agentRows[0];
 
-      // Get WhatsApp config
+      // Get WhatsApp config using agent owner's user_id
       const { rows: configRows } = await pgClient.query(
         'SELECT api_key FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true',
-        [authenticatedUser.id]
+        [agent.user_id]
       );
 
       if (configRows.length === 0 || !configRows[0].api_key) {

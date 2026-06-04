@@ -41,10 +41,10 @@ export default async function setupWhatsappConfigRoutes(
         });
       }
 
-      // Get agent details
+      // Get agent details (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
-        "SELECT agent_prefix, id FROM agents WHERE user_id = $1",
-        [body.user_id]
+        "SELECT id, agent_prefix, user_id FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
+        [authenticatedUser.id]
       );
 
       if (agentRows.length === 0) {
@@ -56,13 +56,21 @@ export default async function setupWhatsappConfigRoutes(
 
       const agentData = agentRows[0];
 
+      // Only the agent owner can manage WhatsApp settings
+      if (agentData.user_id !== authenticatedUser.id) {
+        return reply.code(403).send({
+          success: false,
+          message: "Access denied. Only the agent owner can manage WhatsApp settings."
+        });
+      }
+
       // Create or update WhatsApp configuration using function
       let configRows;
       try {
         const result = await pgClient.query(
           "SELECT * FROM create_whatsapp_config($1, $2, $3, $4, $5, $6, $7)",
           [
-            body.user_id,
+            agentData.user_id,
             body.whatsapp_number,
             body.webhook_url,
             body.api_key || null,
@@ -222,7 +230,7 @@ export default async function setupWhatsappConfigRoutes(
         success: true,
         message: "WhatsApp configuration set up successfully",
         whatsapp_config: configData,
-        user_id: body.user_id,
+        user_id: agentData.user_id,
       });
     } catch (err) {
       console.error("WhatsApp setup error:", err);

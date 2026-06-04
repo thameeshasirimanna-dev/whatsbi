@@ -18,7 +18,7 @@ export default async function getBotContextRoutes(fastify: FastifyInstance, pgCl
       }
 
       // Verify agent ownership
-      const agentQuery = "SELECT agent_prefix, id FROM agents WHERE id = $1 AND user_id = $2";
+      const agentQuery = "SELECT agent_prefix, id FROM agents WHERE id = $1 AND (user_id = $2 OR id = (SELECT agent_id FROM users WHERE id = $2))";
       const { rows: agentRows } = await pgClient.query(agentQuery, [parseInt(agentId), user.id]);
 
       if (agentRows.length === 0) {

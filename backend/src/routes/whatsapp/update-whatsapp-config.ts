@@ -9,24 +9,26 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
 
       const body = request.body as any;
 
-      // Validate required fields
-      if (!body.user_id) {
-        return reply.code(400).send({
+      // Get agent details (support both owner and sub-users)
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix, user_id FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
+        [authenticatedUser.id]
+      );
+
+      if (agentRows.length === 0) {
+        return reply.code(404).send({
           success: false,
-          message: "user_id is required",
+          message: "Agent not found for user",
         });
       }
 
-      // Validate user exists
-      const { rows: userRows } = await pgClient.query(
-        'SELECT id FROM users WHERE id = $1',
-        [body.user_id]
-      );
+      const agentData = agentRows[0];
 
-      if (userRows.length === 0) {
-        return reply.code(404).send({
+      // Only the agent owner can manage WhatsApp settings
+      if (agentData.user_id !== authenticatedUser.id) {
+        return reply.code(403).send({
           success: false,
-          message: "User not found",
+          message: "Access denied. Only the agent owner can manage WhatsApp settings."
         });
       }
 
@@ -34,7 +36,7 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
       const { rows: configRows } = await pgClient.query(
         'SELECT * FROM update_whatsapp_config($1, $2, $3, $4, $5, $6, $7)',
         [
-          body.user_id,
+          agentData.user_id,
           body.whatsapp_number || null,
           body.webhook_url || null,
           body.api_key || null,
@@ -57,7 +59,7 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
         success: true,
         message: "WhatsApp configuration updated successfully",
         whatsapp_config: configData,
-        user_id: body.user_id,
+        user_id: agentData.user_id,
       });
     } catch (err) {
       console.error("WhatsApp config update error:", err);

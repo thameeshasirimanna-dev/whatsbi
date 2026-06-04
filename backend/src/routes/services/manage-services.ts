@@ -23,9 +23,9 @@ export default async function manageServicesRoutes(
         });
       }
 
-      // Get agent
+      // Get agent (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
-        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+        "SELECT id, agent_prefix FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
         [authenticatedUser.id]
       );
 

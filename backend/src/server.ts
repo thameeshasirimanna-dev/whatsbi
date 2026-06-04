@@ -46,6 +46,7 @@ import addUserRoutes from "./routes/users/add-user.js";
 import updateUserRoutes from "./routes/users/update-user.js";
 import deleteUserRoutes from "./routes/users/delete-user.js";
 import updatePasswordRoutes from "./routes/users/update-password.js";
+import manageAgentUsersRoutes from "./routes/users/manage-agent-users.js";
 import manageOrdersRoutes from "./routes/orders/manage-orders.js";
 import manageAppointmentsRoutes from "./routes/appointments/manage-appointments.js";
 import manageTemplatesRoutes from "./routes/templates/manage-templates.js";
@@ -154,6 +155,7 @@ async function registerRoutes() {
   await updateUserRoutes(server, pgClient);
   await deleteUserRoutes(server, pgClient);
   await updatePasswordRoutes(server, pgClient);
+  await manageAgentUsersRoutes(server, pgClient);
   await manageOrdersRoutes(server, pgClient);
   await manageAppointmentsRoutes(server, pgClient);
   await manageTemplatesRoutes(server, pgClient);

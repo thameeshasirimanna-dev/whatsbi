@@ -25,20 +25,22 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
         });
       }
 
-      // Validate user
-      const { rows: userRows } = await pgClient.query(
-        "SELECT id FROM users WHERE id = $1",
-        [user_id]
+      // Get agent (support both owner and sub-users)
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix, user_id FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
+        [authenticatedUser.id]
       );
 
-      if (userRows.length === 0) {
-        return reply.code(404).send({ error: "User not found" });
+      if (agentRows.length === 0) {
+        return reply.code(404).send({ error: "Agent not found" });
       }
 
-      // Get WhatsApp config
+      const agent = agentRows[0];
+
+      // Get WhatsApp config using agent owner's user_id
       const { rows: whatsappRows } = await pgClient.query(
         "SELECT api_key, phone_number_id, user_id FROM whatsapp_configuration WHERE user_id = $1 AND is_active = true",
-        [user_id]
+        [agent.user_id]
       );
 
       if (whatsappRows.length === 0) {
@@ -48,18 +50,6 @@ export default async function sendInvoiceTemplateRoutes(fastify: FastifyInstance
       }
 
       const whatsappConfig = whatsappRows[0];
-
-      // Get agent
-      const { rows: agentRows } = await pgClient.query(
-        "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
-        [user_id]
-      );
-
-      if (agentRows.length === 0) {
-        return reply.code(404).send({ error: "Agent not found" });
-      }
-
-      const agent = agentRows[0];
 
       const customersTable = `${agent.agent_prefix}_customers`;
       const templatesTable = `${agent.agent_prefix}_templates`;

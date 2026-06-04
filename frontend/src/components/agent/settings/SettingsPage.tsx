@@ -118,6 +118,7 @@ const SettingsContent: React.FC = () => {
     id: number; name: string; whatsapp_number: string;
     address?: string; business_email?: string; contact_number?: string;
     website?: string; invoice_template_path?: string; credits?: number;
+    user_id?: string; logged_in_user_id?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingName, setEditingName] = useState(false);
@@ -150,6 +151,117 @@ const SettingsContent: React.FC = () => {
   const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
   const [currentDocument, setCurrentDocument] = useState<string | null>(null);
 
+  // Team Management state
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamError, setTeamError] = useState("");
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberPassword, setNewMemberPassword] = useState("");
+  const [addingMember, setAddingMember] = useState(false);
+  const [addMemberError, setAddMemberError] = useState("");
+  const [addMemberSuccess, setAddMemberSuccess] = useState("");
+
+  const isOwner = agent ? agent.logged_in_user_id === agent.user_id : false;
+
+  const fetchTeamMembers = async () => {
+    try {
+      setTeamLoading(true);
+      const token = getToken();
+      if (!token) return;
+      const response = await fetch(`${backendUrl}/agent/get-users`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setTeamMembers(data.users || []);
+      } else {
+        setTeamError(data.message || "Failed to fetch team members");
+      }
+    } catch (err) {
+      setTeamError("Failed to load team members");
+    } finally {
+      setTeamLoading(false);
+    }
+  };
+
+  const handleAddTeamMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingMember(true);
+    setAddMemberError("");
+    setAddMemberSuccess("");
+
+    if (!newMemberName.trim() || !newMemberEmail.trim() || !newMemberPassword.trim()) {
+      setAddMemberError("All fields are required");
+      setAddingMember(false);
+      return;
+    }
+
+    try {
+      const token = getToken();
+      if (!token) {
+        setAddMemberError("Authentication required");
+        setAddingMember(false);
+        return;
+      }
+
+      const response = await fetch(`${backendUrl}/agent/add-user`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newMemberName.trim(),
+          email: newMemberEmail.trim(),
+          password: newMemberPassword
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setAddMemberSuccess("Team member added successfully!");
+        setNewMemberName("");
+        setNewMemberEmail("");
+        setNewMemberPassword("");
+        fetchTeamMembers();
+        setTimeout(() => {
+          setShowAddMemberModal(false);
+          setAddMemberSuccess("");
+        }, 1500);
+      } else {
+        setAddMemberError(data.message || "Failed to add team member");
+      }
+    } catch (err: any) {
+      setAddMemberError(`Failed: ${err.message}`);
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleDeleteTeamMember = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to remove this team member?")) return;
+
+    try {
+      setTeamError("");
+      const token = getToken();
+      if (!token) return;
+
+      const response = await fetch(`${backendUrl}/agent/delete-user/${userId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        fetchTeamMembers();
+      } else {
+        setTeamError(data.message || "Failed to delete team member");
+      }
+    } catch (err: any) {
+      setTeamError(`Failed to delete team member: ${err.message}`);
+    }
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -179,6 +291,12 @@ const SettingsContent: React.FC = () => {
     };
     fetchUserData();
   }, []);
+
+  useEffect(() => {
+    if (agent && agent.logged_in_user_id === agent.user_id) {
+      fetchTeamMembers();
+    }
+  }, [agent]);
 
   const handleNameUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -395,6 +513,12 @@ const SettingsContent: React.FC = () => {
             <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>Account Information</span>
           </div>
 
+          {!isOwner && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 9, background: 'rgba(59,130,246,0.08)', color: '#2563eb', border: '1px solid rgba(59,130,246,0.2)', ...DM, fontSize: 13 }}>
+              Only the owner can edit agent business settings.
+            </div>
+          )}
+
           {error && <StatusMessage msg={error} />}
           {updateMessage && <StatusMessage msg={updateMessage} />}
 
@@ -425,6 +549,7 @@ const SettingsContent: React.FC = () => {
                 onSave={e => { e.preventDefault(); handleAgentDetailUpdate("address", newAddress); }}
                 onCancel={() => { setEditingAddress(false); setNewAddress(agent?.address || ""); setUpdateMessage(""); }}
                 placeholder="Enter your address"
+                readOnly={!isOwner}
               />
               <EditableField
                 label="Business Email" value={agent.business_email || ''} editing={editingBusinessEmail}
@@ -433,6 +558,7 @@ const SettingsContent: React.FC = () => {
                 onSave={e => { e.preventDefault(); handleAgentDetailUpdate("business_email", newBusinessEmail); }}
                 onCancel={() => { setEditingBusinessEmail(false); setNewBusinessEmail(agent?.business_email || ""); setUpdateMessage(""); }}
                 type="email" placeholder="Enter business email"
+                readOnly={!isOwner}
               />
               <EditableField
                 label="Contact Number" value={agent.contact_number || ''} editing={editingContactNumber}
@@ -441,6 +567,7 @@ const SettingsContent: React.FC = () => {
                 onSave={e => { e.preventDefault(); handleAgentDetailUpdate("contact_number", newContactNumber); }}
                 onCancel={() => { setEditingContactNumber(false); setNewContactNumber(agent?.contact_number || ""); setUpdateMessage(""); }}
                 type="tel" placeholder="Enter contact number"
+                readOnly={!isOwner}
               />
               <EditableField
                 label="Website" value={agent.website || ''} editing={editingWebsite}
@@ -449,6 +576,7 @@ const SettingsContent: React.FC = () => {
                 onSave={e => { e.preventDefault(); handleAgentDetailUpdate("website", newWebsite); }}
                 onCancel={() => { setEditingWebsite(false); setNewWebsite(agent?.website || ""); setUpdateMessage(""); }}
                 type="url" placeholder="Enter website URL (e.g., https://example.com)"
+                readOnly={!isOwner}
               />
 
               {/* Credits */}
@@ -484,9 +612,11 @@ const SettingsContent: React.FC = () => {
                     <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#0c1a0e' }}>
                       {agent?.credits ? `${agent.credits.toFixed(2)} credits` : "0.00 credits"}
                     </span>
-                    <button onClick={() => { setEditingCredits(true); setCreditsMessage(""); }} style={editBtn}>
-                      Add Credits
-                    </button>
+                    {isOwner && (
+                      <button onClick={() => { setEditingCredits(true); setCreditsMessage(""); }} style={editBtn}>
+                        Add Credits
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -521,13 +651,13 @@ const SettingsContent: React.FC = () => {
                       {currentTemplate ? 'Template uploaded' : 'No template set'}
                     </span>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {currentTemplate && (
+                      {isOwner && currentTemplate && (
                         <>
                           <button onClick={() => setEditingTemplate(true)} style={editBtn}>Change</button>
                           <button onClick={handleTemplateRemove} style={{ ...editBtn, background: 'rgba(244,63,94,0.08)', color: '#f43f5e' }}>Remove</button>
                         </>
                       )}
-                      {!currentTemplate && (
+                      {isOwner && !currentTemplate && (
                         <button onClick={() => setEditingTemplate(true)} style={editBtn}>Upload</button>
                       )}
                       <button onClick={handleDownloadMarginGuide} style={{ ...editBtn, background: 'rgba(34,197,94,0.08)', color: '#059669' }}>
@@ -648,19 +778,210 @@ const SettingsContent: React.FC = () => {
             <span style={{ ...DM, fontSize: 14, color: currentDocument ? '#0c1a0e' : '#a1a1aa' }}>
               {currentDocument ? 'Document uploaded' : 'No document set'}
             </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {currentDocument ? (
-                <>
-                  <button onClick={() => setEditingDocument(true)} style={editBtn}>Change</button>
-                  <button onClick={handleDocumentRemove} style={{ ...editBtn, background: 'rgba(244,63,94,0.08)', color: '#f43f5e' }}>Remove</button>
-                </>
-              ) : (
-                <button onClick={() => setEditingDocument(true)} style={editBtn}>Upload Document</button>
-              )}
-            </div>
+            {isOwner && (
+              <div style={{ display: 'flex', gap: 6 }}>
+                {currentDocument ? (
+                  <>
+                    <button onClick={() => setEditingDocument(true)} style={editBtn}>Change</button>
+                    <button onClick={handleDocumentRemove} style={{ ...editBtn, background: 'rgba(244,63,94,0.08)', color: '#f43f5e' }}>Remove</button>
+                  </>
+                ) : (
+                  <button onClick={() => setEditingDocument(true)} style={editBtn}>Upload Document</button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Team Management */}
+      {isOwner && (
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #ebebeb' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {sectionIcon('rgba(245,158,11,0.1)', '#d97706', <User size={15} />)}
+              <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>Team Management</span>
+            </div>
+            <button
+              onClick={() => { setShowAddMemberModal(true); setAddMemberError(""); setAddMemberSuccess(""); }}
+              style={{ ...editBtn, background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff' }}
+            >
+              Add Team Member
+            </button>
+          </div>
+
+          {teamError && <StatusMessage msg={teamError} />}
+
+          {teamLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
+              <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(245,158,11,0.15)', borderTopColor: '#d97706', animation: 'st-spin 0.8s linear infinite' }} />
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', ...DM }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #f4f4f5', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Name</th>
+                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Email</th>
+                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Role</th>
+                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600, textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamMembers.map((member) => (
+                    <tr key={member.id} style={{ borderBottom: '1px solid #f4f4f5' }}>
+                      <td style={{ padding: '12px 8px', fontSize: 14, color: '#0c1a0e', fontWeight: member.is_owner ? 600 : 400 }}>
+                        {member.name}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontSize: 14, color: '#4b5563' }}>{member.email}</td>
+                      <td style={{ padding: '12px 8px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: 20,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          background: member.is_owner ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)',
+                          color: member.is_owner ? '#059669' : '#4b5563',
+                        }}>
+                          {member.is_owner ? 'Owner' : 'Agent'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                        {!member.is_owner && (
+                          <button
+                            onClick={() => handleDeleteTeamMember(member.id)}
+                            style={{
+                              background: 'rgba(239,68,68,0.08)',
+                              color: '#dc2626',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '4px 10px',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {teamMembers.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '20px 8px', textAlign: 'center', color: '#71717a', fontSize: 13 }}>
+                        No team members registered.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Team Member Modal */}
+      {showAddMemberModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: 16
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, border: '1px solid #ebebeb',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            width: '100%', maxWidth: 440, padding: 24, display: 'flex', flexDirection: 'column', gap: 16,
+            animation: 'modal-fade-in 0.2s ease-out'
+          }}>
+            <style>{`
+              @keyframes modal-fade-in {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+              }
+            `}</style>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ebebeb', paddingBottom: 12 }}>
+              <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e' }}>Add Team Member</span>
+              <button
+                onClick={() => setShowAddMemberModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#71717a', padding: 0 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddTeamMember} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ ...DM, fontSize: 12, color: '#71717a', display: 'block', marginBottom: 4 }}>Full Name</label>
+                <input
+                  type="text"
+                  value={newMemberName}
+                  onChange={e => setNewMemberName(e.target.value)}
+                  style={inputStyle}
+                  onFocus={onFocusG}
+                  onBlur={onBlurG}
+                  placeholder="Enter full name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ ...DM, fontSize: 12, color: '#71717a', display: 'block', marginBottom: 4 }}>Email Address</label>
+                <input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={e => setNewMemberEmail(e.target.value)}
+                  style={inputStyle}
+                  onFocus={onFocusG}
+                  onBlur={onBlurG}
+                  placeholder="Enter email address"
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ ...DM, fontSize: 12, color: '#71717a', display: 'block', marginBottom: 4 }}>Password</label>
+                <input
+                  type="password"
+                  value={newMemberPassword}
+                  onChange={e => setNewMemberPassword(e.target.value)}
+                  style={inputStyle}
+                  onFocus={onFocusG}
+                  onBlur={onBlurG}
+                  placeholder="Enter password"
+                  required
+                />
+              </div>
+
+              {addMemberError && <StatusMessage msg={addMemberError} />}
+              {addMemberSuccess && <StatusMessage msg={addMemberSuccess} />}
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button
+                  type="submit"
+                  disabled={addingMember}
+                  style={{ ...saveBtn, padding: '10px 0', opacity: addingMember ? 0.6 : 1 }}
+                >
+                  {addingMember ? "Adding…" : "Add Member"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddMemberModal(false)}
+                  style={{ ...cancelBtn, padding: '10px 0' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

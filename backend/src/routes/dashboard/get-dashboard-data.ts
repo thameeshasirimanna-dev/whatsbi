@@ -14,8 +14,8 @@ export default async function getDashboardDataRoutes(
       const agentQuery = `
         SELECT a.id, a.agent_prefix, u.name
         FROM agents a
-        JOIN users u ON a.user_id = u.id
-        WHERE a.user_id = $1
+        JOIN users u ON u.id = $1
+        WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)
       `;
       const { rows: agentRows } = await pgClient.query(agentQuery, [authenticatedUser.id]);
 

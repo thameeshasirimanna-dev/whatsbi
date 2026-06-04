@@ -18,9 +18,9 @@ export default async function downloadInvoiceRoutes(
         return reply.code(400).send({ error: "Missing invoice ID" });
       }
 
-      // Get agent profile to get agent prefix
+      // Get agent profile to get agent prefix (support both owner and sub-users)
       const agentQuery = `
-        SELECT agent_prefix FROM agents WHERE user_id = $1
+        SELECT agent_prefix FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
       `;
       const agentResult = await pgClient.query(agentQuery, [authenticatedUser.id]);
 

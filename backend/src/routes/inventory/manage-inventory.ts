@@ -8,9 +8,9 @@ export default async function manageInventoryRoutes(fastify: FastifyInstance, pg
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, pgClient);
 
-      // Get agent
+      // Get agent (support both owner and sub-users)
       const { rows: agentRows } = await pgClient.query(
-        'SELECT id, agent_prefix FROM agents WHERE user_id = $1',
+        'SELECT id, agent_prefix FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)',
         [authenticatedUser.id]
       );
 

@@ -53,9 +53,9 @@ export async function verifySocketToken(token: string, agentId: number, pgClient
     }
     const userId = decoded.sub;
 
-    // Check if the user exists and owns the agent with agentId
+    // Check if the user exists and belongs to the agent with agentId
     const { rows } = await pgClient.query(
-      "SELECT id FROM agents WHERE id = $1 AND user_id = $2",
+      "SELECT id FROM agents WHERE id = $1 AND (user_id = $2 OR id = (SELECT agent_id FROM users WHERE id = $2))",
       [agentId, userId]
     );
     return rows.length > 0;
