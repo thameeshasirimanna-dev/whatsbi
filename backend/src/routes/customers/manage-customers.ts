@@ -53,6 +53,7 @@ export default async function manageCustomersRoutes(
 
           // If phone is provided, get single customer
           if (phone) {
+            const cleanPhone = phone.trim().replace(/\D/g, "");
             const customerQuery = `
               SELECT c.*,
                      COALESCE(order_counts.order_count, 0) as order_count
@@ -65,7 +66,7 @@ export default async function manageCustomersRoutes(
               WHERE c.phone = $1
             `;
             const { rows: customers } = await pgClient.query(customerQuery, [
-              phone,
+              cleanPhone,
             ]);
 
             return reply.code(200).send({
@@ -189,9 +190,10 @@ export default async function manageCustomersRoutes(
               .send({ success: false, message: "Invalid language" });
           }
 
+          const cleanPhone = phone.trim().replace(/\D/g, "");
           const customerData = {
             name: name.trim(),
-            phone: phone.trim(),
+            phone: cleanPhone,
             lead_stage: lead_stage || "New Lead",
             interest_stage: interest_stage || null,
             conversion_stage: conversion_stage || null,
@@ -200,6 +202,16 @@ export default async function manageCustomersRoutes(
             ai_enabled: ai_enabled !== undefined ? ai_enabled : true,
             last_user_message_time: new Date().toISOString(),
           };
+
+          // Check if customer with same phone already exists for this agent
+          const checkQuery = `SELECT id FROM ${agentPrefix}_customers WHERE phone = $1`;
+          const { rows: existing } = await pgClient.query(checkQuery, [customerData.phone]);
+          if (existing.length > 0) {
+            return reply.code(400).send({
+              success: false,
+              message: "A customer with this phone number already exists.",
+            });
+          }
 
           const insertQuery = `
             INSERT INTO ${agentPrefix}_customers (name, phone, lead_stage, interest_stage, conversion_stage, lead_stage_note, language, ai_enabled, last_user_message_time)
@@ -313,8 +325,18 @@ export default async function manageCustomersRoutes(
             updateValues.push(name.trim());
           }
           if (phone !== undefined) {
+            const cleanPhone = phone.trim().replace(/\D/g, "");
+            // Check if another customer with this phone number already exists
+            const existingCheckQuery = `SELECT id FROM ${agentPrefix}_customers WHERE phone = $1 AND id != $2`;
+            const { rows: existing } = await pgClient.query(existingCheckQuery, [cleanPhone, id]);
+            if (existing.length > 0) {
+              return reply.code(400).send({
+                success: false,
+                message: "A customer with this phone number already exists.",
+              });
+            }
             updateFields.push(`phone = $${updateValues.length + 1}`);
-            updateValues.push(phone.trim());
+            updateValues.push(cleanPhone);
           }
           if (lead_stage !== undefined) {
             updateFields.push(`lead_stage = $${updateValues.length + 1}`);

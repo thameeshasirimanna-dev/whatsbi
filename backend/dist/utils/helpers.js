@@ -135,17 +135,35 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
         const messagesTable = `${agent.agent_prefix}_messages`;
         const fromPhone = message.from;
         let customerId;
-        const { rows: existingCustomerRows } = await pgClient.query(`SELECT id FROM ${customersTable} WHERE phone = $1`, [fromPhone]);
+        const cleanFromPhone = fromPhone.replace(/\D/g, "");
+        const { rows: existingCustomerRows } = await pgClient.query(`SELECT id FROM ${customersTable} WHERE phone = $1`, [cleanFromPhone]);
         if (existingCustomerRows.length > 0) {
             customerId = existingCustomerRows[0].id;
         }
         else {
-            const { rows: newCustomerRows, rowCount } = await pgClient.query(`INSERT INTO ${customersTable} (phone, name, agent_id) VALUES ($1, $2, $3) RETURNING id`, [fromPhone, contactName || fromPhone, agent.id]);
-            if (rowCount === 0) {
-                return;
+            try {
+                const { rows: newCustomerRows, rowCount } = await pgClient.query(`INSERT INTO ${customersTable} (phone, name, agent_id) VALUES ($1, $2, $3) RETURNING id`, [cleanFromPhone, contactName || fromPhone, agent.id]);
+                if (rowCount === 0) {
+                    return;
+                }
+                customerId = newCustomerRows[0].id;
+                isNewCustomer = true;
             }
-            customerId = newCustomerRows[0].id;
-            isNewCustomer = true;
+            catch (insertError) {
+                // Handle race condition where customer was inserted concurrently
+                if (insertError.code === "23505") {
+                    const { rows: retryRows } = await pgClient.query(`SELECT id FROM ${customersTable} WHERE phone = $1`, [cleanFromPhone]);
+                    if (retryRows.length > 0) {
+                        customerId = retryRows[0].id;
+                    }
+                    else {
+                        throw insertError;
+                    }
+                }
+                else {
+                    throw insertError;
+                }
+            }
         }
         const { rows: customerRows } = await pgClient.query(`SELECT id, name, ai_enabled, language FROM ${customersTable} WHERE id = $1`, [customerId]);
         let customer;
