@@ -639,7 +639,7 @@ const ConversationsPage: React.FC = () => {
     }
 
     const newSocket = io(socketUrl, {
-      transports: ["polling", "websocket"],
+      transports: isDevelopment ? ["polling", "websocket"] : ["websocket"],
       path: socketPath,
     });
 
