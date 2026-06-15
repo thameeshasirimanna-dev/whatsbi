@@ -53,6 +53,20 @@ export async function verifySocketToken(token: string, agentId: number, pgClient
     }
     const userId = decoded.sub;
 
+    // Fetch the user's role from the database
+    const { rows: userRows } = await pgClient.query(
+      "SELECT role FROM users WHERE id = $1",
+      [userId]
+    );
+    if (userRows.length === 0) {
+      return false;
+    }
+
+    // Admins have access to all agent rooms
+    if (userRows[0].role === "admin") {
+      return true;
+    }
+
     // Check if the user exists and belongs to the agent with agentId
     const { rows } = await pgClient.query(
       "SELECT id FROM agents WHERE id = $1 AND (user_id = $2 OR id = (SELECT agent_id FROM users WHERE id = $2))",
