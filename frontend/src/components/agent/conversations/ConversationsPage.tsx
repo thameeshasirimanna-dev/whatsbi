@@ -619,8 +619,31 @@ const ConversationsPage: React.FC = () => {
   useEffect(() => {
     if (!agentId) return;
 
-    const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
+    let socketUrl = window.location.origin;
+    let socketPath = "/socket.io/";
+
+    if (backendUrl && backendUrl !== "undefined" && (backendUrl.startsWith("http://") || backendUrl.startsWith("https://"))) {
+      try {
+        const parsedUrl = new URL(backendUrl);
+        socketUrl = parsedUrl.origin;
+        if (parsedUrl.pathname && parsedUrl.pathname !== "/") {
+          const cleanPath = parsedUrl.pathname.endsWith("/") ? parsedUrl.pathname : `${parsedUrl.pathname}/`;
+          socketPath = `${cleanPath}socket.io/`;
+        }
+      } catch (e) {
+        console.error("Failed to parse VITE_BACKEND_URL for socket connection:", e);
+      }
+    } else if (backendUrl && backendUrl !== "undefined" && backendUrl.startsWith("/")) {
+      if (backendUrl !== "/") {
+        const cleanPath = backendUrl.endsWith("/") ? backendUrl : `${backendUrl}/`;
+        socketPath = `${cleanPath}socket.io/`;
+      }
+    }
+
+    const newSocket = io(socketUrl, {
       transports: ["polling", "websocket"],
+      path: socketPath,
     });
 
     newSocket.on("connect", () => {
