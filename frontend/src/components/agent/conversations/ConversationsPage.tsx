@@ -623,7 +623,9 @@ const ConversationsPage: React.FC = () => {
     let socketUrl = window.location.origin;
     let socketPath = "/socket.io/";
 
-    if (backendUrl && backendUrl !== "undefined" && (backendUrl.startsWith("http://") || backendUrl.startsWith("https://"))) {
+    const isDevelopment = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+    if (isDevelopment && backendUrl && backendUrl !== "undefined" && (backendUrl.startsWith("http://") || backendUrl.startsWith("https://"))) {
       try {
         const parsedUrl = new URL(backendUrl);
         socketUrl = parsedUrl.origin;
@@ -633,11 +635,6 @@ const ConversationsPage: React.FC = () => {
         }
       } catch (e) {
         console.error("Failed to parse VITE_BACKEND_URL for socket connection:", e);
-      }
-    } else if (backendUrl && backendUrl !== "undefined" && backendUrl.startsWith("/")) {
-      if (backendUrl !== "/") {
-        const cleanPath = backendUrl.endsWith("/") ? backendUrl : `${backendUrl}/`;
-        socketPath = `${cleanPath}socket.io/`;
       }
     }
 
