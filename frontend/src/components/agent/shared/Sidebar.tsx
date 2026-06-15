@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Briefcase,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ interface SidebarProps {
   collapsed?: boolean;
   onCollapseToggle?: () => void;
   onClose?: () => void;
+  onLogout?: () => void;
 }
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
@@ -39,6 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   collapsed = true,
   onCollapseToggle,
   onClose,
+  onLogout,
 }) => {
   const [isMobileOpen] = useState(false);
   const location = useLocation();
@@ -263,27 +266,37 @@ const Sidebar: React.FC<SidebarProps> = ({
           padding: '12px 8px',
           borderTop: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
         }}>
-          {collapsed ? (
-            <button
-              onClick={onCollapseToggle}
-              className="hidden md:flex w-full items-center justify-center"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '8px 0',
-                color: 'rgba(255,255,255,0.3)',
-                borderRadius: 8,
-                transition: 'color 0.15s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-            >
-              <ChevronRight size={16} />
-            </button>
-          ) : (
-            agent?.name && (
+          {agent?.name && (
+            collapsed ? (
+              <div
+                title={agent.name}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  padding: '4px 0',
+                }}
+              >
+                <div style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: 'rgba(34,197,94,0.15)',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <span style={{ ...SYNE, fontSize: 10, fontWeight: 700, color: '#4ade80' }}>
+                    {getInitials(agent.name)}
+                  </span>
+                </div>
+              </div>
+            ) : (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -318,6 +331,66 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               </div>
             )
+          )}
+
+          {/* Logout Button */}
+          <button
+            onClick={onLogout}
+            title={collapsed ? "Logout" : undefined}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: collapsed ? 0 : 10,
+              padding: collapsed ? '10px 0' : '9px 12px',
+              borderRadius: 10,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              width: '100%',
+              color: 'rgba(244, 63, 94, 0.7)',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(244, 63, 94, 0.12)';
+              e.currentTarget.style.color = '#f43f5e';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'rgba(244, 63, 94, 0.7)';
+            }}
+          >
+            <LogOut size={17} style={{ flexShrink: 0 }} />
+            {!collapsed && (
+              <span style={{
+                ...DM,
+                fontSize: 13.5,
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+              }}>
+                Logout
+              </span>
+            )}
+          </button>
+
+          {collapsed && (
+            <button
+              onClick={onCollapseToggle}
+              className="hidden md:flex w-full items-center justify-center"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px 0',
+                color: 'rgba(255,255,255,0.3)',
+                borderRadius: 8,
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+            >
+              <ChevronRight size={16} />
+            </button>
           )}
         </div>
       </div>

@@ -620,7 +620,7 @@ const ConversationsPage: React.FC = () => {
     if (!agentId) return;
 
     const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
     });
 
     newSocket.on("connect", () => {

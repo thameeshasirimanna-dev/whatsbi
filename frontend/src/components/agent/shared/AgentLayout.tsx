@@ -203,6 +203,12 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
           collapsed={sidebarCollapsed}
           onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onClose={() => setSidebarOpen(false)}
+          onLogout={async () => {
+            if (await dlgConfirm('Are you sure you want to logout?')) {
+              logout();
+              window.location.href = '/login';
+            }
+          }}
         />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
@@ -210,12 +216,6 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
             agent={navbarProps}
             collapsed={sidebarCollapsed}
             onMenuClick={() => setSidebarOpen(true)}
-            onLogout={async () => {
-              if (await dlgConfirm('Are you sure you want to logout?')) {
-                logout();
-                window.location.href = '/login';
-              }
-            }}
           />
           <main style={{ flex: 1, overflowY: 'auto', background: '#f8faf8' }}>
             <Outlet />

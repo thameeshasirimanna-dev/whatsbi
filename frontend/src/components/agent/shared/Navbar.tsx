@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, LogOut, Menu, Coins } from 'lucide-react';
+import { Bell, Menu, Coins } from 'lucide-react';
 
 interface Notification {
   id: number;
@@ -23,7 +23,6 @@ interface NavbarProps {
     onNotificationClick: (notification: Notification) => void;
   };
   onMenuClick: () => void;
-  onLogout: () => void;
   collapsed?: boolean;
 }
 
@@ -46,7 +45,7 @@ const formatNotificationTime = (timeStr: string) => {
   }
 };
 
-const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
+const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -328,28 +327,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
           </div>
         </div>
 
-        {/* Logout — single responsive button */}
-        <button
-          onClick={onLogout}
-          className="flex items-center gap-2"
-          style={{
-            background: 'none',
-            border: '1px solid #e4e4e7',
-            borderRadius: 8,
-            padding: '7px 10px',
-            cursor: 'pointer',
-            color: '#71717a',
-            ...DM,
-            fontSize: 13,
-            fontWeight: 500,
-            transition: 'border-color 0.15s, color 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#fecdd3'; e.currentTarget.style.color = '#f43f5e'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#e4e4e7'; e.currentTarget.style.color = '#71717a'; }}
-        >
-          <LogOut size={14} />
-          <span className="hidden md:inline">Logout</span>
-        </button>
+
       </div>
     </nav>
   );
