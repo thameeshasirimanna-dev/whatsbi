@@ -615,6 +615,11 @@ const ConversationsPage: React.FC = () => {
     setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
   }, []);
 
+  const selectedConversationIdRef = useRef(selectedConversationId);
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
+
   // Socket.IO connection
   useEffect(() => {
     if (!agentId) return;
@@ -674,7 +679,7 @@ const ConversationsPage: React.FC = () => {
       // If inbound and selected conversation, mark as read
       if (
         messageData.sender_type === "customer" &&
-        selectedConversationId === messageData.customer_id
+        selectedConversationIdRef.current === messageData.customer_id
       ) {
         // For real-time updates, we mark as read in the UI
         newMsg.isRead = true;
@@ -702,22 +707,14 @@ const ConversationsPage: React.FC = () => {
         }
       }
 
-      // Find or create conversation
-      const existingConv = conversations.find(
-        (c) => c.customerId === messageData.customer_id
-      );
+      setConversations((prev) => {
+        // Find or create conversation
+        const existingConvIndex = prev.findIndex(
+          (c) => c.customerId === messageData.customer_id
+        );
 
-      if (existingConv) {
-        // Update existing conversation
-        setConversations((prev) => {
-          const existingConvIndex = prev.findIndex(
-            (c) => c.customerId === messageData.customer_id
-          );
-
-          if (existingConvIndex === -1) {
-            return prev;
-          }
-
+        if (existingConvIndex !== -1) {
+          // Update existing conversation
           const existingConv = prev[existingConvIndex];
           let updatedMessages = [...existingConv.messages];
 
@@ -779,46 +776,38 @@ const ConversationsPage: React.FC = () => {
           newConversations[existingConvIndex] = updatedConv;
 
           // Sort conversations by last message time
-          const sortedConversations = newConversations.sort(
+          return newConversations.sort(
             (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
           );
+        } else {
+          // Create new conversation - fetch customer
+          const newConv: Conversation = {
+            id: messageData.customer_id,
+            customerId: messageData.customer_id,
+            customerName:
+              messageData.customer_name || `Customer ${messageData.customer_id}`,
+            customerPhone: messageData.customer_phone || "",
+            lastUserMessageTime: null,
+            aiEnabled: false,
+            leadStage: null,
+            interestStage: null,
+            conversionStage: null,
+            lastMessage: processMessageText(
+              messageData.message,
+              messageData.media_type,
+              messageData.caption
+            ),
+            lastMessageTime: newMsg.timestamp,
+            rawLastTimestamp: new Date(messageData.timestamp).getTime(),
+            unreadCount: newMsg.isRead ? 0 : 1,
+            messages: [newMsg],
+          };
 
-          return sortedConversations;
-        });
-      } else {
-        // Create new conversation - fetch customer
-        // Since this is real-time, we need to get customer info
-        // For now, we'll use a simple approach assuming customer data is available
-        // In a full refactor, this should also use backend API
-        const newConv: Conversation = {
-          id: messageData.customer_id,
-          customerId: messageData.customer_id,
-          customerName:
-            messageData.customer_name || `Customer ${messageData.customer_id}`,
-          customerPhone: messageData.customer_phone || "",
-          lastUserMessageTime: null,
-          aiEnabled: false,
-          leadStage: null,
-          interestStage: null,
-          conversionStage: null,
-          lastMessage: processMessageText(
-            messageData.message,
-            messageData.media_type,
-            messageData.caption
-          ),
-          lastMessageTime: newMsg.timestamp,
-          rawLastTimestamp: new Date(messageData.timestamp).getTime(),
-          unreadCount: newMsg.isRead ? 0 : 1,
-          messages: [newMsg],
-        };
-
-        setConversations((prev) => {
-          const updated = [newConv, ...prev].sort(
+          return [newConv, ...prev].sort(
             (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
           );
-          return updated;
-        });
-      }
+        }
+      });
 
       // Dispatch event for navbar update if message is unread
       if (messageData.sender_type === "customer" && !newMsg.isRead) {
@@ -845,7 +834,7 @@ const ConversationsPage: React.FC = () => {
 
       // Scroll to bottom if message is for selected conversation
       if (
-        selectedConversationId === messageData.customer_id &&
+        selectedConversationIdRef.current === messageData.customer_id &&
         messagesContainerRef.current
       ) {
         setTimeout(() => {
@@ -871,9 +860,6 @@ const ConversationsPage: React.FC = () => {
     };
   }, [
     agentId,
-    agentPrefix,
-    selectedConversationId,
-    conversations,
     processMessageText,
   ]);
 
