@@ -628,9 +628,19 @@ const ConversationsPage: React.FC = () => {
     let socketUrl = window.location.origin;
     let socketPath = "/socket.io/";
 
-    const isDevelopment = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const isLocalhost = (urlStr: string) => {
+      try {
+        const url = new URL(urlStr);
+        return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+      } catch (e) {
+        return false;
+      }
+    };
 
-    if (isDevelopment && backendUrl && backendUrl !== "undefined" && (backendUrl.startsWith("http://") || backendUrl.startsWith("https://"))) {
+    const browserIsLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const backendIsLocal = isLocalhost(backendUrl);
+
+    if (backendUrl && backendUrl !== "undefined" && (backendUrl.startsWith("http://") || backendUrl.startsWith("https://")) && (!backendIsLocal || browserIsLocal)) {
       try {
         const parsedUrl = new URL(backendUrl);
         socketUrl = parsedUrl.origin;
@@ -644,7 +654,7 @@ const ConversationsPage: React.FC = () => {
     }
 
     const newSocket = io(socketUrl, {
-      transports: isDevelopment ? ["polling", "websocket"] : ["websocket"],
+      transports: ["polling", "websocket"],
       path: socketPath,
     });
 

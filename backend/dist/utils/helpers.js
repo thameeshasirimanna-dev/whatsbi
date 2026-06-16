@@ -14,7 +14,7 @@ export async function verifyJWT(request, pgClient) {
         // Decode the JWT without verification first to get the user ID
         const decoded = jwt.decode(token);
         if (!decoded || !decoded.sub || decoded.sub === 'null' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.sub)) {
-            console.error('Invalid token structure');
+            console.error('Invalid token structure. Raw Token:', token, 'Decoded:', decoded);
             throw new Error('Invalid token structure');
         }
         const userId = decoded.sub;
@@ -27,7 +27,7 @@ export async function verifyJWT(request, pgClient) {
         return { id: userId, email: rows[0].email, role: rows[0].role };
     }
     catch (error) {
-        console.error('JWT verification error:', error);
+        console.error('JWT verification error. Raw Token:', token, 'Error:', error.message || error);
         throw new Error('Invalid or expired token');
     }
 }
