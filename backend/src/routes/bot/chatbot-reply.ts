@@ -71,17 +71,20 @@ export default async function chatbotReplyRoutes(
       const customersTable = `${agent.agent_prefix}_customers`;
       const messagesTable = `${agent.agent_prefix}_messages`;
 
+      const cleanPhone = customer_phone.replace(/\D/g, "");
       // Find customer
       const { rows: customerRows } = await pgClient.query(
-        `SELECT id, name, phone FROM ${customersTable} WHERE phone = $1`,
-        [customer_phone]
+        `SELECT id, name, phone FROM ${customersTable} WHERE phone = $1 OR phone = $2`,
+        [customer_phone, cleanPhone]
       );
 
       if (customerRows.length === 0) {
+        console.warn(`[SOCKET_LOG] chatbot-reply: Customer not found for phone: ${customer_phone} (clean: ${cleanPhone}) in table: ${customersTable}`);
         return reply.code(404).send({ error: 'Customer not found' });
       }
 
       const customer = customerRows[0];
+      console.log(`[SOCKET_LOG] chatbot-reply: Customer found: ${customer.name || customer.phone} (ID: ${customer.id})`);
 
       // Normalize phone number
       let normalizedPhone = customer.phone.replace(/\D/g, '');

@@ -16,6 +16,14 @@ export default async function sendWhatsappMessageRoutes(
       const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
+      console.log(`[SOCKET_LOG] send-whatsapp-message endpoint hit:`, {
+        authenticatedUser_id: authenticatedUser?.id,
+        user_id: body.user_id,
+        customer_phone: body.customer_phone,
+        type: body.type,
+        message: body.message
+      });
+
       const {
         user_id,
         customer_phone,
@@ -206,17 +214,20 @@ export default async function sendWhatsappMessageRoutes(
       const messagesTable = `${agent.agent_prefix}_messages`;
       const templatesTable = `${agent.agent_prefix}_templates`;
 
+      const cleanPhone = customer_phone.replace(/\D/g, "");
       // Find customer
       const { rows: customerRows } = await pgClient.query(
-        `SELECT id, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1`,
-        [customer_phone]
+        `SELECT id, name, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1 OR phone = $2`,
+        [customer_phone, cleanPhone]
       );
 
       if (customerRows.length === 0) {
+        console.warn(`[SOCKET_LOG] send-whatsapp-message: Customer not found for phone: ${customer_phone} (clean: ${cleanPhone}) in table: ${customersTable}`);
         return reply.code(404).send({ error: "Customer not found" });
       }
 
       const customer = customerRows[0];
+      console.log(`[SOCKET_LOG] send-whatsapp-message: Customer found: ${customer.name || customer.phone} (ID: ${customer.id})`);
 
       // Normalize phone number to E.164 format
       let normalizedPhone = customer.phone.replace(/\D/g, ""); // Remove non-digits
@@ -540,7 +551,6 @@ export default async function sendWhatsappMessageRoutes(
         }
       } else {
         // Template message
-        let templateName: string;
         let languageCode = "en"; // default
         let components: any[] = [];
 
@@ -725,6 +735,7 @@ export default async function sendWhatsappMessageRoutes(
         );
         storedCount++;
 
+        console.log(`[SOCKET_LOG] send-whatsapp-message: Message inserted. ID: ${insertedMessageRows[0]?.id}, Customer ID: ${customer.id}, emitNewMessage callback exists: ${!!emitNewMessage}`);
         if (emitNewMessage && insertedMessageRows.length > 0) {
           const insertedMessage = insertedMessageRows[0];
           const messageDataForSocket = {
@@ -739,7 +750,10 @@ export default async function sendWhatsappMessageRoutes(
             media_url: insertedMessage.media_url,
             caption: insertedMessage.caption,
           };
+          console.log(`[SOCKET_LOG] send-whatsapp-message: Invoking emitNewMessage for agent: ${agent.id} (type: ${typeof agent.id}), payload ID: ${messageDataForSocket.id}`);
           emitNewMessage(agent.id, messageDataForSocket);
+        } else {
+          console.log(`[SOCKET_LOG] send-whatsapp-message: Skipping emitNewMessage call. emitNewMessage: ${!!emitNewMessage}, insertedMessageRows.length: ${insertedMessageRows?.length}`);
         }
       }
 

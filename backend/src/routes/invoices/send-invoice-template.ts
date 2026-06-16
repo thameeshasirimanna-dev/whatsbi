@@ -58,10 +58,11 @@ export default async function sendInvoiceTemplateRoutes(
       const customersTable = `${agent.agent_prefix}_customers`;
       const templatesTable = `${agent.agent_prefix}_templates`;
 
+      const cleanPhone = customer_phone.replace(/\D/g, "");
       // Find customer
       const { rows: customerRows } = await pgClient.query(
-        `SELECT id, name, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1`,
-        [customer_phone]
+        `SELECT id, name, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1 OR phone = $2`,
+        [customer_phone, cleanPhone]
       );
 
       if (customerRows.length === 0) {
