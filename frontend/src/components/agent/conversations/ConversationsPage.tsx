@@ -290,13 +290,25 @@ const ConversationsPage: React.FC = () => {
                 },
               };
 
-              const webhookResponse = await fetch(config.webhook_url, {
+              let webhookResponse = await fetch(config.webhook_url, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify(webhookPayload),
               });
+
+              if (webhookResponse.status === 404 && config.webhook_url.includes('/webhook/')) {
+                const testWebhookUrl = config.webhook_url.replace('/webhook/', '/webhook-test/');
+                console.log(`[ConversationsPage] Production webhook returned 404. Retrying with test webhook URL: ${testWebhookUrl}`);
+                webhookResponse = await fetch(testWebhookUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(webhookPayload),
+                });
+              }
 
               if (webhookResponse.ok) {
               } else {

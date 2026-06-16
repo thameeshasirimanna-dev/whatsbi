@@ -451,7 +451,7 @@ export async function processIncomingMessage(
             },
           };
           try {
-            const response = await fetch(whatsappConfig.webhook_url, {
+            let response = await fetch(whatsappConfig.webhook_url, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -459,6 +459,18 @@ export async function processIncomingMessage(
               },
               body: JSON.stringify(payload),
             });
+            if (response.status === 404 && whatsappConfig.webhook_url.includes('/webhook/')) {
+              const testWebhookUrl = whatsappConfig.webhook_url.replace('/webhook/', '/webhook-test/');
+              console.log(`[SOCKET_LOG] Production webhook returned 404. Retrying with test webhook URL: ${testWebhookUrl}`);
+              response = await fetch(testWebhookUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${jwtToken}`,
+                },
+                body: JSON.stringify(payload),
+              });
+            }
             if (!response.ok) {
               const errorText = await response.text();
               console.error(

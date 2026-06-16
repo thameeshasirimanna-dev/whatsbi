@@ -400,35 +400,50 @@ const MessageView: React.FC<MessageViewProps> = ({
 
           if (config?.webhook_url && customer) {
             const webhookMessage = `Send me details about ${service.service_name}`;
-            await fetch(config.webhook_url, {
+            const webhookPayload = {
+              event: "service_selected",
+              data: {
+                id: Date.now(), // Generate a unique ID
+                customer_id: customer.id,
+                message: webhookMessage,
+                direction: "outbound",
+                timestamp: new Date().toISOString(),
+                is_read: true,
+                media_type: "none",
+                media_url: null,
+                caption: null,
+                customer_phone: selectedConversation.customerPhone,
+                customer_name:
+                  customer.name || selectedConversation.customerName,
+                customer_language: customer.language || "english",
+                agent_prefix: agentPrefix,
+                agent_user_id: agent.user_id,
+                phone_number_id: config.phone_number_id,
+                service_name: service.service_name,
+                agent_id: agentId,
+              },
+            };
+
+            let webhookResponse = await fetch(config.webhook_url, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                event: "service_selected",
-                data: {
-                  id: Date.now(), // Generate a unique ID
-                  customer_id: customer.id,
-                  message: webhookMessage,
-                  direction: "outbound",
-                  timestamp: new Date().toISOString(),
-                  is_read: true,
-                  media_type: "none",
-                  media_url: null,
-                  caption: null,
-                  customer_phone: selectedConversation.customerPhone,
-                  customer_name:
-                    customer.name || selectedConversation.customerName,
-                  customer_language: customer.language || "english",
-                  agent_prefix: agentPrefix,
-                  agent_user_id: agent.user_id,
-                  phone_number_id: config.phone_number_id,
-                  service_name: service.service_name,
-                  agent_id: agentId,
-                },
-              }),
+              body: JSON.stringify(webhookPayload),
             });
+
+            if (webhookResponse.status === 404 && config.webhook_url.includes('/webhook/')) {
+              const testWebhookUrl = config.webhook_url.replace('/webhook/', '/webhook-test/');
+              console.log(`[MessageView] Production webhook returned 404. Retrying with test webhook URL: ${testWebhookUrl}`);
+              webhookResponse = await fetch(testWebhookUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(webhookPayload),
+              });
+            }
+
             setServiceMessage(
               `Service "${service.service_name}" selected successfully!. Message sent to customer.`
             );
