@@ -653,220 +653,270 @@ const ConversationsPage: React.FC = () => {
       }
     }
 
-    const newSocket = io(socketUrl, {
-      transports: ["polling", "websocket"],
-      path: socketPath,
-    });
+    let activeSocket: Socket | null = null;
+    let fallbackAttempted = false;
 
-    newSocket.on("connect", () => {
-      // Join agent room
-      const token = getToken();
-      newSocket.emit("join-agent-room", { agentId, token });
-    });
+    const initSocket = (url: string, path: string) => {
+      console.log(`Connecting to Socket.IO at URL: ${url}, path: ${path}`);
+      
+      const s = io(url, {
+        transports: ["polling", "websocket"],
+        path: path,
+        reconnectionAttempts: 5,
+        timeout: 7000,
+      });
 
-    newSocket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
+      s.on("connect", () => {
+        console.log(`Socket connected successfully on path: ${path}`);
+        const token = getToken();
+        s.emit("join-agent-room", { agentId, token });
+      });
 
-    newSocket.on("error", (error) => {
-      console.error("Socket error:", error);
-    });
+      s.on("connect_error", (error) => {
+        console.error(`Socket connection error on path ${path}:`, error);
+        
+        if (!fallbackAttempted) {
+          fallbackAttempted = true;
+          s.disconnect();
 
-    newSocket.on("new-message", async (messageData: any) => {
-      // Handle new message similar to realtime logic
-      const newMsg: Message = {
-        id: messageData.id,
-        text: messageData.message || "",
-        sender: messageData.sender_type,
-        timestamp: messageData.timestamp ? new Date(messageData.timestamp).toISOString() : new Date().toISOString(),
-        rawTimestamp: new Date(messageData.timestamp).getTime(),
-        isRead: messageData.sender_type === "agent",
-        media_type: messageData.media_type || "none",
-        media_url: messageData.media_url || null,
-        caption: messageData.caption || null,
-      };
+          let fallbackUrl = window.location.origin;
+          let fallbackPath = "/socket.io/";
 
-      // If inbound and selected conversation, mark as read
-      if (
-        messageData.sender_type === "customer" &&
-        selectedConversationIdRef.current === messageData.customer_id
-      ) {
-        // For real-time updates, we mark as read in the UI
-        newMsg.isRead = true;
-
-        // Mark all unread messages for this customer as read in the backend
-        try {
-          const token = getToken();
-          if (token) {
-            fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/conversations/${
-                messageData.customer_id
-              }/mark-read?agentId=${agentId}`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            ).catch((error) => {
-              console.error("Failed to mark messages as read:", error);
-            });
-          }
-        } catch (error) {
-          console.error("Failed to mark messages as read:", error);
-        }
-      }
-
-      setConversations((prev) => {
-        // Find or create conversation
-        const existingConvIndex = prev.findIndex(
-          (c) => c.customerId === messageData.customer_id
-        );
-
-        if (existingConvIndex !== -1) {
-          // Update existing conversation
-          const existingConv = prev[existingConvIndex];
-          let updatedMessages = [...existingConv.messages];
-
-          // Add rawTimestamp to the new message for proper sorting
-          newMsg.rawTimestamp = new Date(messageData.timestamp).getTime();
-
-          // Check for optimistic temp message to replace
-          let tempIndex = -1;
-          for (let i = updatedMessages.length - 1; i >= 0; i--) {
-            const msg = updatedMessages[i];
-            if (
-              typeof msg.id === "string" &&
-              (msg.id.startsWith("temp-") ||
-                msg.id.startsWith("temp-template-")) &&
-              msg.sender === newMsg.sender &&
-              msg.text === newMsg.text
-            ) {
-              tempIndex = i;
-              break;
+          // Toggle path fallback
+          if (path === "/socket.io/") {
+            // Fallback from base path to prefix path if backendUrl has prefix
+            if (backendUrl && backendUrl !== "undefined" && (backendUrl.startsWith("http://") || backendUrl.startsWith("https://"))) {
+              try {
+                const parsedUrl = new URL(backendUrl);
+                fallbackUrl = parsedUrl.origin;
+                if (parsedUrl.pathname && parsedUrl.pathname !== "/") {
+                  const cleanPath = parsedUrl.pathname.endsWith("/") ? parsedUrl.pathname : `${parsedUrl.pathname}/`;
+                  fallbackPath = `${cleanPath}socket.io/`;
+                }
+              } catch (e) {}
+            } else if (backendUrl && backendUrl !== "undefined" && backendUrl.startsWith("/")) {
+              const cleanPath = backendUrl.endsWith("/") ? backendUrl : `${backendUrl}/`;
+              fallbackPath = `${cleanPath}socket.io/`;
             }
-          }
-
-          if (tempIndex !== -1) {
-            // Replace temp with real message
-            updatedMessages[tempIndex] = newMsg;
           } else {
-            // Add new message
-            updatedMessages.push(newMsg);
+            // Fallback from prefix path back to base path
+            fallbackUrl = window.location.origin;
+            fallbackPath = "/socket.io/";
           }
 
-          // Sort messages by rawTimestamp
-          updatedMessages.sort((a, b) => {
-            const aTime = a.rawTimestamp || new Date(a.timestamp).getTime();
-            const bTime = b.rawTimestamp || new Date(b.timestamp).getTime();
-            return aTime - bTime;
-          });
-
-          const unreadCount = updatedMessages.filter(
-            (m) => m.sender === "customer" && !m.isRead
-          ).length;
-
-          const lastMsg = updatedMessages[updatedMessages.length - 1];
-          const lastMessageText = processMessageText(
-            messageData.message,
-            messageData.media_type,
-            messageData.caption
-          );
-          const updatedConv = {
-            ...existingConv,
-            messages: updatedMessages,
-            lastMessage: lastMessageText,
-            lastMessageTime: lastMsg.timestamp,
-            rawLastTimestamp: new Date(messageData.timestamp).getTime(),
-            unreadCount,
-          };
-
-          // Update the conversation in the array
-          const newConversations = [...prev];
-          newConversations[existingConvIndex] = updatedConv;
-
-          // Sort conversations by last message time
-          return newConversations.sort(
-            (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
-          );
-        } else {
-          // Create new conversation - fetch customer
-          const newConv: Conversation = {
-            id: messageData.customer_id,
-            customerId: messageData.customer_id,
-            customerName:
-              messageData.customer_name || `Customer ${messageData.customer_id}`,
-            customerPhone: messageData.customer_phone || "",
-            lastUserMessageTime: null,
-            aiEnabled: false,
-            leadStage: null,
-            interestStage: null,
-            conversionStage: null,
-            lastMessage: processMessageText(
-              messageData.message,
-              messageData.media_type,
-              messageData.caption
-            ),
-            lastMessageTime: newMsg.timestamp,
-            rawLastTimestamp: new Date(messageData.timestamp).getTime(),
-            unreadCount: newMsg.isRead ? 0 : 1,
-            messages: [newMsg],
-          };
-
-          return [newConv, ...prev].sort(
-            (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
-          );
+          console.log(`Attempting socket fallback connection to: ${fallbackUrl} with path: ${fallbackPath}`);
+          activeSocket = initSocket(fallbackUrl, fallbackPath);
+          setSocket(activeSocket);
         }
       });
 
-      // Dispatch event for navbar update if message is unread
-      if (messageData.sender_type === "customer" && !newMsg.isRead) {
-        window.dispatchEvent(
-          new CustomEvent("unread-message-received", {
-            detail: {
-              count: 1,
-              messageData: {
-                id: newMsg.id,
-                customer_id: messageData.customer_id,
-                message: newMsg.text,
-                timestamp: newMsg.timestamp,
-                customerName:
-                  messageData.customer_name ||
-                  `Customer ${messageData.customer_id}`,
-                customerPhone: messageData.customer_phone || "",
-              },
-            },
-          })
-        );
-      }
+      s.on("error", (error) => {
+        console.error("Socket error:", error);
+      });
 
-      setLastRealtimeEvent(Date.now());
+      s.on("new-message", async (messageData: any) => {
+        // Handle new message similar to realtime logic
+        const newMsg: Message = {
+          id: messageData.id,
+          text: messageData.message || "",
+          sender: messageData.sender_type,
+          timestamp: messageData.timestamp ? new Date(messageData.timestamp).toISOString() : new Date().toISOString(),
+          rawTimestamp: new Date(messageData.timestamp).getTime(),
+          isRead: messageData.sender_type === "agent",
+          media_type: messageData.media_type || "none",
+          media_url: messageData.media_url || null,
+          caption: messageData.caption || null,
+        };
 
-      // Scroll to bottom if message is for selected conversation
-      if (
-        selectedConversationIdRef.current === messageData.customer_id &&
-        messagesContainerRef.current
-      ) {
-        setTimeout(() => {
-          if (messagesContainerRef.current) {
-            messagesContainerRef.current.scrollTop =
-              messagesContainerRef.current.scrollHeight;
+        // If inbound and selected conversation, mark as read
+        if (
+          messageData.sender_type === "customer" &&
+          selectedConversationIdRef.current === messageData.customer_id
+        ) {
+          // For real-time updates, we mark as read in the UI
+          newMsg.isRead = true;
+
+          // Mark all unread messages for this customer as read in the backend
+          try {
+            const token = getToken();
+            if (token) {
+              fetch(
+                `${import.meta.env.VITE_BACKEND_URL}/conversations/${
+                  messageData.customer_id
+                }/mark-read?agentId=${agentId}`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              ).catch((error) => {
+                console.error("Failed to mark messages as read:", error);
+              });
+            }
+          } catch (error) {
+            console.error("Failed to mark messages as read:", error);
           }
-        }, 100);
-      }
-    });
+        }
 
-    newSocket.on("agent-status-update", (statusData: any) => {
-      // Handle agent status updates (e.g., credits changed)
-      // For now, just log - can be extended to update UI
-    });
+        setConversations((prev) => {
+          // Find or create conversation
+          const existingConvIndex = prev.findIndex(
+            (c) => c.customerId === messageData.customer_id
+          );
 
-    newSocket.on("disconnect", () => {});
+          if (existingConvIndex !== -1) {
+            // Update existing conversation
+            const existingConv = prev[existingConvIndex];
+            let updatedMessages = [...existingConv.messages];
 
-    setSocket(newSocket);
+            // Add rawTimestamp to the new message for proper sorting
+            newMsg.rawTimestamp = new Date(messageData.timestamp).getTime();
+
+            // Check for optimistic temp message to replace
+            let tempIndex = -1;
+            for (let i = updatedMessages.length - 1; i >= 0; i--) {
+              const msg = updatedMessages[i];
+              if (
+                typeof msg.id === "string" &&
+                (msg.id.startsWith("temp-") ||
+                  msg.id.startsWith("temp-template-")) &&
+                msg.sender === newMsg.sender &&
+                msg.text === newMsg.text
+              ) {
+                tempIndex = i;
+                break;
+              }
+            }
+
+            if (tempIndex !== -1) {
+              // Replace temp with real message
+              updatedMessages[tempIndex] = newMsg;
+            } else {
+              // Add new message
+              updatedMessages.push(newMsg);
+            }
+
+            // Sort messages by rawTimestamp
+            updatedMessages.sort((a, b) => {
+              const aTime = a.rawTimestamp || new Date(a.timestamp).getTime();
+              const bTime = b.rawTimestamp || new Date(b.timestamp).getTime();
+              return aTime - bTime;
+            });
+
+            const unreadCount = updatedMessages.filter(
+              (m) => m.sender === "customer" && !m.isRead
+            ).length;
+
+            const lastMsg = updatedMessages[updatedMessages.length - 1];
+            const lastMessageText = processMessageText(
+              messageData.message,
+              messageData.media_type,
+              messageData.caption
+            );
+            const updatedConv = {
+              ...existingConv,
+              messages: updatedMessages,
+              lastMessage: lastMessageText,
+              lastMessageTime: lastMsg.timestamp,
+              rawLastTimestamp: new Date(messageData.timestamp).getTime(),
+              unreadCount,
+            };
+
+            // Update the conversation in the array
+            const newConversations = [...prev];
+            newConversations[existingConvIndex] = updatedConv;
+
+            // Sort conversations by last message time
+            return newConversations.sort(
+              (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
+            );
+          } else {
+            // Create new conversation - fetch customer
+            const newConv: Conversation = {
+              id: messageData.customer_id,
+              customerId: messageData.customer_id,
+              customerName:
+                messageData.customer_name || `Customer ${messageData.customer_id}`,
+              customerPhone: messageData.customer_phone || "",
+              lastUserMessageTime: null,
+              aiEnabled: false,
+              leadStage: null,
+              interestStage: null,
+              conversionStage: null,
+              lastMessage: processMessageText(
+                messageData.message,
+                messageData.media_type,
+                messageData.caption
+              ),
+              lastMessageTime: newMsg.timestamp,
+              rawLastTimestamp: new Date(messageData.timestamp).getTime(),
+              unreadCount: newMsg.isRead ? 0 : 1,
+              messages: [newMsg],
+            };
+
+            return [newConv, ...prev].sort(
+              (a, b) => b.rawLastTimestamp - a.rawLastTimestamp
+            );
+          }
+        });
+
+        // Dispatch event for navbar update if message is unread
+        if (messageData.sender_type === "customer" && !newMsg.isRead) {
+          window.dispatchEvent(
+            new CustomEvent("unread-message-received", {
+              detail: {
+                count: 1,
+                messageData: {
+                  id: newMsg.id,
+                  customer_id: messageData.customer_id,
+                  message: newMsg.text,
+                  timestamp: newMsg.timestamp,
+                  customerName:
+                    messageData.customer_name ||
+                    `Customer ${messageData.customer_id}`,
+                  customerPhone: messageData.customer_phone || "",
+                },
+              },
+            })
+          );
+        }
+
+        setLastRealtimeEvent(Date.now());
+
+        // Scroll to bottom if message is for selected conversation
+        if (
+          selectedConversationIdRef.current === messageData.customer_id &&
+          messagesContainerRef.current
+        ) {
+          setTimeout(() => {
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop =
+                messagesContainerRef.current.scrollHeight;
+            }
+          }, 100);
+        }
+      });
+
+      s.on("agent-status-update", (statusData: any) => {
+        // Handle agent status updates (e.g., credits changed)
+        // For now, just log - can be extended to update UI
+      });
+
+      s.on("disconnect", () => {
+        console.log(`Socket disconnected from path: ${path}`);
+      });
+
+      return s;
+    };
+
+    activeSocket = initSocket(socketUrl, socketPath);
+    setSocket(activeSocket);
 
     return () => {
-      newSocket.disconnect();
+      if (activeSocket) {
+        activeSocket.disconnect();
+      }
     };
   }, [
     agentId,
