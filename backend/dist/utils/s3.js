@@ -1,13 +1,19 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, } from "@aws-sdk/client-s3";
 import crypto from "crypto";
-const s3Client = new S3Client({
-    region: "auto", // For R2
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    },
-});
+let s3Client = null;
+function getS3Client() {
+    if (!s3Client) {
+        s3Client = new S3Client({
+            region: "auto", // For R2
+            endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: {
+                accessKeyId: process.env.R2_ACCESS_KEY_ID,
+                secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+            },
+        });
+    }
+    return s3Client;
+}
 export async function uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename, contentType, folder = "incoming", customKey) {
     try {
         let key;
@@ -26,7 +32,7 @@ export async function uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename
             Body: mediaBuffer,
             ContentType: contentType,
         });
-        await s3Client.send(command);
+        await getS3Client().send(command);
         // Construct public URL
         const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
         return publicUrl;
@@ -42,7 +48,7 @@ export async function downloadMediaFromR2(key) {
             Bucket: process.env.R2_BUCKET_NAME,
             Key: key,
         });
-        const response = await s3Client.send(command);
+        const response = await getS3Client().send(command);
         if (!response.Body) {
             return null;
         }
@@ -66,7 +72,7 @@ export async function deleteMediaFromR2(key) {
             Bucket: process.env.R2_BUCKET_NAME,
             Key: key,
         });
-        await s3Client.send(command);
+        await getS3Client().send(command);
         return true;
     }
     catch (error) {

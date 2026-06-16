@@ -15,6 +15,7 @@ export interface Agent {
   updated_at?: string;
   created_by?: string;
   invoice_template_path?: string;
+  company_overview_path?: string;
 }
 
 export const getCurrentAgent = async (): Promise<Agent | null> => {
@@ -53,6 +54,7 @@ export const getCurrentAgent = async (): Promise<Agent | null> => {
       updated_at: data.agent.updated_at,
       created_by: data.agent.created_by,
       invoice_template_path: data.agent.invoice_template_path,
+      company_overview_path: data.agent.company_overview_path,
     };
   } catch (err) {
     console.error('Get current agent error:', err);

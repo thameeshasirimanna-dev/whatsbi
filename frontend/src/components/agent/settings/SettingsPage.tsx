@@ -150,6 +150,7 @@ const SettingsContent: React.FC = () => {
   const [editingDocument, setEditingDocument] = useState(false);
   const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
   const [currentDocument, setCurrentDocument] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   // Team Management state
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -283,6 +284,7 @@ const SettingsContent: React.FC = () => {
         setNewContactNumber(agentData.contact_number || "");
         setNewWebsite(agentData.website || "");
         setCurrentTemplate(agentData.invoice_template_path || null);
+        setCurrentDocument(agentData.company_overview_path || null);
       } catch (err) {
         setError("Failed to load user data");
       } finally {
@@ -442,26 +444,90 @@ const SettingsContent: React.FC = () => {
 
   const handleDocumentUpload = async () => {
     if (!selectedDocumentFile || !agent || !user) { setUpdateMessage("Error: File or agent data not available"); return; }
-    const filePath = `${agent.id}/document.txt`;
     try {
       setUpdateMessage("");
+      setUploadProgress(0);
+      const token = getToken();
       const formData = new FormData();
       formData.append("agentId", agent.id.toString());
       formData.append("file", selectedDocumentFile);
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload-company-overview`, { method: "POST", body: formData });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Upload failed");
-      if (data && data.success) {
-        setCurrentDocument(filePath); setSelectedDocumentFile(null); setEditingDocument(false);
-        setUpdateMessage("Company overview document uploaded successfully!");
-      } else { setUpdateMessage("Upload failed: " + (data?.error || "Unknown error")); }
-    } catch (err: any) { setUpdateMessage(`Upload failed: ${err.message}`); }
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${import.meta.env.VITE_BACKEND_URL}/upload-company-overview`);
+        
+        if (token) {
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        }
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          setUploadProgress(null);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data && data.success) {
+                setCurrentDocument(data.filePath);
+                setSelectedDocumentFile(null);
+                setEditingDocument(false);
+                setUpdateMessage("Company overview document uploaded successfully!");
+                resolve(data);
+              } else {
+                reject(new Error(data.error || "Upload failed"));
+              }
+            } catch (e) {
+              reject(new Error("Invalid response from server"));
+            }
+          } else {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              reject(new Error(data.error || `Upload failed with status ${xhr.status}`));
+            } catch {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          }
+        };
+
+        xhr.onerror = () => {
+          setUploadProgress(null);
+          reject(new Error("Network connection error"));
+        };
+
+        xhr.send(formData);
+      });
+    } catch (err: any) {
+      setUploadProgress(null);
+      setUpdateMessage(`Upload failed: ${err.message}`);
+    }
   };
 
   const handleDocumentRemove = async () => {
     if (!currentDocument || !agent) return;
-    setCurrentDocument(null);
-    setUpdateMessage("Company overview document removed successfully!");
+    try {
+      setUpdateMessage("");
+      const token = getToken();
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/delete-company-overview`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ agentId: agent.id.toString() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Removal failed");
+      if (data && data.success) {
+        setCurrentDocument(null);
+        setUpdateMessage("Company overview document removed successfully!");
+      } else { setUpdateMessage("Removal failed: " + (data?.error || "Unknown error")); }
+    } catch (err: any) { setUpdateMessage(`Removal failed: ${err.message}`); }
   };
 
   const handleDownloadMarginGuide = async () => {
@@ -757,26 +823,47 @@ const SettingsContent: React.FC = () => {
         <div style={{ ...DM, fontSize: 12, color: '#71717a', marginBottom: 8 }}>Document</div>
         {editingDocument ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#f9f9f9', border: '1px dashed #d4d4d8', borderRadius: 9, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#f9f9f9', border: '1px dashed #d4d4d8', borderRadius: 9, cursor: uploadProgress !== null ? 'not-allowed' : 'pointer', opacity: uploadProgress !== null ? 0.6 : 1 }}>
               <Upload size={14} style={{ color: '#71717a' }} />
               <span style={{ ...DM, fontSize: 13, color: selectedDocumentFile ? '#0c1a0e' : '#71717a' }}>
                 {selectedDocumentFile ? selectedDocumentFile.name : 'Choose file (.txt, .pdf, .doc, .docx)'}
               </span>
-              <input type="file" accept=".txt,.pdf,.doc,.docx" onChange={e => setSelectedDocumentFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
+              <input type="file" accept=".txt,.pdf,.doc,.docx" onChange={e => setSelectedDocumentFile(e.target.files?.[0] || null)} disabled={uploadProgress !== null} style={{ display: 'none' }} />
             </label>
-            <div style={{ display: 'flex', gap: 8, maxWidth: 320 }}>
-              <button type="button" onClick={handleDocumentUpload} disabled={!selectedDocumentFile} style={{ ...saveBtn, opacity: !selectedDocumentFile ? 0.5 : 1 }}>
-                Upload
-              </button>
-              <button type="button" onClick={() => { setEditingDocument(false); setSelectedDocumentFile(null); setUpdateMessage(""); }} style={cancelBtn}>
-                Cancel
-              </button>
-            </div>
+            {uploadProgress === null ? (
+              <div style={{ display: 'flex', gap: 8, maxWidth: 320 }}>
+                <button type="button" onClick={handleDocumentUpload} disabled={!selectedDocumentFile} style={{ ...saveBtn, opacity: !selectedDocumentFile ? 0.5 : 1 }}>
+                  Upload
+                </button>
+                <button type="button" onClick={() => { setEditingDocument(false); setSelectedDocumentFile(null); setUpdateMessage(""); }} style={cancelBtn}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div style={{ width: '100%', maxWidth: 320 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', ...DM, fontSize: 12, color: '#71717a', marginBottom: 4 }}>
+                  <span>Uploading…</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div style={{ width: '100%', height: 6, background: '#e4e4e7', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', transition: 'width 0.1s ease-out' }} />
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ ...DM, fontSize: 14, color: currentDocument ? '#0c1a0e' : '#a1a1aa' }}>
-              {currentDocument ? 'Document uploaded' : 'No document set'}
+              {currentDocument ? (
+                <a
+                  href={currentDocument}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#22c55e', textDecoration: 'underline' }}
+                >
+                  {currentDocument.split('/').pop()?.replace(/^company_overview_\d+_/, '') || 'View Document'}
+                </a>
+              ) : 'No document set'}
             </span>
             {isOwner && (
               <div style={{ display: 'flex', gap: 6 }}>

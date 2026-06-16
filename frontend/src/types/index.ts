@@ -11,6 +11,8 @@ export interface Agent {
   created_at: string;
   updated_at?: string;
   created_by?: string;
+  invoice_template_path?: string;
+  company_overview_path?: string;
 }
 
 export interface Message {

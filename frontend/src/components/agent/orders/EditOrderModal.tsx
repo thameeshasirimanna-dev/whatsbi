@@ -62,6 +62,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const { toast } = useDialog();
   const [editStatus, setEditStatus] = useState(order?.status || '');
   const [shippingAddress, setShippingAddress] = useState(order?.shipping_address || '');
+  const [notes, setNotes] = useState(order?.notes || '');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [newItemName, setNewItemName] = useState('');
@@ -78,6 +79,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   useEffect(() => {
     if (order && agentPrefix) {
       setShippingAddress(order.shipping_address || '');
+      setNotes(order.notes || '');
       fetchOrderItems();
     }
   }, [order, agentPrefix]);
@@ -319,7 +321,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
             id: order.id,
             status: editStatus,
             total_amount: items.reduce((sum, item) => sum + item.quantity * item.price, 0),
-            notes: order.notes || null,
+            notes: notes.trim() || null,
             shipping_address: shippingAddress.trim() || null,
             updated_at: new Date().toISOString(),
           }),
@@ -563,6 +565,12 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
                   )}
                 </div>
               ) : null}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Notes (Optional)</label>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Order notes or special instructions…" style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocusG} onBlur={onBlurG} />
             </div>
 
             {/* Shipping address */}

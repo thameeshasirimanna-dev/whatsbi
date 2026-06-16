@@ -52,6 +52,7 @@ import getAgentProfileRoutes from "./routes/agents/get-agent-profile.js";
 import updateAgentDetailsRoutes from "./routes/agents/update-agent-details.js";
 import updateAgentTemplatePathRoutes from "./routes/agents/update-agent-template-path.js";
 import uploadInvoiceTemplateRoutes from "./routes/upload-invoice-template.js";
+import companyOverviewRoutes from "./routes/agents/company-overview.js";
 import getAdminInfoRoutes from "./routes/admin/get-admin-info.js";
 import getAnalyticsRoutes from "./routes/analytics/get-analytics.js";
 import getDashboardDataRoutes from "./routes/dashboard/get-dashboard-data.js";
@@ -144,6 +145,7 @@ async function registerRoutes() {
     await updateAgentDetailsRoutes(server, pgClient);
     await updateAgentTemplatePathRoutes(server, pgClient);
     await uploadInvoiceTemplateRoutes(server, pgClient);
+    await companyOverviewRoutes(server, pgClient);
     await getAdminInfoRoutes(server, pgClient);
     await getAnalyticsRoutes(server, pgClient);
     await getDashboardDataRoutes(server, pgClient);

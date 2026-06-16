@@ -19,6 +19,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
           contact_number,
           website,
           invoice_template_path,
+          company_overview_path,
           credits
         FROM agents
         WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
@@ -68,6 +69,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
           contact_number: agentData.contact_number || "",
           website: agentData.website || "",
           invoice_template_path: agentData.invoice_template_path,
+          company_overview_path: agentData.company_overview_path,
           credits: agentData.credits || 0,
         },
       });

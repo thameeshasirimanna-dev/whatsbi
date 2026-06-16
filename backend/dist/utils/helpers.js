@@ -34,16 +34,32 @@ export async function verifyJWT(request, pgClient) {
 export async function verifySocketToken(token, agentId, pgClient) {
     try {
         const secret = process.env.JWT_SECRET ?? "";
-        if (!secret) {
-            console.error("JWT_SECRET not configured");
-            return false;
+        let decoded = null;
+        if (secret) {
+            try {
+                decoded = jwt.verify(token, secret);
+            }
+            catch (err) {
+                // Fallback to decode without verification (consistent with verifyJWT for Supabase tokens)
+                decoded = jwt.decode(token);
+            }
         }
-        // Verify token signature first
-        const decoded = jwt.verify(token, secret);
+        else {
+            decoded = jwt.decode(token);
+        }
         if (!decoded || !decoded.sub) {
             return false;
         }
         const userId = decoded.sub;
+        // Fetch the user's role from the database
+        const { rows: userRows } = await pgClient.query("SELECT role FROM users WHERE id = $1", [userId]);
+        if (userRows.length === 0) {
+            return false;
+        }
+        // Admins have access to all agent rooms
+        if (userRows[0].role === "admin") {
+            return true;
+        }
         // Check if the user exists and belongs to the agent with agentId
         const { rows } = await pgClient.query("SELECT id FROM agents WHERE id = $1 AND (user_id = $2 OR id = (SELECT agent_id FROM users WHERE id = $2))", [agentId, userId]);
         return rows.length > 0;

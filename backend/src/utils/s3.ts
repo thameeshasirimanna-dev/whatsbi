@@ -7,14 +7,21 @@ import {
 import crypto from "crypto";
 import { Readable } from "stream";
 
-const s3Client = new S3Client({
-  region: "auto", // For R2
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-});
+let s3Client: S3Client | null = null;
+
+function getS3Client(): S3Client {
+  if (!s3Client) {
+    s3Client = new S3Client({
+      region: "auto", // For R2
+      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+      },
+    });
+  }
+  return s3Client;
+}
 
 export async function uploadMediaToR2(
   agentPrefix: string,
@@ -41,7 +48,7 @@ export async function uploadMediaToR2(
       Body: mediaBuffer,
       ContentType: contentType,
     });
-    await s3Client.send(command);
+    await getS3Client().send(command);
 
     // Construct public URL
 
@@ -60,7 +67,7 @@ export async function downloadMediaFromR2(key: string): Promise<Buffer | null> {
       Key: key,
     });
 
-    const response = await s3Client.send(command);
+    const response = await getS3Client().send(command);
     if (!response.Body) {
       return null;
     }
@@ -87,7 +94,7 @@ export async function deleteMediaFromR2(key: string): Promise<boolean> {
       Key: key,
     });
 
-    await s3Client.send(command);
+    await getS3Client().send(command);
     return true;
   } catch (error) {
     console.error("Error deleting media from R2:", error);
