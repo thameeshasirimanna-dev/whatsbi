@@ -411,6 +411,7 @@ export async function processIncomingMessage(
     }
 
     // Emit socket event for new message
+    console.log(`[SOCKET_LOG] processIncomingMessage: Message inserted. ID: ${insertedMessage.id}, Customer: ${customer.name} (${customerId}), emitNewMessage callback exists: ${!!emitNewMessage}`);
     if (emitNewMessage) {
       const messageDataForSocket = {
         id: insertedMessage.id,
@@ -424,6 +425,7 @@ export async function processIncomingMessage(
         media_url: insertedMessage.media_url,
         caption: insertedMessage.caption,
       };
+      console.log(`[SOCKET_LOG] processIncomingMessage: Invoking emitNewMessage for agent: ${agent.id} (type: ${typeof agent.id}), payload ID: ${messageDataForSocket.id}`);
       emitNewMessage(agent.id, messageDataForSocket);
     }
 

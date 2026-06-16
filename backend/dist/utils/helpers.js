@@ -287,6 +287,7 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
             await cacheService.invalidateRecentMessages(agent.id, customerId);
         }
         // Emit socket event for new message
+        console.log(`[SOCKET_LOG] processIncomingMessage: Message inserted. ID: ${insertedMessage.id}, Customer: ${customer.name} (${customerId}), emitNewMessage callback exists: ${!!emitNewMessage}`);
         if (emitNewMessage) {
             const messageDataForSocket = {
                 id: insertedMessage.id,
@@ -300,6 +301,7 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
                 media_url: insertedMessage.media_url,
                 caption: insertedMessage.caption,
             };
+            console.log(`[SOCKET_LOG] processIncomingMessage: Invoking emitNewMessage for agent: ${agent.id} (type: ${typeof agent.id}), payload ID: ${messageDataForSocket.id}`);
             emitNewMessage(agent.id, messageDataForSocket);
         }
         // Trigger agent webhook if ai_enabled

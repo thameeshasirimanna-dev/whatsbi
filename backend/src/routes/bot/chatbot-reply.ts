@@ -209,6 +209,7 @@ export default async function chatbotReplyRoutes(
         ]
       );
 
+      console.log(`[SOCKET_LOG] chatbot-reply: Message inserted. ID: ${insertedMessageRows[0]?.id}, Customer ID: ${customer.id}, emitNewMessage callback exists: ${!!emitNewMessage}`);
       if (emitNewMessage && insertedMessageRows.length > 0) {
         const insertedMessage = insertedMessageRows[0];
         const messageDataForSocket = {
@@ -223,6 +224,7 @@ export default async function chatbotReplyRoutes(
           media_url: insertedMessage.media_url,
           caption: insertedMessage.caption,
         };
+        console.log(`[SOCKET_LOG] chatbot-reply: Invoking emitNewMessage for agent: ${agent.id} (type: ${typeof agent.id}), payload ID: ${messageDataForSocket.id}`);
         emitNewMessage(agent.id, messageDataForSocket);
       }
 

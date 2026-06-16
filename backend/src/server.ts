@@ -251,6 +251,7 @@ server.get("/health", async (request, reply) => {
 
 // Socket.IO utility functions
 function emitNewMessage(agentId: number, messageData: any) {
+  console.log(`[SOCKET_LOG] emitNewMessage: Broadcasting new-message to room agent-${agentId}, message ID: ${messageData.id}`);
   (server as any).io.to(`agent-${agentId}`).emit("new-message", messageData);
 }
 
@@ -270,24 +271,29 @@ const start = async () => {
     // Set up Socket.IO connection handling after routes are registered
     server.ready().then(() => {
       (server as any).io.on("connection", (socket: any) => {
-        // console.log("Client connected:", socket.id);
+        console.log(`[SOCKET_LOG] connection: Client connected with socket ID ${socket.id}`);
 
         socket.on("join-agent-room", async (data: any) => {
           const { agentId, token } = data;
+          console.log(`[SOCKET_LOG] join-agent-room: Socket ${socket.id} requesting join for agentId: ${agentId}`);
           if (agentId && token) {
             const isValid = await verifySocketToken(token, parseInt(agentId), pgClient);
+            console.log(`[SOCKET_LOG] join-agent-room: Socket ${socket.id} token verification result: ${isValid}`);
             if (isValid) {
+              console.log(`[SOCKET_LOG] join-agent-room: Socket ${socket.id} successfully joined room agent-${agentId}`);
               socket.join(`agent-${agentId}`);
             } else {
+              console.warn(`[SOCKET_LOG] join-agent-room: Socket ${socket.id} UNAUTHORIZED for agentId: ${agentId}`);
               socket.emit("error", { message: "Unauthorized agent room join request" });
             }
           } else {
+            console.warn(`[SOCKET_LOG] join-agent-room: Socket ${socket.id} missing agentId (${!!agentId}) or token (${!!token})`);
             socket.emit("error", { message: "agentId and token are required" });
           }
         });
 
         socket.on("disconnect", (reason: any) => {
-          // console.log("Client disconnected:", socket.id, "reason:", reason);
+          console.log(`[SOCKET_LOG] disconnect: Client ${socket.id} disconnected. Reason: ${reason}`);
         });
       });
     });

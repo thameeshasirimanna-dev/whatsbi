@@ -669,6 +669,7 @@ const ConversationsPage: React.FC = () => {
       s.on("connect", () => {
         console.log(`Socket connected successfully on path: ${path}`);
         const token = getToken();
+        console.log(`Socket sending join-agent-room for agentId: ${agentId}`);
         s.emit("join-agent-room", { agentId, token });
       });
 
@@ -711,10 +712,11 @@ const ConversationsPage: React.FC = () => {
       });
 
       s.on("error", (error) => {
-        console.error("Socket error:", error);
+        console.error("Socket error event:", error);
       });
 
       s.on("new-message", async (messageData: any) => {
+        console.log("Socket received 'new-message' event:", messageData);
         // Handle new message similar to realtime logic
         const newMsg: Message = {
           id: messageData.id,
