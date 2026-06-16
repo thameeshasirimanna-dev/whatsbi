@@ -195,11 +195,8 @@ export async function processIncomingMessage(
     );
 
     if (whatsappConfigRows.length === 0) {
-      console.log(`[SOCKET_LOG] processIncomingMessage: No active whatsapp configuration found for phone_number_id: ${phoneNumberId}`);
       return;
     }
-
-    console.log(`[SOCKET_LOG] processIncomingMessage: Found ${whatsappConfigRows.length} active configurations for phone_number_id: ${phoneNumberId}`);
 
     for (const whatsappConfig of whatsappConfigRows) {
       try {
@@ -211,12 +208,10 @@ export async function processIncomingMessage(
         );
 
         if (agentRows.length === 0) {
-          console.log(`[SOCKET_LOG] processIncomingMessage: No agent found for user_id: ${whatsappConfig.user_id}`);
-          continue;
+          return;
         }
 
         const agent = agentRows[0];
-        console.log(`[SOCKET_LOG] processIncomingMessage: Processing message for agent: ${agent.id} (${agent.agent_prefix})`);
 
         const customersTable = `${agent.agent_prefix}_customers`;
         const messagesTable = `${agent.agent_prefix}_messages`;
@@ -416,7 +411,6 @@ export async function processIncomingMessage(
         }
 
         // Emit socket event for new message
-        console.log(`[SOCKET_LOG] processIncomingMessage: Message inserted. ID: ${insertedMessage.id}, Customer: ${customer.name} (${customerId}), emitNewMessage callback exists: ${!!emitNewMessage}`);
         if (emitNewMessage) {
           const messageDataForSocket = {
             id: insertedMessage.id,
@@ -430,7 +424,6 @@ export async function processIncomingMessage(
             media_url: insertedMessage.media_url,
             caption: insertedMessage.caption,
           };
-          console.log(`[SOCKET_LOG] processIncomingMessage: Invoking emitNewMessage for agent: ${agent.id} (type: ${typeof agent.id}), payload ID: ${messageDataForSocket.id}`);
           emitNewMessage(agent.id, messageDataForSocket);
         }
 
@@ -461,7 +454,6 @@ export async function processIncomingMessage(
             });
             if (response.status === 404 && whatsappConfig.webhook_url.includes('/webhook/')) {
               const testWebhookUrl = whatsappConfig.webhook_url.replace('/webhook/', '/webhook-test/');
-              console.log(`[SOCKET_LOG] Production webhook returned 404. Retrying with test webhook URL: ${testWebhookUrl}`);
               response = await fetch(testWebhookUrl, {
                 method: "POST",
                 headers: {

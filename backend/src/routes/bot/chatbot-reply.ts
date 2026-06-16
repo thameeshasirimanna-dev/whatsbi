@@ -79,12 +79,10 @@ export default async function chatbotReplyRoutes(
       );
 
       if (customerRows.length === 0) {
-        console.warn(`[SOCKET_LOG] chatbot-reply: Customer not found for phone: ${customer_phone} (clean: ${cleanPhone}) in table: ${customersTable}`);
         return reply.code(404).send({ error: 'Customer not found' });
       }
 
       const customer = customerRows[0];
-      console.log(`[SOCKET_LOG] chatbot-reply: Customer found: ${customer.name || customer.phone} (ID: ${customer.id})`);
 
       // Normalize phone number
       let normalizedPhone = customer.phone.replace(/\D/g, '');
@@ -212,7 +210,6 @@ export default async function chatbotReplyRoutes(
         ]
       );
 
-      console.log(`[SOCKET_LOG] chatbot-reply: Message inserted. ID: ${insertedMessageRows[0]?.id}, Customer ID: ${customer.id}, emitNewMessage callback exists: ${!!emitNewMessage}`);
       if (emitNewMessage && insertedMessageRows.length > 0) {
         const insertedMessage = insertedMessageRows[0];
         const messageDataForSocket = {
@@ -227,7 +224,6 @@ export default async function chatbotReplyRoutes(
           media_url: insertedMessage.media_url,
           caption: insertedMessage.caption,
         };
-        console.log(`[SOCKET_LOG] chatbot-reply: Invoking emitNewMessage for agent: ${agent.id} (type: ${typeof agent.id}), payload ID: ${messageDataForSocket.id}`);
         emitNewMessage(agent.id, messageDataForSocket);
       }
 

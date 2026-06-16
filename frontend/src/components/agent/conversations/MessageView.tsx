@@ -434,7 +434,6 @@ const MessageView: React.FC<MessageViewProps> = ({
 
             if (webhookResponse.status === 404 && config.webhook_url.includes('/webhook/')) {
               const testWebhookUrl = config.webhook_url.replace('/webhook/', '/webhook-test/');
-              console.log(`[MessageView] Production webhook returned 404. Retrying with test webhook URL: ${testWebhookUrl}`);
               webhookResponse = await fetch(testWebhookUrl, {
                 method: "POST",
                 headers: {

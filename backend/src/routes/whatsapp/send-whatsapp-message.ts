@@ -16,13 +16,6 @@ export default async function sendWhatsappMessageRoutes(
       const authenticatedUser = await verifyJWT(request, pgClient);
 
       const body = request.body as any;
-      console.log(`[SOCKET_LOG] send-whatsapp-message endpoint hit:`, {
-        authenticatedUser_id: authenticatedUser?.id,
-        user_id: body.user_id,
-        customer_phone: body.customer_phone,
-        type: body.type,
-        message: body.message
-      });
 
       const {
         user_id,
@@ -222,12 +215,10 @@ export default async function sendWhatsappMessageRoutes(
       );
 
       if (customerRows.length === 0) {
-        console.warn(`[SOCKET_LOG] send-whatsapp-message: Customer not found for phone: ${customer_phone} (clean: ${cleanPhone}) in table: ${customersTable}`);
         return reply.code(404).send({ error: "Customer not found" });
       }
 
       const customer = customerRows[0];
-      console.log(`[SOCKET_LOG] send-whatsapp-message: Customer found: ${customer.name || customer.phone} (ID: ${customer.id})`);
 
       // Normalize phone number to E.164 format
       let normalizedPhone = customer.phone.replace(/\D/g, ""); // Remove non-digits
@@ -735,7 +726,6 @@ export default async function sendWhatsappMessageRoutes(
         );
         storedCount++;
 
-        console.log(`[SOCKET_LOG] send-whatsapp-message: Message inserted. ID: ${insertedMessageRows[0]?.id}, Customer ID: ${customer.id}, emitNewMessage callback exists: ${!!emitNewMessage}`);
         if (emitNewMessage && insertedMessageRows.length > 0) {
           const insertedMessage = insertedMessageRows[0];
           const messageDataForSocket = {
@@ -750,10 +740,7 @@ export default async function sendWhatsappMessageRoutes(
             media_url: insertedMessage.media_url,
             caption: insertedMessage.caption,
           };
-          console.log(`[SOCKET_LOG] send-whatsapp-message: Invoking emitNewMessage for agent: ${agent.id} (type: ${typeof agent.id}), payload ID: ${messageDataForSocket.id}`);
           emitNewMessage(agent.id, messageDataForSocket);
-        } else {
-          console.log(`[SOCKET_LOG] send-whatsapp-message: Skipping emitNewMessage call. emitNewMessage: ${!!emitNewMessage}, insertedMessageRows.length: ${insertedMessageRows?.length}`);
         }
       }
 

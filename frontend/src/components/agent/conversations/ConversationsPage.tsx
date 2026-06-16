@@ -300,7 +300,6 @@ const ConversationsPage: React.FC = () => {
 
               if (webhookResponse.status === 404 && config.webhook_url.includes('/webhook/')) {
                 const testWebhookUrl = config.webhook_url.replace('/webhook/', '/webhook-test/');
-                console.log(`[ConversationsPage] Production webhook returned 404. Retrying with test webhook URL: ${testWebhookUrl}`);
                 webhookResponse = await fetch(testWebhookUrl, {
                   method: "POST",
                   headers: {
@@ -669,8 +668,6 @@ const ConversationsPage: React.FC = () => {
     let fallbackAttempted = false;
 
     const initSocket = (url: string, path: string) => {
-      console.log(`Connecting to Socket.IO at URL: ${url}, path: ${path}`);
-      
       const s = io(url, {
         transports: ["polling", "websocket"],
         path: path,
@@ -679,9 +676,7 @@ const ConversationsPage: React.FC = () => {
       });
 
       s.on("connect", () => {
-        console.log(`Socket connected successfully on path: ${path}`);
         const token = getToken();
-        console.log(`Socket sending join-agent-room for agentId: ${agentId}`);
         s.emit("join-agent-room", { agentId, token });
       });
 
@@ -717,7 +712,6 @@ const ConversationsPage: React.FC = () => {
             fallbackPath = "/socket.io/";
           }
 
-          console.log(`Attempting socket fallback connection to: ${fallbackUrl} with path: ${fallbackPath}`);
           activeSocket = initSocket(fallbackUrl, fallbackPath);
           setSocket(activeSocket);
         }
@@ -728,7 +722,6 @@ const ConversationsPage: React.FC = () => {
       });
 
       s.on("new-message", async (messageData: any) => {
-        console.log("Socket received 'new-message' event:", messageData);
         // Handle new message similar to realtime logic
         const newMsg: Message = {
           id: messageData.id,
@@ -918,7 +911,6 @@ const ConversationsPage: React.FC = () => {
       });
 
       s.on("disconnect", () => {
-        console.log(`Socket disconnected from path: ${path}`);
       });
 
       return s;
@@ -1732,7 +1724,6 @@ const ConversationsPage: React.FC = () => {
     maxWidth: number = 1200,
     maxHeight: number = 1200
   ): Promise<{ whatsappFile: File; storageFile: File }> => {
-    console.log("Starting compression for", file.name, "size", file.size);
     return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
@@ -1748,14 +1739,6 @@ const ConversationsPage: React.FC = () => {
       reader.readAsDataURL(file);
 
       img.onload = () => {
-        console.log(
-          "Image loaded for",
-          file.name,
-          "dimensions",
-          img.width,
-          "x",
-          img.height
-        );
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d")!;
 
@@ -1874,7 +1857,6 @@ const ConversationsPage: React.FC = () => {
   };
 
   const handleFileSelect = async (files: File[]) => {
-    console.log("handleFileSelect called with", files.length, "files");
     if (!selectedConversationId || !selectedConversation) {
       setSendError("No conversation selected");
       return;
@@ -1942,7 +1924,6 @@ const ConversationsPage: React.FC = () => {
       return;
     }
 
-    console.log("Setting uploading to true");
     setUploading(true);
     setSendError(null);
 
@@ -1985,16 +1966,10 @@ const ConversationsPage: React.FC = () => {
       });
       await Promise.all(appendPromises);
 
-      console.log("Starting upload fetch");
       // Calculate timeout based on file sizes (allow ~30 seconds per MB)
       const totalSizeMB =
         validFiles.reduce((sum, file) => sum + file.size, 0) / (1024 * 1024);
       const timeoutMs = Math.max(60000, Math.min(totalSizeMB * 30000, 300000)); // Min 60s, max 5min
-      console.log(
-        `Upload timeout set to ${timeoutMs}ms for ${totalSizeMB.toFixed(
-          1
-        )}MB total`
-      );
 
       // Use Promise.race for timeout instead of AbortController
       const uploadPromise = fetch(
@@ -2016,9 +1991,7 @@ const ConversationsPage: React.FC = () => {
         uploadPromise,
         timeoutPromise,
       ])) as Response;
-      console.log("Upload response received", uploadResponse.status);
       const uploadResult = await uploadResponse.json();
-      console.log("Upload result:", uploadResult);
       const uploadError = !uploadResponse.ok
         ? { message: uploadResult.error }
         : null;
@@ -2046,7 +2019,6 @@ const ConversationsPage: React.FC = () => {
         throw new Error(`Some uploads failed: ${errorDetails}`);
       }
 
-      console.log("Setting pending media");
       setPendingMedia(
         media.map((item: any) => ({
           id: item.media_id, // WhatsApp media ID for sending
@@ -2068,7 +2040,6 @@ const ConversationsPage: React.FC = () => {
         setSendError(`Failed to upload media: ${error.message}`);
       }
     } finally {
-      console.log("Setting uploading to false");
       setUploading(false);
     }
   };
