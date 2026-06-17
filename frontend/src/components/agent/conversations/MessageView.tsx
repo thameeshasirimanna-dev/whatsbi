@@ -402,6 +402,7 @@ const MessageView: React.FC<MessageViewProps> = ({
             const webhookMessage = `Send me details about ${service.service_name}`;
             const webhookPayload = {
               event: "service_selected",
+              jwt_token: token,
               data: {
                 id: Date.now(), // Generate a unique ID
                 customer_id: customer.id,
@@ -429,6 +430,7 @@ const MessageView: React.FC<MessageViewProps> = ({
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
               },
               body: JSON.stringify(webhookPayload),
             });
@@ -439,6 +441,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(webhookPayload),
               });

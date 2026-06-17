@@ -272,6 +272,7 @@ const ConversationsPage: React.FC = () => {
 
               const webhookPayload = {
                 event: "message_received",
+                jwt_token: token,
                 data: {
                   id: `product-select-${Date.now()}`,
                   customer_id: selectedConversation.customerId,
@@ -294,6 +295,7 @@ const ConversationsPage: React.FC = () => {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(webhookPayload),
               });
@@ -304,6 +306,7 @@ const ConversationsPage: React.FC = () => {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
                   },
                   body: JSON.stringify(webhookPayload),
                 });
