@@ -663,6 +663,7 @@ Backend webhook handler
 - `image`, `video`, `audio`, `document` — media (downloaded + stored in R2)
 - `sticker` — stored as `.webp`
 - `button` / `interactive` — button replies
+- `reaction` — reaction emojis (stored as "Reacted [EMOJI]")
 - All others — stored as `[TYPE] Unsupported message type`
 
 ---

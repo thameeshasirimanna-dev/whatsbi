@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
-import { verifyJWT, uploadMediaToStorage } from "../../utils/helpers.js";
+import { verifyJWT, uploadMediaToStorage, transcodeWebmToOgg } from "../../utils/helpers.js";
 
 function getMediaType(
   mimeType: string
@@ -128,9 +128,40 @@ export default async function uploadMediaRoutes(
         }
 
         const purpose = fileObj.purpose;
-        const buffer = fileObj.buffer;
-        const contentType = fileObj.mimetype || "application/octet-stream";
-        const filename = fileObj.filename || `upload_${Date.now()}`;
+        let buffer = fileObj.buffer;
+        let contentType = fileObj.mimetype || "application/octet-stream";
+        let filename = fileObj.filename || `upload_${Date.now()}`;
+
+        // Transcode WebM audio and Safari/other voice notes to OGG/Opus for WhatsApp compatibility
+        const isWebm = contentType.toLowerCase().includes("webm");
+        const isVoiceNote = filename.toLowerCase().includes("voice_note") && contentType.toLowerCase().startsWith("audio/");
+
+        if (isWebm || isVoiceNote) {
+          try {
+            const transcodedBuffer = await transcodeWebmToOgg(buffer, filename);
+            buffer = transcodedBuffer;
+            contentType = "audio/ogg; codecs=opus";
+            
+            // Replace the extension with .ogg
+            const extIndex = filename.lastIndexOf(".");
+            if (extIndex !== -1) {
+              filename = filename.substring(0, extIndex) + ".ogg";
+            } else {
+              filename = filename + ".ogg";
+            }
+          } catch (transcodeErr: any) {
+            console.error("❌ Transcoding to OGG failed:", transcodeErr);
+            errors.push(`Transcoding failed for ${filename}: ${transcodeErr.message || transcodeErr}`);
+            continue; // Skip this file since WhatsApp will reject raw WebM/incompatible audio anyway
+          }
+        }
+        
+        // Normalize audio MIME types for Meta compatibility
+        if (contentType === "audio/mp3") {
+          contentType = "audio/mpeg";
+        } else if (contentType === "audio/x-m4a" || contentType === "audio/m4a") {
+          contentType = "audio/mp4";
+        }
 
         try {
           if (purpose === "whatsapp") {
@@ -139,8 +170,8 @@ export default async function uploadMediaRoutes(
             const whatsappController = new AbortController();
             const whatsappTimeout = setTimeout(
               () => whatsappController.abort(),
-              60000
-            ); // 60s timeout
+              300000
+            ); // 5-minute timeout for larger files
 
             const whatsappResponse = await fetch(
               `https://graph.facebook.com/v20.0/${phoneNumberId}/media`,

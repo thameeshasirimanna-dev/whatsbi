@@ -221,7 +221,11 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
           <main
             key={location.pathname}
             className="animate-fade-in"
-            style={{ flex: 1, overflowY: 'auto', background: '#f8faf8' }}
+            style={{
+              flex: 1,
+              overflowY: location.pathname.includes('/conversations') ? 'hidden' : 'auto',
+              background: '#f8faf8',
+            }}
           >
             <Outlet />
             {children}

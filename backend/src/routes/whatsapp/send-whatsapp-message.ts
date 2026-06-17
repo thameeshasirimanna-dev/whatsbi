@@ -32,6 +32,7 @@ export default async function sendWhatsappMessageRoutes(
         media_ids,
         caption,
         filename,
+        voice = false,
       } = body;
       let media_header = body.media_header ?? null;
 
@@ -372,8 +373,9 @@ export default async function sendWhatsappMessageRoutes(
                 const arrayBuffer = await mediaBlob.arrayBuffer();
                 const mediaBuffer = Buffer.from(arrayBuffer);
 
-                const fileExt = mimeType.split("/")[1] || "bin";
-                const fileName = `outgoing_${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
+                 const cleanMime = mimeType.split(";")[0].trim();
+                 const fileExt = cleanMime.split("/")[1] || "bin";
+                 const fileName = `outgoing_${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
 
                 storedMediaUrl = await uploadMediaToR2(
                   agent.agent_prefix,
@@ -387,7 +389,7 @@ export default async function sendWhatsappMessageRoutes(
               }
             }
             const effectiveMediaId = mediaId; // Use original media ID, no re-upload needed
-            return { effectiveMediaId, storedMediaUrl, mediaFormat };
+            return { effectiveMediaId, storedMediaUrl, mediaFormat, mimeType };
           })
         );
         // Validate all media have the same format
@@ -466,6 +468,7 @@ export default async function sendWhatsappMessageRoutes(
             throw new Error("No processed media available for audio type");
           }
           const singleMedia = processedMedia[0];
+          const isVoice = voice || (singleMedia as any).mimeType?.includes("ogg") || filename?.includes("voice_note") || (singleMedia as any).storedMediaUrl?.includes("voice_note");
           whatsappPayload = {
             messaging_product: "whatsapp",
             recipient_type: "individual",
@@ -473,6 +476,7 @@ export default async function sendWhatsappMessageRoutes(
             type: "audio",
             audio: {
               id: singleMedia.effectiveMediaId,
+              ...(isVoice && { voice: true }),
             },
           };
         } else if (type === "document") {

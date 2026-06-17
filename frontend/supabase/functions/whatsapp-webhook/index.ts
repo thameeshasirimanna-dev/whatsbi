@@ -91,6 +91,7 @@ function getMediaTypeFromWhatsApp(
     case "video":
       return "video";
     case "audio":
+    case "voice":
       return "audio";
     case "document":
       return "document";
@@ -739,11 +740,11 @@ async function processIncomingMessage(
     // Process different message types
     if (message.type === "text") {
       messageText = message.text.body;
-    } else if (["image", "video", "audio", "document"].includes(message.type)) {
+    } else if (["image", "video", "audio", "voice", "document"].includes(message.type)) {
       // Handle media messages
       mediaType = getMediaTypeFromWhatsApp(message.type);
       caption = message[message.type]?.caption || null;
-      messageText = caption || `[${message.type.toUpperCase()}] Media file`;
+      messageText = caption || (message.type === "voice" ? "[Voice Message]" : `[${message.type.toUpperCase()}] Media file`);
 
       // Download and upload media if media_id exists and access token available
       if (message[message.type]?.id && whatsappConfig.api_key) {
@@ -763,7 +764,8 @@ async function processIncomingMessage(
 
           if (message[message.type].mime_type) {
             contentType = message[message.type].mime_type;
-            const ext = contentType.split("/")[1] || message.type;
+            const cleanMime = contentType.split(";")[0].trim();
+            const ext = cleanMime.split("/")[1] || message.type;
             filename = `media_${Date.now()}.${ext}`;
           }
 
@@ -823,6 +825,9 @@ async function processIncomingMessage(
           message.interactive?.type?.toUpperCase() || "UNKNOWN"
         }] Interactive message`;
       }
+    } else if (message.type === "reaction") {
+      const emoji = message.reaction?.emoji || "";
+      messageText = emoji ? `Reacted ${emoji}` : "Reacted to a message";
     } else {
       // Unknown message type
       messageText = `[${message.type.toUpperCase()}] Unsupported message type`;

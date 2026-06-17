@@ -1,6 +1,18 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { uploadMediaToR2 } from './s3.js';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+// @ts-ignore
+import ffmpegPath from 'ffmpeg-static';
+
+const execFileAsync = promisify(execFile);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 export function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -111,6 +123,7 @@ export function getMediaTypeFromWhatsApp(
     case 'video':
       return 'video';
     case 'audio':
+    case 'voice':
       return 'audio';
     case 'document':
       return 'document';
@@ -301,10 +314,10 @@ export async function processIncomingMessage(
 
         if (message.type === "text") {
           messageText = message.text.body;
-        } else if (["image", "video", "audio", "document"].includes(message.type)) {
+        } else if (["image", "video", "audio", "voice", "document"].includes(message.type)) {
           mediaType = getMediaTypeFromWhatsApp(message.type);
           caption = message[message.type]?.caption || null;
-          messageText = caption || `[${message.type.toUpperCase()}] Media file`;
+          messageText = caption || (message.type === 'voice' ? '[Voice Message]' : `[${message.type.toUpperCase()}] Media file`);
 
           if (message[message.type]?.id && whatsappConfig.api_key) {
             const mediaBuffer = await downloadWhatsAppMedia(
@@ -318,7 +331,8 @@ export async function processIncomingMessage(
 
               if (message[message.type].mime_type) {
                 contentType = message[message.type].mime_type;
-                const ext = contentType.split("/")[1] || message.type;
+                const cleanMime = contentType.split(";")[0].trim();
+                const ext = cleanMime.split("/")[1] || message.type;
                 filename = `media_${Date.now()}.${ext}`;
               }
 
@@ -368,6 +382,9 @@ export async function processIncomingMessage(
               message.interactive?.type?.toUpperCase() || "UNKNOWN"
             }] Interactive message`;
           }
+        } else if (message.type === "reaction") {
+          const emoji = message.reaction?.emoji || "";
+          messageText = emoji ? `Reacted ${emoji}` : "Reacted to a message";
         } else {
           messageText = `[${message.type.toUpperCase()}] Unsupported message type`;
         }
@@ -484,12 +501,82 @@ export async function processIncomingMessage(
 
 export async function processMessageStatus(pgClient: any, status: any) {
   try {
-    // Process message status updates silently
     const statusDate = new Date(status.timestamp * 1000);
     const statusTimestamp = statusDate.toISOString();
 
-    // Status processing is now silent - no logging needed
+    console.log(
+      `📨 WhatsApp Status Update: id=${status.id}, recipient=${status.recipient_id}, status="${status.status}" at ${statusTimestamp}`
+    );
+
+    if (status.status === 'failed' && status.errors) {
+      console.error(`❌ Message ${status.id} delivery failed:`, JSON.stringify(status.errors));
+    }
   } catch (error) {
     console.error('Status processing error:', error);
+  }
+}
+
+export async function transcodeWebmToOgg(webmBuffer: Buffer, originalFilename: string = 'input.webm'): Promise<Buffer> {
+  if (!ffmpegPath) {
+    throw new Error('ffmpeg-static binary path is not available');
+  }
+
+  // Define temp directory locally within backend project workspace
+  const tempDir = path.resolve(__dirname, '..', '..', 'temp');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  const uniqueId = crypto.randomBytes(16).toString('hex');
+  const inputExt = path.extname(originalFilename) || '.webm';
+  const inputPath = path.join(tempDir, `input_${uniqueId}${inputExt}`);
+  const outputPath = path.join(tempDir, `output_${uniqueId}.ogg`);
+
+  try {
+    // Write input buffer to temp file with original extension
+    await fs.promises.writeFile(inputPath, webmBuffer);
+
+    // Run ffmpeg to convert to OGG/Opus
+    // -vn: disable video track
+    // -c:a libopus: encode using Opus codec
+    // -ar 16000: set sample rate to 16kHz
+    // -ac 1: mono channel (required by WhatsApp)
+    // -b:a 16k: 16kbps bitrate (optimized to keep files under 512KB for inline play icon support)
+    // -y: overwrite output files
+    await execFileAsync(ffmpegPath, [
+      '-i', inputPath,
+      '-map_metadata', '-1',
+      '-map_metadata:s:a', '-1',
+      '-vn',
+      '-c:a', 'libopus',
+      '-ar', '16000',
+      '-ac', '1',
+      '-b:a', '16k',
+      '-y',
+      outputPath
+    ]);
+
+    // Read converted OGG back to buffer
+    const oggBuffer = await fs.promises.readFile(outputPath);
+    return oggBuffer;
+  } catch (error: any) {
+    console.error(`Error transcoding ${inputExt} to OGG:`, error);
+    throw new Error(`Transcoding failed: ${error.message || error}`);
+  } finally {
+    // Clean up temporary files
+    try {
+      if (fs.existsSync(inputPath)) {
+        await fs.promises.unlink(inputPath);
+      }
+    } catch (e) {
+      console.error('Error deleting temp input file:', e);
+    }
+    try {
+      if (fs.existsSync(outputPath)) {
+        await fs.promises.unlink(outputPath);
+      }
+    } catch (e) {
+      console.error('Error deleting temp output file:', e);
+    }
   }
 }

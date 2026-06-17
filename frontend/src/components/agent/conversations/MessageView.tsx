@@ -227,7 +227,209 @@ interface MessageViewProps {
   onResetMessagesWerePrepended?: () => void;
   onBack?: () => void;
   loadingMessages?: boolean;
+  onSendVoiceMessage?: (file: File) => Promise<void>;
 }
+
+const AudioPlayer: React.FC<{ src: string; isAgent: boolean }> = ({ src, isAgent }) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("ended", handleEnded);
+
+    if (audio.duration) {
+      setDuration(audio.duration);
+    }
+
+    return () => {
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [src]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(err => console.error("Error playing audio:", err));
+    }
+  };
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const newTime = parseFloat(e.target.value);
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  // Visual Theme Setup:
+  // For Agent (Green bubble): translucent white controls
+  // For Customer (White bubble): clean emerald green controls
+  const containerBg = isAgent ? 'rgba(0,0,0,0.12)' : '#f9f9fb';
+  const containerBorder = isAgent ? 'none' : '1px solid #ebebeb';
+  const playButtonBg = isAgent ? 'rgba(255,255,255,0.2)' : '#22c55e';
+  const playButtonHoverBg = isAgent ? 'rgba(255,255,255,0.3)' : '#16a34a';
+  const playButtonColor = '#fff';
+  const progressBg = isAgent ? 'rgba(255,255,255,0.25)' : 'rgba(34,197,94,0.15)';
+  const progressFill = isAgent ? '#fff' : '#22c55e';
+  const textColor = isAgent ? 'rgba(255,255,255,0.8)' : '#71717a';
+  const titleColor = isAgent ? '#fff' : '#1f2937';
+
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div 
+      style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px', 
+        padding: '12px', 
+        borderRadius: '16px', 
+        width: '100%', 
+        minWidth: '240px', 
+        maxWidth: '300px', 
+        background: containerBg,
+        border: containerBorder,
+        boxShadow: isAgent ? 'none' : '0 1px 3px rgba(0,0,0,0.02)',
+        transition: 'all 0.2s ease-in-out'
+      }}
+    >
+      <audio ref={audioRef} src={src} preload="metadata" />
+      
+      {/* Play/Pause Button */}
+      <button
+        onClick={togglePlay}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{ 
+          width: '38px', 
+          height: '38px', 
+          borderRadius: '55%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          border: 'none', 
+          cursor: 'pointer', 
+          padding: 0,
+          background: isHovered ? playButtonHoverBg : playButtonBg,
+          color: playButtonColor,
+          boxShadow: isAgent ? 'none' : '0 2px 8px rgba(34,197,94,0.25)',
+          transition: 'all 0.15s ease',
+          flexShrink: 0
+        }}
+        aria-label={isPlaying ? "Pause" : "Play"}
+      >
+        {isPlaying ? (
+          <svg style={{ width: '16px', height: '16px', fill: 'currentColor' }} viewBox="0 0 24 24">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+          </svg>
+        ) : (
+          <svg style={{ width: '16px', height: '16px', fill: 'currentColor', marginLeft: '2px' }} viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+      </button>
+
+      {/* Progress & Info */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ 
+            fontFamily: "'DM Sans', sans-serif", 
+            fontSize: '13px', 
+            fontWeight: 600, 
+            color: titleColor,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            Voice message
+          </span>
+          <span style={{ 
+            fontFamily: "'DM Sans', sans-serif", 
+            fontSize: '11px', 
+            color: textColor 
+          }}>
+            {formatTime(currentTime)} / {formatTime(duration || 0)}
+          </span>
+        </div>
+        
+        {/* Progress Bar Container */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: '12px', cursor: 'pointer' }}>
+          <input
+            type="range"
+            min={0}
+            max={duration || 100}
+            value={currentTime}
+            onChange={handleSliderChange}
+            style={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              width: '100%', 
+              height: '100%', 
+              opacity: 0, 
+              cursor: 'pointer', 
+              zIndex: 10, 
+              margin: 0 
+            }}
+          />
+          {/* Custom Track */}
+          <div style={{ 
+            width: '100%', 
+            height: '6px', 
+            borderRadius: '3px', 
+            overflow: 'hidden', 
+            position: 'relative',
+            background: progressBg 
+          }}>
+            <div
+              style={{ 
+                width: `${progressPercent}%`, 
+                height: '100%', 
+                borderRadius: '3px', 
+                background: progressFill,
+                transition: 'width 0.05s linear' 
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const MessageView: React.FC<MessageViewProps> = ({
   selectedConversation,
@@ -258,6 +460,7 @@ const MessageView: React.FC<MessageViewProps> = ({
   onResetMessagesWerePrepended,
   onBack,
   loadingMessages = false,
+  onSendVoiceMessage,
 }) => {
   const isTemplateRequired = selectedConversation
     ? !selectedConversation.lastUserMessageTime ||
@@ -268,6 +471,99 @@ const MessageView: React.FC<MessageViewProps> = ({
       })()
     : false;
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, []);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      
+      let mimeType = "audio/webm";
+      if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) {
+        mimeType = "audio/ogg;codecs=opus";
+      } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        mimeType = "audio/mp4";
+      } else if (MediaRecorder.isTypeSupported("audio/aac")) {
+        mimeType = "audio/aac";
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        if (audioBlob.size > 0) {
+          let ext = "webm";
+          if (mimeType.includes("ogg")) ext = "ogg";
+          else if (mimeType.includes("mp4")) ext = "mp4";
+          else if (mimeType.includes("aac")) ext = "aac";
+          
+          const filename = `voice_note_${Date.now()}.${ext}`;
+          const voiceFile = new File([audioBlob], filename, { type: mimeType });
+          
+          if (onSendVoiceMessage) {
+            await onSendVoiceMessage(voiceFile);
+          }
+        }
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Failed to start voice recording:", err);
+      alert("Please allow microphone access to record voice messages.");
+    }
+  };
+
+  const stopAndSendRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.onstop = () => {
+        const stream = mediaRecorderRef.current?.stream;
+        stream?.getTracks().forEach(track => track.stop());
+      };
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+    }
+    audioChunksRef.current = [];
+  };
   const [showProductModal, setShowProductModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showOrdersModal, setShowOrdersModal] = useState(false);
@@ -1093,17 +1389,10 @@ const MessageView: React.FC<MessageViewProps> = ({
                                       </div>
                                     )}
                                     {msg.media_type === "audio" && (
-                                      <div style={{ background: '#f4f4f5', borderRadius: 10, padding: '10px 12px' }}>
-                                        <audio
-                                          src={msg.media_url}
-                                          controls
-                                          className="w-full max-w-sm"
-                                          preload="metadata"
-                                        >
-                                          Your browser does not support the
-                                          audio tag.
-                                        </audio>
-                                      </div>
+                                      <AudioPlayer
+                                        src={msg.media_url || ""}
+                                        isAgent={isAgent}
+                                      />
                                     )}
                                     {msg.media_type === "document" && (
                                       <div style={{ border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, background: isAgent ? 'rgba(255,255,255,0.15)' : '#f9f9f9' }}>
@@ -1452,109 +1741,155 @@ const MessageView: React.FC<MessageViewProps> = ({
               />
             </div>
 
-            {/* Hidden File Inputs */}
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                if (files.length > 0) {
-                  onFileSelect(files);
-                }
-                e.target.value = "";
-                setShowAttachMenu(false);
-              }}
-              className="hidden"
-            />
-            <input
-              ref={audioInputRef}
-              type="file"
-              accept="audio/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  onFileSelect([file]);
-                }
-                e.target.value = "";
-                setShowAttachMenu(false);
-              }}
-              className="hidden"
-            />
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  onFileSelect([file]);
-                }
-                e.target.value = "";
-                setShowAttachMenu(false);
-              }}
-              className="hidden"
-            />
-            <input
-              ref={documentInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  onFileSelect([file]);
-                }
-                e.target.value = "";
-                setShowAttachMenu(false);
-              }}
-              className="hidden"
-            />
 
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={newMessage}
-              onChange={onMessageChange}
-              onKeyDown={onKeyPress}
-              onPaste={handlePaste}
-              placeholder={isTemplateRequired ? "Template required to message" : "Type your message..."}
-              style={{
-                flex: 1, padding: '10px 14px',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
-                background: isTemplateRequired ? 'rgba(0,0,0,0.03)' : '#f9f9f9',
-                border: '1px solid #ebebeb', borderRadius: 12,
-                outline: 'none', resize: 'none',
-                minHeight: 44, maxHeight: 128,
-                overflowY: 'auto', whiteSpace: 'pre-wrap',
-                cursor: isTemplateRequired ? 'not-allowed' : 'text',
-                transition: 'border-color 0.15s, box-shadow 0.15s',
-              }}
-              onFocus={e => { if (!isTemplateRequired) { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}}
-              onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
-              disabled={sending || uploading || isTemplateRequired}
-            />
-            <button
-              onClick={onSendMessage}
-              disabled={(!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired}
-              style={{
-                width: 42, height: 42, borderRadius: 12, border: 'none', flexShrink: 0,
-                background: ((!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired)
-                  ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-                color: '#fff', cursor: ((!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: ((!newMessage.trim() && !hasPendingMedia) || sending || uploading || isTemplateRequired) ? 'none' : '0 4px 12px rgba(34,197,94,0.35)',
-                transition: 'all 0.15s',
-              }}
-            >
-              {sending ? (
-                <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} />
-              ) : (
-                <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              )}
-            </button>
+
+            {isRecording ? (
+              <div 
+                style={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  background: '#fff2f2', 
+                  border: '1px solid #fecaca', 
+                  borderRadius: 12, 
+                  padding: '10px 14px', 
+                  minHeight: 44 
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div 
+                    style={{ 
+                      width: 10, 
+                      height: 10, 
+                      borderRadius: '50%', 
+                      background: '#f43f5e', 
+                      animation: 'pulse 1.2s infinite' 
+                    }} 
+                  />
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#f43f5e' }}>
+                    Recording... {(() => {
+                      const minutes = Math.floor(recordingDuration / 60);
+                      const seconds = recordingDuration % 60;
+                      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    })()}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    onClick={cancelRecording}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer', 
+                      color: '#f43f5e', 
+                      display: 'flex', 
+                      padding: 6, 
+                      borderRadius: '50%', 
+                      transition: 'background 0.12s' 
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(244,63,94,0.1)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    title="Cancel recording"
+                  >
+                    <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={stopAndSendRecording}
+                    style={{ 
+                      background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', 
+                      border: 'none', 
+                      cursor: 'pointer', 
+                      color: '#fff', 
+                      display: 'flex', 
+                      width: 32, 
+                      height: 32, 
+                      borderRadius: '50%', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      boxShadow: '0 2px 8px rgba(34,197,94,0.35)', 
+                      transition: 'all 0.12s' 
+                    }}
+                    title="Send voice note"
+                  >
+                    <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={newMessage}
+                  onChange={onMessageChange}
+                  onKeyDown={onKeyPress}
+                  onPaste={handlePaste}
+                  placeholder={isTemplateRequired ? "Template required to message" : "Type your message..."}
+                  style={{
+                    flex: 1, padding: '10px 14px',
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
+                    background: isTemplateRequired ? 'rgba(0,0,0,0.03)' : '#f9f9f9',
+                    border: '1px solid #ebebeb', borderRadius: 12,
+                    outline: 'none', resize: 'none',
+                    minHeight: 44, maxHeight: 128,
+                    overflowY: 'auto', whiteSpace: 'pre-wrap',
+                    cursor: isTemplateRequired ? 'not-allowed' : 'text',
+                    transition: 'border-color 0.15s, box-shadow 0.15s',
+                  }}
+                  onFocus={e => { if (!isTemplateRequired) { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
+                  disabled={sending || uploading || isTemplateRequired}
+                />
+                
+                {!newMessage.trim() && !hasPendingMedia ? (
+                  <button
+                    onClick={startRecording}
+                    disabled={sending || uploading || isTemplateRequired}
+                    style={{
+                      width: 42, height: 42, borderRadius: 12, border: 'none', flexShrink: 0,
+                      background: isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
+                      color: isTemplateRequired ? '#d4d4d8' : '#22c55e',
+                      cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!isTemplateRequired) e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)'; }}
+                    title="Record voice message"
+                  >
+                    <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    onClick={onSendMessage}
+                    disabled={sending || uploading}
+                    style={{
+                      width: 42, height: 42, borderRadius: 12, border: 'none', flexShrink: 0,
+                      background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
+                      color: '#fff', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(34,197,94,0.35)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {sending ? (
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} />
+                    ) : (
+                      <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
           </div>
           {isTemplateRequired && onOpenTemplateModal && (
             <button
@@ -1612,7 +1947,14 @@ const MessageView: React.FC<MessageViewProps> = ({
           )}
         </div>
       )}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse {
+          0% { transform: scale(0.95); opacity: 0.8; }
+          50% { transform: scale(1.05); opacity: 1; }
+          100% { transform: scale(0.95); opacity: 0.8; }
+        }
+      `}</style>
     </div>
   );
 };

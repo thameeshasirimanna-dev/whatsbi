@@ -1543,7 +1543,7 @@ const ConversationsPage: React.FC = () => {
   useEffect(() => {
     const updateHeight = () => {
       if (containerRef.current) {
-        const navbarHeight = 80; // Adjust based on actual navbar height
+        const navbarHeight = 60; // Adjust based on actual navbar height
         containerRef.current.style.height = `${
           window.innerHeight - navbarHeight
         }px`;
@@ -1837,6 +1837,144 @@ const ConversationsPage: React.FC = () => {
     });
   };
 
+  const handleSendVoiceMessage = async (file: File) => {
+    if (!selectedConversationId || !selectedConversation) {
+      setSendError("No conversation selected");
+      return;
+    }
+
+    setUploading(true);
+    setSendError(null);
+
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Normalization of audio types for Meta Graph API compatibility
+      let normalizedType = file.type;
+      if (file.type === "audio/mp3") normalizedType = "audio/mpeg";
+      else if (file.type === "audio/x-m4a" || file.type === "audio/m4a") normalizedType = "audio/mp4";
+
+      const normalizedFile = new File([file], file.name, { type: normalizedType });
+
+      const formData = new FormData();
+      formData.append("purpose", "whatsapp");
+      formData.append("file", normalizedFile);
+
+      const uploadResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/upload-media`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const uploadResult = await uploadResponse.json();
+      if (!uploadResponse.ok || !uploadResult?.success) {
+        throw new Error(uploadResult?.error || "Failed to upload voice message");
+      }
+
+      const media = uploadResult.media?.[0];
+      if (!media) {
+        throw new Error("No media uploaded");
+      }
+
+      // Window check (24 hour)
+      if (selectedConversation.lastUserMessageTime) {
+        const lastTime = new Date(selectedConversation.lastUserMessageTime);
+        const hoursSince = (Date.now() - lastTime.getTime()) / (1000 * 60 * 60);
+        if (hoursSince > 24) {
+          throw new Error("Template required after 24h window (cannot send voice notes)");
+        }
+      }
+
+      const formattedPhone = selectedConversation.customerPhone.replace(/[\s+]/g, "");
+
+      // Optimistic UI update
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: tempId,
+        text: "[Voice Message]",
+        sender: "agent" as const,
+        timestamp: new Date().toISOString(),
+        rawTimestamp: Date.now(),
+        isRead: true,
+        media_type: "audio" as const,
+        media_url: media.media_download_url,
+      };
+
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.id === selectedConversationId
+            ? {
+                ...conv,
+                messages: [...conv.messages, optimisticMsg],
+                lastMessage: "[Voice Message]",
+                lastMessageTime: "Just now",
+                rawLastTimestamp: Date.now(),
+              }
+            : conv
+        )
+      );
+
+      setSending(true);
+
+      const userResult = await getUser();
+      if (userResult.error || !userResult.data.user) {
+        throw new Error("User not authenticated");
+      }
+      const user = userResult.data.user;
+
+      const sendResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/send-whatsapp-message`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            customer_phone: formattedPhone,
+            type: "audio",
+            category: "utility",
+            media_ids: [media.media_id],
+            voice: true,
+          }),
+        }
+      );
+
+      const sendResult = await sendResponse.json();
+      if (!sendResponse.ok || !sendResult?.success) {
+        // Revert optimistic message
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === selectedConversationId
+              ? {
+                  ...conv,
+                  messages: conv.messages.filter((m) => m.id !== tempId),
+                }
+              : conv
+          )
+        );
+        throw new Error(sendResult?.error || "Failed to send voice message");
+      }
+
+      // Sync and refetch
+      await fetchAgentAndConversations(false);
+    } catch (err: any) {
+      setSendError(`Failed to send voice message: ${err.message}`);
+    } finally {
+      setUploading(false);
+      setSending(false);
+    }
+  };
+
   const handleFileSelect = async (files: File[]) => {
     if (!selectedConversationId || !selectedConversation) {
       setSendError("No conversation selected");
@@ -1868,8 +2006,14 @@ const ConversationsPage: React.FC = () => {
       "audio/aac": 16 * 1024 * 1024,
       "audio/amr": 16 * 1024 * 1024,
       "audio/mpeg": 16 * 1024 * 1024,
+      "audio/mp3": 16 * 1024 * 1024,
       "audio/mp4": 16 * 1024 * 1024,
+      "audio/m4a": 16 * 1024 * 1024,
+      "audio/x-m4a": 16 * 1024 * 1024,
       "audio/ogg": 16 * 1024 * 1024,
+      "audio/wav": 16 * 1024 * 1024,
+      "audio/x-wav": 16 * 1024 * 1024,
+      "audio/webm": 16 * 1024 * 1024,
       // Video: 16 MB
       "video/3gpp": 16 * 1024 * 1024,
       "video/mp4": 16 * 1024 * 1024,
@@ -1941,6 +2085,16 @@ const ConversationsPage: React.FC = () => {
               `Failed to compress image ${file.name}: ${compressionError.message}`
             );
           }
+        } else if (file.type.startsWith("audio/")) {
+          // Normalize audio MIME types for Meta compatibility
+          let normalizedType = file.type;
+          if (file.type === "audio/mp3") {
+            normalizedType = "audio/mpeg";
+          } else if (file.type === "audio/x-m4a" || file.type === "audio/m4a") {
+            normalizedType = "audio/mp4";
+          }
+          const normalizedFile = new File([file], file.name, { type: normalizedType });
+          formData.append("file", normalizedFile);
         } else {
           formData.append("file", file);
         }
@@ -2726,6 +2880,7 @@ const ConversationsPage: React.FC = () => {
         onSendMessage={sendMessage}
         onKeyPress={handleKeyPress}
         onFileSelect={handleFileSelect}
+        onSendVoiceMessage={handleSendVoiceMessage}
         uploading={uploading}
         hasPendingMedia={pendingMedia.length > 0}
         loadingMessages={loadingMessages}
