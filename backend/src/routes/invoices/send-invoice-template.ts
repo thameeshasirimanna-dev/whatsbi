@@ -274,7 +274,7 @@ export default async function sendInvoiceTemplateRoutes(
         const messagesTable = `${agent.agent_prefix}_messages`;
         const messageTimestamp = now.toISOString();
         // Render the template body text with parameters
-        const bodyComponent = templates.body.components.find((c: any) => c.type.toLowerCase() === "body");
+        const bodyComponent = (templates?.body?.components || []).find((c: any) => c.type?.toLowerCase() === "body");
         let renderedText = bodyComponent?.text || `Invoice template: ${invoice_name}`;
         if (bodyComponent && bodyComponent.parameters) {
           bodyComponent.parameters.forEach((param: any, index: number) => {
@@ -362,19 +362,15 @@ Thank you for your business!`;
         let storedMediaUrl = null;
         // TODO: Implement storage upload using S3 or other method
 
-        // Upload to WhatsApp media
-        const uploadedFile = new File(
-          [invoiceBlob],
-          invoice_name || `invoice_${order_number}.pdf`,
-          {
-            type: mimeType,
-          }
-        );
-
+        // Upload to WhatsApp media using Blob to avoid ReferenceError: File is not defined
         const uploadFormData = new FormData();
         uploadFormData.append("messaging_product", "whatsapp");
         uploadFormData.append("type", "document");
-        uploadFormData.append("file", uploadedFile);
+        uploadFormData.append(
+          "file",
+          invoiceBlob,
+          invoice_name || `invoice_${order_number}.pdf`
+        );
 
         const uploadResponse = await fetch(
           `https://graph.facebook.com/v23.0/${phoneNumberId}/media`,
