@@ -485,40 +485,77 @@ const InventoryPage: React.FC = () => {
               <p style={{ ...DM, fontSize: 13, color: '#71717a', margin: 0 }}>Start by adding your first category</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {['Name', 'Description', 'Items', 'Color', 'Created', ''].map((h, i) => (
-                      <th key={i} style={{ ...thStyle, textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              {/* Mobile/Tablet Card Layout */}
+              <div className="block lg:hidden">
+                <div className="flex flex-col divide-y divide-[#f4f4f5]">
                   {filteredCategories.map((category) => (
-                    <tr key={category.id} style={{ transition: 'background 0.15s' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                      <td style={tdStyle}>
+                    <div key={category.id} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                         <span style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{category.name}</span>
-                      </td>
-                      <td style={{ ...tdStyle, maxWidth: 200 }}>
-                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{category.description || '—'}</span>
-                      </td>
-                      <td style={tdStyle}>{category.item_count}</td>
-                      <td style={tdStyle}>
-                        <div style={{ width: 16, height: 16, borderRadius: '50%', background: category.color, border: '1px solid rgba(0,0,0,0.1)' }} />
-                      </td>
-                      <td style={tdStyle}>{new Date(category.created_at).toLocaleDateString()}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        <button onClick={() => startEditCategory(category)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#059669', fontSize: 12, fontWeight: 600, marginRight: 12, ...DM }}>Edit</button>
+                        <div style={{ width: 16, height: 16, borderRadius: '50%', background: category.color, border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
+                      </div>
+                      
+                      {category.description && (
+                        <div style={{ ...DM, fontSize: 12, color: '#71717a' }}>{category.description}</div>
+                      )}
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', padding: '8px 12px', borderRadius: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Items</span>
+                          <span style={{ ...DM, fontSize: 12, color: '#0c1a0e', fontWeight: 500 }}>{category.item_count}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Created</span>
+                          <span style={{ ...DM, fontSize: 12, color: '#0c1a0e', fontWeight: 500 }}>{new Date(category.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 4 }}>
+                        <button onClick={() => startEditCategory(category)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#059669', fontSize: 12, fontWeight: 600, ...DM }}>Edit</button>
                         <button onClick={() => handleDeleteCategory(category)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f43f5e', fontSize: 12, fontWeight: 600, ...DM }}>Delete</button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Name', 'Description', 'Items', 'Color', 'Created', ''].map((h, i) => (
+                        <th key={i} style={{ ...thStyle, textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCategories.map((category) => (
+                      <tr key={category.id} style={{ transition: 'background 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        <td style={tdStyle}>
+                          <span style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{category.name}</span>
+                        </td>
+                        <td style={{ ...tdStyle, maxWidth: 200 }}>
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{category.description || '—'}</span>
+                        </td>
+                        <td style={tdStyle}>{category.item_count}</td>
+                        <td style={tdStyle}>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: category.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                        </td>
+                        <td style={tdStyle}>{new Date(category.created_at).toLocaleDateString()}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>
+                          <button onClick={() => startEditCategory(category)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#059669', fontSize: 12, fontWeight: 600, marginRight: 12, ...DM }}>Edit</button>
+                          <button onClick={() => handleDeleteCategory(category)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f43f5e', fontSize: 12, fontWeight: 600, ...DM }}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -553,56 +590,115 @@ const InventoryPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Item', 'SKU', 'Category', 'Quantity', 'Price', ''].map((h, i) => (
-                    <th key={i} style={{ ...thStyle, textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+          <>
+            {/* Mobile/Tablet Card Layout */}
+            <div className="block lg:hidden">
+              <div className="flex flex-col divide-y divide-[#f4f4f5]">
                 {filteredItems.map((item) => (
-                  <tr key={item.id} style={{ transition: 'background 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: '1px solid #ebebeb' }}>
-                          {item.image_urls && item.image_urls.length > 0 ? (
-                            <img src={item.image_urls[0]} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <div style={{ width: '100%', height: '100%', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <ImageIcon size={16} style={{ color: '#a1a1aa' }} />
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <div style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{item.name}</div>
-                          {item.description && (
-                            <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
-                          )}
-                        </div>
+                  <div key={item.id} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
+                  >
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: '1px solid #ebebeb' }}>
+                        {item.image_urls && item.image_urls.length > 0 ? (
+                          <img src={item.image_urls[0]} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ImageIcon size={16} style={{ color: '#a1a1aa' }} />
+                          </div>
+                        )}
                       </div>
-                    </td>
-                    <td style={tdStyle}><span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{item.sku || '—'}</span></td>
-                    <td style={tdStyle}>
-                      {item.category_name ? (
-                        <span style={{ background: 'rgba(34,197,94,0.08)', color: '#059669', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600, ...DM }}>{item.category_name}</span>
-                      ) : <span style={{ color: '#a1a1aa' }}>—</span>}
-                    </td>
-                    <td style={tdStyle}><span style={qtyStyle(item.quantity)}>{item.quantity}</span></td>
-                    <td style={{ ...tdStyle, ...SYNE, fontWeight: 700, color: '#0c1a0e' }}>{formatPrice(item.price)}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <button onClick={() => startEditItem(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#059669', fontSize: 12, fontWeight: 600, marginRight: 12, ...DM }}>Edit</button>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{item.name}</div>
+                        {item.sku && <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>SKU: {item.sku}</div>}
+                      </div>
+                    </div>
+
+                    {item.description && (
+                      <div style={{ ...DM, fontSize: 12, color: '#71717a', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {item.description}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', padding: '8px 12px', borderRadius: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Category</span>
+                        {item.category_name ? (
+                          <span style={{ background: 'rgba(34,197,94,0.08)', color: '#059669', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 600, ...DM, display: 'inline-block', marginTop: 2 }}>
+                            {item.category_name}
+                          </span>
+                        ) : <span style={{ color: '#a1a1aa', fontSize: 12 }}>—</span>}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Qty</span>
+                        <span style={{ ...qtyStyle(item.quantity), marginTop: 2 }}>{item.quantity}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Price</span>
+                        <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', marginTop: 2 }}>{formatPrice(item.price)}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 4 }}>
+                      <button onClick={() => startEditItem(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#059669', fontSize: 12, fontWeight: 600, ...DM }}>Edit</button>
                       <button onClick={() => handleDeleteItem(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f43f5e', fontSize: 12, fontWeight: 600, ...DM }}>Delete</button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Item', 'SKU', 'Category', 'Quantity', 'Price', ''].map((h, i) => (
+                      <th key={i} style={{ ...thStyle, textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item) => (
+                    <tr key={item.id} style={{ transition: 'background 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: '1px solid #ebebeb' }}>
+                            {item.image_urls && item.image_urls.length > 0 ? (
+                              <img src={item.image_urls[0]} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <ImageIcon size={16} style={{ color: '#a1a1aa' }} />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{item.name}</div>
+                            {item.description && (
+                              <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={tdStyle}><span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{item.sku || '—'}</span></td>
+                      <td style={tdStyle}>
+                        {item.category_name ? (
+                          <span style={{ background: 'rgba(34,197,94,0.08)', color: '#059669', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600, ...DM }}>{item.category_name}</span>
+                        ) : <span style={{ color: '#a1a1aa' }}>—</span>}
+                      </td>
+                      <td style={tdStyle}><span style={qtyStyle(item.quantity)}>{item.quantity}</span></td>
+                      <td style={{ ...tdStyle, ...SYNE, fontWeight: 700, color: '#0c1a0e' }}>{formatPrice(item.price)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <button onClick={() => startEditItem(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#059669', fontSize: 12, fontWeight: 600, marginRight: 12, ...DM }}>Edit</button>
+                        <button onClick={() => handleDeleteItem(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f43f5e', fontSize: 12, fontWeight: 600, ...DM }}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

@@ -99,18 +99,20 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
   const pageSubtitle = getPageSubtitle();
 
   return (
-    <nav style={{
-      background: '#fff',
-      borderBottom: '1px solid #ebebeb',
-      height: 60,
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0 20px 0 24px',
-      justifyContent: 'space-between',
-      flexShrink: 0,
-      zIndex: 30,
-      position: 'relative',
-    }}>
+    <nav
+      className="px-4 md:px-6"
+      style={{
+        background: '#fff',
+        borderBottom: '1px solid #ebebeb',
+        height: 60,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexShrink: 0,
+        zIndex: 30,
+        position: 'relative',
+      }}
+    >
       {/* Left */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button
@@ -129,10 +131,10 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
         </button>
 
         <div>
-          <div style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e', lineHeight: 1.2 }}>
+          <div style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', lineHeight: 1.2 }}>
             {pageTitle}
           </div>
-          <div style={{ ...DM, fontSize: 12, color: '#71717a', lineHeight: 1.2, marginTop: 1 }}>
+          <div className="hidden md:block" style={{ ...DM, fontSize: 12, color: '#71717a', lineHeight: 1.2, marginTop: 1 }}>
             {pageSubtitle}
           </div>
         </div>
@@ -141,15 +143,17 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
       {/* Right */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {/* Credits */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '5px 12px',
-          borderRadius: 9999,
-          background: '#f0fdf4',
-          border: '1px solid #bbf7d0',
-        }}>
+        <div
+          className="px-2.5 py-1 md:px-3 md:py-1.5"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            borderRadius: 9999,
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+          }}
+        >
           <Coins size={13} style={{ color: '#059669' }} />
           <span style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#15803d' }}>
             {agent.credits}

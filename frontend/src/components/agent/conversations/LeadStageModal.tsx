@@ -128,8 +128,12 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
     setError(null);
 
     try {
-      const customers = await getCustomers({ search: customerPhone! });
-      const customerData = customers.find((c) => c.phone === customerPhone);
+      const cleanPhoneQuery = customerPhone.replace(/\D/g, "");
+      const customers = await getCustomers({ search: cleanPhoneQuery });
+      const customerData = customers.find((c) => {
+        const cleanPhone = c.phone ? c.phone.replace(/\D/g, "") : "";
+        return cleanPhone === cleanPhoneQuery;
+      });
 
       if (!customerData) {
         setError("Customer not found");

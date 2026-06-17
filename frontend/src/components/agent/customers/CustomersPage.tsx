@@ -802,7 +802,121 @@ const CustomersPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <>
+            {/* Mobile/Tablet Card Layout */}
+            <div className="block lg:hidden">
+              <div className="flex flex-col divide-y divide-[#f4f4f5]">
+                {sortedCustomers.map((customer: Customer, index: number) => {
+                  const profile = profileImages.find(img => img.phone === customer.phone);
+                  const hasImage = profile?.url && !profile?.error;
+
+                  return (
+                    <motion.div
+                      key={customer.id}
+                      variants={rowVariants} custom={index}
+                      initial="hidden" animate="visible"
+                      style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+                            {profile?.loading ? (
+                              <div style={{ width: 36, height: 36, background: '#f4f4f5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'cp-spin 0.7s linear infinite' }} />
+                              </div>
+                            ) : hasImage ? (
+                              <img
+                                src={profile.url}
+                                alt={customer.name}
+                                style={{ width: 36, height: 36, objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <div
+                                onClick={() => fetchProfilePicture(customer.phone)}
+                                style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                              >
+                                <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#fff' }}>{customer.name.charAt(0).toUpperCase()}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customer.name}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                              <span style={{ fontSize: 13 }}>{getFlagEmoji(detectCountryCode(customer.phone))}</span>
+                              <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{customer.phone}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, flexShrink: 0, ...getProgressStyle(customer) }}>
+                          {getProgressLabel(customer)}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', padding: '8px 12px', borderRadius: 8 }}>
+                        <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>Orders: <strong style={{ color: '#0c1a0e' }}>{customer.order_count || 0}</strong></span>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Joined: {new Date(customer.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+                        {/* Chat */}
+                        <button
+                          title="Open conversation"
+                          onClick={() => window.open(`${window.location.origin}/agent/conversations?customerId=${customer.id}`, "_blank")}
+                          style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, ...DM, fontSize: 12, fontWeight: 600, color: '#22c55e', transition: 'background 0.12s' }}
+                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
+                        >
+                          <MessageCircle size={14} /> Chat
+                        </button>
+
+                        {/* Edit */}
+                        <button
+                          title="Edit customer"
+                          onClick={() => {
+                            const detectedCode = detectCountryCode(customer.phone);
+                            setEditingCustomer(customer);
+                            setEditForm({ name: customer.name, phone: extractLocalNumber(customer.phone, detectedCode), lead_stage: customer.lead_stage || "New Lead", interest_stage: customer.interest_stage || "", conversion_stage: customer.conversion_stage || "" });
+                            setSelectedEditCountryCode(detectedCode);
+                          }}
+                          style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(217,119,6,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, ...DM, fontSize: 12, fontWeight: 600, color: '#d97706', transition: 'background 0.12s' }}
+                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.15)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.08)'}
+                        >
+                          <Pencil size={13} /> Edit
+                        </button>
+
+                        {/* New Order */}
+                        <button
+                          title="Create new order"
+                          onClick={() => { setSelectedCustomer(customer); setShowOrderModal(true); }}
+                          disabled={!agentPrefix || !agentId}
+                          style={{ padding: '6px 12px', borderRadius: 8, background: (!agentPrefix || !agentId) ? '#f4f4f5' : 'rgba(8,145,178,0.08)', border: 'none', cursor: (!agentPrefix || !agentId) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, ...DM, fontSize: 12, fontWeight: 600, color: (!agentPrefix || !agentId) ? '#d4d4d8' : '#0891b2', transition: 'background 0.12s' }}
+                          onMouseEnter={e => { if (agentPrefix && agentId) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(8,145,178,0.15)'; }}
+                          onMouseLeave={e => { if (agentPrefix && agentId) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(8,145,178,0.08)'; }}
+                        >
+                          <ShoppingBag size={13} /> New Order
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          title="Delete customer"
+                          onClick={() => setDeletingCustomer(customer)}
+                          style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.12s' }}
+                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.15)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)'}
+                        >
+                          <Trash2 size={13} style={{ color: '#ef4444' }} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden lg:block overflow-x-auto">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -945,9 +1059,10 @@ const CustomersPage: React.FC = () => {
               </motion.tbody>
             </table>
           </div>
-        )}
-      </motion.div>
-    </div>
+        </>
+      )}
+    </motion.div>
+  </div>
   );
 };
 

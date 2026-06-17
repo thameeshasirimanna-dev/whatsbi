@@ -116,8 +116,12 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     setError(null);
 
     try {
-      const customers = await getCustomers({ search: customerPhone! });
-      const customerData = customers.find((c) => c.phone === customerPhone);
+      const cleanPhoneQuery = customerPhone.replace(/\D/g, "");
+      const customers = await getCustomers({ search: cleanPhoneQuery });
+      const customerData = customers.find((c) => {
+        const cleanPhone = c.phone ? c.phone.replace(/\D/g, "") : "";
+        return cleanPhone === cleanPhoneQuery;
+      });
 
       if (!customerData) {
         setOrders([]);
@@ -466,10 +470,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
       >
         {/* Header */}
         <div
+          className="px-4 pt-4 md:px-6 md:pt-5"
           style={{
             flexShrink: 0,
             borderBottom: "1px solid #ebebeb",
-            padding: "20px 24px 0",
             background: "#fff",
           }}
         >
@@ -479,10 +483,13 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 20,
+              marginBottom: 16,
             }}
           >
-            <span style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: "#0c1a0e" }}>
+            <span 
+              className="text-base md:text-lg"
+              style={{ ...SYNE, fontWeight: 700, color: "#0c1a0e", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 12 }}
+            >
               {customerName ? `${customerName}'s Records` : "Customer Records"}
             </span>
             <button
@@ -510,13 +517,15 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
           {/* Tabs + action button row */}
           <div
+            className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-0"
             style={{
-              display: "flex",
-              alignItems: "center",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", gap: 0 }}>
+            <div 
+              className="overflow-x-auto scrollbar-none"
+              style={{ display: "flex", gap: 0, maxWidth: "100%" }}
+            >
               {TAB_DEFS.map(({ key, label, count, badge }) => {
                 const isActive = activeTab === key;
                 return (
@@ -527,7 +536,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
                       ...DM,
                       fontSize: 13,
                       fontWeight: 600,
-                      padding: "10px 16px",
+                      padding: "10px 14px",
                       background: "none",
                       border: "none",
                       borderBottom: isActive ? "2px solid #22c55e" : "2px solid transparent",
@@ -535,9 +544,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 7,
+                      gap: 6,
                       transition: "color 0.15s, border-color 0.15s",
                       marginBottom: -1,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {label}
@@ -559,7 +569,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
               })}
             </div>
 
-            <div style={{ display: "flex", gap: 8, paddingBottom: 12 }}>
+            <div 
+              className="justify-start md:justify-end"
+              style={{ display: "flex", gap: 8, paddingBottom: 12 }}
+            >
               {activeTab === "orders" && (
                 <button
                   onClick={() => setShowCreateOrderModal(true)}
@@ -598,7 +611,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+        <div className="p-4 md:p-6" style={{ flex: 1, overflowY: "auto" }}>
           {loading ? (
             <div
               style={{

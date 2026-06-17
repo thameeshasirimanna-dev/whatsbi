@@ -219,7 +219,69 @@ const ServicesPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <>
+            {/* Mobile/Tablet Card Layout */}
+            <div className="block lg:hidden">
+              <div className="flex flex-col divide-y divide-[#f4f4f5]">
+                {filteredServices.map((service, index) => {
+                  const prices = service.packages.map(p => p.price).filter(p => p > 0);
+                  const minPrice = prices.length ? Math.min(...prices) : null;
+                  const maxPrice = prices.length ? Math.max(...prices) : null;
+                  const currency = service.packages[0]?.currency || 'LKR';
+                  const priceLabel = minPrice === null ? '—'
+                    : minPrice === maxPrice ? `${currency} ${minPrice.toFixed(2)}`
+                    : `${currency} ${minPrice.toFixed(2)} – ${maxPrice!.toFixed(2)}`;
+
+                  return (
+                    <motion.div key={service.id}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
+                      style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          {service.image_urls && service.image_urls.length > 0 ? (
+                            <img
+                              src={service.image_urls[0].startsWith('https://') ? service.image_urls[0] : `https://${service.image_urls[0]}`}
+                              alt={service.service_name}
+                              style={{ width: 36, height: 36, borderRadius: 9, objectFit: 'cover', flexShrink: 0, border: '1px solid #ebebeb' }}
+                            />
+                          ) : (
+                            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Briefcase size={16} style={{ color: '#22c55e' }} />
+                            </div>
+                          )}
+                          <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{service.service_name}</span>
+                        </div>
+                        <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#059669', flexShrink: 0 }}>{priceLabel}</span>
+                      </div>
+
+                      <div style={{ ...DM, fontSize: 12, color: '#71717a', lineHeight: 1.4 }}>
+                        {service.description || <span style={{ color: '#a1a1aa' }}>No description</span>}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+                        {[
+                          { Icon: Eye, label: 'View', color: '#0891b2', bg: 'rgba(8,145,178,0.08)', hbg: 'rgba(8,145,178,0.15)', onClick: () => setViewingService(service) },
+                          { Icon: Pencil, label: 'Edit', color: '#059669', bg: 'rgba(34,197,94,0.08)', hbg: 'rgba(34,197,94,0.15)', onClick: () => setEditingService(service) },
+                          { Icon: Trash2, label: 'Delete', color: '#f43f5e', bg: 'rgba(244,63,94,0.06)', hbg: 'rgba(244,63,94,0.12)', onClick: () => confirmDelete(service.id) },
+                        ].map(({ Icon, label, color, bg, hbg, onClick }) => (
+                          <button key={label} onClick={onClick} title={label}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: bg, border: 'none', cursor: 'pointer', ...DM, fontSize: 12, fontWeight: 600, color, transition: 'background 0.1s' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = hbg}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = bg}
+                          >
+                            <Icon size={13} /> {label}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden lg:block overflow-x-auto">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -304,8 +366,9 @@ const ServicesPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </motion.div>
+        </>
+      )}
+    </motion.div>
 
       {showCreateModal && <CreateServiceModal onClose={() => setShowCreateModal(false)} onCreate={handleCreateService} setError={setError} />}
       {editingService && agent && (

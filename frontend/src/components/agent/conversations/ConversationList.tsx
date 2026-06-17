@@ -117,16 +117,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
   return (
     <div
-      style={{
-        width: 320,
-        flexShrink: 0,
-        background: "#fff",
-        borderRight: "1px solid #ebebeb",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        boxShadow: "1px 0 4px rgba(0,0,0,0.03)",
-      }}
+      className={`h-full flex flex-col bg-white border-r border-[#ebebeb] shadow-[1px_0_4px_rgba(0,0,0,0.03)] ${
+        selectedConversationId !== null ? "hidden md:flex" : "flex"
+      } w-full md:w-[320px] md:flex-shrink-0`}
     >
       {/* Header */}
       <div

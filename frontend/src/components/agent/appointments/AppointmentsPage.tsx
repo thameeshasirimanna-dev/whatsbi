@@ -368,8 +368,120 @@ const AppointmentsPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <>
+              {/* Mobile/Tablet Card Layout */}
+              <div className="block lg:hidden">
+                <div className="flex flex-col divide-y divide-[#f4f4f5]">
+                  {filteredAppointments.map((appointment, index) => (
+                    <motion.div
+                      key={appointment.id}
+                      variants={rowVariants} custom={index}
+                      initial="hidden" animate="visible"
+                      style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ ...SYNE, fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                              {appointment.customer_name?.charAt(0).toUpperCase() || '?'}
+                            </span>
+                          </div>
+                          <div>
+                            <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{appointment.customer_name}</div>
+                            {appointment.customer_phone && <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>{appointment.customer_phone}</div>}
+                          </div>
+                        </div>
+
+                        <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#0c1a0e' }}>
+                          #{appointment.id.toString().padStart(4, "0")}
+                        </span>
+                      </div>
+
+                      <div style={{ ...DM, fontSize: 13, color: '#3f3f46', fontWeight: 600 }}>
+                        {appointment.title}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', padding: '8px 12px', borderRadius: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Date & Time</span>
+                          <span style={{ ...DM, fontSize: 12, color: '#0c1a0e', fontWeight: 500 }}>
+                            {new Date(appointment.appointment_date).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Duration</span>
+                          <span style={{ ...DM, fontSize: 13, color: '#3f3f46', fontWeight: 600 }}>
+                            {appointment.duration_minutes} min
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+                        {/* Status Menu */}
+                        <div style={{ position: 'relative' }}>
+                          <Menu as="div" style={{ position: 'relative', display: 'inline-block' }}>
+                            <Menu.Button
+                              disabled={updatingAppointmentId === appointment.id}
+                              style={{ ...getStatusStyle(appointment.status), ...DM, fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, border: 'none', cursor: updatingAppointmentId === appointment.id ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, opacity: updatingAppointmentId === appointment.id ? 0.6 : 1 }}
+                            >
+                              {updatingAppointmentId === appointment.id ? (
+                                <><div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.2)', borderTopColor: 'currentColor', animation: 'ap-spin 0.7s linear infinite' }} />Updating…</>
+                              ) : (
+                                <>{capitalizeFirst(appointment.status)}<ChevronDown size={10} /></>
+                              )}
+                            </Menu.Button>
+                            <Transition
+                              enter="transition ease-out duration-100"
+                              enterFrom="transform opacity-0 scale-95"
+                              enterTo="transform opacity-100 scale-100"
+                              leave="transition ease-in duration-75"
+                              leaveFrom="transform opacity-100 scale-100"
+                              leaveTo="transform opacity-0 scale-95"
+                            >
+                              <Menu.Items style={{ position: 'absolute', left: 0, marginTop: 4, width: 150, background: '#fff', border: '1px solid #ebebeb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 100, padding: 4, outline: 'none' }}>
+                                {statusOptions.filter(o => o.value !== "").map(option => (
+                                  <Menu.Item key={option.value}>
+                                    {({ active }) => (
+                                      <button
+                                        disabled={updatingAppointmentId === appointment.id}
+                                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', ...DM, fontSize: 12, background: active ? 'rgba(34,197,94,0.06)' : appointment.status === option.value ? 'rgba(34,197,94,0.04)' : 'transparent', color: appointment.status === option.value ? '#059669' : '#3f3f46' }}
+                                        onClick={async () => { if (await dlgConfirm(`Change appointment status to ${option.label}?`)) updateAppointmentStatus(appointment.id, option.value as any); }}
+                                      >
+                                        {option.label}
+                                      </button>
+                                    )}
+                                  </Menu.Item>
+                                ))}
+                              </Menu.Items>
+                            </Transition>
+                          </Menu>
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {[
+                            { Icon: Eye, color: '#22c55e', bg: 'rgba(34,197,94,0.08)', hbg: 'rgba(34,197,94,0.15)', title: 'View', onClick: () => handleViewAppointment(appointment) },
+                            { Icon: Pencil, color: '#d97706', bg: 'rgba(217,119,6,0.08)', hbg: 'rgba(217,119,6,0.15)', title: 'Edit', onClick: () => handleEditAppointment(appointment) },
+                            { Icon: Trash2, color: '#f43f5e', bg: 'rgba(244,63,94,0.06)', hbg: 'rgba(244,63,94,0.12)', title: 'Delete', onClick: () => { setSelectedAppointmentForDelete(appointment); setShowDeleteConfirm(true); } },
+                          ].map(({ Icon, color, bg, hbg, title, onClick }) => (
+                            <button key={title} onClick={onClick} title={title}
+                              style={{ width: 28, height: 28, borderRadius: 7, background: bg, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.1s' }}
+                              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = hbg}
+                              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = bg}
+                            >
+                              <Icon size={13} style={{ color }} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     {['#', 'Customer', 'Title', 'Date & Time', 'Duration', 'Status', 'Actions'].map((h, i) => (
@@ -486,8 +598,9 @@ const AppointmentsPage: React.FC = () => {
                 </motion.tbody>
               </table>
             </div>
-          )}
-        </motion.div>
+          </>
+        )}
+      </motion.div>
       </div>
     </>
   );

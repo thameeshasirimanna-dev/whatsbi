@@ -220,84 +220,147 @@ const TemplatesPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Name', 'Category', 'Language', 'Status', 'Actions'].map((h, i) => (
-                    <th key={h} style={{ ...thCell, textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {templates.map((template, index) => (
-                  <tr key={template.id}
-                    style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
-                  >
-                    {/* Name */}
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <>
+            {/* Mobile/Tablet Card Layout */}
+            <div className="block lg:hidden">
+              <div className="flex flex-col divide-y divide-[#f4f4f5]">
+                {templates.map((template) => (
+                  <div key={template.id} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, flex: 1 }}>
                         <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <FileText size={14} style={{ color: '#22c55e' }} />
                         </div>
-                        <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>{template.name}</span>
+                        <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.name}</span>
                       </div>
-                    </td>
-
-                    {/* Category */}
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getCategoryStyle(template.category) }}>
-                        {template.category}
-                      </span>
-                    </td>
-
-                    {/* Language */}
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{template.language}</span>
-                    </td>
-
-                    {/* Status */}
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(template.status) }}>
+                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(template.status), flexShrink: 0 }}>
                         {template.status}
                       </span>
-                    </td>
+                    </div>
 
-                    {/* Actions */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
-                        <button onClick={() => handleViewTemplate(template)} title="View"
-                          style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'}
-                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
-                        >
-                          <Eye size={13} style={{ color: '#22c55e' }} />
-                        </button>
-                        <button onClick={() => handleEditTemplate(template.id)} title="Edit"
-                          style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(217,119,6,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.15)'}
-                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.08)'}
-                        >
-                          <Pencil size={13} style={{ color: '#d97706' }} />
-                        </button>
-                        {template.name !== "hello_world" && (
-                          <button onClick={() => handleDeleteTemplate(template.id)} title="Delete"
-                            style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(244,63,94,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.12)'}
-                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.06)'}
-                          >
-                            <Trash2 size={13} style={{ color: '#f43f5e' }} />
-                          </button>
-                        )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', padding: '8px 12px', borderRadius: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Category</span>
+                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, ...getCategoryStyle(template.category), display: 'inline-block', marginTop: 2 }}>
+                          {template.category}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Language</span>
+                        <span style={{ ...DM, fontSize: 12, color: '#0c1a0e', fontWeight: 500, marginTop: 2 }}>{template.language}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, paddingTop: 4 }}>
+                      <button onClick={() => handleViewTemplate(template)} title="View"
+                        style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
+                      >
+                        <Eye size={13} style={{ color: '#22c55e' }} />
+                      </button>
+                      <button onClick={() => handleEditTemplate(template.id)} title="Edit"
+                        style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(217,119,6,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.15)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.08)'}
+                      >
+                        <Pencil size={13} style={{ color: '#d97706' }} />
+                      </button>
+                      {template.name !== "hello_world" && (
+                        <button onClick={() => handleDeleteTemplate(template.id)} title="Delete"
+                          style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(244,63,94,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.12)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.06)'}
+                        >
+                          <Trash2 size={13} style={{ color: '#f43f5e' }} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Name', 'Category', 'Language', 'Status', 'Actions'].map((h, i) => (
+                      <th key={h} style={{ ...thCell, textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {templates.map((template, index) => (
+                    <tr key={template.id}
+                      style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
+                    >
+                      {/* Name */}
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <FileText size={14} style={{ color: '#22c55e' }} />
+                          </div>
+                          <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>{template.name}</span>
+                        </div>
+                      </td>
+
+                      {/* Category */}
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getCategoryStyle(template.category) }}>
+                          {template.category}
+                        </span>
+                      </td>
+
+                      {/* Language */}
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{template.language}</span>
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(template.status) }}>
+                          {template.status}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
+                          <button onClick={() => handleViewTemplate(template)} title="View"
+                            style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
+                          >
+                            <Eye size={13} style={{ color: '#22c55e' }} />
+                          </button>
+                          <button onClick={() => handleEditTemplate(template.id)} title="Edit"
+                            style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(217,119,6,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.15)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.08)'}
+                          >
+                            <Pencil size={13} style={{ color: '#d97706' }} />
+                          </button>
+                          {template.name !== "hello_world" && (
+                            <button onClick={() => handleDeleteTemplate(template.id)} title="Delete"
+                              style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(244,63,94,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.12)'}
+                              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.06)'}
+                            >
+                              <Trash2 size={13} style={{ color: '#f43f5e' }} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

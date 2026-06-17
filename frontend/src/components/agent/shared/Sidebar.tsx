@@ -36,14 +36,12 @@ const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 const Sidebar: React.FC<SidebarProps> = ({
   agent,
   unreadCount = 0,
-  isOpen = true,
-  open = true,
+  open = false,
   collapsed = true,
   onCollapseToggle,
   onClose,
   onLogout,
 }) => {
-  const [isMobileOpen] = useState(false);
   const location = useLocation();
 
   const baseNavigation: { name: string; href: string; icon: LucideIcon }[] = [
@@ -68,9 +66,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   });
 
-  const handleNavClick = () => {};
+  const handleNavClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
 
-  const isVisible = open || isOpen || isMobileOpen;
+  const isVisible = open;
 
   const getInitials = (name: string) => {
     if (!name) return 'WA';
@@ -80,9 +82,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <div
-        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col ${isVisible ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col ${isVisible ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} ${collapsed ? 'w-[220px] md:w-[64px]' : 'w-[220px]'}`}
         style={{
-          width: collapsed ? 64 : 220,
           background: '#0c1a0e',
           borderRight: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
@@ -116,50 +117,53 @@ const Sidebar: React.FC<SidebarProps> = ({
             </svg>
           </div>
 
+          <span
+            style={{ ...SYNE, fontWeight: 700, fontSize: 16, color: '#fff', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden' }}
+            className={collapsed ? 'block md:hidden' : 'block'}
+          >
+            WhatsBi
+          </span>
+
           {!collapsed && (
-            <>
-              <span style={{ ...SYNE, fontWeight: 700, fontSize: 16, color: '#fff', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                WhatsBi
-              </span>
-              <button
-                onClick={onCollapseToggle}
-                className="hidden md:flex"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 4,
-                  color: 'rgba(255,255,255,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  borderRadius: 6,
-                  flexShrink: 0,
-                  transition: 'color 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-              >
-                <ChevronLeft size={15} />
-              </button>
-              <button
-                onClick={onClose}
-                className="md:hidden"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 4,
-                  color: 'rgba(255,255,255,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  borderRadius: 6,
-                  flexShrink: 0,
-                }}
-              >
-                <X size={16} />
-              </button>
-            </>
+            <button
+              onClick={onCollapseToggle}
+              className="hidden md:flex"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 4,
+                color: 'rgba(255,255,255,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                borderRadius: 6,
+                flexShrink: 0,
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+            >
+              <ChevronLeft size={15} />
+            </button>
           )}
+
+          <button
+            onClick={onClose}
+            className="md:hidden"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 4,
+              color: 'rgba(255,255,255,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: 6,
+              flexShrink: 0,
+            }}
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {/* Nav */}
@@ -182,16 +186,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: collapsed ? 0 : 10,
-                      padding: collapsed ? '10px 0' : '9px 12px',
-                      justifyContent: collapsed ? 'center' : 'flex-start',
                       borderRadius: 10,
                       textDecoration: 'none',
                       position: 'relative',
                       background: isCurrent ? 'rgba(34,197,94,0.12)' : 'transparent',
                       transition: 'background 0.15s',
                     }}
-                    className={!isCurrent ? 'hover:bg-white/[0.05]' : ''}
+                    className={`${collapsed ? 'justify-start md:justify-center gap-[10px] md:gap-0 p-[9px_12px] md:p-[10px_0]' : 'justify-start gap-[10px] p-[9px_12px]'} ${!isCurrent ? 'hover:bg-white/[0.05]' : ''}`}
                   >
                     {isCurrent && (
                       <div style={{
@@ -211,48 +212,55 @@ const Sidebar: React.FC<SidebarProps> = ({
                       style={{ color: isCurrent ? '#4ade80' : 'rgba(255,255,255,0.28)', flexShrink: 0 }}
                     />
 
-                    {!collapsed && (
-                      <span style={{
+                    <span
+                      style={{
                         ...DM,
                         fontSize: 13.5,
                         fontWeight: isCurrent ? 600 : 400,
                         color: isCurrent ? '#fff' : 'rgba(255,255,255,0.42)',
                         whiteSpace: 'nowrap',
                         flex: 1,
-                      }}>
-                        {item.name}
-                      </span>
-                    )}
+                      }}
+                      className={collapsed ? 'block md:hidden' : 'block'}
+                    >
+                      {item.name}
+                    </span>
 
-                    {!collapsed && showUnreadBadge && (
-                      <span style={{
-                        background: '#22c55e',
-                        color: '#fff',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        borderRadius: 9999,
-                        minWidth: 18,
-                        height: 18,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0 5px',
-                        flexShrink: 0,
-                      }}>
+                    {showUnreadBadge && (
+                      <span
+                        className={collapsed ? 'flex md:hidden' : 'flex'}
+                        style={{
+                          background: '#22c55e',
+                          color: '#fff',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          borderRadius: 9999,
+                          minWidth: 18,
+                          height: 18,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0 5px',
+                          flexShrink: 0,
+                        }}
+                      >
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
 
                     {collapsed && showUnreadBadge && (
-                      <span style={{
-                        position: 'absolute',
-                        top: 6,
-                        right: 6,
-                        width: 7,
-                        height: 7,
-                        borderRadius: '50%',
-                        background: '#22c55e',
-                      }} />
+                      <span
+                        className="hidden md:block"
+                        style={{
+                          position: 'absolute',
+                          top: 6,
+                          right: 6,
+                          width: 7,
+                          height: 7,
+                          borderRadius: '50%',
+                          background: '#22c55e',
+                        }}
+                      />
                     )}
                   </Link>
                 </li>
@@ -271,41 +279,45 @@ const Sidebar: React.FC<SidebarProps> = ({
           gap: 8,
         }}>
           {agent?.name && (
-            collapsed ? (
+            <>
+              {collapsed && (
+                <div
+                  title={agent.name}
+                  className="hidden md:flex"
+                  style={{
+                    justifyContent: 'center',
+                    padding: '4px 0',
+                  }}
+                >
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: 'rgba(34,197,94,0.15)',
+                    border: '1px solid rgba(34,197,94,0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <span style={{ ...SYNE, fontSize: 10, fontWeight: 700, color: '#4ade80' }}>
+                      {getInitials(agent.name)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div
-                title={agent.name}
+                className={collapsed ? "flex md:hidden" : "flex"}
                 style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  padding: '4px 0',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  background: 'rgba(255,255,255,0.04)',
+                  overflow: 'hidden',
                 }}
               >
-                <div style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  background: 'rgba(34,197,94,0.15)',
-                  border: '1px solid rgba(34,197,94,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <span style={{ ...SYNE, fontSize: 10, fontWeight: 700, color: '#4ade80' }}>
-                    {getInitials(agent.name)}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 10px',
-                borderRadius: 10,
-                background: 'rgba(255,255,255,0.04)',
-                overflow: 'hidden',
-              }}>
                 <div style={{
                   width: 28,
                   height: 28,
@@ -330,7 +342,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 </div>
               </div>
-            )
+            </>
           )}
 
           {/* Logout Button */}
@@ -340,9 +352,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              gap: collapsed ? 0 : 10,
-              padding: collapsed ? '10px 0' : '9px 12px',
               borderRadius: 10,
               border: 'none',
               background: 'transparent',
@@ -351,6 +360,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               color: 'rgba(244, 63, 94, 0.7)',
               transition: 'background 0.15s, color 0.15s',
             }}
+            className={collapsed ? "justify-start md:justify-center p-[9px_12px] md:p-[10px_0] gap-[10px] md:gap-0" : "justify-start p-[9px_12px] gap-[10px]"}
             onMouseEnter={e => {
               e.currentTarget.style.background = 'rgba(244, 63, 94, 0.12)';
               e.currentTarget.style.color = '#f43f5e';
@@ -361,16 +371,17 @@ const Sidebar: React.FC<SidebarProps> = ({
             }}
           >
             <LogOut size={17} style={{ flexShrink: 0 }} />
-            {!collapsed && (
-              <span style={{
+            <span
+              style={{
                 ...DM,
                 fontSize: 13.5,
                 fontWeight: 500,
                 whiteSpace: 'nowrap',
-              }}>
-                Logout
-              </span>
-            )}
+              }}
+              className={collapsed ? "block md:hidden" : "block"}
+            >
+              Logout
+            </span>
           </button>
 
           {collapsed && (

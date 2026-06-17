@@ -887,47 +887,45 @@ const InvoicesPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Invoice', 'Customer', 'Order', 'Total', 'Status', 'Date', 'Actions'].map((h, i) => (
-                    <th key={h} style={{ ...thCell, textAlign: i === 6 ? 'right' : 'left' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+          <>
+            {/* Mobile/Tablet Card Layout */}
+            <div className="block lg:hidden">
+              <div className="flex flex-col divide-y divide-[#f4f4f5]">
                 {filteredInvoices.map(invoice => (
-                  <tr
+                  <div
                     key={invoice.id}
-                    style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
+                    style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
                   >
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{invoice.name}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e' }}>{invoice.customer_name}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{invoice.order_number}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>LKR {invoice.total.toFixed(2)}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(invoice.status) }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoice.name}</div>
+                        <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>{invoice.order_number}</div>
+                      </div>
+                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(invoice.status), flexShrink: 0 }}>
                         {capitalizeFirst(invoice.status)}
                       </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>
-                        {new Date(invoice.generated_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', padding: '8px 12px', borderRadius: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Customer</span>
+                        <span style={{ ...DM, fontSize: 12, color: '#0c1a0e', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {invoice.customer_name}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Total</span>
+                        <span style={{ ...DM, fontSize: 13, color: '#3f3f46', fontWeight: 600 }}>
+                          LKR {invoice.total.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
+                      <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>
+                        Generated: {new Date(invoice.generated_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                       </span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5, flexWrap: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {/* View */}
                         <button onClick={() => window.open(invoice.pdf_url, "_blank")} title="View PDF"
                           style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, border: 'none', cursor: 'pointer', ...DM, fontSize: 11, fontWeight: 600, background: 'rgba(8,145,178,0.08)', color: '#0891b2', whiteSpace: 'nowrap' }}
@@ -973,12 +971,106 @@ const InvoicesPage: React.FC = () => {
                           <Trash2 size={11} /> {updating === invoice.id ? "Deleting…" : "Delete"}
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Invoice', 'Customer', 'Order', 'Total', 'Status', 'Date', 'Actions'].map((h, i) => (
+                      <th key={h} style={{ ...thCell, textAlign: i === 6 ? 'right' : 'left' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInvoices.map(invoice => (
+                    <tr
+                      key={invoice.id}
+                      style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{invoice.name}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e' }}>{invoice.customer_name}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{invoice.order_number}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>LKR {invoice.total.toFixed(2)}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(invoice.status) }}>
+                          {capitalizeFirst(invoice.status)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>
+                          {new Date(invoice.generated_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5, flexWrap: 'nowrap' }}>
+                          {/* View */}
+                          <button onClick={() => window.open(invoice.pdf_url, "_blank")} title="View PDF"
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, border: 'none', cursor: 'pointer', ...DM, fontSize: 11, fontWeight: 600, background: 'rgba(8,145,178,0.08)', color: '#0891b2', whiteSpace: 'nowrap' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(8,145,178,0.15)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(8,145,178,0.08)'}
+                          >
+                            <Eye size={11} /> View
+                          </button>
+
+                          {/* Download */}
+                          <button onClick={() => downloadPDF(invoice)} title="Download PDF"
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, border: 'none', cursor: 'pointer', ...DM, fontSize: 11, fontWeight: 600, background: 'rgba(34,197,94,0.08)', color: '#22c55e', whiteSpace: 'nowrap' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
+                          >
+                            <Download size={11} /> Download
+                          </button>
+
+                          {/* Send / Resend */}
+                          {invoice.status !== "paid" && (
+                            <button onClick={() => handleSendInvoice(invoice.id)} disabled={updating === invoice.id} title="Send via WhatsApp"
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, border: 'none', cursor: updating === invoice.id ? 'not-allowed' : 'pointer', ...DM, fontSize: 11, fontWeight: 600, background: updating === invoice.id ? '#f4f4f5' : 'rgba(217,119,6,0.08)', color: updating === invoice.id ? '#a1a1aa' : '#d97706', whiteSpace: 'nowrap' }}
+                            >
+                              <Send size={11} /> {updating === invoice.id ? "Sending…" : invoice.status === "generated" ? "Send" : "Resend"}
+                            </button>
+                          )}
+
+                          {/* Mark Paid */}
+                          {(invoice.status === "generated" || invoice.status === "sent") && (
+                            <button onClick={() => handleMarkPaid(invoice.id)} disabled={updating === invoice.id} title="Mark as paid"
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, border: 'none', cursor: updating === invoice.id ? 'not-allowed' : 'pointer', ...DM, fontSize: 11, fontWeight: 600, background: updating === invoice.id ? '#f4f4f5' : 'rgba(34,197,94,0.08)', color: updating === invoice.id ? '#a1a1aa' : '#059669', whiteSpace: 'nowrap' }}
+                            >
+                              <CheckCircle size={11} /> {updating === invoice.id ? "Updating…" : "Mark Paid"}
+                            </button>
+                          )}
+
+                          {/* Delete */}
+                          <button onClick={() => handleDeleteInvoice(invoice)} disabled={updating === invoice.id} title="Delete invoice"
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, border: 'none', cursor: updating === invoice.id ? 'not-allowed' : 'pointer', ...DM, fontSize: 11, fontWeight: 600, background: updating === invoice.id ? '#f4f4f5' : 'rgba(244,63,94,0.06)', color: updating === invoice.id ? '#a1a1aa' : '#f43f5e', whiteSpace: 'nowrap' }}
+                            onMouseEnter={e => { if (updating !== invoice.id) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.12)'; }}
+                            onMouseLeave={e => { if (updating !== invoice.id) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.06)'; }}
+                          >
+                            <Trash2 size={11} /> {updating === invoice.id ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -2695,7 +2695,7 @@ const ConversationsPage: React.FC = () => {
 
   return (
     <div
-      className="flex overflow-hidden"
+      className="flex overflow-hidden w-full"
       ref={containerRef}
       style={{ position: "relative", background: '#f8faf8' }}
     >
@@ -2750,6 +2750,7 @@ const ConversationsPage: React.FC = () => {
         messagesWerePrepended={messagesWerePrepended}
         messagesPrependedCount={messagesPrependedCount}
         onResetMessagesWerePrepended={() => setMessagesWerePrepended(false)}
+        onBack={() => setSelectedConversationId(null)}
       />
 
       {/* New Conversation Modal */}

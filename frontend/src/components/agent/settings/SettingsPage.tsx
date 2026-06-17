@@ -568,7 +568,7 @@ const SettingsContent: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, overflowX: 'hidden' }}>
       <style>{`@keyframes st-spin { to { transform: rotate(360deg); } }`}</style>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -853,7 +853,7 @@ const SettingsContent: React.FC = () => {
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ ...DM, fontSize: 14, color: currentDocument ? '#0c1a0e' : '#a1a1aa' }}>
+            <span style={{ ...DM, fontSize: 14, color: currentDocument ? '#0c1a0e' : '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
               {currentDocument ? (
                 <a
                   href={currentDocument}
@@ -904,24 +904,14 @@ const SettingsContent: React.FC = () => {
               <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(245,158,11,0.15)', borderTopColor: '#d97706', animation: 'st-spin 0.8s linear infinite' }} />
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', ...DM }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #f4f4f5', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Name</th>
-                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Email</th>
-                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Role</th>
-                    <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600, textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              {/* Mobile/Tablet Card Layout */}
+              <div className="block lg:hidden">
+                <div className="flex flex-col divide-y divide-[#f4f4f5]">
                   {teamMembers.map((member) => (
-                    <tr key={member.id} style={{ borderBottom: '1px solid #f4f4f5' }}>
-                      <td style={{ padding: '12px 8px', fontSize: 14, color: '#0c1a0e', fontWeight: member.is_owner ? 600 : 400 }}>
-                        {member.name}
-                      </td>
-                      <td style={{ padding: '12px 8px', fontSize: 14, color: '#4b5563' }}>{member.email}</td>
-                      <td style={{ padding: '12px 8px' }}>
+                    <div key={member.id} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#0c1a0e' }}>{member.name}</span>
                         <span style={{
                           display: 'inline-block',
                           padding: '2px 8px',
@@ -933,9 +923,14 @@ const SettingsContent: React.FC = () => {
                         }}>
                           {member.is_owner ? 'Owner' : 'Agent'}
                         </span>
-                      </td>
-                      <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                        {!member.is_owner && (
+                      </div>
+
+                      <div style={{ ...DM, fontSize: 13, color: '#4b5563' }}>
+                        {member.email}
+                      </div>
+
+                      {!member.is_owner && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
                           <button
                             onClick={() => handleDeleteTeamMember(member.id)}
                             style={{
@@ -943,7 +938,7 @@ const SettingsContent: React.FC = () => {
                               color: '#dc2626',
                               border: 'none',
                               borderRadius: 6,
-                              padding: '4px 10px',
+                              padding: '6px 12px',
                               fontSize: 12,
                               fontWeight: 600,
                               cursor: 'pointer',
@@ -954,20 +949,84 @@ const SettingsContent: React.FC = () => {
                           >
                             Remove
                           </button>
-                        )}
-                      </td>
-                    </tr>
+                        </div>
+                      )}
+                    </div>
                   ))}
                   {teamMembers.length === 0 && (
-                    <tr>
-                      <td colSpan={4} style={{ padding: '20px 8px', textAlign: 'center', color: '#71717a', fontSize: 13 }}>
-                        No team members registered.
-                      </td>
-                    </tr>
+                    <div style={{ padding: '20px 8px', textAlign: 'center', color: '#71717a', fontSize: 13 }}>
+                      No team members registered.
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table style={{ width: '100%', borderCollapse: 'collapse', ...DM }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #f4f4f5', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Name</th>
+                      <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Email</th>
+                      <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600 }}>Role</th>
+                      <th style={{ padding: '10px 8px', fontSize: 12, color: '#71717a', fontWeight: 600, textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamMembers.map((member) => (
+                      <tr key={member.id} style={{ borderBottom: '1px solid #f4f4f5' }}>
+                        <td style={{ padding: '12px 8px', fontSize: 14, color: '#0c1a0e', fontWeight: member.is_owner ? 600 : 400 }}>
+                          {member.name}
+                        </td>
+                        <td style={{ padding: '12px 8px', fontSize: 14, color: '#4b5563' }}>{member.email}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: member.is_owner ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)',
+                            color: member.is_owner ? '#059669' : '#4b5563',
+                          }}>
+                            {member.is_owner ? 'Owner' : 'Agent'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                          {!member.is_owner && (
+                            <button
+                              onClick={() => handleDeleteTeamMember(member.id)}
+                              style={{
+                                background: 'rgba(239,68,68,0.08)',
+                                color: '#dc2626',
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '4px 10px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {teamMembers.length === 0 && (
+                      <tr>
+                        <td colSpan={4} style={{ padding: '20px 8px', textAlign: 'center', color: '#71717a', fontSize: 13 }}>
+                          No team members registered.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

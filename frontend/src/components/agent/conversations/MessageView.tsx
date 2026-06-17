@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { getToken } from "../../../lib/auth";
+import { ArrowLeft } from "lucide-react";
 import { Conversation, Message, GroupedMessage } from "./ConversationsPage";
 import ProductSelectorModal from "./ProductSelectorModal";
 import ServiceSelectorModal from "./ServiceSelectorModal";
@@ -223,6 +224,7 @@ interface MessageViewProps {
   messagesWerePrepended?: boolean;
   messagesPrependedCount?: number;
   onResetMessagesWerePrepended?: () => void;
+  onBack?: () => void;
 }
 
 const MessageView: React.FC<MessageViewProps> = ({
@@ -252,6 +254,7 @@ const MessageView: React.FC<MessageViewProps> = ({
   messagesWerePrepended = false,
   messagesPrependedCount = 0,
   onResetMessagesWerePrepended,
+  onBack,
 }) => {
   const isTemplateRequired = selectedConversation
     ? !selectedConversation.lastUserMessageTime ||
@@ -762,7 +765,12 @@ const MessageView: React.FC<MessageViewProps> = ({
     }, 0);
   };
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: '#f8faf8' }}>
+    <div
+      className={`flex-1 flex flex-col overflow-hidden relative ${
+        selectedConversation ? "flex" : "hidden md:flex"
+      }`}
+      style={{ background: '#f8faf8' }}
+    >
       {/* No conversation selected */}
       {!selectedConversation && (
         <div className="flex flex-col justify-start h-full pt-12" style={{ background: '#f8faf8' }}>
@@ -787,26 +795,43 @@ const MessageView: React.FC<MessageViewProps> = ({
 
       {/* Chat Header - only show when conversation is selected */}
       {selectedConversation && (
-        <div style={{ background: '#fff', borderBottom: '1px solid #ebebeb', padding: '14px 20px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div
+          className="px-3 py-2 md:px-5 md:py-3.5 gap-2 md:gap-3"
+          style={{ background: '#fff', borderBottom: '1px solid #ebebeb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="md:hidden p-1 mr-1 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center border-none bg-transparent cursor-pointer"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <div
-            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1, borderRadius: 10, padding: '4px 8px', margin: '-4px -8px', transition: 'background 0.12s' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1, borderRadius: 10, padding: '4px 8px', margin: '-4px -8px', transition: 'background 0.12s', minWidth: 0 }}
             onClick={onOpenContactDetails}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            <div style={{ width: 42, height: 42, background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(34,197,94,0.25)', flexShrink: 0 }}>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#fff' }}>
+            <div 
+              className="w-9 h-9 md:w-[42px] md:h-[42px]"
+              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(34,197,94,0.25)', flexShrink: 0 }}
+            >
+              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, color: '#fff' }}>
                 {selectedConversation.customerName.charAt(0).toUpperCase()}
               </span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, minWidth: 0 }}>
+                <h3 
+                  className="text-sm md:text-[15px]"
+                  style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}
+                >
                   {selectedConversation.customerName}
                 </h3>
                 {selectedConversation ? (
                   !selectedConversation.lastUserMessageTime ? (
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(217,119,6,0.1)', color: '#d97706', flexShrink: 0 }}>
+                    <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(217,119,6,0.1)', color: '#d97706', flexShrink: 0 }}>
                       Out of window
                     </span>
                   ) : (
@@ -815,32 +840,36 @@ const MessageView: React.FC<MessageViewProps> = ({
                       const hoursSince = (Date.now() - lastTime.getTime()) / (1000 * 60 * 60);
                       const isExpired = hoursSince > 24;
                       return (
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: isExpired ? 'rgba(217,119,6,0.1)' : 'rgba(34,197,94,0.1)', color: isExpired ? '#d97706' : '#059669', flexShrink: 0 }}>
+                        <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: isExpired ? 'rgba(217,119,6,0.1)' : 'rgba(34,197,94,0.1)', color: isExpired ? '#d97706' : '#059669', flexShrink: 0 }}>
                           {isExpired ? "Template Required" : "Free Messaging"}
                         </span>
                       );
                     })()
                   )
                 ) : (
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669', flexShrink: 0 }}>
+                  <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669', flexShrink: 0 }}>
                     Free Messaging
                   </span>
                 )}
               </div>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p 
+                className="text-[11px] md:text-xs"
+                style={{ fontFamily: "'DM Sans', sans-serif", color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
                 {selectedConversation.customerPhone}
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="gap-1.5 md:gap-2" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {currentStageInfo && (
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669' }}>
+              <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669' }}>
                 {currentStageInfo.stage}
               </span>
             )}
             <button
               onClick={() => setShowLeadStageModal(true)}
-              style={{ background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', transition: 'background 0.15s' }}
+              className="w-8 h-8 md:w-[34px] md:h-[34px]"
+              style={{ background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', transition: 'background 0.15s', flexShrink: 0 }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.15)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.08)')}
               title="View Lead Stage"
@@ -851,7 +880,8 @@ const MessageView: React.FC<MessageViewProps> = ({
             </button>
             <button
               onClick={() => setShowOrdersModal(true)}
-              style={{ background: 'rgba(8,145,178,0.08)', border: 'none', cursor: 'pointer', width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0891b2', transition: 'background 0.15s' }}
+              className="w-8 h-8 md:w-[34px] md:h-[34px]"
+              style={{ background: 'rgba(8,145,178,0.08)', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0891b2', transition: 'background 0.15s', flexShrink: 0 }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(8,145,178,0.15)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'rgba(8,145,178,0.08)')}
               title="View Orders"
