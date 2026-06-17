@@ -65,6 +65,62 @@ const ViewServiceModal: React.FC<ViewServiceModalProps> = ({ service, onClose })
             </div>
           )}
 
+          {service.service_links && service.service_links.length > 0 && (
+            <div>
+              <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Service Links</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {service.service_links.map((link, index) => {
+                  let displayLink = link;
+                  try {
+                    const url = new URL(link);
+                    displayLink = url.hostname + (url.pathname !== '/' ? url.pathname : '');
+                    if (displayLink.length > 30) {
+                      displayLink = displayLink.substring(0, 27) + '...';
+                    }
+                  } catch (e) {
+                    // Fallback to raw string
+                  }
+                  return (
+                    <a
+                      key={index}
+                      href={link.startsWith('http') ? link : `https://${link}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 12px',
+                        background: 'rgba(34,197,94,0.08)',
+                        border: '1px solid rgba(34,197,94,0.15)',
+                        borderRadius: 20,
+                        ...DM,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: '#059669',
+                        textDecoration: 'none',
+                        transition: 'background-color 0.15s, border-color 0.15s'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = 'rgba(34,197,94,0.15)';
+                        e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = 'rgba(34,197,94,0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(34,197,94,0.15)';
+                      }}
+                    >
+                      <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      {displayLink}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Packages</div>
             {service.packages.length > 0 ? (

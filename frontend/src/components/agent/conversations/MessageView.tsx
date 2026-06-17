@@ -420,6 +420,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                 agent_user_id: agent.user_id,
                 phone_number_id: config.phone_number_id,
                 service_name: service.service_name,
+                service_links: service.service_links || null,
                 agent_id: agentId,
               },
             };

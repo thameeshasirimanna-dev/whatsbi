@@ -13,6 +13,7 @@ RETURNS TABLE (
   service_name VARCHAR,
   description TEXT,
   image_urls JSONB,
+  service_links JSONB,
   is_active BOOLEAN,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ,
@@ -56,6 +57,7 @@ BEGIN
       s.service_name,
       s.description,
       s.image_urls,
+      s.service_links,
       s.is_active,
       s.created_at,
       s.updated_at,
@@ -103,7 +105,7 @@ BEGIN
 
   -- Group and order
   query := query || format('
-    GROUP BY s.id, s.service_name, s.description, s.image_urls, s.is_active, s.created_at, s.updated_at
+    GROUP BY s.id, s.service_name, s.description, s.image_urls, s.service_links, s.is_active, s.created_at, s.updated_at
     HAVING s.is_active = true
     ORDER BY s.%I %s',
     p_sort_by,

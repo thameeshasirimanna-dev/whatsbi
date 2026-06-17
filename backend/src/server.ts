@@ -73,7 +73,11 @@ server.register(fastifyCors, {
 });
 
 // Register multipart plugin
-server.register(fastifyMultipart);
+server.register(fastifyMultipart, {
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB
+  },
+});
 
 // Register Socket.IO plugin
 server.register(fastifySocketIO, {

@@ -65,6 +65,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
   const [removedPackageIds, setRemovedPackageIds] = useState(new Set<string>());
   const [selectedImages, setSelectedImages] = useState<Array<{ fileName: string; fileBase64: string; fileType: string; preview?: string; }>>([]);
   const [removedImageUrls, setRemovedImageUrls] = useState<string[]>([]);
+  const [serviceLinks, setServiceLinks] = useState<string[]>(editingService.service_links || []);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,9 +102,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         newImageUrls = uploadResult.urls || [];
       }
 
-      const serviceUpdates: { service_name: string; description: string | null; image_urls?: { add?: string[]; remove?: string[]; }; } = {
+      const serviceUpdates: { service_name: string; description: string | null; image_urls?: { add?: string[]; remove?: string[]; }; service_links?: string[]; } = {
         service_name: formData.service_name.trim(),
         description: formData.description || null,
+        service_links: serviceLinks.map(l => l.trim()).filter(Boolean),
       };
       if (newImageUrls.length > 0 || removedImageUrls.length > 0) {
         serviceUpdates.image_urls = {};
@@ -117,7 +119,21 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
       const serviceResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-services`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ operation: "update", type: "service", id: editingService.id, updates: serviceUpdates }),
+        body: JSON.stringify({
+          operation: "update",
+          type: "service",
+          id: editingService.id,
+          updates: serviceUpdates,
+          packages: currentPackages.map(p => ({
+            id: p.id,
+            package_name: p.package_name.trim(),
+            price: p.price,
+            currency: p.currency,
+            discount: p.discount,
+            description: p.description
+          })),
+          removed_package_ids: Array.from(removedPackageIds),
+        }),
       });
       const serviceResult = await serviceResponse.json();
       if (!serviceResponse.ok) { setError(serviceResult.message || "Failed to update service"); setSubmitting(false); return; }
@@ -176,6 +192,67 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
               <div>
                 <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Description</label>
                 <textarea value={formData.description} onChange={e => updateServiceData("description", e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocus} onBlur={onBlur} />
+              </div>
+
+              {/* Service Links */}
+              <div>
+                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Service Links <span style={{ color: '#a1a1aa', fontWeight: 400 }}>(optional)</span></label>
+                {serviceLinks.map((link, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={e => {
+                        const newLinks = [...serviceLinks];
+                        newLinks[idx] = e.target.value;
+                        setServiceLinks(newLinks);
+                      }}
+                      placeholder="https://example.com"
+                      style={inputStyle}
+                      onFocus={onFocus}
+                      onBlur={onBlur}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setServiceLinks(serviceLinks.filter((_, i) => i !== idx));
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'rgba(244,63,94,0.06)',
+                        border: 'none',
+                        borderRadius: 9,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#f43f5e'
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setServiceLinks([...serviceLinks, ""])}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'rgba(34,197,94,0.08)',
+                    color: '#059669',
+                    border: '1px solid rgba(34,197,94,0.2)',
+                    borderRadius: 9,
+                    padding: '6px 12px',
+                    ...DM,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Plus size={13} /> Add Link
+                </button>
               </div>
 
               {/* Image management */}

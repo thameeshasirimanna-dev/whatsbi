@@ -45,7 +45,7 @@ export default async function manageServicesRoutes(
 
       switch (operation) {
         case "create": {
-          const { service_name, description, packages, images } = opData;
+          const { service_name, description, packages, images, service_links } = opData;
 
           // Validation
           if (
@@ -81,7 +81,7 @@ export default async function manageServicesRoutes(
 
           // Call transaction function
           const { rows: transactionRows } = await pgClient.query(
-            "SELECT create_service_transaction($1, $2, $3, $4, $5, $6, $7)",
+            "SELECT create_service_transaction($1, $2, $3, $4, $5, $6, $7, $8)",
             [
               agentId,
               servicesTable,
@@ -90,6 +90,7 @@ export default async function manageServicesRoutes(
               description || null,
               null, // p_image_urls
               JSON.stringify(packages), // p_packages as JSONB
+              service_links ? JSON.stringify(service_links) : null, // p_service_links as JSONB
             ]
           );
 
@@ -156,7 +157,7 @@ export default async function manageServicesRoutes(
         }
 
         case "update": {
-          const { type, id, updates, removed_image_urls } = opData;
+          const { type, id, updates, removed_image_urls, packages, removed_package_ids } = opData;
 
           // Validation
           if (!type || !["service", "package"].includes(type)) {
@@ -173,10 +174,13 @@ export default async function manageServicesRoutes(
             });
           }
 
+          const isBulkServiceUpdate = type === "service" && (packages !== undefined || removed_package_ids !== undefined);
+
           if (
-            !updates ||
-            typeof updates !== "object" ||
-            Object.keys(updates).length === 0
+            !isBulkServiceUpdate &&
+            (!updates ||
+              typeof updates !== "object" ||
+              Object.keys(updates).length === 0)
           ) {
             return reply.code(400).send({
               status: "error",
@@ -187,6 +191,7 @@ export default async function manageServicesRoutes(
           // Handle removed images
           if (
             type === "service" &&
+            updates &&
             removed_image_urls &&
             Array.isArray(removed_image_urls) &&
             removed_image_urls.length > 0
@@ -200,6 +205,7 @@ export default async function manageServicesRoutes(
           // Handle new images
           if (
             type === "service" &&
+            updates &&
             updates.images &&
             Array.isArray(updates.images) &&
             updates.images.length > 0
@@ -207,20 +213,47 @@ export default async function manageServicesRoutes(
             // Note: Image upload logic would need to be ported
           }
 
-          // Call database function
-          const { rows: updateRows } = await pgClient.query(
-            "SELECT update_service_data($1, $2, $3, $4)",
-            [agentId, type, id, JSON.stringify(updates)]
-          );
+          let data;
 
-          if (updateRows.length === 0) {
-            return reply.code(500).send({
-              status: "error",
-              message: "Failed to update service",
-            });
+          if (isBulkServiceUpdate) {
+            // Call database transaction function
+            const { rows: updateRows } = await pgClient.query(
+              "SELECT update_service_transaction($1, $2, $3, $4, $5, $6, $7)",
+              [
+                agentId,
+                servicesTable,
+                servicePackagesTable,
+                id,
+                JSON.stringify(updates || {}),
+                packages ? JSON.stringify(packages) : null,
+                removed_package_ids ? JSON.stringify(removed_package_ids) : null,
+              ]
+            );
+
+            if (updateRows.length === 0) {
+              return reply.code(500).send({
+                status: "error",
+                message: "Failed to update service and packages",
+              });
+            }
+
+            data = updateRows[0].update_service_transaction;
+          } else {
+            // Call database function for single update
+            const { rows: updateRows } = await pgClient.query(
+              "SELECT update_service_data($1, $2, $3, $4)",
+              [agentId, type, id, JSON.stringify(updates)]
+            );
+
+            if (updateRows.length === 0) {
+              return reply.code(500).send({
+                status: "error",
+                message: `Failed to update ${type}`,
+              });
+            }
+
+            data = updateRows[0].update_service_data;
           }
-
-          const data = updateRows[0].update_service_data;
 
           return reply.code(200).send({
             status: "success",

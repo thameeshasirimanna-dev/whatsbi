@@ -328,6 +328,7 @@ BEGIN
             service_name VARCHAR NOT NULL,
             description TEXT,
             image_urls JSONB DEFAULT NULL,
+            service_links JSONB DEFAULT NULL,
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMPTZ DEFAULT now(),
             updated_at TIMESTAMPTZ DEFAULT now()

@@ -70,6 +70,7 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [invoiceName, setInvoiceName] = useState("");
   const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [invoiceNotes, setInvoiceNotes] = useState("");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,11 +87,13 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
         setInvoiceName(`Invoice for Order #${order.id.toString().padStart(4, "0")}`);
       }
       setDiscountPercentage(0);
+      setInvoiceNotes("");
       setError(null);
     } else if (isOpen && !propSelectedOrderId) {
       setSelectedOrderId(null);
       setInvoiceName("");
       setDiscountPercentage(0);
+      setInvoiceNotes("");
       setError(null);
     }
   }, [isOpen, propSelectedOrderId, orders]);
@@ -377,11 +380,11 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
 
       yPosition = totalsY + 20;
 
-      if (order.notes) {
+      if (invoiceNotes.trim()) {
         doc.setFont("Poppins", "normal");
         doc.setFontSize(9);
         doc.text("Notes:", 20, yPosition);
-        const notesLines = doc.splitTextToSize(order.notes, 170);
+        const notesLines = doc.splitTextToSize(invoiceNotes.trim(), 170);
         let notesY = yPosition;
         notesLines.forEach((line: string) => {
           doc.text(line, 50, notesY);
@@ -446,6 +449,7 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
     setSelectedOrderId(null);
     setInvoiceName("");
     setDiscountPercentage(0);
+    setInvoiceNotes("");
     setError(null);
     onClose();
   };
@@ -527,6 +531,20 @@ const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = ({
             <div>
               <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6 }}>Discount Percentage (%)</label>
               <input type="number" min="0" max="100" step="0.01" value={discountPercentage} onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)} placeholder="0" style={inputStyle} onFocus={onFocusGreen} onBlur={onBlurGreen} />
+            </div>
+
+            {/* Invoice Notes */}
+            <div>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 6 }}>Invoice Notes</label>
+              <textarea
+                value={invoiceNotes}
+                onChange={(e) => setInvoiceNotes(e.target.value)}
+                placeholder="Notes to print on the invoice..."
+                rows={3}
+                style={{ ...inputStyle, resize: "vertical" }}
+                onFocus={onFocusGreen as any}
+                onBlur={onBlurGreen as any}
+              />
             </div>
 
             {/* Generate button */}

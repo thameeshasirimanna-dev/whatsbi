@@ -34,6 +34,7 @@ export interface GeneratePDFParams {
   discountPercentage: number;
   agentPrefix: string;
   customerId: number;
+  invoiceNotes?: string;
 }
 
 export const generateInvoicePDF = async (
@@ -49,6 +50,7 @@ export const generateInvoicePDF = async (
     discountPercentage,
     agentPrefix,
     customerId,
+    invoiceNotes,
   } = params;
 
   const doc = new jsPDF();
@@ -308,11 +310,11 @@ export const generateInvoicePDF = async (
   yPosition = totalsY + 20;
 
   // Notes
-  if (orderData.notes) {
+  if (invoiceNotes && invoiceNotes.trim()) {
     doc.setFont("Poppins", "normal");
     doc.setFontSize(9);
     doc.text("Notes:", 20, yPosition);
-    const notesLines = doc.splitTextToSize(orderData.notes, 170);
+    const notesLines = doc.splitTextToSize(invoiceNotes.trim(), 170);
     let notesY = yPosition;
     notesLines.forEach((line: string) => {
       doc.text(line, 50, notesY);

@@ -118,10 +118,10 @@ BEGIN
 
     IF col_data_type IN ('json', 'jsonb') THEN
       -- For JSON/JSONB, quote and cast to jsonb
-      set_clause := set_clause || key_text || ' = ' || quote_literal(value_text) || '::jsonb, ';
+      set_clause := set_clause || key_text || ' = ' || quote_nullable(value_text) || '::jsonb, ';
     ELSE
       -- For other types
-      set_clause := set_clause || key_text || ' = ' || quote_literal(value_text) || ', ';
+      set_clause := set_clause || key_text || ' = ' || quote_nullable(value_text) || ', ';
     END IF;
   END LOOP;
 
@@ -132,12 +132,21 @@ BEGIN
   set_clause := rtrim(set_clause, ', ');
 
   -- Generate full SQL with literals
-  full_query := format('
-    UPDATE %I 
-    SET %s, updated_at = now()
-    WHERE id = %L AND agent_id = %L
-    RETURNING *
-  ', target_table, set_clause, p_id, p_agent_id);
+  IF p_table_type = 'service' THEN
+    full_query := format('
+      UPDATE %I 
+      SET %s, updated_at = now()
+      WHERE id = %L AND agent_id = %L
+      RETURNING *
+    ', target_table, set_clause, p_id, p_agent_id);
+  ELSE
+    full_query := format('
+      UPDATE %I 
+      SET %s, updated_at = now()
+      WHERE id = %L
+      RETURNING *
+    ', target_table, set_clause, p_id);
+  END IF;
 
   RAISE NOTICE 'DEBUG: Generated UPDATE SQL with literals: %', full_query;
 
@@ -158,7 +167,128 @@ EXCEPTION
 END;
 $$;
 
--- Grant execute permission
-GRANT EXECUTE ON FUNCTION update_service_data(BIGINT, VARCHAR, UUID, JSONB) TO authenticated, service_role;
+-- Grant execute permission conditionally
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    GRANT EXECUTE ON FUNCTION update_service_data(BIGINT, VARCHAR, UUID, JSONB) TO authenticated;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT EXECUTE ON FUNCTION update_service_data(BIGINT, VARCHAR, UUID, JSONB) TO service_role;
+  END IF;
+END
+$$;
 
 COMMENT ON FUNCTION update_service_data IS 'Updates service or service package data partially, handles image_urls array add/remove for services';
+
+-- Function to update a service and its associated packages in a transaction
+CREATE OR REPLACE FUNCTION update_service_transaction(
+  p_agent_id BIGINT,
+  p_services_table TEXT,
+  p_service_packages_table TEXT,
+  p_service_id UUID,
+  p_service_updates JSONB,
+  p_packages JSONB DEFAULT NULL,          -- Array of packages to create or update
+  p_removed_package_ids JSONB DEFAULT NULL -- Array of UUIDs of packages to delete
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  package_record JSONB;
+  package_id UUID;
+  package_name VARCHAR;
+  price DECIMAL(10,2);
+  currency VARCHAR(10);
+  discount DECIMAL(5,2);
+  package_description TEXT;
+  service_update_result JSONB;
+  pkg_insert_sql TEXT;
+  removed_id TEXT;
+  result JSONB := jsonb_build_object('service_id', p_service_id, 'packages', jsonb_build_array());
+BEGIN
+  -- 1. Update the service data using existing update_service_data function if valid keys are present
+  IF p_service_updates IS NOT NULL AND (
+     p_service_updates ? 'service_name' OR 
+     p_service_updates ? 'description' OR 
+     p_service_updates ? 'image_urls' OR 
+     p_service_updates ? 'service_links'
+  ) THEN
+    service_update_result := update_service_data(p_agent_id, 'service', p_service_id, p_service_updates);
+  END IF;
+
+  -- 2. Handle removed packages
+  IF p_removed_package_ids IS NOT NULL AND jsonb_typeof(p_removed_package_ids) = 'array' THEN
+    FOR removed_id IN SELECT jsonb_array_elements_text(p_removed_package_ids)
+    LOOP
+      IF removed_id IS NOT NULL AND removed_id <> '' THEN
+        EXECUTE format('
+          DELETE FROM %I 
+          WHERE id = $1 AND service_id = $2
+        ', p_service_packages_table)
+        USING removed_id::UUID, p_service_id;
+      END IF;
+    END LOOP;
+  END IF;
+
+  -- 3. Handle packages (create or update)
+  IF p_packages IS NOT NULL AND jsonb_typeof(p_packages) = 'array' THEN
+    FOR package_record IN SELECT jsonb_array_elements(p_packages)
+    LOOP
+      -- Check if package has an ID and it's not empty/null
+      IF package_record ? 'id' AND package_record->>'id' IS NOT NULL AND package_record->>'id' <> '' THEN
+        package_id := (package_record->>'id')::UUID;
+        
+        -- Call update_service_data for package
+        PERFORM update_service_data(
+          p_agent_id, 
+          'package', 
+          package_id, 
+          (package_record - 'id' - 'service_id' - 'created_at' - 'updated_at' - 'is_active')
+        );
+      ELSE
+        -- No ID, this is a new package
+        package_name := package_record->>'package_name';
+        price := (package_record->>'price')::DECIMAL(10,2);
+        currency := COALESCE(package_record->>'currency', 'USD');
+        discount := NULLIF((package_record->>'discount')::DECIMAL(5,2), 'NaN');
+        package_description := package_record->>'description';
+
+        IF package_name IS NOT NULL AND price IS NOT NULL THEN
+          pkg_insert_sql := format('
+            INSERT INTO %I (service_id, package_name, price, currency, discount, description, is_active)
+            VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+            RETURNING id
+          ', p_service_packages_table);
+          
+          EXECUTE pkg_insert_sql
+          INTO package_id
+          USING p_service_id, package_name, price, currency, discount, package_description;
+        END IF;
+      END IF;
+    END LOOP;
+  END IF;
+
+  RETURN jsonb_build_object('success', TRUE, 'service_id', p_service_id);
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Update service transaction failed: % (SQLSTATE: %)', SQLERRM, SQLSTATE;
+    RAISE;
+END;
+$$;
+
+-- Grant execute permission conditionally
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    GRANT EXECUTE ON FUNCTION update_service_transaction(BIGINT, TEXT, TEXT, UUID, JSONB, JSONB, JSONB) TO authenticated;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT EXECUTE ON FUNCTION update_service_transaction(BIGINT, TEXT, TEXT, UUID, JSONB, JSONB, JSONB) TO service_role;
+  END IF;
+END
+$$;
+
+COMMENT ON FUNCTION update_service_transaction IS 'Updates service metadata and handles bulk upserts and deletes of associated service packages in a transaction';

@@ -18,6 +18,7 @@ interface Service {
   id: string;
   service_name: string;
   description?: string;
+  service_links?: string[];
   packages: Package[];
 }
 
@@ -63,6 +64,7 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
           id: service.id,
           service_name: service.service_name,
           description: service.description,
+          service_links: service.service_links || [],
           packages: (service.packages || []).map((pkg: any) => ({
             id: pkg.id,
             package_name: pkg.package_name,

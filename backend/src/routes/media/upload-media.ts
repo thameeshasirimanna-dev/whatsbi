@@ -77,7 +77,33 @@ export default async function uploadMediaRoutes(
 
       for await (const part of parts) {
         if (part.type === "file") {
-          files.push({ file: part, purpose: currentPurpose });
+          try {
+            const chunks: Buffer[] = [];
+            let totalSize = 0;
+            for await (const chunk of part.file) {
+              chunks.push(Buffer.from(chunk));
+              totalSize += chunk.length;
+
+              if (totalSize > 100 * 1024 * 1024) {
+                throw new Error("File too large (max 100MB)");
+              }
+            }
+            const buffer = Buffer.concat(chunks);
+            files.push({
+              success: true,
+              buffer,
+              filename: part.filename,
+              mimetype: part.mimetype,
+              purpose: currentPurpose,
+            });
+          } catch (streamError: any) {
+            console.error(`Error streaming file ${part.filename}:`, streamError);
+            files.push({
+              success: false,
+              filename: part.filename || `upload_${Date.now()}`,
+              error: streamError.message || streamError,
+            });
+          }
         } else if (part.fieldname === "purpose") {
           currentPurpose = part.value as string;
         } else if (part.fieldname === "caption") {
@@ -96,29 +122,17 @@ export default async function uploadMediaRoutes(
       const errors: string[] = [];
 
       for (const fileObj of files) {
-        const file = fileObj.file;
+        if (!fileObj.success) {
+          errors.push(`Error uploading ${fileObj.filename}: ${fileObj.error}`);
+          continue;
+        }
+
         const purpose = fileObj.purpose;
+        const buffer = fileObj.buffer;
+        const contentType = fileObj.mimetype || "application/octet-stream";
+        const filename = fileObj.filename || `upload_${Date.now()}`;
+
         try {
-          // Use stream instead of loading entire file into memory
-          const stream = file.file; // Readable stream
-          const chunks: Buffer[] = [];
-          let totalSize = 0;
-
-          for await (const chunk of stream) {
-            chunks.push(Buffer.from(chunk));
-            totalSize += chunk.length;
-
-            // Prevent memory issues with extremely large files
-            if (totalSize > 100 * 1024 * 1024) {
-              // 100MB limit
-              throw new Error("File too large (max 100MB)");
-            }
-          }
-
-          let buffer: any = Buffer.concat(chunks);
-          let contentType = file.mimetype || "application/octet-stream";
-          let filename = file.filename || `upload_${Date.now()}`;
-
           if (purpose === "whatsapp") {
             // Upload to WhatsApp instead of our storage
 
@@ -209,9 +223,9 @@ export default async function uploadMediaRoutes(
             }
           }
         } catch (error: any) {
-          console.error(`Error uploading file ${file.filename}:`, error);
+          console.error(`Error uploading file ${filename}:`, error);
           errors.push(
-            `Error uploading ${file.filename}: ${error.message || error}`
+            `Error uploading ${filename}: ${error.message || error}`
           );
         }
       }

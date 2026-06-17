@@ -1803,47 +1803,26 @@ const ConversationsPage: React.FC = () => {
           });
         };
 
-        // Create storage file
-        createFile(storageOutputType, 0.6, "storage")
-          .then((storageFile) => {
-            // Create whatsapp file: only compress if >5MB
-            const createWhatsappFile = (): Promise<File> => {
-              if (file.size <= 5 * 1024 * 1024) {
-                // No compression needed
-                const finalName = file.name.replace(
-                  /(\.[^.]+)$/,
-                  `_whatsapp$1`
-                );
-                return Promise.resolve(
-                  new File([file], finalName, { type: file.type })
-                );
-              } else {
-                // Compress by resizing
-                if (whatsappOutputType === "image/jpeg") {
-                  const tryWhatsapp = (quality: number): Promise<File> => {
-                    return createFile(
-                      whatsappOutputType,
-                      quality,
-                      "whatsapp"
-                    ).then((whatsappFile) => {
-                      if (
-                        whatsappFile.size > 5 * 1024 * 1024 &&
-                        quality > 0.5
-                      ) {
-                        return tryWhatsapp(quality - 0.05);
-                      }
-                      return whatsappFile;
-                    });
-                  };
-                  return tryWhatsapp(1.0);
-                } else {
-                  // For other formats like PNG, resize
-                  return createFile(whatsappOutputType, undefined, "whatsapp");
-                }
+        // Create files below 1MB limit
+        const compressToLimit = (
+          initialQuality: number,
+          nameSuffix: string
+        ): Promise<File> => {
+          const tryCompress = (q: number): Promise<File> => {
+            return createFile("image/jpeg", q, nameSuffix).then((compressedFile) => {
+              if (compressedFile.size > 0.95 * 1024 * 1024 && q > 0.1) {
+                // If the file is still larger than 950KB and we can reduce quality, try again
+                return tryCompress(q - 0.05);
               }
-            };
+              return compressedFile;
+            });
+          };
+          return tryCompress(initialQuality);
+        };
 
-            createWhatsappFile()
+        compressToLimit(0.8, "storage")
+          .then((storageFile) => {
+            compressToLimit(0.8, "whatsapp")
               .then((whatsappFile) => {
                 resolve({ whatsappFile, storageFile });
               })

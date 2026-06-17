@@ -53,6 +53,7 @@ interface CreateServiceModalProps {
     description?: string;
     images?: Array<{ fileName: string; fileBase64: string; fileType: string; }>;
     packages: Array<{ package_name: string; price: number; currency?: string; discount?: number; description?: string; }>;
+    service_links?: string[];
   }) => Promise<boolean>;
   setError: (error: string | null) => void;
 }
@@ -60,6 +61,7 @@ interface CreateServiceModalProps {
 const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ onClose, onCreate, setError }) => {
   const [formData, setFormData] = useState({ service_name: "", description: "" });
   const [selectedImages, setSelectedImages] = useState<Array<{ fileName: string; fileBase64: string; fileType: string; preview?: string; }>>([]);
+  const [serviceLinks, setServiceLinks] = useState<string[]>([""]);
   const [packages, setPackages] = useState<Array<Omit<Package, "id" | "service_id" | "is_active" | "created_at" | "updated_at">>>([
     { package_name: "", price: 0, currency: "USD", discount: 0, description: "" },
   ]);
@@ -87,11 +89,13 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ onClose, onCrea
       service_name: formData.service_name.trim(),
       images: selectedImages,
       packages: packages.map(pkg => ({ ...pkg, is_active: true })),
+      service_links: serviceLinks.map(l => l.trim()).filter(Boolean),
     });
     if (result) {
       setFormData({ service_name: "", description: "" });
       setSelectedImages([]);
       setPackages([{ package_name: "", price: 0, currency: "USD", discount: 0, description: "" }]);
+      setServiceLinks([""]);
       setErrors({});
       onClose();
     }
@@ -138,6 +142,67 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ onClose, onCrea
               <div>
                 <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Description</label>
                 <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Describe this service…" rows={3} style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocus} onBlur={onBlur} />
+              </div>
+
+              {/* Service Links */}
+              <div>
+                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Service Links <span style={{ color: '#a1a1aa', fontWeight: 400 }}>(optional)</span></label>
+                {serviceLinks.map((link, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={e => {
+                        const newLinks = [...serviceLinks];
+                        newLinks[idx] = e.target.value;
+                        setServiceLinks(newLinks);
+                      }}
+                      placeholder="https://example.com"
+                      style={inputStyle}
+                      onFocus={onFocus}
+                      onBlur={onBlur}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setServiceLinks(serviceLinks.filter((_, i) => i !== idx));
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'rgba(244,63,94,0.06)',
+                        border: 'none',
+                        borderRadius: 9,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#f43f5e'
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setServiceLinks([...serviceLinks, ""])}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'rgba(34,197,94,0.08)',
+                    color: '#059669',
+                    border: '1px solid rgba(34,197,94,0.2)',
+                    borderRadius: 9,
+                    padding: '6px 12px',
+                    ...DM,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Plus size={13} /> Add Link
+                </button>
               </div>
 
               {/* Image Upload */}

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getToken } from "../../../lib/auth";
 import {
   Users, UserPlus, ShoppingBag, Globe, Search, Plus, TrendingUp, TrendingDown,
-  MessageCircle, Pencil, X,
+  MessageCircle, Pencil, X, Trash2, AlertTriangle,
 } from 'lucide-react';
 import CreateOrderModal from "./CreateOrderModal";
 import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
@@ -138,6 +138,7 @@ const CustomersPage: React.FC = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" });
   const [selectedEditCountryCode, setSelectedEditCountryCode] = useState("+94");
   const [createForm, setCreateForm] = useState({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" });
@@ -302,6 +303,26 @@ const CustomersPage: React.FC = () => {
     } catch (err: any) {
       console.error("Update error:", err);
       setError(err.message || "Failed to update customer");
+    }
+  };
+
+  const handleDeleteCustomer = async (id: number) => {
+    try {
+      const token = getToken();
+      if (!token) { setError("User not authenticated"); return; }
+      const response = await fetch(`${backendUrl}/manage-customers?id=${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || "Failed to delete customer"); }
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message || "Failed to delete customer");
+      setDeletingCustomer(null);
+      fetchCustomers();
+      setError(null);
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      setError(err.message || "Failed to delete customer");
     }
   };
 
@@ -575,12 +596,71 @@ const CustomersPage: React.FC = () => {
                 />
               </div>
 
+              <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #ebebeb', display: 'flex', gap: 10, justifyContent: 'space-between' }}>
+                <button
+                  onClick={() => {
+                    setDeletingCustomer(editingCustomer);
+                    setEditingCustomer(null);
+                  }}
+                  style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: 'none', borderRadius: 10, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
+                <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setEditingCustomer(null); setEditForm({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" }); setSelectedEditCountryCode("+94"); }} style={{ background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button onClick={handleUpdateCustomer} disabled={!editForm.name.trim() || !editForm.phone.trim()} style={{ flex: 1, background: (!editForm.name.trim() || !editForm.phone.trim()) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: (!editForm.name.trim() || !editForm.phone.trim()) ? 'not-allowed' : 'pointer', boxShadow: (!editForm.name.trim() || !editForm.phone.trim()) ? 'none' : '0 4px 12px rgba(34,197,94,0.3)' }}>
+                    Update Customer
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Customer Confirmation Modal */}
+      <AnimatePresence>
+        {deletingCustomer && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
+          >
+            <motion.div
+              variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+              style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 420, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            >
+              <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Trash2 size={15} style={{ color: '#ef4444' }} />
+                  </div>
+                  <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>Delete Customer</span>
+                </div>
+                <button onClick={() => setDeletingCustomer(null)} style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={14} style={{ color: '#71717a' }} />
+                </button>
+              </div>
+
+              <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ ...DM, fontSize: 13, color: '#3f3f46', lineHeight: 1.5 }}>
+                  Are you sure you want to delete <strong style={{ color: '#0c1a0e' }}>{deletingCustomer.name}</strong>?
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 10, padding: 12 }}>
+                  <AlertTriangle size={16} style={{ color: '#ef4444', flexShrink: 0, marginTop: 1 }} />
+                  <span style={{ ...DM, fontSize: 11, color: '#b91c1c', lineHeight: 1.4 }}>
+                    This action is permanent and cannot be undone. All orders, message history, and appointments associated with this customer will also be deleted.
+                  </span>
+                </div>
+              </div>
+
               <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #ebebeb', display: 'flex', gap: 10 }}>
-                <button onClick={() => { setEditingCustomer(null); setEditForm({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" }); setSelectedEditCountryCode("+94"); }} style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={() => setDeletingCustomer(null)} style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button onClick={handleUpdateCustomer} disabled={!editForm.name.trim() || !editForm.phone.trim()} style={{ flex: 1, background: (!editForm.name.trim() || !editForm.phone.trim()) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: (!editForm.name.trim() || !editForm.phone.trim()) ? 'not-allowed' : 'pointer', boxShadow: (!editForm.name.trim() || !editForm.phone.trim()) ? 'none' : '0 4px 12px rgba(34,197,94,0.3)' }}>
-                  Update Customer
+                <button onClick={() => handleDeleteCustomer(deletingCustomer.id)} style={{ flex: 1, background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(239,68,68,0.3)' }}>
+                  Delete Customer
                 </button>
               </div>
             </motion.div>
@@ -845,6 +925,17 @@ const CustomersPage: React.FC = () => {
                             onMouseLeave={e => { if (agentPrefix && agentId) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(8,145,178,0.08)'; }}
                           >
                             <ShoppingBag size={13} style={{ color: (!agentPrefix || !agentId) ? '#d4d4d8' : '#0891b2' }} />
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            title="Delete customer"
+                            onClick={() => setDeletingCustomer(customer)}
+                            style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.12s' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.15)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)'}
+                          >
+                            <Trash2 size={13} style={{ color: '#ef4444' }} />
                           </button>
                         </div>
                       </td>

@@ -9,7 +9,8 @@ CREATE OR REPLACE FUNCTION create_service_transaction(
   p_service_name VARCHAR,
   p_description TEXT DEFAULT NULL,
   p_image_urls JSONB DEFAULT NULL,
-  p_packages JSONB DEFAULT NULL  -- Array of {package_name, price, currency, discount, description}
+  p_packages JSONB DEFAULT NULL,  -- Array of {package_name, price, currency, discount, description}
+  p_service_links JSONB DEFAULT NULL  -- Array of URLs/links
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -45,8 +46,8 @@ BEGIN
   
   -- Generate and log SQL for service insert
   service_insert_sql := format('
-    INSERT INTO %I (agent_id, service_name, description, image_urls, is_active)
-    VALUES ($1, $2, $3, $4, TRUE)
+    INSERT INTO %I (agent_id, service_name, description, image_urls, service_links, is_active)
+    VALUES ($1, $2, $3, $4, $5, TRUE)
     RETURNING id
   ', p_services_table);
   
@@ -55,7 +56,7 @@ BEGIN
   -- Insert service
   EXECUTE service_insert_sql
   INTO service_id
-  USING p_agent_id, p_service_name, p_description, p_image_urls;
+  USING p_agent_id, p_service_name, p_description, p_image_urls, p_service_links;
 
   IF service_id IS NULL THEN
     RAISE EXCEPTION 'Failed to create service';
@@ -115,6 +116,6 @@ END;
 $$;
 
 -- Grant execute permission
-GRANT EXECUTE ON FUNCTION create_service_transaction(BIGINT, TEXT, TEXT, VARCHAR, TEXT, JSONB, JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION create_service_transaction(BIGINT, TEXT, TEXT, VARCHAR, TEXT, JSONB, JSONB, JSONB) TO authenticated, service_role;
 
 COMMENT ON FUNCTION create_service_transaction IS 'Creates a service and its packages in a transaction for dynamic agent tables';

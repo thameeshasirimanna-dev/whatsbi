@@ -109,6 +109,7 @@ export interface Service {
   service_name: string;
   description?: string;
   image_urls?: string[];
+  service_links?: string[];
   created_at: string;
   updated_at?: string;
   is_active?: boolean;

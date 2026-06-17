@@ -101,6 +101,7 @@ const InvoicesPage: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<OrderForModal | null>(null);
   const [invoiceName, setInvoiceName] = useState("");
   const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [invoiceNotes, setInvoiceNotes] = useState("");
   const [query, setQuery] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerInputRef = useRef<HTMLInputElement>(null);
@@ -414,10 +415,10 @@ const InvoicesPage: React.FC = () => {
       totalsY += 15;
       yPosition = totalsY + 20;
 
-      if (order.notes) {
+      if (invoiceNotes.trim()) {
         doc.setFont("Poppins", "normal"); doc.setFontSize(9);
         doc.text("Notes:", 20, yPosition);
-        const notesLines = doc.splitTextToSize(order.notes, 170);
+        const notesLines = doc.splitTextToSize(invoiceNotes.trim(), 170);
         let notesY = yPosition;
         notesLines.forEach((line: string) => { doc.text(line, 50, notesY); notesY += 6; });
         yPosition = notesY + 10;
@@ -624,6 +625,7 @@ const InvoicesPage: React.FC = () => {
     setSelectedOrder(null);
     setInvoiceName("");
     setDiscountPercentage(0);
+    setInvoiceNotes("");
     setQuery("");
     setShowCustomerDropdown(false);
   };
@@ -749,6 +751,22 @@ const InvoicesPage: React.FC = () => {
                 <div>
                   <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Discount Percentage (%)</label>
                   <input type="number" value={discountPercentage} onChange={e => setDiscountPercentage(parseFloat(e.target.value) || 0)} placeholder="0" min="0" max="100" step="0.01" style={inputStyle} onFocus={onFocusG} onBlur={onBlurG} />
+                </div>
+              )}
+
+              {/* Invoice Notes */}
+              {selectedCustomer && selectedOrder && (
+                <div>
+                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Invoice Notes</label>
+                  <textarea
+                    value={invoiceNotes}
+                    onChange={e => setInvoiceNotes(e.target.value)}
+                    placeholder="Notes to print on the invoice..."
+                    rows={3}
+                    style={{ ...inputStyle, resize: "vertical" }}
+                    onFocus={onFocusG as any}
+                    onBlur={onBlurG as any}
+                  />
                 </div>
               )}
             </div>
