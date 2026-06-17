@@ -308,6 +308,11 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     }
 
     try {
+      const token = getToken();
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+
       const agent = await getCurrentAgent();
       if (!agent) {
         throw new Error("Agent not found");
@@ -328,6 +333,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         {
           method: "POST",
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify(body),
