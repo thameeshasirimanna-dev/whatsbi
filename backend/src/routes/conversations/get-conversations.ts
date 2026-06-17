@@ -33,102 +33,83 @@ export default async function getConversationsRoutes(
 
       const agentData = agentResult.rows[0];
 
-      const cacheKey = CacheService.chatListKey(parseInt(agentId));
-
-      // Check cache first
-      const cachedData = await cacheService.get(cacheKey);
-      if (cachedData) {
-        return JSON.parse(cachedData);
-      }
-
-      // Cache miss - fetch from DB
-
       const customersTable = `${agentData.agent_prefix}_customers`;
       const messagesTable = `${agentData.agent_prefix}_messages`;
 
-      // Get customers
-      const customersQuery = `
-        SELECT id, name, phone, last_user_message_time, ai_enabled, lead_stage, interest_stage, conversion_stage, created_at
-        FROM ${customersTable}
-        WHERE agent_id = $1
+      // Get customers with their last message and unread counts in a single database query
+      const queryStr = `
+        SELECT 
+          c.id, 
+          c.name, 
+          c.phone, 
+          c.last_user_message_time, 
+          c.ai_enabled, 
+          c.lead_stage, 
+          c.interest_stage, 
+          c.conversion_stage, 
+          c.created_at,
+          m.message AS last_message,
+          m.direction AS last_message_direction,
+          m.timestamp AS last_message_timestamp,
+          m.media_type AS last_message_media_type,
+          m.media_url AS last_message_media_url,
+          m.caption AS last_message_caption,
+          COALESCE(u.unread_count, 0)::integer AS unread_count
+        FROM ${customersTable} c
+        LEFT JOIN LATERAL (
+          SELECT message, direction, timestamp, media_type, media_url, caption
+          FROM ${messagesTable}
+          WHERE customer_id = c.id
+          ORDER BY timestamp DESC
+          LIMIT 1
+        ) m ON true
+        LEFT JOIN (
+          SELECT customer_id, COUNT(*)::integer AS unread_count
+          FROM ${messagesTable}
+          WHERE direction = 'inbound' AND is_read = false
+          GROUP BY customer_id
+        ) u ON u.customer_id = c.id
+        WHERE c.agent_id = $1
       `;
-      const customersResult = await pgClient.query(customersQuery, [
-        parseInt(agentId),
-      ]);
-      const customers = customersResult.rows;
+      
+      const { rows } = await pgClient.query(queryStr, [parseInt(agentId)]);
 
-      if (customers.length === 0) {
-        const emptyResult: any[] = [];
-        await cacheService.set(cacheKey, JSON.stringify(emptyResult), 30); // 30s TTL
-        return emptyResult;
-      }
-
-      // Get last message for each customer
-      const customerIds = customers.map((c: any) => c.id);
-      const placeholders = customerIds
-        .map((_: any, i: number) => `$${i + 1}`)
-        .join(",");
-      const messagesQuery = `
-        SELECT id, customer_id, message, direction, timestamp, is_read, media_type, media_url, caption
-        FROM ${messagesTable}
-        WHERE customer_id IN (${placeholders})
-        ORDER BY timestamp DESC
-      `;
-      const messagesResult = await pgClient.query(messagesQuery, customerIds);
-      const messages = messagesResult.rows;
-
-      // Group messages by customer and create conversations
-      const conversationsMap: { [key: number]: any } = {};
-
-      customers.forEach((customer: any) => {
-        const customerMessages =
-          messages?.filter((msg: any) => msg.customer_id === customer.id) || [];
-        const lastMessage = customerMessages[0]; // Already ordered by timestamp desc
-
-        const unreadCount = customerMessages.filter(
-          (msg: any) => msg.direction === "inbound" && !msg.is_read
-        ).length;
-
-        const lastMessageText = lastMessage
+      const conversations = rows.map((row: any) => {
+        const lastMessageText = row.last_message !== null
           ? processMessageText(
-              lastMessage.message,
-              lastMessage.media_type,
-              lastMessage.caption
+              row.last_message,
+              row.last_message_media_type,
+              row.last_message_caption
             )
           : "No messages yet";
-        const lastMessageTime = lastMessage
-          ? new Date(lastMessage.timestamp).toISOString()
-          : (customer.created_at ? new Date(customer.created_at).toISOString() : new Date().toISOString());
+          
+        const lastMessageTime = row.last_message_timestamp
+          ? new Date(row.last_message_timestamp).toISOString()
+          : (row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString());
 
+        const rawLastTimestamp = row.last_message_timestamp
+          ? new Date(row.last_message_timestamp).getTime()
+          : (row.created_at ? new Date(row.created_at).getTime() : new Date().getTime());
 
-        const rawLastTimestamp = lastMessage
-          ? new Date(lastMessage.timestamp).getTime()
-          : new Date(customer.created_at).getTime();
-
-        conversationsMap[customer.id] = {
-          id: customer.id,
-          customerId: customer.id,
-          customerName: customer.name,
-          customerPhone: customer.phone,
-          lastUserMessageTime: customer.last_user_message_time || null,
-          aiEnabled: customer.ai_enabled || false,
-          leadStage: customer.lead_stage,
-          interestStage: customer.interest_stage,
-          conversionStage: customer.conversion_stage,
+        return {
+          id: row.id,
+          customerId: row.id,
+          customerName: row.name,
+          customerPhone: row.phone,
+          lastUserMessageTime: row.last_user_message_time ? new Date(row.last_user_message_time).toISOString() : null,
+          aiEnabled: row.ai_enabled || false,
+          leadStage: row.lead_stage,
+          interestStage: row.interest_stage,
+          conversionStage: row.conversion_stage,
           lastMessage: lastMessageText,
           lastMessageTime,
           rawLastTimestamp,
-          unreadCount,
+          unreadCount: row.unread_count || 0,
         };
       });
 
       // Sort conversations by last message time
-      const conversations = Object.values(conversationsMap).sort(
-        (a: any, b: any) => b.rawLastTimestamp - a.rawLastTimestamp
-      );
-
-      // Cache the result
-      await cacheService.set(cacheKey, JSON.stringify(conversations), 30); // 30s TTL
+      conversations.sort((a: any, b: any) => b.rawLastTimestamp - a.rawLastTimestamp);
 
       return conversations;
     } catch (error: any) {

@@ -44,16 +44,6 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
 
       const customer = customerResult.rows[0];
 
-      const cacheKey = limit
-        ? CacheService.recentMessagesKey(parseInt(agentId), parseInt(customerId), limit, offset)
-        : CacheService.recentMessagesKey(parseInt(agentId), parseInt(customerId));
-
-      // Check cache first
-      const cachedData = await cacheService.get(cacheKey);
-      if (cachedData) {
-        return JSON.parse(cachedData);
-      }
-
       // Cache miss - fetch from DB
       const messagesTable = `${agentData.agent_prefix}_messages`;
 
@@ -100,9 +90,6 @@ export default async function getConversationMessagesRoutes(fastify: FastifyInst
         media_url: msg.media_url || null,
         caption: msg.caption || null,
       }));
-
-      // Cache the result
-      await cacheService.set(cacheKey, JSON.stringify(processedMessages), 60); // 60s TTL
 
       return processedMessages;
     } catch (error: any) {

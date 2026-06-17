@@ -1,11 +1,13 @@
 import { FastifyInstance } from 'fastify';
 import { downloadWhatsAppMedia, uploadMediaToStorage } from '../../utils/helpers.js';
+import { CacheService } from '../../utils/cache.js';
 
 const CHATBOT_SECRET = process.env.CHATBOT_SECRET ?? 'default-secret-change-in-prod';
 
 export default async function chatbotReplyRoutes(
   fastify: FastifyInstance,
   pgClient: any,
+  cacheService: CacheService,
   emitNewMessage?: (agentId: number, messageData: any) => void
 ) {
   fastify.post('/chatbot-reply', async (request, reply) => {
@@ -225,6 +227,12 @@ export default async function chatbotReplyRoutes(
           caption: insertedMessage.caption,
         };
         emitNewMessage(agent.id, messageDataForSocket);
+      }
+
+      // Invalidate cache for the conversation and chat list
+      if (cacheService) {
+        await cacheService.invalidateRecentMessages(agent.id, customer.id);
+        await cacheService.invalidateChatList(agent.id);
       }
 
       // Log to whatsapp_message_logs

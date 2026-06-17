@@ -41,10 +41,23 @@ export class CacheService {
   }
 
   async invalidateRecentMessages(agentId: number, customerId: number): Promise<void> {
-    // Invalidate all paginated versions by deleting the base key pattern
-    // Since Redis doesn't support pattern deletion easily, we'll just delete the main key
-    // In a production system, you might want to use Redis keys command or maintain a list
-    await this.del(CacheService.recentMessagesKey(agentId, customerId));
+    try {
+      // Invalidate all paginated versions by scanning and deleting keys matching the pattern
+      const pattern = `recent_messages:${agentId}:${customerId}*`;
+      let cursor = '0';
+      do {
+        const reply = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = reply[0];
+        const keys = reply[1];
+        if (keys && keys.length > 0) {
+          await this.redis.del(...keys);
+        }
+      } while (cursor !== '0');
+    } catch (error) {
+      console.error('Cache invalidateRecentMessages error:', error);
+      // Fallback: delete the main unpaginated key
+      await this.del(CacheService.recentMessagesKey(agentId, customerId));
+    }
   }
 
   async invalidateBotContext(agentId: number, customerId: number): Promise<void> {

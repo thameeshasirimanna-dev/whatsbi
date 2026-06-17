@@ -205,19 +205,23 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
 
           {isNotificationOpen && (
             <>
-              <div style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 8px)',
-                width: 320,
-                background: '#fff',
-                borderRadius: 12,
-                border: '1px solid #ebebeb',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                zIndex: 50,
-                maxHeight: 380,
-                overflowY: 'auto',
-              }}>
+              <div
+                className="animate-dropdown"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 8px)',
+                  width: 320,
+                  background: '#fff',
+                  borderRadius: 12,
+                  border: '1px solid #ebebeb',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                  zIndex: 50,
+                  maxHeight: 380,
+                  overflowY: 'auto',
+                  transformOrigin: 'top right',
+                }}
+              >
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #ebebeb' }}>
                   <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>Notifications</div>
                   <div style={{ ...DM, fontSize: 12, color: '#71717a', marginTop: 2 }}>

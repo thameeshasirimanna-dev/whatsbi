@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getToken } from '../../../lib/auth';
+import { SkeletonPage } from "../shared/Skeleton";
 import {
   MessageSquare,
   Users,
@@ -181,20 +182,7 @@ const DashboardContent: React.FC = () => {
   }, []);
 
   if (loading) {
-    return (
-      <div style={{ minHeight: '100%', background: '#f8faf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: '50%',
-            border: '3px solid rgba(34,197,94,0.15)',
-            borderTopColor: '#22c55e',
-            animation: 'spin 0.9s linear infinite',
-          }} />
-          <span style={{ ...DM, fontSize: 14, color: '#71717a' }}>Loading dashboard...</span>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
+    return <SkeletonPage type="dashboard" />;
   }
 
   if (error) {

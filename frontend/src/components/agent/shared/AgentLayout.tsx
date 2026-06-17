@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { Agent } from '../../../types';
@@ -17,6 +17,7 @@ interface AgentLayoutProps {
 }
 
 const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
+  const location = useLocation();
   const { confirm: dlgConfirm } = useDialog();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -217,7 +218,11 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
             collapsed={sidebarCollapsed}
             onMenuClick={() => setSidebarOpen(true)}
           />
-          <main style={{ flex: 1, overflowY: 'auto', background: '#f8faf8' }}>
+          <main
+            key={location.pathname}
+            className="animate-fade-in"
+            style={{ flex: 1, overflowY: 'auto', background: '#f8faf8' }}
+          >
             <Outlet />
             {children}
           </main>

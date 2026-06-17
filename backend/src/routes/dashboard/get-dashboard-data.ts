@@ -39,37 +39,39 @@ export default async function getDashboardDataRoutes(
       // Fetch recent messages for active conversations and activity
       const messagesTable = `${agentPrefix}_messages`;
       const customersTable = `${agentPrefix}_customers`;
-
-      // Get recent messages (last 24 hours for active conversations, last 10 for activity)
+ 
+      // Get active conversations (unique customers with messages in last 24h)
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-      const { rows: recentMessages } = await pgClient.query(
-        `SELECT m.id, m.customer_id, m.message, m.direction, m.timestamp, m.is_read,
-                c.name as customer_name
-         FROM ${messagesTable} m
-         JOIN ${customersTable} c ON m.customer_id = c.id
-         WHERE m.timestamp >= $1
-         ORDER BY m.timestamp DESC
-         LIMIT 50`,
+      const { rows: activeConvRows } = await pgClient.query(
+        `SELECT COUNT(DISTINCT customer_id)::integer as count 
+         FROM ${messagesTable} 
+         WHERE timestamp >= $1`,
         [oneDayAgo]
       );
-
-      // Calculate active conversations (unique customers with messages in last 24h)
-      const activeConversations = new Set(recentMessages.map((msg: any) => msg.customer_id)).size;
-
+      const activeConversations = activeConvRows[0].count;
+ 
       // Get orders today
       const ordersTable = `${agentPrefix}_orders`;
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
+ 
       const { rows: ordersTodayRows } = await pgClient.query(
         `SELECT COUNT(*) as count FROM ${ordersTable} WHERE DATE(created_at) = $1`,
         [today]
       );
-
+ 
       const ordersToday = parseInt(ordersTodayRows[0].count);
+ 
+      // Get recent activity (last 3 messages overall)
+      const { rows: recentActivityRows } = await pgClient.query(
+        `SELECT m.id, m.customer_id, m.message, m.direction, m.timestamp, m.is_read,
+                c.name as customer_name
+         FROM ${messagesTable} m
+         JOIN ${customersTable} c ON m.customer_id = c.id
+         ORDER BY m.timestamp DESC
+         LIMIT 3`
+      );
 
-      // Get recent activity (last 3 messages)
-      const recentActivity = recentMessages.slice(0, 3).map((msg: any) => ({
+      const recentActivity = recentActivityRows.map((msg: any) => ({
         id: msg.id.toString(),
         type: 'conversation' as const,
         title: `Message from ${msg.customer_name || `Customer ${msg.customer_id}`}`,

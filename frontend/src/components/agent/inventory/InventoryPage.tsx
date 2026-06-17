@@ -3,6 +3,7 @@ import { Package, Tag, Plus, Pencil, Search, X, Image as ImageIcon } from 'lucid
 import { getToken } from "../../../lib/auth";
 import { getCurrentAgent } from "../../../lib/agent";
 import { useDialog } from '../shared/DialogProvider';
+import { SkeletonPage } from "../shared/Skeleton";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -410,12 +411,7 @@ const InventoryPage: React.FC = () => {
   const hasCategories = categories.length > 0;
 
   if (loading) {
-    return (
-      <div style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
-        <style>{`@keyframes inv-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ width: 36, height: 36, border: '3px solid #ebebeb', borderTopColor: '#22c55e', borderRadius: '50%', animation: 'inv-spin 0.8s linear infinite' }} />
-      </div>
-    );
+    return <SkeletonPage type="list" />;
   }
 
   const modalOverlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 };

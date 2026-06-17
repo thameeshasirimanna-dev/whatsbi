@@ -128,11 +128,16 @@ const ConversationsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const conversationsRef = useRef(conversations);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
   const [searchConversations, setSearchConversations] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "unread" | "ai" | "orders">("all");
   const [stageFilter, setStageFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<"today" | "yesterday" | "week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<number | null>(null);
   const [agentPrefix, setAgentPrefix] = useState<string | null>(null);
@@ -1216,170 +1221,20 @@ const ConversationsPage: React.FC = () => {
     }));
   }, [selectedConversationId]);
 
-  // Extracted fetch function to make it reusable
-  const fetchAgentAndConversations = useCallback(
-    async (isInitialLoad = false) => {
-      try {
-        if (isInitialLoad) {
-          setLoading(true);
-          setError(null);
-        }
-
-        // Get authenticated user
-        const userResult = await getUser();
-        if (userResult.error || !userResult.data.user) {
-          setError("User not authenticated");
-          if (isInitialLoad) setLoading(false);
-          return;
-        }
-        const user = userResult.data.user;
-
-        // Get token for API calls
-        const token = getToken();
-        if (!token) {
-          setError("User not authenticated");
-          if (isInitialLoad) setLoading(false);
-          return;
-        }
-
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          setError("Failed to fetch agent profile");
-          if (isInitialLoad) setLoading(false);
-          return;
-        }
-
-        const agentProfile = await response.json();
-        if (!agentProfile.success || !agentProfile.agent) {
-          setError("Agent not found");
-          if (isInitialLoad) setLoading(false);
-          return;
-        }
-
-        const agentData = agentProfile.agent;
-        const currentAgentId = agentData.id;
-        const currentAgentPrefix = agentData.agent_prefix;
-        const currentBusinessType = agentData.business_type;
-        const currentAgentName = agentData.name || null;
-        setAgentId(currentAgentId);
-        setAgentPrefix(currentAgentPrefix);
-        setBusinessType(currentBusinessType);
-        setAgentName(currentAgentName);
-
-        // Get conversations using backend API
-        const conversationsResponse = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/conversations?agentId=${currentAgentId}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!conversationsResponse.ok) {
-          setError("Failed to fetch conversations");
-          if (isInitialLoad) setLoading(false);
-          return;
-        }
-
-        const conversationsData = await conversationsResponse.json();
-        const conversationsList = conversationsData || [];
-
-        // Get customers using backend API
-        const customersResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/manage-customers`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!customersResponse.ok) {
-          setError("Failed to fetch customers");
-          if (isInitialLoad) setLoading(false);
-          return;
-        }
-
-        const customersData = await customersResponse.json();
-        const agentCustomers = customersData.success
-          ? customersData.customers
-          : [];
-
-        setCustomerIds(agentCustomers?.map((c: any) => c.id) || []);
-
-        if (!agentCustomers || agentCustomers.length === 0) {
-          setConversations([]);
-          if (isInitialLoad) setLoading(false);
-          return;
-        }
-
-        // Preserve unread count of 0 for selected conversation to avoid race conditions
-        setConversations((prev) => {
-          const updatedConversations = conversationsList.map((newConv: any) => {
-            const existingConv = prev.find((c) => c.id === newConv.id);
-            
-            let mergedConv = { ...newConv, messages: existingConv?.messages || [] };
-            
-            // If the local conversation has a newer message (e.g. from an optimistic update or a real-time event),
-            // preserve the newer message info to prevent flickering/blinking.
-            if (existingConv && existingConv.rawLastTimestamp > newConv.rawLastTimestamp) {
-              mergedConv = {
-                ...mergedConv,
-                lastMessage: existingConv.lastMessage,
-                lastMessageTime: existingConv.lastMessageTime,
-                rawLastTimestamp: existingConv.rawLastTimestamp,
-                unreadCount: existingConv.unreadCount,
-              };
-            }
-
-            // If this conversation is currently selected and has unreadCount 0, preserve it
-            if (
-              existingConv &&
-              selectedConversationId === newConv.id &&
-              existingConv.unreadCount === 0
-            ) {
-              mergedConv.unreadCount = 0;
-            }
-
-            return mergedConv;
-          });
-
-          const finalConversations = updatedConversations.sort(
-            (a: any, b: any) => b.rawLastTimestamp - a.rawLastTimestamp
-          );
-
-          return finalConversations;
-        });
-      } catch (err: any) {
-        setError("Failed to load conversations");
-      } finally {
-        if (isInitialLoad) setLoading(false);
-      }
-    },
-    [agentPrefix, selectedConversationId]
-  ); // Added selectedConversationId dependency
-
   // Function to fetch only the selected conversation's messages
   const fetchSelectedConversation = useCallback(
     async (loadMore = false) => {
       if (!selectedConversationId || !agentId) return;
+
+      if (!loadMore) {
+        const existingConv = conversations.find(
+          (c) => c.id === selectedConversationId
+        );
+        const hasExistingMessages = existingConv && existingConv.messages && existingConv.messages.length > 0;
+        if (!hasExistingMessages) {
+          setLoadingMessages(true);
+        }
+      }
 
       try {
         // Get authenticated session
@@ -1502,6 +1357,10 @@ const ConversationsPage: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching selected conversation:", error);
+      } finally {
+        if (!loadMore) {
+          setLoadingMessages(false);
+        }
       }
     },
     [
@@ -1511,6 +1370,146 @@ const ConversationsPage: React.FC = () => {
       processMessageText,
       messageOffset,
     ]
+  );
+
+  // Extracted fetch function to make it reusable
+  const fetchAgentAndConversations = useCallback(
+    async (isInitialLoad = false) => {
+      try {
+        if (isInitialLoad) {
+          setLoading(true);
+          setError(null);
+        }
+
+        // Get token for API calls
+        const token = getToken();
+        if (!token) {
+          setError("User not authenticated");
+          if (isInitialLoad) setLoading(false);
+          return;
+        }
+
+        let currentAgentId = agentId;
+
+        // If it's initial load or agentId is not set, we fetch profile first
+        if (isInitialLoad || !currentAgentId) {
+          // Get authenticated user
+          const userResult = await getUser();
+          if (userResult.error || !userResult.data.user) {
+            setError("User not authenticated");
+            if (isInitialLoad) setLoading(false);
+            return;
+          }
+
+          const response = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/get-agent-profile`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (!response.ok) {
+            setError("Failed to fetch agent profile");
+            if (isInitialLoad) setLoading(false);
+            return;
+          }
+
+          const agentProfile = await response.json();
+          if (!agentProfile.success || !agentProfile.agent) {
+            setError("Agent not found");
+            if (isInitialLoad) setLoading(false);
+            return;
+          }
+
+          const agentData = agentProfile.agent;
+          currentAgentId = agentData.id;
+          setAgentId(agentData.id);
+          setAgentPrefix(agentData.agent_prefix);
+          setBusinessType(agentData.business_type);
+          setAgentName(agentData.name || null);
+        }
+
+        // Get conversations using backend API
+        const conversationsResponse = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/conversations?agentId=${currentAgentId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!conversationsResponse.ok) {
+          setError("Failed to fetch conversations");
+          if (isInitialLoad) setLoading(false);
+          return;
+        }
+
+        const conversationsData = await conversationsResponse.json();
+        const conversationsList = conversationsData || [];
+
+        // Check if selected conversation has new messages in database
+        if (selectedConversationIdRef.current) {
+          const fetchedSelected = conversationsList.find((c: any) => c.id === selectedConversationIdRef.current);
+          const currentSelected = conversationsRef.current.find((c) => c.id === selectedConversationIdRef.current);
+          if (fetchedSelected && (!currentSelected || fetchedSelected.rawLastTimestamp > currentSelected.rawLastTimestamp)) {
+            // Trigger fetch selected conversation's messages
+            fetchSelectedConversation();
+          }
+        }
+
+        // Preserve unread count of 0 for selected conversation to avoid race conditions
+        setConversations((prev) => {
+          const updatedConversations = conversationsList.map((newConv: any) => {
+            const existingConv = prev.find((c) => c.id === newConv.id);
+            
+            let mergedConv = { ...newConv, messages: existingConv?.messages || [] };
+            
+            // If the local conversation has a newer message (e.g. from an optimistic update or a real-time event),
+            // preserve the newer message info to prevent flickering/blinking.
+            if (existingConv && existingConv.rawLastTimestamp > newConv.rawLastTimestamp) {
+              mergedConv = {
+                ...mergedConv,
+                lastMessage: existingConv.lastMessage,
+                lastMessageTime: existingConv.lastMessageTime,
+                rawLastTimestamp: existingConv.rawLastTimestamp,
+                unreadCount: existingConv.unreadCount,
+              };
+            }
+
+            // If this conversation is currently selected and has unreadCount 0, preserve it
+            if (
+              existingConv &&
+              selectedConversationId === newConv.id &&
+              existingConv.unreadCount === 0
+            ) {
+              mergedConv.unreadCount = 0;
+            }
+
+            return mergedConv;
+          });
+
+          const finalConversations = updatedConversations.sort(
+            (a: any, b: any) => b.rawLastTimestamp - a.rawLastTimestamp
+          );
+
+          return finalConversations;
+        });
+      } catch (err: any) {
+        setError("Failed to load conversations");
+      } finally {
+        if (isInitialLoad) setLoading(false);
+      }
+    },
+    [agentId, selectedConversationId, fetchSelectedConversation]
   );
 
   // Function to load more messages when scrolling up
@@ -2715,6 +2714,7 @@ const ConversationsPage: React.FC = () => {
         onTabChange={setActiveTab}
         onStageFilterChange={setStageFilter}
         onTimeFilterChange={setTimeFilter}
+        loading={loading}
       />
 
       <MessageView
@@ -2728,6 +2728,7 @@ const ConversationsPage: React.FC = () => {
         onFileSelect={handleFileSelect}
         uploading={uploading}
         hasPendingMedia={pendingMedia.length > 0}
+        loadingMessages={loadingMessages}
         pendingMedia={pendingMedia}
         onClearPendingMedia={handleClearPendingMedia}
         messagesContainerRef={messagesContainerRef}

@@ -7,6 +7,7 @@ import CreateServiceModal from "./CreateServiceModal";
 import EditServiceModal from "./EditServiceModal";
 import DeleteServiceModal from "./DeleteServiceModal";
 import ViewServiceModal from "./ViewServiceModal";
+import { SkeletonPage } from "../shared/Skeleton";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -143,15 +144,7 @@ const ServicesPage: React.FC = () => {
   );
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 320 }}>
-        <style>{`@keyframes sp-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.15)', borderTopColor: '#22c55e', animation: 'sp-spin 0.8s linear infinite' }} />
-          <span style={{ ...DM, fontSize: 13, color: '#71717a' }}>Loading services…</span>
-        </div>
-      </div>
-    );
+    return <SkeletonPage type="list" />;
   }
 
   return (

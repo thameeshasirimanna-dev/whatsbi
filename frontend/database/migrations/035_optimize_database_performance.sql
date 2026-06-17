@@ -1,26 +1,10 @@
--- Dynamic Table Creation for Agent-Specific Data
--- Creates customers, messages, orders, appointments, invoices, templates, categories, and inventory_items tables for each agent based on their prefix
--- Run after base_tables.sql and enums.sql
+-- Migration: Optimize Database Performance with Indexing
+-- Re-defines create_agent_tables to include customer_id and timestamp indexes on messages, customer_id on orders.
+-- Also creates these indexes for all existing agents.
 
--- Drop functions first to avoid signature conflicts
-DROP FUNCTION IF EXISTS create_agent_tables(TEXT, BIGINT) CASCADE;
-DROP FUNCTION IF EXISTS create_agent_tables(TEXT) CASCADE;
-DROP FUNCTION IF EXISTS drop_agent_tables(TEXT) CASCADE;
-DROP FUNCTION IF EXISTS trigger_create_agent_tables() CASCADE;
-DROP TRIGGER IF EXISTS trigger_create_agent_tables ON agents;
+BEGIN;
 
--- Generic function for updating updated_at column
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role, authenticated;
-
--- Function to create agent-specific tables
+-- 1. Re-define the create_agent_tables function with optimized indexes
 CREATE OR REPLACE FUNCTION create_agent_tables(p_agent_prefix TEXT, p_agent_id BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -38,13 +22,13 @@ DECLARE
     services_table TEXT := p_agent_prefix || '_services';
     service_packages_table TEXT := p_agent_prefix || '_service_packages';
 BEGIN
-    -- Create customers table for the agent
+    -- Create customers table for the agent with UNIQUE phone constraint
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I (
             id SERIAL PRIMARY KEY,
             agent_id BIGINT NOT NULL DEFAULT %L REFERENCES agents(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
-            phone TEXT NOT NULL,
+            phone TEXT NOT NULL UNIQUE,
             profile_image_url TEXT,
             last_user_message_time TIMESTAMPTZ,
             ai_enabled BOOLEAN DEFAULT true,
@@ -373,7 +357,6 @@ BEGIN
     ', services_table, services_table);
 
     -- Create service_packages table for the agent
-    RAISE NOTICE 'About to create service_packages table: %', service_packages_table;
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -387,7 +370,6 @@ BEGIN
             created_at TIMESTAMPTZ DEFAULT now(),
             updated_at TIMESTAMPTZ DEFAULT now()
         );
-        ALTER TABLE %I ADD CONSTRAINT unique_%s_service_package UNIQUE (service_id, package_name);
         ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
         CREATE INDEX IF NOT EXISTS idx_%s_package_name ON %I (package_name);
         CREATE INDEX IF NOT EXISTS idx_%s_package_price ON %I (price);
@@ -397,7 +379,6 @@ BEGIN
         EXECUTE format('ALTER TABLE %I ADD CONSTRAINT unique_%s_service_package UNIQUE (service_id, package_name);', service_packages_table, service_packages_table);
     END IF;
 
-    RAISE NOTICE 'About to create policy for service_packages: %', service_packages_table;
     EXECUTE format('
         CREATE POLICY "Agent can access own service packages" ON %I
             FOR ALL USING (
@@ -415,7 +396,6 @@ BEGIN
                 )
             );
     ', service_packages_table, services_table, services_table);
-    RAISE NOTICE 'Policy created successfully for service_packages: %', service_packages_table;
 
     -- Add to publication if not already added
     PERFORM add_to_publication_if_not_exists(service_packages_table);
@@ -429,78 +409,35 @@ BEGIN
             EXECUTE FUNCTION update_updated_at_column();
     ', service_packages_table, service_packages_table);
 
-    RAISE NOTICE 'Created tables and RLS policies for agent %', p_agent_prefix;
+    RAISE NOTICE 'Created tables, indexes, and RLS policies for agent %', p_agent_prefix;
 END;
 $$;
 
--- Function to drop agent-specific tables (for agent deletion)
-CREATE OR REPLACE FUNCTION drop_agent_tables(p_agent_prefix TEXT)
-RETURNS TABLE(dropped_tables TEXT[], errors TEXT[])
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+-- 2. Create the missing indexes for all existing agents
+DO $$
 DECLARE
-    tables_to_drop TEXT[] := ARRAY[
-        p_agent_prefix || '_customers',
-        p_agent_prefix || '_messages',
-        p_agent_prefix || '_orders',
-        p_agent_prefix || '_appointments',
-        p_agent_prefix || '_orders_items',
-        p_agent_prefix || '_orders_invoices',
-        p_agent_prefix || '_templates',
-        p_agent_prefix || '_inventory_items',
-        p_agent_prefix || '_categories',
-        p_agent_prefix || '_services',
-        p_agent_prefix || '_service_packages'
-    ];
-    dropped_tables TEXT[] := '{}';
-    errors TEXT[] := '{}';
-    table_name TEXT;
+    agent_rec RECORD;
+    m_table TEXT;
+    o_table TEXT;
 BEGIN
-    FOREACH table_name IN ARRAY tables_to_drop
-    LOOP
-        BEGIN
-            -- Drop table if exists with CASCADE
-            EXECUTE format('DROP TABLE IF EXISTS "%s" CASCADE', table_name);
-            dropped_tables := array_append(dropped_tables, table_name);
-            RAISE NOTICE 'Dropped table: %', table_name;
-        EXCEPTION WHEN OTHERS THEN
-            errors := array_append(errors, table_name || ': ' || SQLERRM);
-            RAISE NOTICE 'Failed to drop table %: %', table_name, SQLERRM;
-        END;
+    FOR agent_rec IN SELECT agent_prefix FROM agents LOOP
+        m_table := agent_rec.agent_prefix || '_messages';
+        o_table := agent_rec.agent_prefix || '_orders';
+        
+        -- Check if messages table exists and create indexes
+        IF EXISTS (SELECT FROM pg_tables WHERE tablename = m_table AND schemaname = 'public') THEN
+            EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (customer_id)', 'idx_' || m_table || '_customer_id', m_table);
+            EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (customer_id, timestamp DESC)', 'idx_' || m_table || '_customer_timestamp', m_table);
+            EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (timestamp DESC)', 'idx_' || m_table || '_timestamp', m_table);
+            RAISE NOTICE 'Created performance indexes for messages table: %', m_table;
+        END IF;
+
+        -- Check if orders table exists and create indexes
+        IF EXISTS (SELECT FROM pg_tables WHERE tablename = o_table AND schemaname = 'public') THEN
+            EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (customer_id)', 'idx_' || o_table || '_customer_id', o_table);
+            RAISE NOTICE 'Created performance indexes for orders table: %', o_table;
+        END IF;
     END LOOP;
-    
-    RETURN QUERY SELECT dropped_tables, errors;
-END;
-$$;
+END $$;
 
--- Trigger function for automatic table creation on agent insert
-CREATE OR REPLACE FUNCTION trigger_create_agent_tables()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    -- Create tables for the new agent
-    PERFORM create_agent_tables(NEW.agent_prefix, NEW.id);
-    RETURN NEW;
-END;
-$$;
-
--- Create the trigger on agents table
-CREATE TRIGGER trigger_create_agent_tables
-    AFTER INSERT ON agents
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_create_agent_tables();
-
--- Grant execute permissions
-GRANT EXECUTE ON FUNCTION create_agent_tables(TEXT, BIGINT) TO service_role, authenticated;
-GRANT EXECUTE ON FUNCTION drop_agent_tables(TEXT) TO service_role;
-GRANT EXECUTE ON FUNCTION trigger_create_agent_tables() TO service_role;
-GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role, authenticated;
-
--- Comments for documentation
-COMMENT ON FUNCTION create_agent_tables IS 'Creates dynamic tables (customers, messages, orders, appointments, invoices, templates, categories, inventory_items, services, service_packages) for a new agent based on their prefix and ID. Uses generic update_updated_at_column() for timestamps.';
-COMMENT ON FUNCTION drop_agent_tables IS 'Drops dynamic tables for a deleted agent based on their prefix';
-COMMENT ON TRIGGER trigger_create_agent_tables ON agents IS 'Automatically creates agent-specific tables when a new agent is inserted';
+COMMIT;

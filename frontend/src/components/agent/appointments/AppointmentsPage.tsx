@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useDialog } from "../shared/DialogProvider";
 import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
+import { SkeletonPage } from "../shared/Skeleton";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -177,15 +178,7 @@ const AppointmentsPage: React.FC = () => {
     : allCustomerList.filter((c: any) => c.name?.toLowerCase().includes(query.toLowerCase()) || c.phone?.includes(query));
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 320 }}>
-        <style>{`@keyframes ap-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.15)', borderTopColor: '#22c55e', animation: 'ap-spin 0.8s linear infinite' }} />
-          <span style={{ ...DM, fontSize: 13, color: '#71717a' }}>Loading appointments…</span>
-        </div>
-      </div>
-    );
+    return <SkeletonPage type="list" />;
   }
 
   return (

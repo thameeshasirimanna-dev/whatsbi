@@ -123,7 +123,7 @@ async function registerRoutes() {
     await getConversationMessagesRoutes(server, pgClient, cacheService);
     await markMessagesReadRoutes(server, pgClient, cacheService);
     await getBotContextRoutes(server, pgClient, cacheService);
-    await chatbotReplyRoutes(server, pgClient, emitNewMessage);
+    await chatbotReplyRoutes(server, pgClient, cacheService, emitNewMessage);
     await manageServicesRoutes(server, pgClient);
     await manageInventoryRoutes(server, pgClient);
     await manageCustomersRoutes(server, pgClient, cacheService);
@@ -134,7 +134,7 @@ async function registerRoutes() {
     await uploadInvoiceRoutes(server, pgClient);
     await downloadInvoiceRoutes(server, pgClient);
     await updateAgentRoutes(server, pgClient);
-    await sendInvoiceTemplateRoutes(server, pgClient, emitNewMessage);
+    await sendInvoiceTemplateRoutes(server, pgClient, cacheService, emitNewMessage);
     await manageInvoicesRoutes(server, pgClient);
     await getUsersRoutes(server, pgClient);
     await addUserRoutes(server, pgClient);

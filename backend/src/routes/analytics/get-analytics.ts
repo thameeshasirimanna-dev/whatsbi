@@ -26,125 +26,117 @@ export default async function getAnalyticsRoutes(
       const agent = agentRows[0];
       const agentPrefix = agent.agent_prefix;
 
-      // Fetch total customers
-      const { rows: customerRows } = await pgClient.query(
-        `SELECT created_at FROM ${agentPrefix}_customers`
+      // 1. Fetch total customers
+      const { rows: totalCustRows } = await pgClient.query(
+        `SELECT COUNT(*)::integer as count FROM ${agentPrefix}_customers`
       );
+      const totalCustomers = totalCustRows[0].count;
 
-      const totalCustomers = customerRows.length;
+      // 2. Fetch orders summary
+      const { rows: orderSumRows } = await pgClient.query(`
+        SELECT 
+          COUNT(*)::integer as total_orders,
+          COUNT(*) FILTER (WHERE status = 'pending')::integer as pending_orders,
+          COUNT(*) FILTER (WHERE status = 'completed')::integer as completed_orders,
+          COALESCE(SUM(total_amount), 0)::double precision as total_revenue,
+          COALESCE(SUM(total_amount) FILTER (WHERE status = 'completed'), 0)::double precision as completed_revenue
+        FROM ${agentPrefix}_orders
+      `);
+      const totalOrders = orderSumRows[0].total_orders;
+      const pendingOrders = orderSumRows[0].pending_orders;
+      const completedOrders = orderSumRows[0].completed_orders;
+      const totalRevenue = orderSumRows[0].total_revenue;
+      const completedRevenue = orderSumRows[0].completed_revenue;
 
-      // Fetch orders data
-      const { rows: ordersData } = await pgClient.query(
-        `SELECT id, status, total_amount, created_at FROM ${agentPrefix}_orders`
-      );
+      // 3. Fetch monthly orders and revenue
+      const { rows: monthlyOrdersAndRevenueRows } = await pgClient.query(`
+        SELECT 
+          m.month::text as month_date,
+          COUNT(o.id)::integer as count,
+          COALESCE(SUM(o.total_amount), 0)::double precision as revenue
+        FROM (
+          SELECT date_trunc('month', d)::date as month
+          FROM generate_series(
+            date_trunc('month', NOW() - INTERVAL '11 months'),
+            date_trunc('month', NOW()),
+            INTERVAL '1 month'
+          ) d
+        ) m
+        LEFT JOIN ${agentPrefix}_orders o 
+          ON date_trunc('month', o.created_at) = m.month
+        GROUP BY m.month
+        ORDER BY m.month ASC
+      `);
 
-      // Calculate order statistics
-      const totalOrders = ordersData?.length || 0;
-      const pendingOrders =
-        ordersData?.filter((order) => order.status === "pending").length || 0;
-      const completedOrders =
-        ordersData?.filter((order) => order.status === "completed").length || 0;
-      const totalRevenue =
-        ordersData?.reduce(
-          (sum, order) => sum + (parseFloat(order.total_amount) || 0),
-          0
-        ) || 0;
+      const monthlyOrders = monthlyOrdersAndRevenueRows.map((row: any) => ({
+        month: new Date(row.month_date).toLocaleDateString("en-US", { month: "short" }),
+        count: row.count,
+      }));
 
-      const now = new Date();
+      const monthlyRevenue = monthlyOrdersAndRevenueRows.map((row: any) => ({
+        month: new Date(row.month_date).toLocaleDateString("en-US", { month: "short" }),
+        revenue: row.revenue,
+      }));
 
-      // Calculate monthly orders and revenue (last 12 months)
-      const monthlyOrders: { month: string; count: number }[] = [];
-      const monthlyRevenue: { month: string; revenue: number }[] = [];
-      const monthlyCustomers: { month: string; count: number }[] = [];
+      // 4. Fetch monthly customer growth
+      const { rows: monthlyCustomersRows } = await pgClient.query(`
+        SELECT 
+          m.month::text as month_date,
+          COUNT(c.id)::integer as count
+        FROM (
+          SELECT date_trunc('month', d)::date as month
+          FROM generate_series(
+            date_trunc('month', NOW() - INTERVAL '11 months'),
+            date_trunc('month', NOW()),
+            INTERVAL '1 month'
+          ) d
+        ) m
+        LEFT JOIN ${agentPrefix}_customers c 
+          ON date_trunc('month', c.created_at) = m.month
+        GROUP BY m.month
+        ORDER BY m.month ASC
+      `);
 
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = date.toLocaleDateString("en-US", { month: "short" });
+      const monthlyCustomers = monthlyCustomersRows.map((row: any) => ({
+        month: new Date(row.month_date).toLocaleDateString("en-US", { month: "short" }),
+        count: row.count,
+      }));
 
-        const monthOrders =
-          ordersData?.filter((order) => {
-            const orderDate = new Date(order.created_at);
-            return (
-              orderDate.getFullYear() === date.getFullYear() &&
-              orderDate.getMonth() === date.getMonth()
-            );
-          }) || [];
+      // 5. Fetch appointments counts
+      const { rows: apptSumRows } = await pgClient.query(`
+        SELECT 
+          COUNT(*)::integer as total_appointments,
+          COUNT(*) FILTER (WHERE appointment_date > NOW() AND status != 'cancelled')::integer as upcoming_appointments
+        FROM ${agentPrefix}_appointments
+      `);
+      const totalAppointments = apptSumRows[0].total_appointments;
+      const upcomingAppointments = apptSumRows[0].upcoming_appointments;
 
-        monthlyOrders.push({
-          month: monthName,
-          count: monthOrders.length,
-        });
+      // 6. Fetch monthly appointments
+      const { rows: monthlyApptsRows } = await pgClient.query(`
+        SELECT 
+          m.month::text as month_date,
+          COUNT(a.id)::integer as count
+        FROM (
+          SELECT date_trunc('month', d)::date as month
+          FROM generate_series(
+            date_trunc('month', NOW() - INTERVAL '11 months'),
+            date_trunc('month', NOW()),
+            INTERVAL '1 month'
+          ) d
+        ) m
+        LEFT JOIN ${agentPrefix}_appointments a 
+          ON date_trunc('month', a.appointment_date) = m.month
+        GROUP BY m.month
+        ORDER BY m.month ASC
+      `);
 
-        const monthRevenue = monthOrders.reduce(
-          (sum, order) => sum + (parseFloat(order.total_amount) || 0),
-          0
-        );
-        monthlyRevenue.push({
-          month: monthName,
-          revenue: monthRevenue,
-        });
+      const monthlyAppointments = monthlyApptsRows.map((row: any) => ({
+        month: new Date(row.month_date).toLocaleDateString("en-US", { month: "short" }),
+        count: row.count,
+      }));
 
-        const monthCusts = customerRows?.filter((cust: any) => {
-          const custDate = new Date(cust.created_at);
-          return (
-            custDate.getFullYear() === date.getFullYear() &&
-            custDate.getMonth() === date.getMonth()
-          );
-        }) || [];
-
-        monthlyCustomers.push({
-          month: monthName,
-          count: monthCusts.length,
-        });
-      }
-
-      // Calculate order statuses
-      const statusCounts: { [key: string]: number } = {};
-      ordersData?.forEach((order) => {
-        const status = order.status || "unknown";
-        statusCounts[status] = (statusCounts[status] || 0) + 1;
-      });
-
-      const orderStatuses = Object.entries(statusCounts).map(
-        ([status, count]) => ({
-          status,
-          count,
-        })
-      );
-
-      // Fetch appointments data
-      const { rows: appointmentsData } = await pgClient.query(
-        `SELECT id, appointment_date, status FROM ${agentPrefix}_appointments`
-      );
-
-      const totalAppointments = appointmentsData?.length || 0;
-      const upcomingAppointments =
-        appointmentsData?.filter((appointment: any) => {
-          const appointmentDate = new Date(appointment.appointment_date);
-          const now = new Date();
-          return appointmentDate > now && appointment.status !== "cancelled";
-        }).length || 0;
-
-      const monthlyAppointments: { month: string; count: number }[] = [];
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = date.toLocaleDateString("en-US", { month: "short" });
-
-        const monthAppts = appointmentsData?.filter((appt: any) => {
-          const apptDate = new Date(appt.appointment_date);
-          return (
-            apptDate.getFullYear() === date.getFullYear() &&
-            apptDate.getMonth() === date.getMonth()
-          );
-        }) || [];
-
-        monthlyAppointments.push({
-          month: monthName,
-          count: monthAppts.length,
-        });
-      }
-
-      // Calculate month-over-month growth rates
+      // 7. Calculate month-over-month growth rates
       const getGrowthString = (current: number, previous: number) => {
         if (previous === 0) {
           return current > 0 ? `+100%` : `0%`;
@@ -170,41 +162,42 @@ export default async function getAnalyticsRoutes(
       const prevMonthAppts = monthlyAppointments[10]?.count || 0;
       const appointmentGrowth = getGrowthString(currentMonthAppts, prevMonthAppts);
 
-      // Calculate completed revenue, profit, expense
-      const completedRevenue = ordersData
-        ?.filter((order) => order.status === "completed")
-        .reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0) || 0;
-
+      // Profit and Expense
       const profit = completedRevenue * 0.7;
       const expense = completedRevenue * 0.3;
 
-      // Calculate payment gateways split
-      const gateways = {
-        Visa: 0,
-        Mastercard: 0,
-        PayPal: 0,
-        Stripe: 0,
-      };
+      // 8. Fetch completed orders gateway split
+      const { rows: gatewayRows } = await pgClient.query(`
+        SELECT 
+          COALESCE(SUM(CASE WHEN id % 4 = 0 THEN total_amount ELSE 0 END), 0)::double precision as visa,
+          COALESCE(SUM(CASE WHEN id % 4 = 1 THEN total_amount ELSE 0 END), 0)::double precision as mastercard,
+          COALESCE(SUM(CASE WHEN id % 4 = 2 THEN total_amount ELSE 0 END), 0)::double precision as paypal,
+          COALESCE(SUM(CASE WHEN id % 4 = 3 THEN total_amount ELSE 0 END), 0)::double precision as stripe
+        FROM ${agentPrefix}_orders
+        WHERE status = 'completed'
+      `);
+      
+      const paymentGateways = [
+        { name: "Visa", amount: gatewayRows[0].visa },
+        { name: "Mastercard", amount: gatewayRows[0].mastercard },
+        { name: "PayPal", amount: gatewayRows[0].paypal },
+        { name: "Stripe", amount: gatewayRows[0].stripe },
+      ];
 
-      ordersData?.forEach((order) => {
-        const amount = parseFloat(order.total_amount) || 0;
-        if (order.status === "completed") {
-          const mod = order.id % 4;
-          if (mod === 0) gateways.Visa += amount;
-          else if (mod === 1) gateways.Mastercard += amount;
-          else if (mod === 2) gateways.PayPal += amount;
-          else gateways.Stripe += amount;
-        }
-      });
-
-      const paymentGateways = Object.entries(gateways).map(([name, amount]) => ({
-        name,
-        amount,
+      // 9. Fetch order statuses
+      const { rows: statusRows } = await pgClient.query(`
+        SELECT status, COUNT(*)::integer as count 
+        FROM ${agentPrefix}_orders 
+        GROUP BY status
+      `);
+      const orderStatuses = statusRows.map((row: any) => ({
+        status: row.status || "unknown",
+        count: row.count,
       }));
 
-      // Fetch CRM lead stages breakdown
+      // 10. Fetch CRM lead stages breakdown
       const { rows: leadStageRows } = await pgClient.query(
-        `SELECT lead_stage, COUNT(*) as count FROM ${agentPrefix}_customers GROUP BY lead_stage`
+        `SELECT lead_stage, COUNT(*)::integer as count FROM ${agentPrefix}_customers GROUP BY lead_stage`
       );
 
       const leadStageCounts = {
@@ -216,7 +209,7 @@ export default async function getAnalyticsRoutes(
 
       leadStageRows.forEach((row: any) => {
         if (row.lead_stage && row.lead_stage in leadStageCounts) {
-          leadStageCounts[row.lead_stage as keyof typeof leadStageCounts] = parseInt(row.count);
+          leadStageCounts[row.lead_stage as keyof typeof leadStageCounts] = row.count;
         }
       });
 
@@ -225,33 +218,31 @@ export default async function getAnalyticsRoutes(
         count,
       }));
 
-      // Fetch messaging activity trends (last 12 months)
-      const { rows: messageData } = await pgClient.query(
-        `SELECT direction, timestamp FROM ${agentPrefix}_messages WHERE timestamp >= NOW() - INTERVAL '12 months'`
-      );
+      // 11. Fetch messaging activity trends (last 12 months)
+      const { rows: msgActivityRows } = await pgClient.query(`
+        SELECT 
+          m.month::text as month_date,
+          COUNT(msg.id) FILTER (WHERE msg.direction = 'inbound')::integer as inbound,
+          COUNT(msg.id) FILTER (WHERE msg.direction = 'outbound')::integer as outbound
+        FROM (
+          SELECT date_trunc('month', d)::date as month
+          FROM generate_series(
+            date_trunc('month', NOW() - INTERVAL '11 months'),
+            date_trunc('month', NOW()),
+            INTERVAL '1 month'
+          ) d
+        ) m
+        LEFT JOIN ${agentPrefix}_messages msg 
+          ON date_trunc('month', msg.timestamp) = m.month
+        GROUP BY m.month
+        ORDER BY m.month ASC
+      `);
 
-      const monthlyMessages: { month: string; inbound: number; outbound: number }[] = [];
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = date.toLocaleDateString("en-US", { month: "short" });
-
-        const monthMsgs = messageData?.filter((msg: any) => {
-          const msgDate = new Date(msg.timestamp);
-          return (
-            msgDate.getFullYear() === date.getFullYear() &&
-            msgDate.getMonth() === date.getMonth()
-          );
-        }) || [];
-
-        const inbound = monthMsgs.filter((m: any) => m.direction === 'inbound').length;
-        const outbound = monthMsgs.filter((m: any) => m.direction === 'outbound').length;
-
-        monthlyMessages.push({
-          month: monthName,
-          inbound,
-          outbound,
-        });
-      }
+      const monthlyMessages = msgActivityRows.map((row: any) => ({
+        month: new Date(row.month_date).toLocaleDateString("en-US", { month: "short" }),
+        inbound: row.inbound,
+        outbound: row.outbound,
+      }));
 
       const analytics = {
         totalCustomers: totalCustomers || 0,

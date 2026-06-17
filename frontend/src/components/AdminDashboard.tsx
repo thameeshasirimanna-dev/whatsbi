@@ -668,7 +668,7 @@ const AdminDashboard: React.FC = () => {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
+          className="fixed inset-0 z-40 md:hidden animate-backdrop"
           style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={() => setSidebarOpen(false)}
         />
@@ -682,7 +682,7 @@ const AdminDashboard: React.FC = () => {
           background: '#0c1a0e',
           flexShrink: 0,
           overflow: 'hidden',
-          transition: 'transform 0.25s ease-out',
+          transition: 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
         }}
       >
         {/* Logo */}
@@ -732,7 +732,7 @@ const AdminDashboard: React.FC = () => {
                   background: isActive ? 'rgba(34,197,94,0.12)' : 'transparent',
                   borderLeft: isActive ? '3px solid #22c55e' : '3px solid transparent',
                   cursor: 'pointer',
-                  transition: 'all 0.12s',
+                  transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
                 }}
                 onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; }}
                 onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
@@ -794,7 +794,11 @@ const AdminDashboard: React.FC = () => {
           )}
         </header>
 
-        <main style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <main
+          key={activeTab}
+          className="animate-fade-in"
+          style={{ flex: 1, overflowY: 'auto', padding: 24 }}
+        >
           {renderContent()}
         </main>
       </div>

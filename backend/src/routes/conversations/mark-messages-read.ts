@@ -50,47 +50,27 @@ export default async function markMessagesReadRoutes(fastify: FastifyInstance, p
         }
 
         const messagesTable = `${agentData.agent_prefix}_messages`;
-
-        // Check current unread messages before update
-        const checkQuery = `
-        SELECT COUNT(*) as unread_count
-        FROM ${messagesTable}
-        WHERE customer_id = $1 AND direction = 'inbound' AND is_read IS NOT true
-      `;
-        const checkResult = await pgClient.query(checkQuery, [
-          parseInt(customerId),
-        ]);
-
+ 
         // Mark all unread inbound messages as read
         const updateQuery = `
-        UPDATE ${messagesTable}
-        SET is_read = true
-        WHERE customer_id = $1 AND direction = 'inbound' AND is_read IS NOT true
-      `;
+          UPDATE ${messagesTable}
+          SET is_read = true
+          WHERE customer_id = $1 AND direction = 'inbound' AND is_read = false
+        `;
         const updateResult = await pgClient.query(updateQuery, [
           parseInt(customerId),
         ]);
-
-        // Verify update
-        const verifyQuery = `
-        SELECT COUNT(*) as unread_count
-        FROM ${messagesTable}
-        WHERE customer_id = $1 AND direction = 'inbound' AND is_read IS NOT true
-      `;
-        const verifyResult = await pgClient.query(verifyQuery, [
-          parseInt(customerId),
-        ]);
-
+ 
         // Invalidate cache for conversations and messages
         await cacheService.invalidateChatList(parseInt(agentId));
         await cacheService.invalidateRecentMessages(
           parseInt(agentId),
           parseInt(customerId)
         );
-
+ 
         return reply.send({
           success: true,
-          messagesMarkedRead: updateResult.rowCount,
+          messagesMarkedRead: updateResult.rowCount || 0,
         });
       } catch (error: any) {
         console.error("Mark messages read error:", error);

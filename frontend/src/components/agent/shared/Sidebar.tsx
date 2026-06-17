@@ -87,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           background: '#0c1a0e',
           borderRight: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
-          transition: 'width 0.25s ease, transform 0.25s ease',
+          transition: 'width 0.3s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
           overflow: 'hidden',
         }}
       >
@@ -190,22 +190,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                       textDecoration: 'none',
                       position: 'relative',
                       background: isCurrent ? 'rgba(34,197,94,0.12)' : 'transparent',
-                      transition: 'background 0.15s',
+                      transition: 'background 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
                     }}
                     className={`${collapsed ? 'justify-start md:justify-center gap-[10px] md:gap-0 p-[9px_12px] md:p-[10px_0]' : 'justify-start gap-[10px] p-[9px_12px]'} ${!isCurrent ? 'hover:bg-white/[0.05]' : ''}`}
                   >
-                    {isCurrent && (
-                      <div style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 3,
-                        height: 18,
-                        background: '#4ade80',
-                        borderRadius: '0 3px 3px 0',
-                      }} />
-                    )}
+                    <div style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 3,
+                      height: isCurrent ? 18 : 0,
+                      opacity: isCurrent ? 1 : 0,
+                      background: '#4ade80',
+                      borderRadius: '0 3px 3px 0',
+                      transition: 'height 0.25s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1)',
+                    }} />
 
                     <Icon
                       size={17}
@@ -409,7 +409,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile overlay */}
       {isVisible && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
+          className="fixed inset-0 z-40 md:hidden animate-backdrop"
           style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={onClose}
         />

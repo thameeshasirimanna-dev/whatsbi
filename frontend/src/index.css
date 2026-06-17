@@ -18,3 +18,94 @@ html, body, #root {
 *::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+/* Custom timing and easing functions */
+:root {
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Keyframes for standard premium animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dropdownReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Custom transition and animation utility classes */
+.transition-premium {
+  transition: all 0.2s var(--ease-out-quart);
+}
+
+.transition-slow {
+  transition: all 0.3s var(--ease-out-quart);
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s var(--ease-out-quart) forwards;
+}
+
+.animate-backdrop {
+  animation: fadeIn 0.25s var(--ease-out-quart) forwards;
+}
+
+.animate-modal {
+  animation: modalSlideIn 0.3s var(--ease-out-quart) forwards;
+}
+
+.animate-dropdown {
+  animation: dropdownReveal 0.2s var(--ease-out-quart) forwards;
+}
+
+/* Auto-animate all modal backdrops in the application */
+div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"],
+div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"],
+div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"],
+div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"],
+div[style*="position: fixed"][style*="backdrop-filter"] {
+  animation: fadeIn 0.25s var(--ease-out-quart) forwards !important;
+}
+
+/* Auto-animate all modal content cards (first child of the backdrop) */
+div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"] > div,
+div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"] > div,
+div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"] > div,
+div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"] > div,
+div[style*="position: fixed"][style*="backdrop-filter"] > div {
+  animation: modalSlideIn 0.3s var(--ease-out-quart) forwards !important;
+}
+
+/* Accessibility: prefers-reduced-motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
+  }
+}

@@ -285,16 +285,19 @@ const LoginPage: React.FC = () => {
         }} />
 
         {/* Login card */}
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: 440,
-          background: '#0f2012',
-          border: '1px solid rgba(34,197,94,0.15)',
-          borderRadius: 20,
-          boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.08), 0 0 40px rgba(34,197,94,0.06)',
-          padding: 'clamp(28px, 5vw, 40px)',
-        }}>
+        <div
+          className="animate-modal"
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: 440,
+            background: '#0f2012',
+            border: '1px solid rgba(34,197,94,0.15)',
+            borderRadius: 20,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.08), 0 0 40px rgba(34,197,94,0.06)',
+            padding: 'clamp(28px, 5vw, 40px)',
+          }}
+        >
 
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 32 }}>

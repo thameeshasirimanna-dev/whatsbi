@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Conversation } from "./ConversationsPage";
 import { Search, Plus, MessageSquare, ChevronDown } from "lucide-react";
+import { SkeletonConversationList } from "../shared/Skeleton";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -49,6 +50,7 @@ interface ConversationListProps {
   onTabChange: (tab: TabType) => void;
   onStageFilterChange: (stage: string | null) => void;
   onTimeFilterChange: (filter: TimeFilterType) => void;
+  loading?: boolean;
 }
 
 const STAGE_OPTIONS = [
@@ -81,6 +83,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   onTabChange,
   onStageFilterChange,
   onTimeFilterChange,
+  loading = false,
 }) => {
   const selectedConversationRef = useRef<HTMLDivElement>(null);
 
@@ -231,12 +234,13 @@ const ConversationList: React.FC<ConversationListProps> = ({
                 background: "none",
                 cursor: "pointer",
                 color: isActive ? "#22c55e" : "#71717a",
-                borderBottom: isActive ? "2px solid #22c55e" : "2px solid transparent",
+                borderBottom: "2px solid",
+                borderBottomColor: isActive ? "#22c55e" : "transparent",
                 borderRadius: 0,
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
-                transition: "color 0.12s",
+                transition: "color 0.25s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.25s cubic-bezier(0.25, 1, 0.5, 1)",
                 marginBottom: -1,
                 whiteSpace: "nowrap",
               }}
@@ -421,7 +425,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
       {/* List */}
       <div style={{ flex: 1, overflowY: "auto" }}>
-        {conversations.length === 0 ? (
+        {loading ? (
+          <SkeletonConversationList count={6} />
+        ) : conversations.length === 0 ? (
           <div
             style={{
               display: "flex",
@@ -478,10 +484,11 @@ const ConversationList: React.FC<ConversationListProps> = ({
                   background: isSelected
                     ? "rgba(34,197,94,0.08)"
                     : "transparent",
-                  borderLeft: isSelected
-                    ? "3px solid #22c55e"
-                    : "3px solid transparent",
-                  transition: "background 0.12s",
+                  borderLeft: "3px solid",
+                  borderLeftColor: isSelected
+                    ? "#22c55e"
+                    : "transparent",
+                  transition: "background 0.2s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
                 }}
                 onMouseEnter={(e) => {
                   if (!isSelected)

@@ -107,8 +107,14 @@ export function DialogProvider({ children }: { children: ReactNode }) {
 
       {/* Confirm modal */}
       {confirmState && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', width: '100%', maxWidth: 400, padding: 28 }}>
+        <div
+          className="animate-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div
+            className="animate-modal"
+            style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', width: '100%', maxWidth: 400, padding: 28 }}
+          >
             {/* Icon */}
             <div style={{ width: 48, height: 48, borderRadius: 14, background: confirmState.danger ? 'rgba(244,63,94,0.08)' : 'rgba(34,197,94,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               {confirmState.danger

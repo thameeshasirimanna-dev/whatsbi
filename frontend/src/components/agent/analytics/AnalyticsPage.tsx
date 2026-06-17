@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from "framer-motion";
 import { useAnalytics, AnalyticsData } from "../../../hooks/useAnalytics";
-import Loader from "../shared/Loader";
+import { SkeletonPage } from "../shared/Skeleton";
 import {
   Users,
   ShoppingBag,
@@ -527,7 +527,7 @@ const AnalyticsPage: React.FC = () => {
   const { analytics, loading, error } = useAnalytics();
 
   if (loading) {
-    return <Loader />;
+    return <SkeletonPage type="analytics" />;
   }
 
   if (error) {

@@ -6,6 +6,7 @@ import ProductSelectorModal from "./ProductSelectorModal";
 import ServiceSelectorModal from "./ServiceSelectorModal";
 import CustomerOrdersModal from "./CustomerOrdersModal";
 import LeadStageModal from "./LeadStageModal";
+import { SkeletonMessages } from "../shared/Skeleton";
 
 const formatMessageTime = (timeStr: string) => {
   if (!timeStr) return "";
@@ -225,6 +226,7 @@ interface MessageViewProps {
   messagesPrependedCount?: number;
   onResetMessagesWerePrepended?: () => void;
   onBack?: () => void;
+  loadingMessages?: boolean;
 }
 
 const MessageView: React.FC<MessageViewProps> = ({
@@ -255,6 +257,7 @@ const MessageView: React.FC<MessageViewProps> = ({
   messagesPrependedCount = 0,
   onResetMessagesWerePrepended,
   onBack,
+  loadingMessages = false,
 }) => {
   const isTemplateRequired = selectedConversation
     ? !selectedConversation.lastUserMessageTime ||
@@ -271,6 +274,8 @@ const MessageView: React.FC<MessageViewProps> = ({
   const [showLeadStageModal, setShowLeadStageModal] = useState(false);
   const [serviceMessage, setServiceMessage] = useState("");
   const scrollAdjustedRef = useRef(false);
+  const lastMessageIdRef = useRef<string | number | null>(null);
+  const activeConversationIdRef = useRef<number | null>(null);
   const isProductBusiness = businessType === "product";
   const isServiceBusiness = businessType === "service";
 
@@ -611,6 +616,47 @@ const MessageView: React.FC<MessageViewProps> = ({
     };
   }, [messagesContainerRef, onLoadMoreMessages, loadingMoreMessages]);
 
+  // Scroll to bottom instantly when switching conversations or when a new message is appended
+  useEffect(() => {
+    if (!selectedConversation) {
+      lastMessageIdRef.current = null;
+      activeConversationIdRef.current = null;
+      return;
+    }
+
+    const messages = selectedConversation.messages || [];
+    const lastMsg = messages[messages.length - 1];
+    const lastMsgId = lastMsg ? lastMsg.id : null;
+    const conversationId = selectedConversation.id;
+
+    // Check if we switched conversation
+    const isConvSwitch = activeConversationIdRef.current !== conversationId;
+    
+    // Check if a new message was appended to the end of the chat
+    const isNewMessageAppended = 
+      !isConvSwitch && 
+      lastMsgId !== null && 
+      lastMsgId !== lastMessageIdRef.current;
+
+    // Update refs
+    activeConversationIdRef.current = conversationId;
+    lastMessageIdRef.current = lastMsgId;
+
+    if (isConvSwitch || isNewMessageAppended) {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        
+        // Timeout to ensure browser has completed layout and image renders
+        const timer = setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+          }
+        }, 50);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [selectedConversation?.id, selectedConversation?.messages]);
+
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
 
@@ -897,7 +943,9 @@ const MessageView: React.FC<MessageViewProps> = ({
       {/* Messages - only show when conversation is selected */}
       {selectedConversation && (
         <div className="flex-1 flex flex-col overflow-hidden pt-4" style={{ background: '#f8faf8' }}>
-          {selectedConversation.messages.length === 0 ? (
+          {loadingMessages ? (
+            <SkeletonMessages count={5} />
+          ) : selectedConversation.messages.length === 0 ? (
             <div className="flex items-center justify-center flex-1">
               <div className="text-center">
                 <div style={{ width: 52, height: 52, background: '#f4f4f5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
@@ -1307,7 +1355,20 @@ const MessageView: React.FC<MessageViewProps> = ({
               {showAttachMenu && (
                 <div
                   ref={menuRef}
-                  style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 50, background: '#fff', borderRadius: 12, border: '1px solid #ebebeb', boxShadow: '0 8px 28px rgba(0,0,0,0.1)', width: 168, overflow: 'hidden' }}
+                  className="animate-dropdown"
+                  style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 8px)',
+                    left: 0,
+                    zIndex: 50,
+                    background: '#fff',
+                    borderRadius: 12,
+                    border: '1px solid #ebebeb',
+                    boxShadow: '0 8px 28px rgba(0,0,0,0.1)',
+                    width: 168,
+                    overflow: 'hidden',
+                    transformOrigin: 'bottom left',
+                  }}
                 >
                   {[
                     { label: 'Images', ref: imageInputRef, icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },

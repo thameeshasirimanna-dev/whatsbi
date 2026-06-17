@@ -1,9 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
+import { CacheService } from '../../utils/cache.js';
 
 export default async function sendInvoiceTemplateRoutes(
   fastify: FastifyInstance,
   pgClient: any,
+  cacheService: CacheService,
   emitNewMessage?: (agentId: number, messageData: any) => void
 ) {
   fastify.post('/send-invoice-template', async (request, reply) => {
@@ -328,6 +330,11 @@ export default async function sendInvoiceTemplateRoutes(
           emitNewMessage(agent.id, messageDataForSocket);
         }
 
+        if (cacheService) {
+          await cacheService.invalidateRecentMessages(agent.id, customer.id);
+          await cacheService.invalidateChatList(agent.id);
+        }
+
         return reply.code(200).send({
           success: true,
           message_id: whatsappMessageId,
@@ -472,6 +479,11 @@ Thank you for your business!`;
             caption: insertedMessage.caption,
           };
           emitNewMessage(agent.id, messageDataForSocket);
+        }
+
+        if (cacheService) {
+          await cacheService.invalidateRecentMessages(agent.id, customer.id);
+          await cacheService.invalidateChatList(agent.id);
         }
 
         return reply.code(200).send({
