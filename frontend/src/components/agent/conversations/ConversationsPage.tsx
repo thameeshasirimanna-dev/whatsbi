@@ -1541,24 +1541,7 @@ const ConversationsPage: React.FC = () => {
     fetchAgentAndConversations(true);
   }, []);
 
-  // Set container height to fit viewport minus navbar
-  useEffect(() => {
-    const updateHeight = () => {
-      if (containerRef.current) {
-        const navbarHeight = 60; // Adjust based on actual navbar height
-        containerRef.current.style.height = `${
-          window.innerHeight - navbarHeight
-        }px`;
-      }
-    };
 
-    updateHeight();
-    window.addEventListener("resize", updateHeight);
-
-    return () => {
-      window.removeEventListener("resize", updateHeight);
-    };
-  }, []);
 
   const selectConversation = useCallback(
     async (conversation: Conversation) => {
@@ -2850,9 +2833,9 @@ const ConversationsPage: React.FC = () => {
 
   return (
     <div
-      className="flex overflow-hidden w-full"
+      className="flex overflow-hidden w-full h-full"
       ref={containerRef}
-      style={{ position: "relative", background: '#f8faf8' }}
+      style={{ position: "relative", background: '#f8faf8', height: '100%' }}
     >
       <ConversationList
         conversations={conversations}

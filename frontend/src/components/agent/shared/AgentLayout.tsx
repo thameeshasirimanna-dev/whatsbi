@@ -121,7 +121,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
       <>
         <style>{FONT_CSS}</style>
         <div style={{
-          minHeight: '100vh',
+          minHeight: '100dvh',
           background: '#0c1a0e',
           display: 'flex',
           alignItems: 'center',
@@ -151,7 +151,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
       <>
         <style>{FONT_CSS}</style>
         <div style={{
-          minHeight: '100vh',
+          minHeight: '100dvh',
           background: '#0c1a0e',
           display: 'flex',
           alignItems: 'center',
@@ -192,7 +192,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
       <style>{FONT_CSS}</style>
       <div style={{
         display: 'flex',
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         background: '#f8faf8',
         fontFamily: "'DM Sans', sans-serif",
@@ -223,6 +223,9 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
             className="animate-fade-in"
             style={{
               flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
               overflowY: location.pathname.includes('/conversations') ? 'hidden' : 'auto',
               background: '#f8faf8',
             }}

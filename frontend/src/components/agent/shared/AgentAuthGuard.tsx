@@ -44,7 +44,7 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf8' }}>
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf8' }}>
         <style>{`@keyframes aag-spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 44, height: 44, border: '3px solid #ebebeb', borderTopColor: '#22c55e', borderRadius: '50%', animation: 'aag-spin 0.8s linear infinite', margin: '0 auto 14px' }} />
