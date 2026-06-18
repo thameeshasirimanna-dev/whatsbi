@@ -44,6 +44,8 @@ export interface Order {
    customer_name?: string;
    customer_phone?: string;
    total_amount: number;
+   advance_amount?: number;
+   payment_status?: "unpaid" | "partially_paid" | "paid";
    status:
      | "pending"
      | "processing"
@@ -54,6 +56,7 @@ export interface Order {
    notes?: string;
    order_details?: string;
    shipping_address?: string;
+   estimated_delivery_date?: string;
    created_at: string;
    updated_at?: string;
    parsed_order_details?: any;

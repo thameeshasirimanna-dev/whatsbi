@@ -14,6 +14,7 @@ import {
 import { useDialog } from "../shared/DialogProvider";
 import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 import { SkeletonPage } from "../shared/Skeleton";
+import Portal from "../shared/Portal";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -202,7 +203,8 @@ const AppointmentsPage: React.FC = () => {
 
       {/* Delete Confirm */}
       {showDeleteConfirm && selectedAppointmentForDelete && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <Portal>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 420, overflow: 'hidden' }}>
             <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(244,63,94,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -223,11 +225,13 @@ const AppointmentsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Customer Select Modal */}
       {showCustomerSelect && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <Portal>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -269,7 +273,8 @@ const AppointmentsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
 

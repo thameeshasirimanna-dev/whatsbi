@@ -104,40 +104,21 @@ div[style*="position: fixed"][style*="backdrop-filter"] > div {
   }
 }
 
-/* Dim and disable pointer events on header/sidebar when a modal backdrop is active */
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-header,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-header,
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-header,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-header,
-body:has(#root div[style*="position: fixed"][style*="backdrop-filter"]) .layout-header,
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-sidebar,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-sidebar,
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-sidebar,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-sidebar,
-body:has(#root div[style*="position: fixed"][style*="backdrop-filter"]) .layout-sidebar {
+/* Disable pointer events and selection on header/sidebar when a modal backdrop is active */
+body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-header,
+body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-header,
+body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-header,
+body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-header,
+body:has(div[style*="position: fixed"][style*="backdrop-filter"]) .layout-header,
+body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-sidebar,
+body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-sidebar,
+body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-sidebar,
+body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-sidebar,
+body:has(div[style*="position: fixed"][style*="backdrop-filter"]) .layout-sidebar {
   pointer-events: none !important;
   user-select: none !important;
 }
 
-/* Apply the exact same backdrop-filter overlay to header/sidebar when a modal is active so they blur and dim identical to the page content */
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-header::after,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-header::after,
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-header::after,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-header::after,
-body:has(#root div[style*="position: fixed"][style*="backdrop-filter"]) .layout-header::after,
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-sidebar::after,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-sidebar::after,
-body:has(#root div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-sidebar::after,
-body:has(#root div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-sidebar::after,
-body:has(#root div[style*="position: fixed"][style*="backdrop-filter"]) .layout-sidebar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
-  z-index: 9999 !important;
-  animation: fadeIn 0.25s var(--ease-out-quart) forwards !important;
-}
 
 /* Accessibility: prefers-reduced-motion fallback */
 @media (prefers-reduced-motion: reduce) {

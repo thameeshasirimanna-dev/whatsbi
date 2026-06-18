@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getToken } from '../../../lib/auth';
 import { getCurrentAgent } from '../../../lib/agent';
 import { X, Check, Phone, ExternalLink, MessageCircle, Plus, Trash2 } from 'lucide-react';
+import Portal from '../shared/Portal';
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -297,9 +298,9 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
   const orderedVariables = allPlaceholders.sort((a, b) => a.index - b.index).filter(p => { if (seen.has(p.param)) return false; seen.add(p.param); return true; }).map(p => p.param);
 
   return (
-    <>
-      <style>{`@keyframes ctm-spin { to { transform: rotate(360deg); } }`}</style>
+    <Portal>
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <style>{`@keyframes ctm-spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 900, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Header */}
@@ -502,7 +503,7 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
           </div>
         </div>
       </div>
-    </>
+    </Portal>
   );
 };
 

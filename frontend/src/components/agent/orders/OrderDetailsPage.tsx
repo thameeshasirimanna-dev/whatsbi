@@ -26,6 +26,8 @@ interface OrderDetails {
     notes?: string;
     shipping_address?: string;
   };
+  advance_amount?: number;
+  payment_status?: string;
   status: string;
   created_at: string;
   updated_at?: string;
@@ -40,6 +42,16 @@ const getStatusStyle = (status: string): React.CSSProperties => {
   if (s === 'cancelled') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
   return { background: '#f4f4f5', color: '#71717a' };
 };
+
+const getPaymentStatusStyle = (paymentStatus: string): React.CSSProperties => {
+  const s = paymentStatus?.toLowerCase() || 'unpaid';
+  if (s === 'paid') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
+  if (s === 'partially_paid') return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
+  if (s === 'unpaid') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
+  return { background: '#f4f4f5', color: '#71717a' };
+};
+
+const capitalizeFirst = (str: string): string => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 
 const selectStyle: React.CSSProperties = {
   width: '100%', padding: '9px 12px',
@@ -139,6 +151,8 @@ const OrderDetailsPage: React.FC = () => {
             notes: (orderData as any).notes || "",
             shipping_address: (orderData as any).shipping_address || "",
           },
+          advance_amount: Number((orderData as any).advance_amount) || 0,
+          payment_status: (orderData as any).payment_status || "unpaid",
           status: (orderData as any).status,
           created_at: (orderData as any).created_at,
           updated_at: (orderData as any).updated_at,
@@ -178,6 +192,40 @@ const OrderDetailsPage: React.FC = () => {
     } catch (err) {
       setError("Failed to update order status");
       console.error("Update error:", err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const markAsFullyPaid = async () => {
+    if (!id || !agentId || !agentPrefix || !order) return;
+    try {
+      setUpdatingStatus(true);
+      const token = getToken();
+      if (!token) { setError("User not authenticated"); return; }
+
+      const updateResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-orders`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: Number(id),
+          payment_status: "paid",
+          advance_amount: order.order_details.total_amount,
+        }),
+      });
+      if (!updateResponse.ok) { setError("Failed to update payment status"); return; }
+      const updateData = await updateResponse.json();
+      if (!updateData.success) { setError("Failed to update payment status"); return; }
+
+      setOrder(prev => prev ? {
+        ...prev,
+        payment_status: "paid",
+        advance_amount: prev.order_details.total_amount,
+      } : null);
+      toast("Order marked as fully paid successfully", 'success');
+    } catch (err) {
+      setError("Failed to update payment status");
+      console.error("Update payment error:", err);
     } finally {
       setUpdatingStatus(false);
     }
@@ -235,7 +283,10 @@ const OrderDetailsPage: React.FC = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ ...DM, fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, ...getStatusStyle(order.status) }}>
-              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+              Status: {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            </span>
+            <span style={{ ...DM, fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, ...getPaymentStatusStyle(order.payment_status || 'unpaid') }}>
+              Payment: {order.payment_status === 'partially_paid' ? 'Partially Paid' : order.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
             </span>
             <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 9, padding: '8px 14px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <Printer size={14} /> Print Receipt
@@ -299,6 +350,13 @@ const OrderDetailsPage: React.FC = () => {
                     <><div style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'odp-spin 0.7s linear infinite' }} />Updating…</>
                   ) : 'Update Status'}
                 </button>
+                {order.payment_status !== 'paid' && (
+                  <button onClick={markAsFullyPaid} disabled={updatingStatus}
+                    style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 4px 12px rgba(2,132,199,0.25)' }}
+                  >
+                    Mark as Fully Paid
+                  </button>
+                )}
                 <button onClick={sendWhatsAppMessage}
                   style={{ background: 'rgba(34,197,94,0.08)', color: '#059669', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 9, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                   onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)'}
@@ -318,15 +376,17 @@ const OrderDetailsPage: React.FC = () => {
               <div style={{ padding: '14px 18px', borderBottom: '1px solid #f4f4f5' }}>
                 <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>Order Summary</span>
               </div>
-              <div className="grid grid-cols-3" style={{ padding: '20px 24px' }}>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3" style={{ padding: '20px 24px' }}>
                 {[
-                  { value: `LKR ${order.order_details.total_amount.toFixed(2)}`, label: 'Total Amount', color: '#22c55e' },
-                  { value: order.order_details.items.length, label: 'Line Items', color: '#0891b2' },
+                  { value: `LKR ${Number(order.order_details.total_amount).toFixed(2)}`, label: 'Total Amount', color: '#22c55e' },
+                  { value: `LKR ${Number(order.advance_amount || 0).toFixed(2)}`, label: 'Advance Paid', color: '#0891b2' },
+                  { value: `LKR ${Math.max(0, Number(order.order_details.total_amount) - Number(order.advance_amount || 0)).toFixed(2)}`, label: 'Balance Due', color: '#ef4444' },
+                  { value: order.order_details.items.length, label: 'Line Items', color: '#4f46e5' },
                   { value: totalQty, label: 'Total Qty', color: '#7c3aed' },
                 ].map((stat, i) => (
-                  <div key={stat.label} style={{ textAlign: 'center', padding: '4px 12px', borderRight: i < 2 ? '1px solid #f4f4f5' : 'none' }}>
-                    <div style={{ ...SYNE, fontSize: 22, fontWeight: 800, color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.value}</div>
-                    <div style={{ ...DM, fontSize: 12, color: '#71717a' }}>{stat.label}</div>
+                  <div key={stat.label} style={{ textAlign: 'center', padding: '4px 6px', borderRight: i < 4 ? '1px solid #f4f4f5' : 'none' }}>
+                    <div style={{ ...SYNE, fontSize: 15, fontWeight: 800, color: stat.color, lineHeight: 1, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stat.value}</div>
+                    <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>{stat.label}</div>
                   </div>
                 ))}
               </div>

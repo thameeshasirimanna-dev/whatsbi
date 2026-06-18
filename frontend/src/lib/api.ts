@@ -17,6 +17,8 @@ export interface Order {
   customer_name?: string;
   customer_phone?: string;
   total_amount: number;
+  advance_amount?: number;
+  payment_status?: "unpaid" | "partially_paid" | "paid";
   status: "pending" | "processing" | "shipped" | "completed" | "delivered" | "cancelled";
   notes?: string;
   order_details?: string;
@@ -74,6 +76,8 @@ export const createOrder = async (orderData: {
   notes?: string;
   shipping_address?: string;
   items: OrderItem[];
+  advance_amount?: number;
+  payment_status?: string;
 }): Promise<Order> => {
   try {
     const token = getToken();
@@ -105,6 +109,8 @@ export const updateOrder = async (orderData: {
   status?: string;
   notes?: string;
   shipping_address?: string;
+  advance_amount?: number;
+  payment_status?: string;
 }): Promise<Order> => {
   try {
     const token = getToken();

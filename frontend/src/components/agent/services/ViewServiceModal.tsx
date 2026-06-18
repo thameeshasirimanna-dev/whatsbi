@@ -1,6 +1,7 @@
 import React from "react";
 import type { ServiceWithPackages, Package } from "../../../types";
 import { X, Briefcase } from "lucide-react";
+import Portal from "../shared/Portal";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -12,7 +13,8 @@ interface ViewServiceModalProps {
 
 const ViewServiceModal: React.FC<ViewServiceModalProps> = ({ service, onClose }) => {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <Portal>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Header */}
@@ -160,6 +162,7 @@ const ViewServiceModal: React.FC<ViewServiceModalProps> = ({ service, onClose })
         </div>
       </div>
     </div>
+  </Portal>
   );
 };
 

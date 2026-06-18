@@ -5,6 +5,7 @@ import { getCurrentAgent } from "../../../lib/agent";
 import { Order, OrderItem } from "../../../types/index";
 import { X, Plus, Trash2 } from 'lucide-react';
 import { useDialog } from '../shared/DialogProvider';
+import Portal from '../shared/Portal';
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -63,6 +64,9 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const [editStatus, setEditStatus] = useState(order?.status || '');
   const [shippingAddress, setShippingAddress] = useState(order?.shipping_address || '');
   const [notes, setNotes] = useState(order?.notes || '');
+  const [advanceAmount, setAdvanceAmount] = useState<number>(Number(order?.advance_amount || 0));
+  const [paymentStatus, setPaymentStatus] = useState<string>(order?.payment_status || 'unpaid');
+  const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState<string>('');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [newItemName, setNewItemName] = useState('');
@@ -80,6 +84,17 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
     if (order && agentPrefix) {
       setShippingAddress(order.shipping_address || '');
       setNotes(order.notes || '');
+      setAdvanceAmount(Number(order.advance_amount || 0));
+      setPaymentStatus(order.payment_status || 'unpaid');
+      if (order.estimated_delivery_date) {
+        const d = new Date(order.estimated_delivery_date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        setEstimatedDeliveryDate(`${year}-${month}-${day}`);
+      } else {
+        setEstimatedDeliveryDate('');
+      }
       fetchOrderItems();
     }
   }, [order, agentPrefix]);
@@ -323,6 +338,9 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
             total_amount: items.reduce((sum, item) => sum + item.quantity * item.price, 0),
             notes: notes.trim() || null,
             shipping_address: shippingAddress.trim() || null,
+            advance_amount: Number(advanceAmount) || 0,
+            payment_status: paymentStatus,
+            estimated_delivery_date: estimatedDeliveryDate || null,
             updated_at: new Date().toISOString(),
           }),
         }
@@ -403,23 +421,27 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   if (!order || fetchLoading || businessTypeLoading) {
     return (
-      <div style={overlayStyle}>
-        <style>{`@keyframes eom-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', padding: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'eom-spin 0.8s linear infinite' }} />
+      <Portal>
+        <div style={overlayStyle}>
+          <style>{`@keyframes eom-spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', padding: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'eom-spin 0.8s linear infinite' }} />
+          </div>
         </div>
-      </div>
+      </Portal>
     );
   }
 
   if (businessTypeError) {
     return (
-      <div style={overlayStyle}>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', padding: '32px 24px', maxWidth: 360, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <p style={{ ...DM, fontSize: 14, color: '#f43f5e' }}>Unable to load business type: {businessTypeError}</p>
-          <button onClick={onClose} style={{ padding: '9px 20px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 10, ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46', cursor: 'pointer' }}>Close</button>
+      <Portal>
+        <div style={overlayStyle}>
+          <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', padding: '32px 24px', maxWidth: 360, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <p style={{ ...DM, fontSize: 14, color: '#f43f5e' }}>Unable to load business type: {businessTypeError}</p>
+            <button onClick={onClose} style={{ padding: '9px 20px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 10, ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46', cursor: 'pointer' }}>Close</button>
+          </div>
         </div>
-      </div>
+      </Portal>
     );
   }
 
@@ -432,14 +454,22 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
   };
 
   return (
-    <div style={overlayStyle}>
+    <Portal>
+      <div style={overlayStyle}>
       <style>{`@keyframes eom-spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 860, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 680, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Header */}
-        <div style={{ flexShrink: 0, padding: '18px 24px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e' }}>Edit Order #{order.id}</span>
-          <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <span style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e', display: 'block', marginBottom: 4 }}>Edit Order #{order.id.toString().padStart(4, '0')}</span>
+            {(order.customer_name || order.customer_phone) && (
+              <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>
+                For <strong style={{ color: '#3f3f46' }}>{order.customer_name || 'Customer'}</strong> {order.customer_phone && `· ${order.customer_phone}`}
+              </span>
+            )}
+          </div>
+          <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
             <X size={15} style={{ color: '#71717a' }} />
           </button>
         </div>
@@ -579,26 +609,99 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
               <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} rows={3} placeholder="Enter shipping address…" style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocusG} onBlur={onBlurG} />
             </div>
 
-            {/* Total */}
-            <div style={{ padding: '14px 16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#3f3f46' }}>Total Amount</span>
-              <span style={{ ...SYNE, fontSize: 20, fontWeight: 700, color: '#059669' }}>LKR {totalAmount.toFixed(2)}</span>
+            {/* Estimated Delivery Date */}
+            <div>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Estimated Delivery Date (Optional)</label>
+              <input
+                type="date"
+                value={estimatedDeliveryDate}
+                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+                style={inputStyle}
+                onFocus={onFocusG}
+                onBlur={onBlurG}
+              />
+            </div>
+
+            {/* Advance Payment and Payment Status */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Advance Payment (LKR)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max={totalAmount}
+                  step="0.01"
+                  value={advanceAmount === 0 ? '' : advanceAmount}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    const newAdvance = isNaN(val) ? 0 : val;
+                    setAdvanceAmount(newAdvance);
+                    // Dynamically set payment status
+                    if (newAdvance >= totalAmount && totalAmount > 0) {
+                      setPaymentStatus('paid');
+                    } else if (newAdvance > 0) {
+                      setPaymentStatus('partially_paid');
+                    } else {
+                      setPaymentStatus('unpaid');
+                    }
+                  }}
+                  placeholder="0.00"
+                  style={inputStyle}
+                  onFocus={onFocusG}
+                  onBlur={onBlurG}
+                />
+              </div>
+              <div>
+                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Payment Status</label>
+                <select
+                  value={paymentStatus}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    setPaymentStatus(status);
+                    if (status === 'paid') {
+                      setAdvanceAmount(totalAmount);
+                    } else if (status === 'unpaid') {
+                      setAdvanceAmount(0);
+                    }
+                  }}
+                  style={inputStyle}
+                  onFocus={onFocusG}
+                  onBlur={onBlurG}
+                >
+                  <option value="unpaid">Unpaid</option>
+                  <option value="partially_paid">Partially Paid</option>
+                  <option value="paid">Paid (Fully)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Total and Balance Due */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>Total Amount</span>
+                <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>LKR {totalAmount.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(34,197,94,0.1)', paddingTop: 8 }}>
+                <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>Balance Due</span>
+                <span style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#059669' }}>LKR {Math.max(0, totalAmount - advanceAmount).toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #ebebeb', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button onClick={onClose} disabled={loading} style={{ padding: '10px 20px', background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer', ...DM, fontSize: 13, fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
+        <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #ebebeb', display: 'flex', gap: 10 }}>
+          <button onClick={onClose} disabled={loading} style={{ flex: 1, padding: '12px 20px', background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer', ...DM, fontSize: 14, fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
             Cancel
           </button>
           <button onClick={handleUpdateOrder} disabled={loading || items.length === 0}
-            style={{ padding: '10px 20px', background: (loading || items.length === 0) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, cursor: (loading || items.length === 0) ? 'not-allowed' : 'pointer', ...DM, fontSize: 13, fontWeight: 600, boxShadow: (loading || items.length === 0) ? 'none' : '0 4px 14px rgba(34,197,94,0.3)' }}>
+            style={{ flex: 1, padding: '12px 20px', background: (loading || items.length === 0) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, cursor: (loading || items.length === 0) ? 'not-allowed' : 'pointer', ...DM, fontSize: 14, fontWeight: 600, boxShadow: (loading || items.length === 0) ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {loading ? 'Updating…' : 'Update Order'}
           </button>
         </div>
       </div>
     </div>
+    </Portal>
   );
 };
 

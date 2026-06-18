@@ -4,23 +4,33 @@ import { Order, OrderItem } from '../../../types/index';
 import { X, MessageCircle, Package, User } from 'lucide-react';
 import { useDialog } from '../shared/DialogProvider';
 import { SkeletonBase } from '../shared/Skeleton';
+import Portal from '../shared/Portal';
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
+const getPaymentStatusStyle = (paymentStatus: string): React.CSSProperties => {
+  const s = paymentStatus?.toLowerCase();
+  if (s === 'paid') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
+  if (s === 'partially_paid') return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
+  if (s === 'unpaid') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
+  return { background: '#f4f4f5', color: '#71717a' };
+};
+
 const getStatusStyle = (status: string): React.CSSProperties => {
-  const s = status.toLowerCase();
+  const s = status?.toLowerCase();
+  if (s === 'completed') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
   if (s === 'pending') return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
-  if (s === 'processing') return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
-  if (s === 'shipped') return { background: 'rgba(147,51,234,0.08)', color: '#9333ea' };
-  if (s === 'delivered' || s === 'completed') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
   if (s === 'cancelled') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
   return { background: '#f4f4f5', color: '#71717a' };
 };
 
+const capitalizeFirst = (str: string): string => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
+
 interface ViewOrderModalProps {
   order: Order | null;
   onClose: () => void;
+  onSuccess?: () => void;
   agentPrefix: string | null;
   agentId: number | null;
 }
@@ -30,6 +40,7 @@ const orderDetailsCache: Record<number, Order> = {};
 const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
   order,
   onClose,
+  onSuccess,
   agentPrefix,
   agentId
 }) => {
@@ -37,6 +48,64 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
   const [fullOrderDetails, setFullOrderDetails] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
+
+  const handleMarkAsPaid = async () => {
+    if (!fullOrderDetails || !fullOrderDetails.id) return;
+    try {
+      setUpdatingPayment(true);
+      const token = getToken();
+      if (!token) {
+        toast('User not authenticated', 'error');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/manage-orders`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: fullOrderDetails.id,
+            payment_status: 'paid',
+            advance_amount: fullOrderDetails.total_amount,
+            updated_at: new Date().toISOString(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update payment status');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update payment status');
+      }
+
+      toast('Order marked as fully paid', 'success');
+      
+      const updatedOrder = {
+        ...fullOrderDetails,
+        payment_status: 'paid' as const,
+        advance_amount: fullOrderDetails.total_amount,
+      };
+      orderDetailsCache[fullOrderDetails.id] = updatedOrder;
+      setFullOrderDetails(updatedOrder);
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast('Error: ' + err.message, 'error');
+    } finally {
+      setUpdatingPayment(false);
+    }
+  };
 
   useEffect(() => {
     if (order && order.id && agentPrefix && agentId) {
@@ -161,7 +230,8 @@ Thank you!`;
 
   if (loading && !fullOrderDetails) {
     return (
-      <div style={overlayStyle}>
+      <Portal>
+        <div style={overlayStyle}>
         <div
           style={{
             ...cardStyle,
@@ -247,20 +317,23 @@ Thank you!`;
             <SkeletonBase style={{ width: 80, height: 34, borderRadius: 10 }} />
           </div>
         </div>
-      </div>
+        </div>
+      </Portal>
     );
   }
 
   if (error || !fullOrderDetails || !fullOrderDetails.id || typeof fullOrderDetails.id !== 'number' || fullOrderDetails.id <= 0) {
     return (
-      <div style={overlayStyle}>
+      <Portal>
+        <div style={overlayStyle}>
         <div style={{ ...cardStyle, maxWidth: 360, padding: 32, alignItems: 'center', gap: 16 }}>
           <p style={{ ...DM, fontSize: 14, color: '#f43f5e', textAlign: 'center' }}>{error || 'Order not found or invalid'}</p>
           <button onClick={onClose} style={{ padding: '10px 20px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 10, ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46', cursor: 'pointer' }}>
             Close
           </button>
         </div>
-      </div>
+        </div>
+      </Portal>
     );
   }
 
@@ -268,7 +341,8 @@ Thank you!`;
   const totalQty = fullOrderDetails.parsed_order_details?.items?.reduce((sum: number, item: OrderItem) => sum + (item.quantity || 0), 0) || 0;
 
   return (
-    <div style={overlayStyle}>
+    <Portal>
+      <div style={overlayStyle}>
       <style>{`@keyframes vom-spin { to { transform: rotate(360deg); } }`}</style>
       <div style={{ ...cardStyle, maxWidth: 900, maxHeight: '95vh' }}>
 
@@ -282,9 +356,14 @@ Thank you!`;
               <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>
                 Order #{fullOrderDetails.id.toString().padStart(4, '0')}
               </span>
-              <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, ...getStatusStyle(fullOrderDetails.status) }}>
-                {fullOrderDetails.status}
-              </span>
+              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, ...getStatusStyle(fullOrderDetails.status) }}>
+                  {fullOrderDetails.status}
+                </span>
+                <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, ...getPaymentStatusStyle(fullOrderDetails.payment_status || 'unpaid') }}>
+                  {fullOrderDetails.payment_status === 'partially_paid' ? 'Partially Paid' : fullOrderDetails.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                </span>
+              </div>
             </div>
           </div>
           <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -320,20 +399,39 @@ Thank you!`;
                       {new Date(fullOrderDetails.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                   </div>
+                  {fullOrderDetails.estimated_delivery_date && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Est. Delivery</span>
+                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#059669' }}>
+                        {new Date(fullOrderDetails.estimated_delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Actions */}
               <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 12, padding: '12px 14px' }}>
                 <span style={{ ...DM, fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 10 }}>Actions</span>
-                <button
-                  onClick={sendWhatsAppMessage}
-                  disabled={!fullOrderDetails.customer_phone}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: (!fullOrderDetails.customer_phone) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 8, cursor: (!fullOrderDetails.customer_phone) ? 'not-allowed' : 'pointer', ...DM, fontSize: 12, fontWeight: 600, boxShadow: (!fullOrderDetails.customer_phone) ? 'none' : '0 3px 10px rgba(34,197,94,0.3)' }}
-                >
-                  <MessageCircle size={14} />
-                  WhatsApp Update
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={sendWhatsAppMessage}
+                    disabled={!fullOrderDetails.customer_phone}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: (!fullOrderDetails.customer_phone) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 8, cursor: (!fullOrderDetails.customer_phone) ? 'not-allowed' : 'pointer', ...DM, fontSize: 12, fontWeight: 600, boxShadow: (!fullOrderDetails.customer_phone) ? 'none' : '0 3px 10px rgba(34,197,94,0.3)' }}
+                  >
+                    <MessageCircle size={14} />
+                    WhatsApp Update
+                  </button>
+                  {fullOrderDetails.payment_status !== 'paid' && (
+                    <button
+                      onClick={handleMarkAsPaid}
+                      disabled={updatingPayment}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', ...DM, fontSize: 12, fontWeight: 600, boxShadow: '0 3px 10px rgba(2,132,199,0.3)' }}
+                    >
+                      {updatingPayment ? 'Updating…' : 'Mark as Fully Paid'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -341,15 +439,17 @@ Thank you!`;
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
               {/* Summary stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
                 {[
-                  { label: 'Total Amount', value: `LKR ${(fullOrderDetails.total_amount || 0).toLocaleString()}` },
+                  { label: 'Total Amount', value: `LKR ${Number(fullOrderDetails.total_amount || 0).toLocaleString()}` },
+                  { label: 'Advance Paid', value: `LKR ${Number(fullOrderDetails.advance_amount || 0).toLocaleString()}` },
+                  { label: 'Balance Due', value: `LKR ${Math.max(0, Number(fullOrderDetails.total_amount || 0) - Number(fullOrderDetails.advance_amount || 0)).toLocaleString()}` },
                   { label: 'Items', value: itemCount },
                   { label: 'Total Qty', value: totalQty },
                 ].map((stat) => (
-                  <div key={stat.label} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-                    <div style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', marginBottom: 3 }}>{stat.value}</div>
-                    <div style={{ ...DM, fontSize: 10, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
+                  <div key={stat.label} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 6px', textAlign: 'center' }}>
+                    <div style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={stat.value.toString()}>{stat.value}</div>
+                    <div style={{ ...DM, fontSize: 9, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
                   </div>
                 ))}
               </div>
@@ -414,6 +514,7 @@ Thank you!`;
         </div>
       </div>
     </div>
+    </Portal>
   );
 };
 

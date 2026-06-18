@@ -4,6 +4,7 @@ import { getToken } from "../../../lib/auth";
 import { getCurrentAgent } from "../../../lib/agent";
 import { useDialog } from '../shared/DialogProvider';
 import { SkeletonPage } from "../shared/Skeleton";
+import Portal from "../shared/Portal";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -700,7 +701,8 @@ const InventoryPage: React.FC = () => {
 
       {/* Create Item Modal */}
       {showCreateModal && (
-        <div style={modalOverlay}>
+        <Portal>
+          <div style={modalOverlay}>
           <div style={modalBox(600)}>
             <div style={modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -760,11 +762,13 @@ const InventoryPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Create Category Modal */}
       {showCategoryModal && (
-        <div style={modalOverlay}>
+        <Portal>
+          <div style={modalOverlay}>
           <div style={modalBox(440)}>
             <div style={modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -802,11 +806,13 @@ const InventoryPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Edit Item Modal */}
       {editingItem && (
-        <div style={modalOverlay}>
+        <Portal>
+          <div style={modalOverlay}>
           <div style={modalBox(600)}>
             <div style={modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -882,11 +888,13 @@ const InventoryPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Edit Category Modal */}
       {showEditCategoryModal && editingCategory && (
-        <div style={modalOverlay}>
+        <Portal>
+          <div style={modalOverlay}>
           <div style={modalBox(440)}>
             <div style={modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -924,7 +932,8 @@ const InventoryPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
     </div>
   );
 };

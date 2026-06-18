@@ -9,6 +9,7 @@ import {
 import { useDialog } from "../shared/DialogProvider";
 import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 import { SkeletonPage } from "../shared/Skeleton";
+import Portal from "../shared/Portal";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -70,7 +71,7 @@ const getUser = async () => {
 interface InvoiceItem { name: string; quantity: number; price: number; total: number; }
 interface Invoice { id: number; name: string; pdf_url: string; status: "generated" | "sent" | "paid"; generated_at: string; order_id: number; }
 interface Customer { id: number; name: string; }
-interface OrderForModal { id: number; customer_id?: number; total_amount: number; status: string; notes?: string; created_at: string; customer_name: string; type?: string; }
+interface OrderForModal { id: number; customer_id?: number; total_amount: number; advance_amount?: number; payment_status?: string; status: string; notes?: string; created_at: string; customer_name: string; type?: string; }
 interface InvoiceWithDetails extends Invoice { customer_name: string; order_number: string; total: number; discount_percentage?: number; customer_id?: number; }
 
 const thCell: React.CSSProperties = {
@@ -178,6 +179,7 @@ const InvoicesPage: React.FC = () => {
 
       const allOrdersDataTemp = ordersData.orders.map((o: any) => ({
         id: o.id, customer_id: o.customer.id, total_amount: Number(o.total_amount) || 0,
+        advance_amount: Number(o.advance_amount) || 0, payment_status: o.payment_status || "unpaid",
         status: o.status, notes: o.notes, created_at: o.created_at,
       })) || [];
       const allOrdersData = allOrdersDataTemp.filter((o: any) => agentCustomers.some((c: any) => c.id === o.customer_id));
@@ -191,7 +193,10 @@ const InvoicesPage: React.FC = () => {
         ordersByCustomer[customerId].push({
           id: order.id, customer_id: order.customer_id,
           customer_name: customerMap.get(order.customer_id) || "Unknown Customer",
-          total_amount: order.total_amount || 0, status: order.status || "pending",
+          total_amount: order.total_amount || 0,
+          advance_amount: order.advance_amount || 0,
+          payment_status: order.payment_status || "unpaid",
+          status: order.status || "pending",
           notes: order.notes, created_at: order.created_at, type: "order" as const,
         });
       });
@@ -332,20 +337,20 @@ const InvoicesPage: React.FC = () => {
 
       doc.setFontSize(10);
       doc.setFont("Poppins", "normal");
-      let currentY = 60;
-      if (agentDetails.name.trim()) { doc.setFont("Poppins", "bold"); doc.text(agentDetails.name, 20, currentY); doc.setFont("Poppins", "normal"); currentY += 10; }
-      if (agentDetails.address.trim()) { doc.text(agentDetails.address, 20, currentY); currentY += 10; }
-      if (agentDetails.business_email.trim()) { doc.text(`Email: ${agentDetails.business_email}`, 20, currentY); currentY += 10; }
-      if (agentDetails.contact_number.trim()) { doc.text(`Phone: ${agentDetails.contact_number}`, 20, currentY); currentY += 10; }
-      if (agentDetails.website.trim()) { doc.text(`Website: ${agentDetails.website}`, 20, currentY); currentY += 10; }
+      let currentY = 80;
+      if (agentDetails.name.trim()) { doc.setFont("Poppins", "bold"); doc.text(agentDetails.name, 20, currentY); doc.setFont("Poppins", "normal"); currentY += 8; }
+      if (agentDetails.address.trim()) { doc.text(agentDetails.address, 20, currentY); currentY += 8; }
+      if (agentDetails.business_email.trim()) { doc.text(`Email: ${agentDetails.business_email}`, 20, currentY); currentY += 8; }
+      if (agentDetails.contact_number.trim()) { doc.text(`Phone: ${agentDetails.contact_number}`, 20, currentY); currentY += 8; }
+      if (agentDetails.website.trim()) { doc.text(`Website: ${agentDetails.website}`, 20, currentY); currentY += 8; }
 
       const rightX = doc.internal.pageSize.getWidth() - 20;
       doc.setFont("Poppins", "bold");
-      doc.text("Invoice Details", rightX, 60, { align: "right" });
+      doc.text("Invoice Details", rightX, 80, { align: "right" });
       doc.setFont("Poppins", "normal");
-      doc.text(`Date: ${new Date(order.created_at).toLocaleDateString()}`, rightX, 80, { align: "right" });
-      doc.text(`Order #: #${order.id.toString().padStart(4, "0")}`, rightX, 90, { align: "right" });
-      doc.text(`Status: ${capitalizeFirst(order.status)}`, rightX, 100, { align: "right" });
+      doc.text(`Date: ${new Date(order.created_at).toLocaleDateString()}`, rightX, 88, { align: "right" });
+      doc.text(`Order #: #${order.id.toString().padStart(4, "0")}`, rightX, 96, { align: "right" });
+      doc.text(`Status: ${capitalizeFirst(order.status)}`, rightX, 104, { align: "right" });
 
       doc.setFont("Poppins", "bold");
       doc.text("Bill To:", 20, 120);
@@ -369,7 +374,7 @@ const InvoicesPage: React.FC = () => {
       doc.setFont("Poppins", "normal");
       doc.setFontSize(10);
       items.forEach((item) => {
-        if (yPosition > 750) {
+        if (yPosition > 240) {
           doc.addPage();
           if (templateBase64) doc.addImage(templateBase64, "JPEG", 0, 0, pageWidth, pageHeight);
           yPosition = 35;
@@ -402,19 +407,30 @@ const InvoicesPage: React.FC = () => {
       const total = subtotal - discountAmount;
       let totalsY = yPosition + 5;
 
-      doc.setFont("Poppins", "bold"); doc.setFontSize(10);
-      doc.text("Subtotal:", 120, totalsY);
-      doc.text(`LKR ${subtotal.toFixed(2)}`, 190, totalsY, { align: "right" });
-      totalsY += 10;
       doc.setFont("Poppins", "normal"); doc.setFontSize(9);
-      doc.text(`Discount (${discountPct.toFixed(2)}%):`, 120, totalsY);
+      doc.text("Discount (" + discountPct.toFixed(2) + "%):", 120, totalsY);
       doc.text(`-LKR ${discountAmount.toFixed(2)}`, 190, totalsY, { align: "right" });
-      totalsY += 10;
+      totalsY += 8;
+
       doc.setFont("Poppins", "bold"); doc.setFontSize(10);
       doc.text("Total Amount:", 120, totalsY);
       doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
-      totalsY += 15;
-      yPosition = totalsY + 20;
+      totalsY += 8;
+
+      // Advance Paid
+      const advancePaid = Number(order.advance_amount || 0);
+      doc.setFont("Poppins", "normal"); doc.setFontSize(9);
+      doc.text("Advance Paid:", 120, totalsY);
+      doc.text(`LKR ${advancePaid.toFixed(2)}`, 190, totalsY, { align: "right" });
+      totalsY += 8;
+
+      // Balance Due
+      const balanceDue = Math.max(0, total - advancePaid);
+      doc.setFont("Poppins", "bold"); doc.setFontSize(10);
+      doc.text("Balance Due:", 120, totalsY);
+      doc.text(`LKR ${balanceDue.toFixed(2)}`, 190, totalsY, { align: "right" });
+
+      yPosition = totalsY + 12;
 
       if (invoiceNotes.trim()) {
         doc.setFont("Poppins", "normal"); doc.setFontSize(9);
@@ -647,7 +663,8 @@ const InvoicesPage: React.FC = () => {
 
       {/* Create Invoice Modal */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <Portal>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 460, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -782,11 +799,13 @@ const InvoicesPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Customer search dropdown — fixed portal above modal */}
       {showCustomerDropdown && isModalOpen && (
-        <div style={{ position: 'fixed', top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width, background: '#fff', border: '1px solid #ebebeb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, maxHeight: 220, overflowY: 'auto' }}>
+        <Portal>
+          <div style={{ position: 'fixed', top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width, background: '#fff', border: '1px solid #ebebeb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, maxHeight: 220, overflowY: 'auto' }}>
           {(() => {
             const filtered = query === '' ? customers : customers.filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
             if (filtered.length === 0) return (
@@ -815,7 +834,8 @@ const InvoicesPage: React.FC = () => {
               </button>
             ));
           })()}
-        </div>
+          </div>
+        </Portal>
       )}
 
       {/* Summary Cards */}

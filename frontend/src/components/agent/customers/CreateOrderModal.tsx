@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getToken } from "../../../lib/auth";
 import { X, Plus, Trash2 } from 'lucide-react';
+import Portal from "../shared/Portal";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -68,6 +69,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [items, setItems] = useState<OrderItem[]>([]);
   const [notes, setNotes] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState('');
   const [businessType, setBusinessType] = useState<'service' | 'product' | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventorySearchTerm, setInventorySearchTerm] = useState('');
@@ -219,6 +222,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             notes: orderNotes,
             shipping_address: orderShippingAddress,
             items: orderItems,
+            advance_amount: Number(advanceAmount) || 0,
+            estimated_delivery_date: estimatedDeliveryDate || null,
           }),
         }
       );
@@ -261,7 +266,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <Portal>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 680, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Header */}
@@ -410,10 +416,49 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} rows={3} placeholder="Enter shipping address…" style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocusG} onBlur={onBlurG} />
             </div>
 
-            {/* Total */}
-            <div style={{ padding: '14px 16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#3f3f46' }}>Total</span>
-              <span style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#059669' }}>LKR {calculateTotal().toFixed(2)}</span>
+            {/* Estimated Delivery Date */}
+            <div>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Estimated Delivery Date (Optional)</label>
+              <input
+                type="date"
+                value={estimatedDeliveryDate}
+                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+                style={inputStyle}
+                onFocus={onFocusG}
+                onBlur={onBlurG}
+              />
+            </div>
+
+            {/* Advance Payment */}
+            <div>
+              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Advance Payment (LKR) (Optional)</label>
+              <input
+                type="number"
+                min="0"
+                max={calculateTotal()}
+                step="0.01"
+                value={advanceAmount === 0 ? '' : advanceAmount}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setAdvanceAmount(isNaN(val) ? 0 : val);
+                }}
+                placeholder="0.00"
+                style={inputStyle}
+                onFocus={onFocusG}
+                onBlur={onBlurG}
+              />
+            </div>
+
+            {/* Total and Balance Due */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>Total Amount</span>
+                <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>LKR {calculateTotal().toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(34,197,94,0.1)', paddingTop: 8 }}>
+                <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>Balance Due</span>
+                <span style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#059669' }}>LKR {Math.max(0, calculateTotal() - advanceAmount).toFixed(2)}</span>
+              </div>
             </div>
 
             {/* Actions */}
@@ -430,6 +475,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         </div>
       </div>
     </div>
+    </Portal>
   );
 };
 

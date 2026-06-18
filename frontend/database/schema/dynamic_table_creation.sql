@@ -105,9 +105,12 @@ BEGIN
             id SERIAL PRIMARY KEY,
             customer_id INTEGER NOT NULL REFERENCES %I(id) ON DELETE CASCADE,
             total_amount DECIMAL(10,2) DEFAULT 0,
+            advance_amount DECIMAL(10,2) DEFAULT 0,
+            payment_status VARCHAR(50) DEFAULT ''unpaid'',
             status VARCHAR(50) DEFAULT ''pending'',
             notes TEXT,
             shipping_address TEXT,
+            estimated_delivery_date TIMESTAMPTZ DEFAULT NULL,
             created_at TIMESTAMPTZ DEFAULT now(),
             updated_at TIMESTAMPTZ DEFAULT now()
         );

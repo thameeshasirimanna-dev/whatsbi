@@ -9,6 +9,7 @@ import {
 import CreateOrderModal from "./CreateOrderModal";
 import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 import { SkeletonPage } from "../shared/Skeleton";
+import Portal from "../shared/Portal";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
@@ -472,12 +473,13 @@ const CustomersPage: React.FC = () => {
       {/* Create Customer Modal */}
       <AnimatePresence>
         {showCreateModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
-          >
+          <Portal>
             <motion.div
-              variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
+            >
+              <motion.div
+                variants={modalVariants} initial="hidden" animate="visible" exit="exit"
               style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 460, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
               <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -531,18 +533,20 @@ const CustomersPage: React.FC = () => {
               </div>
             </motion.div>
           </motion.div>
+          </Portal>
         )}
       </AnimatePresence>
 
       {/* Edit Customer Modal */}
       <AnimatePresence>
         {editingCustomer && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
-          >
+          <Portal>
             <motion.div
-              variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
+            >
+              <motion.div
+                variants={modalVariants} initial="hidden" animate="visible" exit="exit"
               style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 460, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
               <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -610,18 +614,20 @@ const CustomersPage: React.FC = () => {
               </div>
             </motion.div>
           </motion.div>
+          </Portal>
         )}
       </AnimatePresence>
 
       {/* Delete Customer Confirmation Modal */}
       <AnimatePresence>
         {deletingCustomer && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
-          >
+          <Portal>
             <motion.div
-              variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
+            >
+              <motion.div
+                variants={modalVariants} initial="hidden" animate="visible" exit="exit"
               style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 420, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
               <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -658,6 +664,7 @@ const CustomersPage: React.FC = () => {
               </div>
             </motion.div>
           </motion.div>
+          </Portal>
         )}
       </AnimatePresence>
 

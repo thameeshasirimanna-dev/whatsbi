@@ -731,6 +731,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
               setShowViewModal(false);
               setSelectedOrder(null);
             }}
+            onSuccess={fetchCustomerData}
             agentPrefix={agentPrefix || null}
             agentId={agentId || null}
           />

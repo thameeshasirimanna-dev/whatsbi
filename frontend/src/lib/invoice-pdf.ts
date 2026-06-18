@@ -22,6 +22,7 @@ export interface OrderData {
   status: string;
   notes?: string;
   created_at: string;
+  advance_amount?: number;
 }
 
 export interface GeneratePDFParams {
@@ -165,48 +166,48 @@ export const generateInvoicePDF = async (
   // Agent details
   doc.setFontSize(10);
   doc.setFont("Poppins", "normal");
-  let currentY = 60;
+  let currentY = 80;
   if (agentDetails.name.trim()) {
     doc.setFont("Poppins", "bold");
     doc.text(agentDetails.name, 20, currentY);
     doc.setFont("Poppins", "normal");
-    currentY += 10;
+    currentY += 8;
   }
   if (agentDetails.address.trim()) {
     doc.text(agentDetails.address, 20, currentY);
-    currentY += 10;
+    currentY += 8;
   }
   if (agentDetails.business_email.trim()) {
     doc.text(`Email: ${agentDetails.business_email}`, 20, currentY);
-    currentY += 10;
+    currentY += 8;
   }
   if (agentDetails.contact_number.trim()) {
     doc.text(`Phone: ${agentDetails.contact_number}`, 20, currentY);
-    currentY += 10;
+    currentY += 8;
   }
   if (agentDetails.website.trim()) {
     doc.text(`Website: ${agentDetails.website}`, 20, currentY);
-    currentY += 10;
+    currentY += 8;
   }
 
   // Invoice details (right aligned)
   const rightX = doc.internal.pageSize.getWidth() - 20;
   doc.setFont("Poppins", "bold");
-  doc.text("Invoice Details", rightX, 60, { align: "right" });
+  doc.text("Invoice Details", rightX, 80, { align: "right" });
   doc.setFont("Poppins", "normal");
   doc.text(
     `Date: ${new Date(orderData.created_at).toLocaleDateString()}`,
     rightX,
-    80,
+    88,
     { align: "right" }
   );
   doc.text(
     `Order #: #${orderData.id.toString().padStart(4, "0")}`,
     rightX,
-    90,
+    96,
     { align: "right" }
   );
-  doc.text(`Status: ${orderData.status}`, rightX, 100, { align: "right" });
+  doc.text(`Status: ${orderData.status}`, rightX, 104, { align: "right" });
 
   // Customer details
   doc.setFont("Poppins", "bold");
@@ -234,7 +235,7 @@ export const generateInvoicePDF = async (
   doc.setFont("Poppins", "normal");
   doc.setFontSize(10);
   items.forEach((item) => {
-    if (yPosition > 750) {
+    if (yPosition > 240) {
       doc.addPage();
       if (templateBase64) {
         doc.addImage(templateBase64, "JPEG", 0, 0, pageWidth, pageHeight);
@@ -289,25 +290,36 @@ export const generateInvoicePDF = async (
   // Totals section
   let totalsY = yPosition + 5;
 
-  doc.setFont("Poppins", "bold");
-  doc.setFontSize(10);
-  doc.text("Subtotal:", 120, totalsY);
-  doc.text(`LKR ${subtotal.toFixed(2)}`, 190, totalsY, { align: "right" });
-  totalsY += 10;
   doc.setFont("Poppins", "normal");
   doc.setFontSize(9);
   doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
   doc.text(`-LKR ${discountAmount.toFixed(2)}`, 190, totalsY, {
     align: "right",
   });
-  totalsY += 10;
+  totalsY += 8;
+
   doc.setFont("Poppins", "bold");
   doc.setFontSize(10);
   doc.text("Total Amount:", 120, totalsY);
   doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
-  totalsY += 15;
+  totalsY += 8;
 
-  yPosition = totalsY + 20;
+  // Advance Paid
+  const advancePaid = Number(orderData.advance_amount || 0);
+  doc.setFont("Poppins", "normal");
+  doc.setFontSize(9);
+  doc.text("Advance Paid:", 120, totalsY);
+  doc.text(`LKR ${advancePaid.toFixed(2)}`, 190, totalsY, { align: "right" });
+  totalsY += 8;
+
+  // Balance Due
+  const balanceDue = Math.max(0, total - advancePaid);
+  doc.setFont("Poppins", "bold");
+  doc.setFontSize(10);
+  doc.text("Balance Due:", 120, totalsY);
+  doc.text(`LKR ${balanceDue.toFixed(2)}`, 190, totalsY, { align: "right" });
+
+  yPosition = totalsY + 12;
 
   // Notes
   if (invoiceNotes && invoiceNotes.trim()) {

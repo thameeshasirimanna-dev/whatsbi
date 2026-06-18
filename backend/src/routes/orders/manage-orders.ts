@@ -169,7 +169,7 @@ export default async function manageOrdersRoutes(
 
         case "POST": {
           const body = parsedBody;
-          const { customer_id, notes, shipping_address, items, order_id } =
+          const { customer_id, notes, shipping_address, items, order_id, advance_amount, payment_status, estimated_delivery_date } =
             body || {};
           const type = url.searchParams.get("type");
 
@@ -303,12 +303,28 @@ export default async function manageOrdersRoutes(
             0
           );
 
+          const advanceAmountVal = advance_amount !== undefined && !isNaN(Number(advance_amount)) ? Number(advance_amount) : 0;
+          let paymentStatusVal = 'unpaid';
+          if (advanceAmountVal > 0) {
+            if (advanceAmountVal >= totalAmount) {
+              paymentStatusVal = 'paid';
+            } else {
+              paymentStatusVal = 'partially_paid';
+            }
+          }
+          if (payment_status && ['unpaid', 'partially_paid', 'paid'].includes(payment_status)) {
+            paymentStatusVal = payment_status;
+          }
+
           const orderData = {
             customer_id,
             total_amount: totalAmount,
+            advance_amount: advanceAmountVal,
+            payment_status: paymentStatusVal,
             status: "pending",
             notes: notes ? notes.trim() : null,
             shipping_address: shipping_address ? shipping_address.trim() : null,
+            estimated_delivery_date: estimated_delivery_date ? new Date(estimated_delivery_date).toISOString() : null,
             updated_at: new Date().toISOString(),
           };
 
@@ -319,13 +335,16 @@ export default async function manageOrdersRoutes(
 
             // Insert order
             const { rows: orderRows } = await client.query(
-              `INSERT INTO ${agentPrefix}_orders (customer_id, total_amount, status, notes, shipping_address, updated_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+              `INSERT INTO ${agentPrefix}_orders (customer_id, total_amount, advance_amount, payment_status, status, notes, shipping_address, estimated_delivery_date, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
               [
                 orderData.customer_id,
                 orderData.total_amount,
+                orderData.advance_amount,
+                orderData.payment_status,
                 orderData.status,
                 orderData.notes,
                 orderData.shipping_address,
+                orderData.estimated_delivery_date,
                 orderData.updated_at,
               ]
             );
@@ -391,7 +410,7 @@ export default async function manageOrdersRoutes(
 
         case "PUT": {
           const body = parsedBody;
-          const { id, status, notes, shipping_address, total_amount } =
+          const { id, status, notes, shipping_address, total_amount, advance_amount, payment_status, estimated_delivery_date } =
             body || {};
 
           if (!id || typeof id !== "number") {
@@ -426,12 +445,29 @@ export default async function manageOrdersRoutes(
             updateData.shipping_address = shipping_address
               ? shipping_address.trim()
               : null;
+          const parsedTotalAmount = total_amount !== undefined ? Number(total_amount) : undefined;
+          const parsedAdvanceAmount = advance_amount !== undefined ? Number(advance_amount) : undefined;
+
           if (
-            total_amount !== undefined &&
-            typeof total_amount === "number" &&
-            total_amount >= 0
+            parsedTotalAmount !== undefined &&
+            !isNaN(parsedTotalAmount) &&
+            parsedTotalAmount >= 0
           )
-            updateData.total_amount = total_amount;
+            updateData.total_amount = parsedTotalAmount;
+          if (
+            parsedAdvanceAmount !== undefined &&
+            !isNaN(parsedAdvanceAmount) &&
+            parsedAdvanceAmount >= 0
+          )
+            updateData.advance_amount = parsedAdvanceAmount;
+          if (
+            payment_status !== undefined &&
+            ["unpaid", "partially_paid", "paid"].includes(payment_status)
+          )
+            updateData.payment_status = payment_status;
+          if (estimated_delivery_date !== undefined) {
+            updateData.estimated_delivery_date = estimated_delivery_date ? new Date(estimated_delivery_date).toISOString() : null;
+          }
 
           const setParts = [];
           const params = [id];
@@ -450,12 +486,31 @@ export default async function manageOrdersRoutes(
             params.push(shipping_address);
           }
           if (
-            total_amount !== undefined &&
-            typeof total_amount === "number" &&
-            total_amount >= 0
+            parsedTotalAmount !== undefined &&
+            !isNaN(parsedTotalAmount) &&
+            parsedTotalAmount >= 0
           ) {
             setParts.push(`total_amount = $${paramIndex++}`);
-            params.push(total_amount);
+            params.push(parsedTotalAmount);
+          }
+          if (
+            parsedAdvanceAmount !== undefined &&
+            !isNaN(parsedAdvanceAmount) &&
+            parsedAdvanceAmount >= 0
+          ) {
+            setParts.push(`advance_amount = $${paramIndex++}`);
+            params.push(parsedAdvanceAmount);
+          }
+          if (
+            payment_status !== undefined &&
+            ["unpaid", "partially_paid", "paid"].includes(payment_status)
+          ) {
+            setParts.push(`payment_status = $${paramIndex++}`);
+            params.push(payment_status);
+          }
+          if (estimated_delivery_date !== undefined) {
+            setParts.push(`estimated_delivery_date = $${paramIndex++}`);
+            params.push(updateData.estimated_delivery_date);
           }
           setParts.push(`updated_at = $${paramIndex++}`);
           params.push(updateData.updated_at);

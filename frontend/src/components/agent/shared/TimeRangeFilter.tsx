@@ -63,6 +63,7 @@ export function matchesTimeRange(
 interface TimeRangeFilterProps {
   value: TimeRange;
   onChange: (range: TimeRange) => void;
+  placeholder?: string;
 }
 
 const PRESETS = [
@@ -91,7 +92,7 @@ const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
   e.currentTarget.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)";
 };
 
-const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ value, onChange }) => {
+const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ value, onChange, placeholder }) => {
   const isActive = value.preset !== null;
 
   const handlePreset = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -140,7 +141,7 @@ const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ value, onChange }) =>
             color: isActive ? "#0c1a0e" : "#a1a1aa",
           }}
         >
-          <option value="">Date Range...</option>
+          <option value="">{placeholder || "Date Range..."}</option>
           {PRESETS.map((p) => (
             <option key={p.value} value={p.value}>
               {p.label}

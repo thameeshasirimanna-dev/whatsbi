@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { Package, ServiceWithPackages, Agent } from "../../../types";
 import { X, Plus, Trash2, Pencil } from "lucide-react";
+import Portal from "../shared/Portal";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -158,9 +159,9 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
   const updateServiceData = (field: "service_name" | "description", value: string) => setFormData(prev => ({ ...prev, [field]: value }));
 
   return (
-    <>
-      <style>{`@keyframes esm-spin { to { transform: rotate(360deg); } }`}</style>
+    <Portal>
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <style>{`@keyframes esm-spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 580, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Header */}
@@ -382,7 +383,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
           </div>
         </div>
       </div>
-    </>
+    </Portal>
   );
 };
 
