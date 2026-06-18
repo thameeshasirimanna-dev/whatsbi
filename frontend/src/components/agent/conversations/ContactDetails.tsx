@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getToken } from '../../../lib/auth';
 import { Conversation } from './ConversationsPage';
 import { ChevronLeft, MessageSquare, Clock } from 'lucide-react';
+import Portal from '../shared/Portal';
+
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -146,7 +148,7 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
   };
 
   return (
-    <>
+    <Portal>
       <style>{`@keyframes cd-spin { to { transform: rotate(360deg); } }`}</style>
       {/* Overlay */}
       <div
@@ -456,7 +458,7 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
           )}
         </div>
       </div>
-    </>
+    </Portal>
   );
 };
 

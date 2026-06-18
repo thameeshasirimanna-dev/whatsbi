@@ -82,12 +82,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <div
-        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col ${isVisible ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} ${collapsed ? 'w-[220px] md:w-[64px]' : 'w-[220px]'}`}
+        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col layout-sidebar ${isVisible ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} ${collapsed ? 'w-[220px] md:w-[64px]' : 'w-[220px]'}`}
         style={{
           background: '#0c1a0e',
           borderRight: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
-          transition: 'width 0.3s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
+          transition: 'width 0.3s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), filter 0.25s cubic-bezier(0.25, 1, 0.5, 1)',
           overflow: 'hidden',
         }}
       >

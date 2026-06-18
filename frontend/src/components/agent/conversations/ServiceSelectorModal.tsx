@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { X, Search, Briefcase } from "lucide-react";
 import { getToken } from "../../../lib/auth";
+import Portal from "../shared/Portal";
+import { SkeletonBase } from "../shared/Skeleton";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -28,6 +30,8 @@ interface ServiceSelectorModalProps {
   onSelectService: (service: Service) => void;
 }
 
+let servicesCache: Service[] | null = null;
+
 const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
   isOpen, onClose, onSelectService,
 }) => {
@@ -43,7 +47,12 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
   }, [searchTerm, services]);
 
   const fetchServices = async () => {
-    setLoading(true);
+    if (servicesCache) {
+      setServices(servicesCache);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const token = getToken();
       if (!token) { setLoading(false); return; }
@@ -54,13 +63,17 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
         body: JSON.stringify({ operation: "get" }),
       });
 
-      if (!response.ok) { setServices([]); setLoading(false); return; }
+      if (!response.ok) { 
+        if (!servicesCache) setServices([]); 
+        setLoading(false); 
+        return; 
+      }
 
       const servicesData = await response.json();
       if (servicesData.status !== "success") {
-        setServices([]);
+        if (!servicesCache) setServices([]);
       } else {
-        setServices((servicesData.data || []).map((service: any) => ({
+        const fetchedServices = (servicesData.data || []).map((service: any) => ({
           id: service.id,
           service_name: service.service_name,
           description: service.description,
@@ -73,11 +86,13 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
             discount: pkg.discount ? Number(pkg.discount) : undefined,
             description: pkg.description,
           })),
-        })));
+        }));
+        servicesCache = fetchedServices;
+        setServices(fetchedServices);
       }
     } catch (err) {
       console.error("Unexpected error fetching services:", err);
-      setServices([]);
+      if (!servicesCache) setServices([]);
     } finally {
       setLoading(false);
     }
@@ -86,9 +101,10 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <style>{`@keyframes ss-spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <Portal>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <style>{`@keyframes ss-spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Header */}
         <div style={{ flexShrink: 0, padding: '18px 20px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -121,10 +137,18 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
 
         {/* List */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: 10 }}>
-              <div style={{ width: 24, height: 24, border: '2px solid #ebebeb', borderTopColor: '#0891b2', borderRadius: '50%', animation: 'ss-spin 0.8s linear infinite' }} />
-              <span style={{ ...DM, fontSize: 13, color: '#71717a' }}>Loading services...</span>
+          {loading && services.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{ padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 12 }}
+                >
+                  <SkeletonBase style={{ width: '50%', height: 13, borderRadius: 4, marginBottom: 6 }} />
+                  <SkeletonBase style={{ width: '80%', height: 11, borderRadius: 4, marginBottom: 6 }} />
+                  <SkeletonBase style={{ width: '40%', height: 10, borderRadius: 4 }} />
+                </div>
+              ))}
             </div>
           ) : filteredServices.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 0', ...DM, fontSize: 13, color: '#71717a' }}>
@@ -163,6 +187,7 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
         </div>
       </div>
     </div>
+    </Portal>
   );
 };
 

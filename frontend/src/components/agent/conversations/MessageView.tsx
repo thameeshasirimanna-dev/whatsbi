@@ -1171,28 +1171,6 @@ const MessageView: React.FC<MessageViewProps> = ({
                 >
                   {selectedConversation.customerName}
                 </h3>
-                {selectedConversation ? (
-                  !selectedConversation.lastUserMessageTime ? (
-                    <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(217,119,6,0.1)', color: '#d97706', flexShrink: 0 }}>
-                      Out of window
-                    </span>
-                  ) : (
-                    (() => {
-                      const lastTime = new Date(selectedConversation.lastUserMessageTime);
-                      const hoursSince = (Date.now() - lastTime.getTime()) / (1000 * 60 * 60);
-                      const isExpired = hoursSince > 24;
-                      return (
-                        <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: isExpired ? 'rgba(217,119,6,0.1)' : 'rgba(34,197,94,0.1)', color: isExpired ? '#d97706' : '#059669', flexShrink: 0 }}>
-                          {isExpired ? "Template Required" : "Free Messaging"}
-                        </span>
-                      );
-                    })()
-                  )
-                ) : (
-                  <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669', flexShrink: 0 }}>
-                    Free Messaging
-                  </span>
-                )}
               </div>
               <p 
                 className="text-[11px] md:text-xs"
@@ -1203,6 +1181,22 @@ const MessageView: React.FC<MessageViewProps> = ({
             </div>
           </div>
           <div className="gap-1.5 md:gap-2" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            {!selectedConversation.lastUserMessageTime ? (
+              <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: 'rgba(217,119,6,0.1)', color: '#d97706', flexShrink: 0 }}>
+                Out of window
+              </span>
+            ) : (
+              (() => {
+                const lastTime = new Date(selectedConversation.lastUserMessageTime);
+                const hoursSince = (Date.now() - lastTime.getTime()) / (1000 * 60 * 60);
+                const isExpired = hoursSince > 24;
+                return (
+                  <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: isExpired ? 'rgba(217,119,6,0.1)' : 'rgba(34,197,94,0.1)', color: isExpired ? '#d97706' : '#059669', flexShrink: 0 }}>
+                    {isExpired ? "Template Required" : "Free Messaging"}
+                  </span>
+                );
+              })()
+            )}
             {currentStageInfo && (
               <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669' }}>
                 {currentStageInfo.stage}
@@ -1933,6 +1927,7 @@ const MessageView: React.FC<MessageViewProps> = ({
           <CustomerOrdersModal
             isOpen={showOrdersModal}
             onClose={() => setShowOrdersModal(false)}
+            customerId={selectedConversation?.customerId || null}
             customerPhone={selectedConversation?.customerPhone || null}
             customerName={selectedConversation?.customerName || ""}
             agentPrefix={agentPrefix || null}

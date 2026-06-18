@@ -13,6 +13,8 @@ import ContactDetails from "./ContactDetails";
 import ProductSelectorModal from "./ProductSelectorModal";
 import ViewTemplateModal from "../templates/ViewTemplateModal";
 import { Eye } from "lucide-react";
+import Portal from "../shared/Portal";
+
 // Auth utilities - JWT token based
 const getToken = () => {
   return localStorage.getItem("auth_token");
@@ -2911,7 +2913,8 @@ const ConversationsPage: React.FC = () => {
 
       {/* New Conversation Modal */}
       {showNewConversationModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
+        <Portal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
           <div style={{ background: '#fff', borderRadius: 18, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
             <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: '#0c1a0e' }}>
@@ -3043,11 +3046,13 @@ const ConversationsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Template Selection Modal */}
       {showTemplateModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
+        <Portal>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
           <div style={{ background: '#fff', borderRadius: 18, maxWidth: 440, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
             <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: '#0c1a0e' }}>
@@ -3202,7 +3207,8 @@ const ConversationsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Contact Details Panel */}
       {showContactDetails && selectedConversation && (

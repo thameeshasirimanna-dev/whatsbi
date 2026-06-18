@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { X, Search, Package } from "lucide-react";
 import { getToken } from "../../../lib/auth";
+import Portal from "../shared/Portal";
+import { SkeletonBase } from "../shared/Skeleton";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -22,6 +24,8 @@ interface ProductSelectorModalProps {
   agentId?: number | null;
 }
 
+let productsCache: Product[] | null = null;
+
 const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
   isOpen, onClose, onSelectProduct, agentPrefix, agentId,
 }) => {
@@ -38,7 +42,12 @@ const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
 
   const fetchProducts = async () => {
     if (!agentPrefix || !agentId) { setLoading(false); return; }
-    setLoading(true);
+    if (productsCache) {
+      setProducts(productsCache);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const token = getToken();
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-inventory`, {
@@ -47,14 +56,16 @@ const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
       });
       const data = await response.json();
       if (response.ok) {
-        setProducts((data.items || []).map((item: any) => ({
+        const fetchedProducts = (data.items || []).map((item: any) => ({
           id: item.id.toString(),
           name: item.name,
           description: item.description,
           price: item.price,
           images: item.image_urls || [],
           category_id: item.category_id || undefined,
-        })));
+        }));
+        productsCache = fetchedProducts;
+        setProducts(fetchedProducts);
       }
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -66,9 +77,10 @@ const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <style>{`@keyframes ps-spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <Portal>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <style>{`@keyframes ps-spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Header */}
         <div style={{ flexShrink: 0, padding: '18px 20px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -101,10 +113,21 @@ const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
 
         {/* List */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: 10 }}>
-              <div style={{ width: 24, height: 24, border: '2px solid #ebebeb', borderTopColor: '#22c55e', borderRadius: '50%', animation: 'ps-spin 0.8s linear infinite' }} />
-              <span style={{ ...DM, fontSize: 13, color: '#71717a' }}>Loading products...</span>
+          {loading && products.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 12 }}
+                >
+                  <SkeletonBase style={{ width: 44, height: 44, borderRadius: 8, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <SkeletonBase style={{ width: '60%', height: 13, borderRadius: 4, marginBottom: 6 }} />
+                    <SkeletonBase style={{ width: '80%', height: 11, borderRadius: 4, marginBottom: 6 }} />
+                    <SkeletonBase style={{ width: '30%', height: 12, borderRadius: 4 }} />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredProducts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 0', ...DM, fontSize: 13, color: '#71717a' }}>
@@ -151,6 +174,7 @@ const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
         </div>
       </div>
     </div>
+    </Portal>
   );
 };
 

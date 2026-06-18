@@ -29,10 +29,13 @@ import InvoicesTab from "./InvoicesTab";
 import AppointmentsTab from "./AppointmentsTab";
 import GenerateInvoiceModal from "./GenerateInvoiceModal";
 import { useDialog } from "../shared/DialogProvider";
+import Portal from "../shared/Portal";
+import { SkeletonBase } from "../shared/Skeleton";
 
 interface CustomerOrdersModalProps {
   isOpen: boolean;
   onClose: () => void;
+  customerId?: number | null;
   customerPhone: string | null;
   customerName: string;
   agentPrefix: string | null;
@@ -70,6 +73,7 @@ const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   isOpen,
   onClose,
+  customerId: propCustomerId = null,
   customerPhone,
   customerName,
   agentPrefix,
@@ -107,7 +111,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     if (isOpen && customerPhone && agentPrefix) {
       fetchCustomerData();
     }
-  }, [isOpen, customerPhone, agentPrefix]);
+  }, [isOpen, customerPhone, agentPrefix, propCustomerId]);
 
   const fetchCustomerData = async () => {
     if (!customerPhone || !agentPrefix) return;
@@ -116,24 +120,29 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
     setError(null);
 
     try {
-      const cleanPhoneQuery = customerPhone.replace(/\D/g, "");
-      const customers = await getCustomers({ search: cleanPhoneQuery });
-      const customerData = customers.find((c) => {
-        const cleanPhone = c.phone ? c.phone.replace(/\D/g, "") : "";
-        return cleanPhone === cleanPhoneQuery;
-      });
+      let currentCustomerId = propCustomerId || customerId;
 
-      if (!customerData) {
-        setOrders([]);
-        setInvoices([]);
-        setAppointments([]);
-        setCustomerId(null);
-        setLoading(false);
-        return;
+      if (!currentCustomerId) {
+        const cleanPhoneQuery = customerPhone.replace(/\D/g, "");
+        const customers = await getCustomers({ search: cleanPhoneQuery });
+        const customerData = customers.find((c) => {
+          const cleanPhone = c.phone ? c.phone.replace(/\D/g, "") : "";
+          return cleanPhone === cleanPhoneQuery;
+        });
+
+        if (!customerData) {
+          setOrders([]);
+          setInvoices([]);
+          setAppointments([]);
+          setCustomerId(null);
+          setLoading(false);
+          return;
+        }
+
+        currentCustomerId = customerData.id;
       }
 
-      const customerId = customerData.id;
-      setCustomerId(customerData.id);
+      setCustomerId(currentCustomerId);
 
       const token = getToken();
       if (!token) {
@@ -171,7 +180,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         website: agentData.website || "",
       });
 
-      const ordersData = await getOrders({ customer_id: customerId });
+      const ordersData = await getOrders({ customer_id: currentCustomerId });
 
       setOrders(
         (ordersData || []).map((order: any) => ({
@@ -181,10 +190,9 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         }))
       );
 
-      const invoicesRaw = await getInvoices();
+      const invoicesRaw = await getInvoices({ customer_id: currentCustomerId });
 
       const transformedInvoices = (invoicesRaw || [])
-        .filter((inv) => inv.customer_id === customerId)
         .map((inv: any) => ({
           id: inv.id,
           order_id: inv.order_id,
@@ -197,7 +205,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
       setInvoices(transformedInvoices);
 
-      const appointmentsData = await getAppointments({ customer_id: customerId });
+      const appointmentsData = await getAppointments({ customer_id: currentCustomerId });
 
       setAppointments(
         (appointmentsData || []).map((appt: Appointment) => ({
@@ -439,254 +447,267 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   });
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
-        background: "rgba(0,0,0,0.5)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <style>{`@keyframes com-spin { to { transform: rotate(360deg); } }`}</style>
-
+    <Portal>
       <div
         style={{
-          background: "#fff",
-          borderRadius: 20,
-          border: "1px solid #ebebeb",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
-          width: "100%",
-          maxWidth: 1100,
-          maxHeight: "95vh",
+          position: "fixed",
+          inset: 0,
+          zIndex: 50,
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(4px)",
           display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
         }}
       >
-        {/* Header */}
+        <style>{`@keyframes com-spin { to { transform: rotate(360deg); } }`}</style>
+
         <div
-          className="px-4 pt-4 md:px-6 md:pt-5"
           style={{
-            flexShrink: 0,
-            borderBottom: "1px solid #ebebeb",
             background: "#fff",
+            borderRadius: 20,
+            border: "1px solid #ebebeb",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
+            width: "100%",
+            maxWidth: 1100,
+            maxHeight: "95vh",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           }}
         >
-          {/* Title row */}
+          {/* Header */}
           <div
+            className="px-4 pt-4 md:px-6 md:pt-5"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 16,
+              flexShrink: 0,
+              borderBottom: "1px solid #ebebeb",
+              background: "#fff",
             }}
           >
-            <span 
-              className="text-base md:text-lg"
-              style={{ ...SYNE, fontWeight: 700, color: "#0c1a0e", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 12 }}
-            >
-              {customerName ? `${customerName}'s Records` : "Customer Records"}
-            </span>
-            <button
-              onClick={onClose}
-              style={{
-                width: 32,
-                height: 32,
-                background: "rgba(0,0,0,0.06)",
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#71717a",
-                transition: "background 0.15s",
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.1)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.06)")}
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Tabs + action button row */}
-          <div
-            className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-0"
-            style={{
-              justifyContent: "space-between",
-            }}
-          >
-            <div 
-              className="overflow-x-auto scrollbar-none"
-              style={{ display: "flex", gap: 0, maxWidth: "100%" }}
-            >
-              {TAB_DEFS.map(({ key, label, count, badge }) => {
-                const isActive = activeTab === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setActiveTab(key)}
-                    style={{
-                      ...DM,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      padding: "10px 14px",
-                      background: "none",
-                      border: "none",
-                      borderBottom: isActive ? "2px solid #22c55e" : "2px solid transparent",
-                      color: isActive ? "#059669" : "#71717a",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      transition: "color 0.15s, border-color 0.15s",
-                      marginBottom: -1,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {label}
-                    <span
-                      style={{
-                        ...DM,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: "1px 7px",
-                        borderRadius: 9999,
-                        background: badge.bg,
-                        color: badge.color,
-                      }}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div 
-              className="justify-start md:justify-end"
-              style={{ display: "flex", gap: 8, paddingBottom: 12 }}
-            >
-              {activeTab === "orders" && (
-                <button
-                  onClick={() => setShowCreateOrderModal(true)}
-                  disabled={actionDisabled}
-                  style={primaryBtnStyle(actionDisabled)}
-                >
-                  <Plus size={15} />
-                  New Order
-                </button>
-              )}
-              {activeTab === "invoices" && (
-                <button
-                  onClick={() => {
-                    setSelectedOrderId(null);
-                    setShowGenerateModal(true);
-                  }}
-                  disabled={invoiceActionDisabled}
-                  style={primaryBtnStyle(invoiceActionDisabled)}
-                >
-                  <FileText size={15} />
-                  Generate Invoice
-                </button>
-              )}
-              {activeTab === "appointments" && (
-                <button
-                  onClick={() => setShowCreateAppointmentModal(true)}
-                  disabled={actionDisabled}
-                  style={primaryBtnStyle(actionDisabled)}
-                >
-                  <Calendar size={15} />
-                  New Appointment
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Scrollable content */}
-        <div className="p-4 md:p-6" style={{ flex: 1, overflowY: "auto" }}>
-          {loading ? (
+            {/* Title row */}
             <div
               style={{
                 display: "flex",
-                justifyContent: "center",
                 alignItems: "center",
-                padding: "48px 0",
+                justifyContent: "space-between",
+                marginBottom: 16,
               }}
             >
-              <div
+              <span 
+                className="text-base md:text-lg"
+                style={{ ...SYNE, fontWeight: 700, color: "#0c1a0e", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 12 }}
+              >
+                {customerName ? `${customerName}'s Records` : "Customer Records"}
+              </span>
+              <button
+                onClick={onClose}
                 style={{
                   width: 32,
                   height: 32,
-                  borderRadius: "50%",
-                  border: "3px solid rgba(34,197,94,0.2)",
-                  borderTopColor: "#22c55e",
-                  animation: "com-spin 0.8s linear infinite",
+                  background: "rgba(0,0,0,0.06)",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#71717a",
+                  transition: "background 0.15s",
+                  flexShrink: 0,
                 }}
-              />
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.06)")}
+              >
+                <X size={16} />
+              </button>
             </div>
-          ) : error ? (
+
+            {/* Tabs + action button row */}
             <div
+              className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-0"
               style={{
-                textAlign: "center",
-                padding: "48px 0",
-                ...DM,
-                fontSize: 14,
-                color: "#f43f5e",
+                justifyContent: "space-between",
               }}
             >
-              {error}
+              <div 
+                className="overflow-x-auto scrollbar-none"
+                style={{ display: "flex", gap: 0, maxWidth: "100%" }}
+              >
+                {TAB_DEFS.map(({ key, label, count, badge }) => {
+                  const isActive = activeTab === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveTab(key)}
+                      style={{
+                        ...DM,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        padding: "10px 14px",
+                        background: "none",
+                        border: "none",
+                        borderBottom: isActive ? "2px solid #22c55e" : "2px solid transparent",
+                        color: isActive ? "#059669" : "#71717a",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        transition: "color 0.15s, border-color 0.15s",
+                        marginBottom: -1,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {label}
+                      <span
+                        style={{
+                          ...DM,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "1px 7px",
+                          borderRadius: 9999,
+                          background: badge.bg,
+                          color: badge.color,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div 
+                className="justify-start md:justify-end"
+                style={{ display: "flex", gap: 8, paddingBottom: 12 }}
+              >
+                {activeTab === "orders" && (
+                  <button
+                    onClick={() => setShowCreateOrderModal(true)}
+                    disabled={actionDisabled}
+                    style={primaryBtnStyle(actionDisabled)}
+                  >
+                    <Plus size={15} />
+                    New Order
+                  </button>
+                )}
+                {activeTab === "invoices" && (
+                  <button
+                    onClick={() => {
+                      setSelectedOrderId(null);
+                      setShowGenerateModal(true);
+                    }}
+                    disabled={invoiceActionDisabled}
+                    style={primaryBtnStyle(invoiceActionDisabled)}
+                  >
+                    <FileText size={15} />
+                    Generate Invoice
+                  </button>
+                )}
+                {activeTab === "appointments" && (
+                  <button
+                    onClick={() => setShowCreateAppointmentModal(true)}
+                    disabled={actionDisabled}
+                    style={primaryBtnStyle(actionDisabled)}
+                  >
+                    <Calendar size={15} />
+                    New Appointment
+                  </button>
+                )}
+              </div>
             </div>
-          ) : (
-            <>
-              {activeTab === "orders" && (
-                <OrdersTab
-                  orders={orders}
-                  customerId={customerId}
-                  loading={loading}
-                  agentPrefix={agentPrefix}
-                  agentId={agentId}
-                  customerName={customerName}
-                  customerPhone={customerPhone}
-                  onViewOrder={handleViewOrder}
-                  onEditOrder={handleEditOrder}
-                  onGenerateInvoice={handleGenerateInvoice}
-                  onDeleteOrder={handleDeleteOrder}
-                  onRefresh={fetchCustomerData}
-                />
-              )}
-              {activeTab === "invoices" && (
-                <InvoicesTab
-                  invoices={invoices}
-                  agentPrefix={agentPrefix}
-                  customerPhone={customerPhone}
-                  agentId={agentId}
-                  customerName={customerName}
-                  updatingId={updatingId}
-                  onRefresh={fetchCustomerData}
-                  onSendInvoice={handleSendInvoice}
-                  onDeleteInvoice={handleDeleteInvoice}
-                  onMarkPaid={handleMarkPaid}
-                />
-              )}
-              {activeTab === "appointments" && (
-                <AppointmentsTab
-                  appointments={appointments}
-                  loading={loading}
-                  onViewAppointment={handleViewAppointment}
-                  onEditAppointment={handleEditAppointment}
-                  onDeleteAppointment={handleDeleteAppointment}
-                />
-              )}
-            </>
-          )}
+          </div>
+
+          {/* Scrollable content */}
+          <div className="p-4 md:p-6" style={{ flex: 1, overflowY: "auto" }}>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: '#fff',
+                      border: '1px solid #ebebeb',
+                      borderRadius: 14,
+                      padding: '16px 18px',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <SkeletonBase style={{ width: 100, height: 14, borderRadius: 4 }} />
+                      <SkeletonBase style={{ width: 80, height: 18, borderRadius: 9999 }} />
+                    </div>
+                    <SkeletonBase style={{ width: 150, height: 12, borderRadius: 3, marginTop: 4 }} />
+                    <SkeletonBase style={{ width: 120, height: 11, borderRadius: 3 }} />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12, borderTop: '1px solid #f4f4f5', paddingTop: 12 }}>
+                      <SkeletonBase style={{ width: 65, height: 26, borderRadius: 8 }} />
+                      <SkeletonBase style={{ width: 65, height: 26, borderRadius: 8 }} />
+                      <SkeletonBase style={{ width: 120, height: 26, borderRadius: 8 }} />
+                      <SkeletonBase style={{ width: 75, height: 26, borderRadius: 8 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "48px 0",
+                  ...DM,
+                  fontSize: 14,
+                  color: "#f43f5e",
+                }}
+              >
+                {error}
+              </div>
+            ) : (
+              <>
+                {activeTab === "orders" && (
+                  <OrdersTab
+                    orders={orders}
+                    customerId={customerId}
+                    loading={loading}
+                    agentPrefix={agentPrefix}
+                    agentId={agentId}
+                    customerName={customerName}
+                    customerPhone={customerPhone}
+                    onViewOrder={handleViewOrder}
+                    onEditOrder={handleEditOrder}
+                    onGenerateInvoice={handleGenerateInvoice}
+                    onDeleteOrder={handleDeleteOrder}
+                    onRefresh={fetchCustomerData}
+                  />
+                )}
+                {activeTab === "invoices" && (
+                  <InvoicesTab
+                    invoices={invoices}
+                    agentPrefix={agentPrefix}
+                    customerPhone={customerPhone}
+                    agentId={agentId}
+                    customerName={customerName}
+                    updatingId={updatingId}
+                    onRefresh={fetchCustomerData}
+                    onSendInvoice={handleSendInvoice}
+                    onDeleteInvoice={handleDeleteInvoice}
+                    onMarkPaid={handleMarkPaid}
+                  />
+                )}
+                {activeTab === "appointments" && (
+                  <AppointmentsTab
+                    appointments={appointments}
+                    loading={loading}
+                    onViewAppointment={handleViewAppointment}
+                    onEditAppointment={handleEditAppointment}
+                    onDeleteAppointment={handleDeleteAppointment}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {showCreateOrderModal && customerId && (
@@ -782,7 +803,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
           />
         )}
       </div>
-    </div>
+    </Portal>
   );
 };
 

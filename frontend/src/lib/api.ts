@@ -167,12 +167,17 @@ export interface Invoice {
   total?: number;
 }
 
-export const getInvoices = async (): Promise<Invoice[]> => {
+export const getInvoices = async (params?: { customer_id?: number }): Promise<Invoice[]> => {
   try {
     const token = getToken();
     if (!token) throw new Error('No token');
 
-    const response = await fetch(`${BACKEND_URL}/manage-invoices`, {
+    const url = new URL(`${BACKEND_URL}/manage-invoices`);
+    if (params?.customer_id) {
+      url.searchParams.set('customer_id', params.customer_id.toString());
+    }
+
+    const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

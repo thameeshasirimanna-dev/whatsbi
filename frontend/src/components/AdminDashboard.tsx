@@ -676,13 +676,13 @@ const AdminDashboard: React.FC = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col layout-sidebar ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         style={{
           width: 240,
           background: '#0c1a0e',
           flexShrink: 0,
           overflow: 'hidden',
-          transition: 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
+          transition: 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), filter 0.25s cubic-bezier(0.25, 1, 0.5, 1)',
         }}
       >
         {/* Logo */}
@@ -767,8 +767,8 @@ const AdminDashboard: React.FC = () => {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header
-          className="px-4 py-3.5 md:px-6 md:py-4"
-          style={{ background: '#fff', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, gap: 12 }}
+          className="px-4 py-3.5 md:px-6 md:py-4 layout-header"
+          style={{ background: '#fff', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, gap: 12, transition: 'filter 0.25s cubic-bezier(0.25, 1, 0.5, 1)' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, TrendingUp } from "lucide-react";
 import { getCustomers, updateCustomer } from "../../../lib/api";
+import Portal from "../shared/Portal";
 
 export type LeadStage =
   | "New Lead"
@@ -205,9 +206,9 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
   const progressLabel = currentConversionStage || currentInterestStage || currentLeadStage || 'New Lead';
 
   return (
-    <>
-      <style>{`@keyframes lsm-spin { to { transform: rotate(360deg); } }`}</style>
+    <Portal>
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <style>{`@keyframes lsm-spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Header */}
@@ -381,7 +382,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
           </div>
         </div>
       </div>
-    </>
+    </Portal>
   );
 };
 

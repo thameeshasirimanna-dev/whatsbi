@@ -100,7 +100,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
 
   return (
     <nav
-      className="px-4 md:px-6"
+      className="px-4 md:px-6 layout-header"
       style={{
         background: '#fff',
         borderBottom: '1px solid #ebebeb',
@@ -111,6 +111,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
         flexShrink: 0,
         zIndex: 30,
         position: 'relative',
+        transition: 'filter 0.25s cubic-bezier(0.25, 1, 0.5, 1)',
       }}
     >
       {/* Left */}

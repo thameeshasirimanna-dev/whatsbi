@@ -31,7 +31,10 @@ export default async function manageInvoicesRoutes(
       switch (method) {
         case "GET": {
           // Fetch invoices with order and customer details
-          const sql = `
+          const url = new URL(request.url, `http://${request.headers.host}`);
+          const customerId = url.searchParams.get("customer_id");
+
+          let sql = `
             SELECT
               i.*,
               o.customer_id,
@@ -39,10 +42,17 @@ export default async function manageInvoicesRoutes(
             FROM ${agentPrefix}_orders_invoices i
             LEFT JOIN ${agentPrefix}_orders o ON i.order_id = o.id
             LEFT JOIN ${agentPrefix}_customers c ON o.customer_id = c.id
-            ORDER BY i.generated_at DESC
           `;
 
-          const { rows: invoices } = await pgClient.query(sql);
+          const params: any[] = [];
+          if (customerId) {
+            params.push(parseInt(customerId));
+            sql += ` WHERE o.customer_id = $${params.length}`;
+          }
+
+          sql += ` ORDER BY i.generated_at DESC`;
+
+          const { rows: invoices } = await pgClient.query(sql, params);
 
           // Fetch order items to calculate totals
           const invoiceOrderIds = invoices.map((inv: any) => inv.order_id);

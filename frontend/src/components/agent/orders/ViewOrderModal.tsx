@@ -3,6 +3,7 @@ import { getToken } from "../../../lib/auth";
 import { Order, OrderItem } from '../../../types/index';
 import { X, MessageCircle, Package, User } from 'lucide-react';
 import { useDialog } from '../shared/DialogProvider';
+import { SkeletonBase } from '../shared/Skeleton';
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -24,6 +25,8 @@ interface ViewOrderModalProps {
   agentId: number | null;
 }
 
+const orderDetailsCache: Record<number, Order> = {};
+
 const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
   order,
   onClose,
@@ -44,10 +47,15 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
   const fetchFullOrderDetails = async () => {
     if (!order || !order.id || !agentPrefix || !agentId) return;
 
-    try {
+    if (orderDetailsCache[order.id]) {
+      setFullOrderDetails(orderDetailsCache[order.id]);
+      setLoading(false);
+    } else {
       setLoading(true);
-      setError(null);
+    }
+    setError(null);
 
+    try {
       let orderItems: OrderItem[] = order.parsed_order_details?.items || [];
       if (orderItems.length === 0 && order.id) {
         const token = getToken();
@@ -95,6 +103,7 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
         },
       };
 
+      orderDetailsCache[order.id] = fullDetails;
       setFullOrderDetails(fullDetails);
     } catch (err) {
       setError('Failed to load order details');
@@ -150,12 +159,93 @@ Thank you!`;
     overflow: 'hidden',
   };
 
-  if (loading) {
+  if (loading && !fullOrderDetails) {
     return (
       <div style={overlayStyle}>
-        <style>{`@keyframes vom-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ ...cardStyle, maxWidth: 400, padding: 48, alignItems: 'center' }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'vom-spin 0.8s linear infinite' }} />
+        <div
+          style={{
+            ...cardStyle,
+            maxWidth: 900,
+            maxHeight: '95vh',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Header */}
+          <div style={{ flexShrink: 0, padding: '18px 24px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <SkeletonBase style={{ width: 36, height: 36, borderRadius: 10 }} />
+              <div>
+                <SkeletonBase style={{ width: 120, height: 16, borderRadius: 4, marginBottom: 6 }} />
+                <SkeletonBase style={{ width: 70, height: 12, borderRadius: 9999 }} />
+              </div>
+            </div>
+            <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={15} style={{ color: '#71717a' }} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16 }}>
+              {/* Left column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Customer info */}
+                <div style={{ background: 'rgba(34,197,94,0.02)', border: '1px solid #ebebeb', borderRadius: 12, padding: '12px 14px' }}>
+                  <SkeletonBase style={{ width: 80, height: 12, borderRadius: 4, marginBottom: 12 }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <SkeletonBase style={{ width: '90%', height: 11, borderRadius: 3 }} />
+                    <SkeletonBase style={{ width: '80%', height: 11, borderRadius: 3 }} />
+                    <SkeletonBase style={{ width: '70%', height: 11, borderRadius: 3 }} />
+                  </div>
+                </div>
+                {/* Actions */}
+                <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 12, padding: '12px 14px' }}>
+                  <SkeletonBase style={{ width: 60, height: 12, borderRadius: 4, marginBottom: 12 }} />
+                  <SkeletonBase style={{ width: '100%', height: 32, borderRadius: 8 }} />
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Summary stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                      <SkeletonBase style={{ width: 60, height: 16, borderRadius: 4 }} />
+                      <SkeletonBase style={{ width: 40, height: 10, borderRadius: 3 }} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Items table */}
+                <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 14px', borderBottom: '1px solid #f4f4f5', background: '#fafafa' }}>
+                    <SkeletonBase style={{ width: 140, height: 14, borderRadius: 4 }} />
+                  </div>
+                  <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <SkeletonBase style={{ width: '40%', height: 12, borderRadius: 3 }} />
+                      <SkeletonBase style={{ width: '20%', height: 12, borderRadius: 3 }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <SkeletonBase style={{ width: '50%', height: 12, borderRadius: 3 }} />
+                      <SkeletonBase style={{ width: '15%', height: 12, borderRadius: 3 }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f4f4f5', paddingTop: 12 }}>
+                      <SkeletonBase style={{ width: '30%', height: 14, borderRadius: 4 }} />
+                      <SkeletonBase style={{ width: '25%', height: 14, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #ebebeb', display: 'flex', justifyContent: 'flex-end' }}>
+            <SkeletonBase style={{ width: 80, height: 34, borderRadius: 10 }} />
+          </div>
         </div>
       </div>
     );
