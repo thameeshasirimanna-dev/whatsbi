@@ -61,6 +61,7 @@ import getDashboardDataRoutes from "./routes/dashboard/get-dashboard-data.js";
 import loginRoutes from "./routes/auth/login.js";
 import logoutRoutes from "./routes/auth/logout.js";
 import getCurrentUserRoutes from "./routes/auth/get-current-user.js";
+import manageBroadcastsRoutes from "./routes/conversations/manage-broadcasts.js";
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
@@ -175,6 +176,7 @@ async function registerRoutes() {
   await loginRoutes(server, pgClient);
   await logoutRoutes(server, pgClient);
   await getCurrentUserRoutes(server, pgClient);
+  await manageBroadcastsRoutes(server, pgClient, cacheService, emitNewMessage);
 }
 
 // Socket.IO connection handling will be set up after routes are registered

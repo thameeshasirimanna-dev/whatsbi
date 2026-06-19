@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   Briefcase,
   LogOut,
+  Send,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -54,6 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { name: 'Services', href: '/agent/services', icon: Briefcase },
     { name: 'Appointments', href: '/agent/appointments', icon: Calendar },
     { name: 'Templates', href: '/agent/templates', icon: Files },
+    { name: 'Broadcasts', href: '/agent/broadcasts', icon: Send },
     { name: 'Analytics', href: '/agent/analytics', icon: BarChart3 },
     { name: 'Settings', href: '/agent/settings', icon: Settings },
   ];

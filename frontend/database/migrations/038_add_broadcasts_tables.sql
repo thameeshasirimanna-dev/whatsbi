@@ -1,26 +1,11 @@
--- Dynamic Table Creation for Agent-Specific Data
--- Creates customers, messages, orders, appointments, invoices, templates, categories, and inventory_items tables for each agent based on their prefix
--- Run after base_tables.sql and enums.sql
+-- Migration: Add Broadcasts and Broadcast Recipients Dynamic Tables
+-- Re-defines create_agent_tables to include broadcasts and broadcast_recipients tables
+-- Re-defines drop_agent_tables to include these tables
+-- Also creates these tables for all existing agents.
 
--- Drop functions first to avoid signature conflicts
-DROP FUNCTION IF EXISTS create_agent_tables(TEXT, BIGINT) CASCADE;
-DROP FUNCTION IF EXISTS create_agent_tables(TEXT) CASCADE;
-DROP FUNCTION IF EXISTS drop_agent_tables(TEXT) CASCADE;
-DROP FUNCTION IF EXISTS trigger_create_agent_tables() CASCADE;
-DROP TRIGGER IF EXISTS trigger_create_agent_tables ON agents;
+BEGIN;
 
--- Generic function for updating updated_at column
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role, authenticated;
-
--- Function to create agent-specific tables
+-- 1. Re-define the create_agent_tables function with broadcasts support
 CREATE OR REPLACE FUNCTION create_agent_tables(p_agent_prefix TEXT, p_agent_id BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -37,18 +22,20 @@ DECLARE
     inventory_table TEXT := p_agent_prefix || '_inventory_items';
     services_table TEXT := p_agent_prefix || '_services';
     service_packages_table TEXT := p_agent_prefix || '_service_packages';
+    broadcasts_table TEXT := p_agent_prefix || '_broadcasts';
+    broadcast_recipients_table TEXT := p_agent_prefix || '_broadcast_recipients';
 BEGIN
-    -- Create customers table for the agent
+    -- Create customers table for the agent with UNIQUE phone constraint
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I (
             id SERIAL PRIMARY KEY,
             agent_id BIGINT NOT NULL DEFAULT %L REFERENCES agents(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
-            phone TEXT NOT NULL,
+            phone TEXT NOT NULL UNIQUE,
             profile_image_url TEXT,
             last_user_message_time TIMESTAMPTZ,
             ai_enabled BOOLEAN DEFAULT true,
-            language TEXT DEFAULT ''sinhala'',
+            language TEXT DEFAULT ''english'',
             lead_stage lead_stage_enum DEFAULT ''New Lead'',
             interest_stage interest_stage_enum,
             conversion_stage conversion_stage_enum,
@@ -167,8 +154,7 @@ BEGIN
                 )
             );
         ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
-        GRANT ALL ON %I TO authenticated, service_role;
-        COMMENT ON POLICY "Agent can access own order items" ON %I IS ''Allows agents to access and modify order items for customers they own via direct table joins'';
+        -- GRANT ALL ON %I TO authenticated, service_role;
     ', orders_table || '_items', orders_table || '_items', orders_table, customers_table, orders_table, customers_table, orders_table || '_items', orders_table || '_items', orders_table || '_items');
 
     -- Add order_items to publication if not already added
@@ -207,7 +193,7 @@ BEGIN
                     AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
                 )
             );
-        GRANT ALL ON %I TO authenticated, service_role;
+        -- GRANT ALL ON %I TO authenticated, service_role;
     ', orders_table || '_invoices', orders_table, orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table, customers_table, orders_table, customers_table, orders_table || '_invoices');
 
     -- Add invoices to publication if not already added
@@ -376,7 +362,6 @@ BEGIN
     ', services_table, services_table);
 
     -- Create service_packages table for the agent
-    RAISE NOTICE 'About to create service_packages table: %', service_packages_table;
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -390,7 +375,6 @@ BEGIN
             created_at TIMESTAMPTZ DEFAULT now(),
             updated_at TIMESTAMPTZ DEFAULT now()
         );
-        ALTER TABLE %I ADD CONSTRAINT unique_%s_service_package UNIQUE (service_id, package_name);
         ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
         CREATE INDEX IF NOT EXISTS idx_%s_package_name ON %I (package_name);
         CREATE INDEX IF NOT EXISTS idx_%s_package_price ON %I (price);
@@ -400,7 +384,6 @@ BEGIN
         EXECUTE format('ALTER TABLE %I ADD CONSTRAINT unique_%s_service_package UNIQUE (service_id, package_name);', service_packages_table, service_packages_table);
     END IF;
 
-    RAISE NOTICE 'About to create policy for service_packages: %', service_packages_table;
     EXECUTE format('
         CREATE POLICY "Agent can access own service packages" ON %I
             FOR ALL USING (
@@ -418,7 +401,6 @@ BEGIN
                 )
             );
     ', service_packages_table, services_table, services_table);
-    RAISE NOTICE 'Policy created successfully for service_packages: %', service_packages_table;
 
     -- Add to publication if not already added
     PERFORM add_to_publication_if_not_exists(service_packages_table);
@@ -432,11 +414,96 @@ BEGIN
             EXECUTE FUNCTION update_updated_at_column();
     ', service_packages_table, service_packages_table);
 
-    RAISE NOTICE 'Created tables and RLS policies for agent %', p_agent_prefix;
+    -- ─────────────────────────────────────────────────────────────
+    -- BROADCASTS TABLES
+    -- ─────────────────────────────────────────────────────────────
+
+    -- Create broadcasts table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I (
+            id SERIAL PRIMARY KEY,
+            agent_id BIGINT NOT NULL DEFAULT %L REFERENCES agents(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            message_type VARCHAR(20) NOT NULL CHECK (message_type IN (''text'', ''template'')),
+            template_name TEXT,
+            message TEXT,
+            template_params JSONB DEFAULT NULL,
+            header_params JSONB DEFAULT NULL,
+            template_buttons JSONB DEFAULT NULL,
+            media_header JSONB DEFAULT NULL,
+            status VARCHAR(20) DEFAULT ''pending'' CHECK (status IN (''pending'', ''processing'', ''completed'', ''failed'')),
+            total_recipients INTEGER DEFAULT 0,
+            sent_count INTEGER DEFAULT 0,
+            failed_count INTEGER DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        );
+        ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS "Agent can access own broadcasts" ON %I;
+        CREATE POLICY "Agent can access own broadcasts" ON %I
+            FOR ALL USING (auth.uid() IN (SELECT user_id FROM agents WHERE id = agent_id))
+            WITH CHECK (auth.uid() IN (SELECT user_id FROM agents WHERE id = agent_id));
+    ', broadcasts_table, p_agent_id, broadcasts_table, broadcasts_table, broadcasts_table);
+
+    -- Add broadcasts trigger for auto-updating updated_at
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS update_updated_at ON %I;
+        CREATE TRIGGER update_updated_at
+            BEFORE UPDATE ON %I
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    ', broadcasts_table, broadcasts_table);
+
+    -- Add to publication if not already added
+    PERFORM add_to_publication_if_not_exists(broadcasts_table);
+
+    -- Create broadcast recipients table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I (
+            id SERIAL PRIMARY KEY,
+            broadcast_id INTEGER NOT NULL REFERENCES %I(id) ON DELETE CASCADE,
+            customer_id INTEGER NOT NULL REFERENCES %I(id) ON DELETE CASCADE,
+            phone TEXT NOT NULL,
+            status VARCHAR(20) DEFAULT ''pending'' CHECK (status IN (''pending'', ''sent'', ''failed'')),
+            error_message TEXT,
+            sent_at TIMESTAMPTZ
+        );
+        ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
+        CREATE INDEX IF NOT EXISTS %I ON %I (broadcast_id);
+        CREATE INDEX IF NOT EXISTS %I ON %I (customer_id);
+        CREATE INDEX IF NOT EXISTS %I ON %I (status);
+        DROP POLICY IF EXISTS "Agent can access own broadcast recipients" ON %I;
+        CREATE POLICY "Agent can access own broadcast recipients" ON %I
+            FOR ALL USING (
+                EXISTS (
+                    SELECT 1 FROM %I b
+                    WHERE b.id = broadcast_id
+                    AND b.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
+                )
+            )
+            WITH CHECK (
+                EXISTS (
+                    SELECT 1 FROM %I b
+                    WHERE b.id = broadcast_id
+                    AND b.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
+                )
+            );
+    ', broadcast_recipients_table, broadcasts_table, customers_table,
+       broadcast_recipients_table,
+       'idx_' || broadcast_recipients_table || '_broadcast_id', broadcast_recipients_table,
+       'idx_' || broadcast_recipients_table || '_customer_id', broadcast_recipients_table,
+       'idx_' || broadcast_recipients_table || '_status', broadcast_recipients_table,
+       broadcast_recipients_table, broadcast_recipients_table, broadcasts_table, broadcasts_table);
+
+    -- Add to publication if not already added
+    PERFORM add_to_publication_if_not_exists(broadcast_recipients_table);
+
+    RAISE NOTICE 'Created tables, indexes, RLS policies, and triggers for agent %', p_agent_prefix;
 END;
 $$;
 
--- Function to drop agent-specific tables (for agent deletion)
+
+-- 2. Re-define the drop_agent_tables function to drop broadcasts tables
 CREATE OR REPLACE FUNCTION drop_agent_tables(p_agent_prefix TEXT)
 RETURNS TABLE(dropped_tables TEXT[], errors TEXT[])
 LANGUAGE plpgsql
@@ -455,7 +522,9 @@ DECLARE
         p_agent_prefix || '_inventory_items',
         p_agent_prefix || '_categories',
         p_agent_prefix || '_services',
-        p_agent_prefix || '_service_packages'
+        p_agent_prefix || '_service_packages',
+        p_agent_prefix || '_broadcasts',
+        p_agent_prefix || '_broadcast_recipients'
     ];
     dropped_tables TEXT[] := '{}';
     errors TEXT[] := '{}';
@@ -478,32 +547,23 @@ BEGIN
 END;
 $$;
 
--- Trigger function for automatic table creation on agent insert
-CREATE OR REPLACE FUNCTION trigger_create_agent_tables()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+
+-- 3. Create the broadcasts tables for all existing agents
+DO $$
+DECLARE
+    agent_rec RECORD;
 BEGIN
-    -- Create tables for the new agent
-    PERFORM create_agent_tables(NEW.agent_prefix, NEW.id);
-    RETURN NEW;
-END;
-$$;
+    FOR agent_rec IN SELECT id, agent_prefix FROM agents LOOP
+        BEGIN
+            -- Call the updated create_agent_tables function for each existing agent.
+            -- This will create the broadcasts and broadcast_recipients tables if they do not exist
+            -- without modifying or dropping any of their other existing tables.
+            PERFORM create_agent_tables(agent_rec.agent_prefix, agent_rec.id);
+            RAISE NOTICE 'Ensured broadcasts tables exist for agent prefix: %', agent_rec.agent_prefix;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE WARNING 'Failed to ensure broadcasts tables for agent %: %', agent_rec.agent_prefix, SQLERRM;
+        END;
+    END LOOP;
+END $$;
 
--- Create the trigger on agents table
-CREATE TRIGGER trigger_create_agent_tables
-    AFTER INSERT ON agents
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_create_agent_tables();
-
--- Grant execute permissions
-GRANT EXECUTE ON FUNCTION create_agent_tables(TEXT, BIGINT) TO service_role, authenticated;
-GRANT EXECUTE ON FUNCTION drop_agent_tables(TEXT) TO service_role;
-GRANT EXECUTE ON FUNCTION trigger_create_agent_tables() TO service_role;
-GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role, authenticated;
-
--- Comments for documentation
-COMMENT ON FUNCTION create_agent_tables IS 'Creates dynamic tables (customers, messages, orders, appointments, invoices, templates, categories, inventory_items, services, service_packages) for a new agent based on their prefix and ID. Uses generic update_updated_at_column() for timestamps.';
-COMMENT ON FUNCTION drop_agent_tables IS 'Drops dynamic tables for a deleted agent based on their prefix';
-COMMENT ON TRIGGER trigger_create_agent_tables ON agents IS 'Automatically creates agent-specific tables when a new agent is inserted';
+COMMIT;

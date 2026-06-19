@@ -13,6 +13,7 @@ import AppointmentsPage from '../appointments/AppointmentsPage';
 import AnalyticsPage from "../analytics/AnalyticsPage";
 import SettingsPage from '../settings/SettingsPage';
 import ServicesPage from '../services/ServicesPage';
+import BroadcastsPage from '../broadcasts/BroadcastsPage';
 
 const AgentRoutes: React.FC = () => {
   
@@ -31,6 +32,7 @@ const AgentRoutes: React.FC = () => {
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="templates" element={<TemplatesPage />} />
         <Route path="services" element={<ServicesPage />} />
+        <Route path="broadcasts" element={<BroadcastsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

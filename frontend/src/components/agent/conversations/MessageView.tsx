@@ -720,7 +720,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                 customer_phone: selectedConversation.customerPhone,
                 customer_name:
                   customer.name || selectedConversation.customerName,
-                customer_language: customer.language || "english",
+                customer_language: customer.language || "sinhala",
                 agent_prefix: agentPrefix,
                 agent_user_id: agent.user_id,
                 phone_number_id: config.phone_number_id,

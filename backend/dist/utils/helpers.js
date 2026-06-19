@@ -201,7 +201,7 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
                         id: customerId,
                         name: contactName || fromPhone,
                         ai_enabled: false,
-                        language: "english",
+                        language: "sinhala",
                     };
                 }
                 else {
@@ -330,7 +330,7 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
                             ...insertedMessage,
                             customer_phone: fromPhone,
                             customer_name: customer.name,
-                            customer_language: customer.language || "english",
+                            customer_language: customer.language || "sinhala",
                             agent_prefix: agent.agent_prefix,
                             agent_user_id: whatsappConfig.user_id,
                             phone_number_id: phoneNumberId,

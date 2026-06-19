@@ -25,6 +25,7 @@ export default async function sendWhatsappMessageRoutes(
         category = "utility",
         is_promotional = false,
         template_name,
+        template_language,
         template_params = [],
         header_params = [],
         template_buttons = [],
@@ -546,7 +547,7 @@ export default async function sendWhatsappMessageRoutes(
         }
       } else {
         // Template message
-        let languageCode = "en"; // default
+        let languageCode = template_language || templateData?.language || "en";
         let components: any[] = [];
 
         if (type === "template") {

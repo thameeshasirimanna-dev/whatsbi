@@ -582,3 +582,149 @@ export const deleteCustomer = async (id: number): Promise<void> => {
     throw err;
   }
 };
+
+// Broadcasts API
+export interface BroadcastRecipient {
+  id: number;
+  broadcast_id: number;
+  customer_id: number;
+  phone: string;
+  status: 'pending' | 'sent' | 'failed';
+  error_message?: string;
+  sent_at?: string;
+  customer_name?: string;
+}
+
+export interface Broadcast {
+  id: number;
+  agent_id: number;
+  name: string;
+  message_type: 'text' | 'template';
+  template_name?: string;
+  template_language?: string;
+  message?: string;
+  template_params?: any;
+  header_params?: any;
+  template_buttons?: any;
+  media_header?: any;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  total_recipients: number;
+  sent_count: number;
+  failed_count: number;
+  created_at: string;
+  updated_at: string;
+  recipients?: BroadcastRecipient[];
+}
+
+export const getBroadcasts = async (): Promise<Broadcast[]> => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('No token');
+
+    const response = await fetch(`${BACKEND_URL}/manage-broadcasts`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to fetch broadcasts');
+    }
+
+    return data.broadcasts || [];
+  } catch (err) {
+    console.error('Get broadcasts error:', err);
+    throw err;
+  }
+};
+
+export const getBroadcastDetails = async (id: number): Promise<Broadcast> => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('No token');
+
+    const response = await fetch(`${BACKEND_URL}/manage-broadcasts?id=${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to fetch broadcast details');
+    }
+
+    return data.broadcast;
+  } catch (err) {
+    console.error('Get broadcast details error:', err);
+    throw err;
+  }
+};
+
+export const createBroadcast = async (broadcastData: {
+  name?: string;
+  message_type?: 'text' | 'template';
+  template_name?: string;
+  template_language?: string;
+  message?: string;
+  template_params?: any;
+  header_params?: any;
+  template_buttons?: any;
+  media_header?: any;
+  recipient_ids?: number[];
+  action?: string;
+  broadcast_id?: number;
+}): Promise<{ success: boolean; broadcast_id: number; message: string }> => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('No token');
+
+    const response = await fetch(`${BACKEND_URL}/manage-broadcasts`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(broadcastData),
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to create broadcast');
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Create broadcast error:', err);
+    throw err;
+  }
+};
+
+export const deleteBroadcast = async (id: number): Promise<{ success: boolean; message: string }> => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('No token');
+
+    const response = await fetch(`${BACKEND_URL}/manage-broadcasts?id=${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to delete broadcast');
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Delete broadcast error:', err);
+    throw err;
+  }
+};

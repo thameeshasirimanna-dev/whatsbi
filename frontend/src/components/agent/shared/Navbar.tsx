@@ -71,6 +71,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
     if (s === 'inventory') return 'Inventory';
     if (s === 'invoices') return 'Invoices';
     if (s === 'templates') return 'Templates';
+    if (s === 'broadcasts') return 'Broadcasts';
     if (s === 'analytics') return 'Analytics';
     if (s === 'settings') return 'Settings';
     return 'Dashboard';
@@ -90,6 +91,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
     if (s === 'inventory') return 'Manage your inventory';
     if (s === 'invoices') return 'Create and send invoices';
     if (s === 'templates') return 'Manage message templates';
+    if (s === 'broadcasts') return 'Reach out to your customer segments via WhatsApp broadcasts';
     if (s === 'analytics') return 'View your analytics';
     if (s === 'settings') return 'Configure your settings';
     return 'Overview of your business';
