@@ -648,10 +648,10 @@ const InvoicesPage: React.FC = () => {
   };
 
   // Summary stats
-  const totalInvoices = invoices.length;
-  const paidCount = invoices.filter(i => i.status === 'paid').length;
-  const sentCount = invoices.filter(i => i.status === 'sent').length;
-  const totalPaidRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + parseFloat(i.total as any), 0);
+  const totalInvoices = filteredInvoices.length;
+  const paidCount = filteredInvoices.filter(i => i.status === 'paid').length;
+  const sentCount = filteredInvoices.filter(i => i.status === 'sent').length;
+  const totalPaidRevenue = filteredInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + parseFloat(i.total as any), 0);
 
   if (loading) {
     return <SkeletonPage type="list" />;

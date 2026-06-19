@@ -48,7 +48,8 @@ export default async function manageCustomersRoutes(
         case "GET": {
           const search = url.searchParams.get("search") || undefined;
           const phone = url.searchParams.get("phone") || undefined;
-          const limit = parseInt(url.searchParams.get("limit") || "50");
+          const limitParam = url.searchParams.get("limit");
+          const limit = limitParam ? parseInt(limitParam) : undefined;
           const offset = parseInt(url.searchParams.get("offset") || "0");
 
           // If phone is provided, get single customer
@@ -95,7 +96,7 @@ export default async function manageCustomersRoutes(
 
           queryText += ` ORDER BY c.created_at DESC`;
 
-          if (limit > 0) {
+          if (limit !== undefined && limit > 0) {
             queryText += ` LIMIT $${queryParams.length + 1}`;
             queryParams.push(limit);
           }

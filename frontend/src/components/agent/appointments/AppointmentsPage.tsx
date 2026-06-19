@@ -158,10 +158,6 @@ const AppointmentsPage: React.FC = () => {
 
   const capitalizeFirst = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 
-  const totalAppointments = appointments.length;
-  const pendingAppointments = appointments.filter(a => a.status.toLowerCase() === "pending").length;
-  const upcomingAppointments = appointments.filter(a => new Date(a.appointment_date) > new Date() && a.status !== "cancelled").length;
-
   const filteredAppointments = appointments.filter(a => {
     const matchesSearch = searchTerm === "" ||
       a.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -172,6 +168,10 @@ const AppointmentsPage: React.FC = () => {
     const matchesTime = matchesTimeRange(a.appointment_date, timeRange);
     return matchesSearch && matchesCustomer && matchesStatus && matchesTime;
   });
+
+  const totalAppointments = filteredAppointments.length;
+  const pendingAppointments = filteredAppointments.filter(a => a.status.toLowerCase() === "pending").length;
+  const upcomingAppointments = filteredAppointments.filter(a => new Date(a.appointment_date) > new Date() && a.status !== "cancelled").length;
 
   const allCustomerList = Object.values(customerMap) as any[];
   const filteredCustomerList = query === ""

@@ -224,10 +224,10 @@ const OrdersPage: React.FC = () => {
     return 0;
   });
 
-  const totalOrders = orders.length;
-  const pendingOrders = orders.filter(o => o.status.toLowerCase() === "pending").length;
-  const completedOrders = orders.filter(o => ["completed", "delivered"].includes(o.status.toLowerCase())).length;
-  const totalRevenue = orders.filter(o => ["completed", "delivered"].includes(o.status.toLowerCase()))
+  const totalOrders = filteredOrders.length;
+  const pendingOrders = filteredOrders.filter(o => o.status.toLowerCase() === "pending").length;
+  const completedOrders = filteredOrders.filter(o => ["completed", "delivered"].includes(o.status.toLowerCase())).length;
+  const totalRevenue = filteredOrders.filter(o => ["completed", "delivered"].includes(o.status.toLowerCase()))
     .reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
   const handleEditOrderSuccess = () => { fetchOrders(); setShowEditModal(false); setSelectedOrder(null); };

@@ -83,6 +83,120 @@ const getProgressLabel = (customer: Customer): string => {
   return customer.lead_stage || 'New Lead';
 };
 
+const detectCountryCode = (phone: string): string => {
+  if (!phone) return "+1";
+  const cleanPhone = phone.replace(/\D/g, "");
+  if (cleanPhone.startsWith("1")) return "+1";
+  if (cleanPhone.startsWith("44")) return "+44";
+  if (cleanPhone.startsWith("91")) return "+91";
+  if (cleanPhone.startsWith("94")) return "+94";
+  if (cleanPhone.startsWith("971")) return "+971";
+  if (cleanPhone.startsWith("966")) return "+966";
+  if (cleanPhone.startsWith("92")) return "+92";
+  if (cleanPhone.startsWith("880")) return "+880";
+  if (cleanPhone.startsWith("98")) return "+98";
+  if (cleanPhone.startsWith("20")) return "+20";
+  return "+1";
+};
+
+const getFlagEmoji = (countryCode: string): string => {
+  const flags: Record<string, string> = {
+    "+1": "🇺🇸", "+44": "🇬🇧", "+91": "🇮🇳", "+94": "🇱🇰",
+    "+971": "🇦🇪", "+966": "🇸🇦", "+92": "🇵🇰", "+880": "🇧🇩",
+    "+98": "🇮🇷", "+20": "🇪🇬",
+  };
+  return flags[countryCode] || "🌍";
+};
+
+const extractLocalNumber = (phone: string, countryCode: string): string => {
+  const cleanPhone = phone.replace(/\D/g, "");
+  const codeDigits = countryCode.replace("+", "");
+  if (cleanPhone.startsWith(codeDigits)) return cleanPhone.substring(codeDigits.length);
+  return cleanPhone;
+};
+
+const getTimeRangeDates = (range: TimeRange) => {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let start = new Date(0); // Epoch start by default for all time
+  let end = new Date(now.getTime() + 86400000 * 365); // Far future
+  let label = "Total";
+  let prevStart = new Date(0);
+  let prevEnd = new Date(0);
+  let prevLabel = "vs last month";
+
+  if (range.preset === "today") {
+    start = startOfToday;
+    end = new Date(startOfToday.getTime() + 86400000);
+    label = "Today";
+    prevStart = new Date(startOfToday.getTime() - 86400000);
+    prevEnd = startOfToday;
+    prevLabel = "vs yesterday";
+  } else if (range.preset === "yesterday") {
+    start = new Date(startOfToday.getTime() - 86400000);
+    end = startOfToday;
+    label = "Yesterday";
+    prevStart = new Date(startOfToday.getTime() - 86400000 * 2);
+    prevEnd = start;
+    prevLabel = "vs day before";
+  } else if (range.preset === "week") {
+    const dayOfWeek = startOfToday.getDay();
+    start = new Date(startOfToday);
+    start.setDate(start.getDate() - dayOfWeek);
+    end = new Date(start.getTime() + 86400000 * 7);
+    label = "This Week";
+    prevStart = new Date(start.getTime() - 86400000 * 7);
+    prevEnd = start;
+    prevLabel = "vs last week";
+  } else if (range.preset === "month") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    label = "This Month";
+    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevEnd = start;
+    prevLabel = "vs last month";
+  } else if (range.preset === "last_month") {
+    start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    end = new Date(now.getFullYear(), now.getMonth(), 1);
+    label = "Last Month";
+    prevStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    prevEnd = start;
+    prevLabel = "vs month before";
+  } else if (range.preset === "last_3_months") {
+    start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+    end = new Date(now.getTime() + 86400000);
+    label = "Last 3 Months";
+    const diff = end.getTime() - start.getTime();
+    prevStart = new Date(start.getTime() - diff);
+    prevEnd = start;
+    prevLabel = "vs prev 3 months";
+  } else if (range.preset === "custom") {
+    if (range.from) start = new Date(range.from);
+    if (range.to) {
+      end = new Date(range.to);
+      end.setDate(end.getDate() + 1);
+    }
+    label = "Period";
+    const diff = end.getTime() - start.getTime();
+    if (diff > 0 && start.getTime() > 0) {
+      prevStart = new Date(start.getTime() - diff);
+      prevEnd = start;
+      prevLabel = "vs prev period";
+    }
+  } else {
+    // Default / All Time
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    label = "This Month";
+    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevEnd = start;
+    prevLabel = "vs last month";
+  }
+
+  return { start, end, label, prevStart, prevEnd, prevLabel };
+};
+
 const StageSelects: React.FC<{
   leadStage: string;
   interestStage: string;
@@ -148,7 +262,58 @@ const CustomersPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [profileImages, setProfileImages] = useState<ProfileImage[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<Metrics>({ totalCustomers: 0, newThisMonth: 0, totalOrders: 0, activeCountries: 0, trendPercentage: 0 });
+
+  const metrics = React.useMemo(() => {
+    const { start, end, label, prevStart, prevEnd, prevLabel } = getTimeRangeDates(timeRange);
+
+    const timeFilteredCustomers = timeRange.preset
+      ? customers.filter(c => matchesTimeRange(c.created_at, timeRange))
+      : customers;
+
+    const totalCustomers = timeFilteredCustomers.length;
+    const totalOrders = timeFilteredCustomers.reduce((sum, c) => sum + (c.order_count || 0), 0);
+    const countries = new Set(timeFilteredCustomers.map(c => detectCountryCode(c.phone)));
+    const activeCountries = countries.size;
+
+    let newCount = 0;
+    let prevCount = 0;
+
+    if (timeRange.preset) {
+      newCount = timeFilteredCustomers.length;
+      prevCount = customers.filter(c => {
+        const d = new Date(c.created_at);
+        return d >= prevStart && d < prevEnd;
+      }).length;
+    } else {
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      newCount = customers.filter(c => new Date(c.created_at) >= thisMonthStart).length;
+      prevCount = customers.filter(c => {
+        const d = new Date(c.created_at);
+        return d >= lastMonthStart && d <= lastMonthEnd;
+      }).length;
+    }
+
+    let trendPercentage = 0;
+    if (prevCount > 0) {
+      trendPercentage = Math.round(((newCount - prevCount) / prevCount) * 1000) / 10;
+    } else if (newCount > 0) {
+      trendPercentage = 100;
+    }
+
+    return {
+      totalCustomers,
+      newThisMonth: newCount,
+      totalOrders,
+      activeCountries,
+      trendPercentage,
+      label: timeRange.preset ? `New ${label}` : 'New This Month',
+      prevLabel
+    };
+  }, [customers, timeRange]);
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -194,38 +359,6 @@ const CustomersPage: React.FC = () => {
     setSelectedEditCountryCode(code);
     if (editForm.phone.startsWith(code.replace("+", ""))) return;
     setEditForm({ ...editForm, phone: "" });
-  };
-
-  const detectCountryCode = (phone: string): string => {
-    if (!phone) return "+1";
-    const cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.startsWith("1")) return "+1";
-    if (cleanPhone.startsWith("44")) return "+44";
-    if (cleanPhone.startsWith("91")) return "+91";
-    if (cleanPhone.startsWith("94")) return "+94";
-    if (cleanPhone.startsWith("971")) return "+971";
-    if (cleanPhone.startsWith("966")) return "+966";
-    if (cleanPhone.startsWith("92")) return "+92";
-    if (cleanPhone.startsWith("880")) return "+880";
-    if (cleanPhone.startsWith("98")) return "+98";
-    if (cleanPhone.startsWith("20")) return "+20";
-    return "+1";
-  };
-
-  const getFlagEmoji = (countryCode: string): string => {
-    const flags: Record<string, string> = {
-      "+1": "🇺🇸", "+44": "🇬🇧", "+91": "🇮🇳", "+94": "🇱🇰",
-      "+971": "🇦🇪", "+966": "🇸🇦", "+92": "🇵🇰", "+880": "🇧🇩",
-      "+98": "🇮🇷", "+20": "🇪🇬",
-    };
-    return flags[countryCode] || "🌍";
-  };
-
-  const extractLocalNumber = (phone: string, countryCode: string): string => {
-    const cleanPhone = phone.replace(/\D/g, "");
-    const codeDigits = countryCode.replace("+", "");
-    if (cleanPhone.startsWith(codeDigits)) return cleanPhone.substring(codeDigits.length);
-    return cleanPhone;
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -357,20 +490,6 @@ const CustomersPage: React.FC = () => {
       if (!customersData.success) { setError("Failed to fetch customers"); setLoading(false); return; }
 
       const customersWithOrderCounts: Customer[] = (customersData.customers || []).map((c: any) => ({ ...c, order_count: Number(c.order_count) || 0 }));
-
-      const totalCustomers = customersWithOrderCounts.length;
-      const totalOrders = customersWithOrderCounts.reduce((sum, c) => sum + c.order_count, 0);
-      const now = new Date();
-      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-      const newThisMonth = customersWithOrderCounts.filter(c => new Date(c.created_at) >= thisMonthStart).length;
-      const newLastMonth = customersWithOrderCounts.filter(c => { const date = new Date(c.created_at); return date >= lastMonthStart && date <= lastMonthEnd; }).length;
-      let trendPercentage = 0;
-      if (newLastMonth > 0) trendPercentage = Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 1000) / 10;
-      else if (newThisMonth > 0) trendPercentage = 100;
-      const countries = new Set(customersWithOrderCounts.map(c => detectCountryCode(c.phone)));
-      setMetrics({ totalCustomers, newThisMonth, totalOrders, activeCountries: countries.size, trendPercentage });
 
       const initialProfileImages: ProfileImage[] = customersWithOrderCounts.map(customer => ({
         phone: customer.phone, url: customer.profile_image_url || undefined,
@@ -689,10 +808,10 @@ const CustomersPage: React.FC = () => {
         variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
       >
         {[
-          { Icon: Users, label: 'Total Customers', value: metrics.totalCustomers.toLocaleString(), sub: 'Registered contacts', iconColor: '#22c55e', iconBg: 'rgba(34,197,94,0.1)' },
-          { Icon: UserPlus, label: 'New This Month', value: metrics.newThisMonth, sub: null, iconColor: '#059669', iconBg: 'rgba(5,150,105,0.1)', trend: metrics.trendPercentage },
-          { Icon: ShoppingBag, label: 'Total Orders', value: metrics.totalOrders.toLocaleString(), sub: 'Across all customers', iconColor: '#0891b2', iconBg: 'rgba(8,145,178,0.1)' },
-          { Icon: Globe, label: 'Active Countries', value: metrics.activeCountries, sub: 'Unique regions', iconColor: '#7c3aed', iconBg: 'rgba(124,58,237,0.1)' },
+          { Icon: Users, label: 'Total Customers', value: metrics.totalCustomers.toLocaleString(), sub: timeRange.preset ? 'Registered in period' : 'Registered contacts', iconColor: '#22c55e', iconBg: 'rgba(34,197,94,0.1)' },
+          { Icon: UserPlus, label: metrics.label, value: metrics.newThisMonth.toLocaleString(), sub: null, iconColor: '#059669', iconBg: 'rgba(5,150,105,0.1)', trend: metrics.trendPercentage },
+          { Icon: ShoppingBag, label: 'Total Orders', value: metrics.totalOrders.toLocaleString(), sub: timeRange.preset ? 'Orders in period' : 'Across all customers', iconColor: '#0891b2', iconBg: 'rgba(8,145,178,0.1)' },
+          { Icon: Globe, label: 'Active Countries', value: metrics.activeCountries.toString(), sub: timeRange.preset ? 'Active in period' : 'Unique regions', iconColor: '#7c3aed', iconBg: 'rgba(124,58,237,0.1)' },
         ].map((card, i) => (
           <motion.div
             key={card.label}
@@ -713,7 +832,7 @@ const CustomersPage: React.FC = () => {
             <div style={{ ...SYNE, fontSize: 28, fontWeight: 800, color: '#0c1a0e', lineHeight: 1, marginBottom: 4 }}>{card.value}</div>
             <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#3f3f46', marginBottom: 2 }}>{card.label}</div>
             {'trend' in card
-              ? <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>vs last month</div>
+              ? <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>{metrics.prevLabel}</div>
               : <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>{card.sub}</div>
             }
           </motion.div>

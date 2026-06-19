@@ -211,16 +211,53 @@ export default async function sendWhatsappMessageRoutes(
 
       const cleanPhone = customer_phone.replace(/\D/g, "");
       // Find customer
-      const { rows: customerRows } = await pgClient.query(
+      let { rows: customerRows } = await pgClient.query(
         `SELECT id, name, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1 OR phone = $2`,
         [customer_phone, cleanPhone]
       );
 
+      let customer;
       if (customerRows.length === 0) {
-        return reply.code(404).send({ error: "Customer not found" });
-      }
+        const defaultName = body.customer_name || cleanPhone;
+        try {
+          const insertCustomerQuery = `
+            INSERT INTO ${customersTable} (phone, name, agent_id, last_user_message_time)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, name, last_user_message_time, phone
+          `;
+          const { rows: newCustomerRows } = await pgClient.query(insertCustomerQuery, [
+            cleanPhone,
+            defaultName,
+            agent.id,
+            new Date().toISOString()
+          ]);
+          if (newCustomerRows.length === 0) {
+            return reply.code(500).send({ error: "Failed to create customer record" });
+          }
+          customer = newCustomerRows[0];
+        } catch (insertError: any) {
+          if (insertError.code === "23505") {
+            const { rows: retryRows } = await pgClient.query(
+              `SELECT id, name, last_user_message_time, phone FROM ${customersTable} WHERE phone = $1`,
+              [cleanPhone]
+            );
+            if (retryRows.length > 0) {
+              customer = retryRows[0];
+            } else {
+              throw insertError;
+            }
+          } else {
+            throw insertError;
+          }
+        }
 
-      const customer = customerRows[0];
+        // Invalidate chat list cache for the agent
+        if (cacheService) {
+          await cacheService.invalidateChatList(agent.id);
+        }
+      } else {
+        customer = customerRows[0];
+      }
 
       // Normalize phone number to E.164 format
       let normalizedPhone = customer.phone.replace(/\D/g, ""); // Remove non-digits
