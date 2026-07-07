@@ -417,10 +417,10 @@ const InvoicesPage: React.FC = () => {
       doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
       totalsY += 8;
 
-      // Advance Paid
+      // Advance Amount
       const advancePaid = Number(order.advance_amount || 0);
       doc.setFont("Poppins", "normal"); doc.setFontSize(9);
-      doc.text("Advance Paid:", 120, totalsY);
+      doc.text("Advance Amount:", 120, totalsY);
       doc.text(`LKR ${advancePaid.toFixed(2)}`, 190, totalsY, { align: "right" });
       totalsY += 8;
 

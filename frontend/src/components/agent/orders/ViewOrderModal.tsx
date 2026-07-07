@@ -442,7 +442,7 @@ Thank you!`;
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
                 {[
                   { label: 'Total Amount', value: `LKR ${Number(fullOrderDetails.total_amount || 0).toLocaleString()}` },
-                  { label: 'Advance Paid', value: `LKR ${Number(fullOrderDetails.advance_amount || 0).toLocaleString()}` },
+                  { label: 'Advance Amount', value: `LKR ${Number(fullOrderDetails.advance_amount || 0).toLocaleString()}` },
                   { label: 'Balance Due', value: `LKR ${Math.max(0, Number(fullOrderDetails.total_amount || 0) - Number(fullOrderDetails.advance_amount || 0)).toLocaleString()}` },
                   { label: 'Items', value: itemCount },
                   { label: 'Total Qty', value: totalQty },
