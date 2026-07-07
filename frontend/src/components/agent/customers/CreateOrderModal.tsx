@@ -70,6 +70,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [notes, setNotes] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  const [paymentStatus, setPaymentStatus] = useState<'unpaid' | 'partially_paid' | 'paid'>('unpaid');
   const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState('');
   const [businessType, setBusinessType] = useState<'service' | 'product' | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -223,6 +224,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             shipping_address: orderShippingAddress,
             items: orderItems,
             advance_amount: Number(advanceAmount) || 0,
+            payment_status: paymentStatus,
             estimated_delivery_date: estimatedDeliveryDate || null,
           }),
         }
@@ -429,24 +431,55 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               />
             </div>
 
-            {/* Advance Payment */}
-            <div>
-              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Advance Payment (LKR) (Optional)</label>
-              <input
-                type="number"
-                min="0"
-                max={calculateTotal()}
-                step="0.01"
-                value={advanceAmount === 0 ? '' : advanceAmount}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  setAdvanceAmount(isNaN(val) ? 0 : val);
-                }}
-                placeholder="0.00"
-                style={inputStyle}
-                onFocus={onFocusG}
-                onBlur={onBlurG}
-              />
+            {/* Advance Payment and Payment Status */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Advance Payment (LKR) (Optional)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max={calculateTotal()}
+                  step="0.01"
+                  value={advanceAmount === 0 ? '' : advanceAmount}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    const newAdvance = isNaN(val) ? 0 : val;
+                    setAdvanceAmount(newAdvance);
+                    
+                    if (newAdvance >= calculateTotal() && calculateTotal() > 0) {
+                      setPaymentStatus('paid');
+                    } else if (newAdvance === 0) {
+                      setPaymentStatus('unpaid');
+                    }
+                  }}
+                  placeholder="0.00"
+                  style={inputStyle}
+                  onFocus={onFocusG}
+                  onBlur={onBlurG}
+                />
+              </div>
+              <div>
+                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Payment Status</label>
+                <select
+                  value={paymentStatus}
+                  onChange={(e) => {
+                    const status = e.target.value as 'unpaid' | 'partially_paid' | 'paid';
+                    setPaymentStatus(status);
+                    if (status === 'paid') {
+                      setAdvanceAmount(calculateTotal());
+                    } else if (status === 'unpaid') {
+                      setAdvanceAmount(0);
+                    }
+                  }}
+                  style={inputStyle}
+                  onFocus={onFocusG}
+                  onBlur={onBlurG}
+                >
+                  <option value="unpaid">Unpaid</option>
+                  <option value="partially_paid">Partially Paid</option>
+                  <option value="paid">Paid (Fully)</option>
+                </select>
+              </div>
             </div>
 
             {/* Total and Balance Due */}

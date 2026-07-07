@@ -89,7 +89,7 @@ server.register(fastifySocketIO, {
 });
 
 // Environment variables
-const DATABASE_URL = process.env.DATABASE_URL ?? "";
+const DATABASE_URL = _pick("DATABASE_URL");
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
 const REDIS_URL = _pick("REDIS_URL") || "redis://localhost:6379";
 

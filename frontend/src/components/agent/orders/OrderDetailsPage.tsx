@@ -379,7 +379,7 @@ const OrderDetailsPage: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3" style={{ padding: '20px 24px' }}>
                 {[
                   { value: `LKR ${Number(order.order_details.total_amount).toFixed(2)}`, label: 'Total Amount', color: '#22c55e' },
-                  { value: `LKR ${Number(order.advance_amount || 0).toFixed(2)}`, label: 'Advance Amount', color: '#0891b2' },
+                  { value: `LKR ${Number(order.advance_amount || 0).toFixed(2)}`, label: order.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid', color: '#0891b2' },
                   { value: `LKR ${Math.max(0, Number(order.order_details.total_amount) - Number(order.advance_amount || 0)).toFixed(2)}`, label: 'Balance Due', color: '#ef4444' },
                   { value: order.order_details.items.length, label: 'Line Items', color: '#4f46e5' },
                   { value: totalQty, label: 'Total Qty', color: '#7c3aed' },

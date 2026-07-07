@@ -639,9 +639,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
                     // Dynamically set payment status
                     if (newAdvance >= totalAmount && totalAmount > 0) {
                       setPaymentStatus('paid');
-                    } else if (newAdvance > 0) {
-                      setPaymentStatus('partially_paid');
-                    } else {
+                    } else if (newAdvance === 0) {
                       setPaymentStatus('unpaid');
                     }
                   }}

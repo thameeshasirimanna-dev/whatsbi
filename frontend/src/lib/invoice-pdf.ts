@@ -23,6 +23,7 @@ export interface OrderData {
   notes?: string;
   created_at: string;
   advance_amount?: number;
+  payment_status?: string;
 }
 
 export interface GeneratePDFParams {
@@ -304,11 +305,12 @@ export const generateInvoicePDF = async (
   doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
   totalsY += 8;
 
-  // Advance Amount
+  // Advance Amount/Paid
   const advancePaid = Number(orderData.advance_amount || 0);
   doc.setFont("Poppins", "normal");
   doc.setFontSize(9);
-  doc.text("Advance Amount:", 120, totalsY);
+  const advanceLabel = orderData.payment_status === "unpaid" ? "Advance Amount:" : "Advance Paid:";
+  doc.text(advanceLabel, 120, totalsY);
   doc.text(`LKR ${advancePaid.toFixed(2)}`, 190, totalsY, { align: "right" });
   totalsY += 8;
 
