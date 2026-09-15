@@ -4,10 +4,14 @@
 
 **Always read these docs before starting any task:**
 
-- [PRODUCT_STRUCTURE.md](PRODUCT_STRUCTURE.md) — architecture, stack, modules, DB schema
+- [docs/product-structure.md](docs/product-structure.md) — architecture, stack, modules, multi-tenancy
+- [docs/database-architecture.md](docs/database-architecture.md) — PostgreSQL schema, 13 dynamic tables, procedures, indexes
+- [docs/style-guide.md](docs/style-guide.md) — component design system, tokens, responsive rules
+- [docs/seo-architecture.md](docs/seo-architecture.md) — SEO indexing strategy, metadata, structured data, Core Web Vitals
+- [docs/test-cases.md](docs/test-cases.md) — manual test suite matrix and QA runbooks
+- [docs/edge-functions-classification.md](docs/edge-functions-classification.md) — edge/backend split
+- [docs/supabase-rest-scan-report.md](docs/supabase-rest-scan-report.md) — API surface and auth patterns
 - [README.md](README.md) — setup and entry points
-- [edge-functions-classification.md](edge-functions-classification.md) — edge/backend split
-- [supabase-rest-scan-report.md](supabase-rest-scan-report.md) — API surface and auth patterns
 
 For any task touching a module: read the relevant source files **before** writing a single line.
 
