@@ -82,7 +82,7 @@ server.register(fastifySocketIO, {
     },
 });
 // Environment variables
-const DATABASE_URL = process.env.DATABASE_URL ?? "";
+const DATABASE_URL = _pick("DATABASE_URL");
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
 const REDIS_URL = _pick("REDIS_URL") || "redis://localhost:6379";
 // CORS headers
@@ -101,9 +101,31 @@ const pgClient = new Pool({
 });
 // Redis client
 console.log("Attempting to connect to Redis at:", REDIS_URL);
-const redisClient = new Redis(REDIS_URL);
-redisClient.on("error", (err) => console.error("Redis Client Error", err));
-redisClient.on("connect", () => console.log("Connected to Redis"));
+let isRedisLogged = false;
+const redisClient = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: 1,
+    retryStrategy(times) {
+        if (times > 3) {
+            if (!isRedisLogged) {
+                console.warn("⚠️ Redis unavailable at " + REDIS_URL + ", proceeding without cache.");
+                isRedisLogged = true;
+            }
+            return 15000;
+        }
+        return 1000;
+    },
+    reconnectOnError: () => false,
+});
+redisClient.on("error", (err) => {
+    if (isRedisLogged)
+        return;
+    console.warn(`⚠️ Redis connection issue: ${err.message}`);
+    isRedisLogged = true;
+});
+redisClient.on("connect", () => {
+    console.log("✅ Connected to Redis");
+    isRedisLogged = false;
+});
 // Cache service
 const cacheService = new CacheService(redisClient);
 // Register routes
@@ -251,8 +273,9 @@ const start = async () => {
                 });
             });
         });
-        await server.listen({ port: 8080, host: "0.0.0.0" });
-        console.log("Server running on http://localhost:8080");
+        const PORT = parseInt(process.env.PORT || "8080", 10);
+        await server.listen({ port: PORT, host: "0.0.0.0" });
+        console.log(`Server running on http://localhost:${PORT}`);
     }
     catch (err) {
         console.error("❌ PostgreSQL connection failed:", err);
