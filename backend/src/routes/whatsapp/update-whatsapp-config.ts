@@ -34,28 +34,76 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
         });
       }
 
-      // Update WhatsApp configuration using function
-      const { rows: configRows } = await pgClient.query(
-        'SELECT * FROM update_whatsapp_config($1, $2, $3, $4, $5, $6, $7)',
-        [
-          agentData.user_id,
-          body.whatsapp_number || null,
-          body.webhook_url || null,
-          body.api_key || null,
-          body.business_account_id || null,
-          body.phone_number_id || null,
-          null, // p_is_active
-        ]
-      );
+      const configUserId = agentData.user_id || targetUserId;
 
-      if (configRows.length === 0 || !configRows[0].success) {
-        return reply.code(400).send({
-          success: false,
-          message: "Failed to update WhatsApp configuration",
-        });
+      // Ensure whatsapp_configuration columns and constraints are ready
+      try {
+        await pgClient.query(`
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS deepseek_api_key TEXT;
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS whatsapp_app_secret TEXT;
+          ALTER TABLE whatsapp_configuration ALTER COLUMN webhook_url DROP NOT NULL;
+        `);
+      } catch (colErr: any) {
+        console.warn("Notice: could not alter whatsapp_configuration columns:", colErr.message);
       }
 
-      const configData = configRows[0].updated_config;
+      const trimmedDeepSeekKey = body.deepseek_api_key !== undefined && body.deepseek_api_key !== null
+        ? String(body.deepseek_api_key).trim() || null
+        : null;
+
+      let updateSetClauses = [
+        "whatsapp_number = COALESCE($1, whatsapp_number)",
+        "webhook_url = COALESCE($2, webhook_url, '')",
+        "api_key = COALESCE($3, api_key)",
+        "business_account_id = COALESCE($4, business_account_id)",
+        "phone_number_id = COALESCE($5, phone_number_id)",
+        "is_active = COALESCE($6, is_active)",
+      ];
+
+      const params: any[] = [
+        body.whatsapp_number || null,
+        body.webhook_url !== undefined ? body.webhook_url : null,
+        body.api_key || null,
+        body.business_account_id || null,
+        body.phone_number_id || null,
+        body.is_active !== undefined ? body.is_active : null,
+      ];
+
+      if (body.deepseek_api_key !== undefined) {
+        params.push(trimmedDeepSeekKey);
+        updateSetClauses.push(`deepseek_api_key = $${params.length}`);
+      }
+
+      if (body.whatsapp_app_secret !== undefined) {
+        params.push(body.whatsapp_app_secret || null);
+        updateSetClauses.push(`whatsapp_app_secret = $${params.length}`);
+      }
+
+      params.push(configUserId);
+      const updateQuery = `
+        UPDATE whatsapp_configuration
+        SET ${updateSetClauses.join(", ")}, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $${params.length}
+        RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
+      `;
+
+      let configData;
+      try {
+        const { rows: updateRows } = await pgClient.query(updateQuery, params);
+        if (updateRows.length === 0) {
+          return reply.code(404).send({
+            success: false,
+            message: "No WhatsApp configuration found to update",
+          });
+        }
+        configData = updateRows[0].config;
+      } catch (sqlErr: any) {
+        console.error("Direct UPDATE failed:", sqlErr);
+        return reply.code(500).send({
+          success: false,
+          message: "Database error: " + sqlErr.message,
+        });
+      }
 
       return reply.code(200).send({
         success: true,

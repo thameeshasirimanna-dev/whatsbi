@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { uploadMediaToR2 } from './s3.js';
+import { handleInboundMessage } from '../services/ai-chatbot.service.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -203,7 +204,7 @@ export async function processIncomingMessage(
 ) {
   try {
     const { rows: whatsappConfigRows } = await pgClient.query(
-      "SELECT user_id, api_key, webhook_url FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true",
+      "SELECT user_id, api_key, webhook_url, phone_number_id, deepseek_api_key FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true",
       [phoneNumberId]
     );
 
@@ -213,10 +214,17 @@ export async function processIncomingMessage(
 
     for (const whatsappConfig of whatsappConfigRows) {
       try {
+        if (!whatsappConfig.phone_number_id) {
+          whatsappConfig.phone_number_id = phoneNumberId;
+        }
+
         let isNewCustomer = false;
 
         const { rows: agentRows } = await pgClient.query(
-          "SELECT id, agent_prefix FROM agents WHERE user_id = $1",
+          `SELECT a.id, a.user_id, a.agent_prefix, a.business_type, a.company_overview_path, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path, u.name as business_name
+           FROM agents a
+           LEFT JOIN users u ON a.user_id = u.id
+           WHERE a.user_id = $1`,
           [whatsappConfig.user_id]
         );
 
@@ -273,7 +281,7 @@ export async function processIncomingMessage(
         }
 
         const { rows: customerRows } = await pgClient.query(
-          `SELECT id, name, ai_enabled, language FROM ${customersTable} WHERE id = $1`,
+          `SELECT id, name, phone, ai_enabled, language FROM ${customersTable} WHERE id = $1`,
           [customerId]
         );
 
@@ -282,11 +290,15 @@ export async function processIncomingMessage(
           customer = {
             id: customerId,
             name: contactName || fromPhone,
+            phone: cleanFromPhone,
             ai_enabled: false,
             language: "sinhala",
           };
         } else {
           customer = customerRows[0];
+          if (!customer.phone) {
+            customer.phone = cleanFromPhone;
+          }
         }
 
         const { rowCount: updateCount } = await pgClient.query(
@@ -444,50 +456,20 @@ export async function processIncomingMessage(
           emitNewMessage(agent.id, messageDataForSocket);
         }
 
-        // Trigger agent webhook if ai_enabled
-        if (customer.ai_enabled && whatsappConfig.webhook_url) {
-          const jwtToken = generateJWT(whatsappConfig.user_id);
-          const payload = {
-            event: "message_received",
-            jwt_token: jwtToken,
-            data: {
-              ...insertedMessage,
-              customer_phone: fromPhone,
-              customer_name: customer.name,
-              customer_language: customer.language || "sinhala",
-              agent_prefix: agent.agent_prefix,
-              agent_user_id: whatsappConfig.user_id,
-              phone_number_id: phoneNumberId,
-            },
-          };
+        // Process AI chatbot response if customer has AI enabled
+        if (customer.ai_enabled) {
           try {
-            let response = await fetch(whatsappConfig.webhook_url, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${jwtToken}`,
-              },
-              body: JSON.stringify(payload),
+            await handleInboundMessage({
+              agent,
+              customer,
+              incomingMessage: insertedMessage,
+              whatsappConfig,
+              pgClient,
+              cacheService,
+              emitNewMessage,
             });
-            if (response.status === 404 && whatsappConfig.webhook_url.includes('/webhook/')) {
-              const testWebhookUrl = whatsappConfig.webhook_url.replace('/webhook/', '/webhook-test/');
-              response = await fetch(testWebhookUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${jwtToken}`,
-                },
-                body: JSON.stringify(payload),
-              });
-            }
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error(
-                `Agent webhook failed: HTTP ${response.status} - ${errorText}`
-              );
-            }
-          } catch (webhookError) {
-            console.error("Error triggering agent webhook:", webhookError);
+          } catch (aiError) {
+            console.error("Error running DeepSeek AI chatbot:", aiError);
           }
         }
       } catch (innerError) {

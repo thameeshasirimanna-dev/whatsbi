@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } from '../../utils/helpers.js';
 import { uploadMediaToR2 } from "../../utils/s3.js";
 import { CacheService } from "../../utils/cache.js";
+import { formatBankDetails, sanitizeWhatsAppFormatting } from "../../services/ai-chatbot.service.js";
 
 export default async function sendWhatsappMessageRoutes(
   fastify: FastifyInstance,
@@ -459,12 +460,14 @@ export default async function sendWhatsappMessageRoutes(
       if (!useTemplate) {
         if (type === "text") {
           // Free-form text
+          let formattedMessage = message ? formatBankDetails(message) : message;
+          formattedMessage = sanitizeWhatsAppFormatting(formattedMessage);
           whatsappPayload = {
             messaging_product: "whatsapp",
             recipient_type: "individual",
             to: normalizedPhone,
             type: "text",
-            text: { body: message },
+            text: { body: formattedMessage },
           };
         } else if (type === "image" || type === "video") {
           if (processedMedia.length === 0) {
@@ -472,7 +475,8 @@ export default async function sendWhatsappMessageRoutes(
               "No processed media available for image/video type"
             );
           }
-          const effective_caption = (caption || message || "").trim();
+          const rawCaption = (caption || message || "").trim();
+          const effective_caption = rawCaption ? sanitizeWhatsAppFormatting(formatBankDetails(rawCaption)) : "";
           // For multiple images, prepare array of payloads
           if (processedMedia.length === 1) {
             const singleMedia = processedMedia[0];
@@ -741,13 +745,14 @@ export default async function sendWhatsappMessageRoutes(
         let captionText = null;
         if (!useTemplate) {
           if (type === "text") {
-            messageText = message;
+            messageText = message ? sanitizeWhatsAppFormatting(formatBankDetails(message)) : message;
           } else {
             // media
-            messageText = caption || "";
+            const formattedCaption = caption ? sanitizeWhatsAppFormatting(formatBankDetails(caption)) : (caption || "");
+            messageText = formattedCaption;
             mediaType = type;
             mediaUrl = processedMedia[i]?.storedMediaUrl || null;
-            captionText = caption || null;
+            captionText = caption ? formattedCaption : null;
           }
         } else {
           messageText = templateName || "";

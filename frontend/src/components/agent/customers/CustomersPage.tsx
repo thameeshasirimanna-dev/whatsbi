@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getToken } from "../../../lib/auth";
 import {
   Users, UserPlus, ShoppingBag, Globe, Search, Plus, TrendingUp, TrendingDown,
-  MessageCircle, Pencil, X, Trash2, AlertTriangle,
+  MessageCircle, Pencil, X, Trash2, AlertTriangle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import CreateOrderModal from "./CreateOrderModal";
 import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 import { SkeletonPage } from "../shared/Skeleton";
+import { useDialog } from "../shared/DialogProvider";
+import { useTableSelection } from "../shared/useTableSelection";
+import CustomerBulkActionsBar from "./CustomerBulkActionsBar";
 import Portal from "../shared/Portal";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
@@ -241,6 +244,9 @@ const StageSelects: React.FC<{
 
 const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { confirm: dlgConfirm, toast } = useDialog();
+  const tableRef = useRef<HTMLDivElement>(null);
   const [agentPrefix, setAgentPrefix] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<number | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -251,6 +257,76 @@ const CustomersPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [progressCategory, setProgressCategory] = useState<"all" | "lead" | "interest" | "conversion">("all");
   const [progressStage, setProgressStage] = useState<string>("");
+  const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
+    const param = searchParams.get("rows");
+    if (param && [10, 20, 50, 100].includes(Number(param))) return Number(param);
+    const saved = sessionStorage.getItem("customers_rows_per_page");
+    if (saved && [10, 20, 50, 100].includes(Number(saved))) return Number(saved);
+    return 20;
+  });
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    const param = searchParams.get("page");
+    if (param) {
+      const parsed = parseInt(param, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    const saved = sessionStorage.getItem("customers_page");
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return 1;
+  });
+
+  const handlePageChange = (newPage: number, shouldScroll = true) => {
+    const p = Math.max(1, newPage);
+    setCurrentPage(p);
+    sessionStorage.setItem("customers_page", String(p));
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (p === 1) next.delete("page");
+      else next.set("page", String(p));
+      return next;
+    }, { replace: true });
+
+    if (shouldScroll) {
+      tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleRowsPerPageChange = (newRows: number) => {
+    setRowsPerPage(newRows);
+    sessionStorage.setItem("customers_rows_per_page", String(newRows));
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (newRows === 20) next.delete("rows");
+      else next.set("rows", String(newRows));
+      return next;
+    }, { replace: true });
+    handlePageChange(1, false);
+  };
+
+  useEffect(() => {
+    if (currentPage > 1 && searchParams.get("page") !== String(currentPage)) {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set("page", String(currentPage));
+        return next;
+      }, { replace: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    const pageFromUrl = searchParams.get("page");
+    if (pageFromUrl) {
+      const parsed = parseInt(pageFromUrl, 10);
+      const validPage = !isNaN(parsed) && parsed > 0 ? parsed : 1;
+      if (validPage !== currentPage) {
+        setCurrentPage(validPage);
+        sessionStorage.setItem("customers_page", String(validPage));
+      }
+    }
+  }, [searchParams]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -565,6 +641,87 @@ const CustomersPage: React.FC = () => {
     }
   });
 
+  const totalCustomersCount = sortedCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalCustomersCount / rowsPerPage));
+  const effectiveCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (effectiveCurrentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalCustomersCount);
+  const paginatedCustomers = sortedCustomers.slice(startIndex, endIndex);
+
+  // Table selection & bulk actions
+  const selection = useTableSelection<number>([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+
+  const pageIds = paginatedCustomers.map((c) => c.id);
+  const isAllPageSelected = selection.isAllSelected(pageIds);
+  const isPageIndeterminate = selection.isIndeterminate(pageIds);
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = isPageIndeterminate;
+    }
+  }, [isPageIndeterminate]);
+
+  const handleBulkDelete = async () => {
+    const count = selection.selectedCount;
+    if (count === 0) return;
+    if (
+      !(await dlgConfirm(
+        `Are you sure you want to delete ${count} selected customer${count > 1 ? "s" : ""}? This action cannot be undone.`,
+        { danger: true }
+      ))
+    )
+      return;
+
+    setIsBulkProcessing(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("User not authenticated", "error");
+        return;
+      }
+      let successCount = 0;
+      for (const id of selection.selectedIds) {
+        const res = await fetch(`${backendUrl}/manage-customers?id=${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) successCount++;
+      }
+      toast(
+        `Successfully deleted ${successCount} customer${successCount > 1 ? "s" : ""}`,
+        "success"
+      );
+      selection.clearSelection();
+      await fetchCustomers();
+    } catch (err: any) {
+      toast(`Bulk delete failed: ${err.message || "Unknown error"}`, "error");
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkBroadcast = () => {
+    if (selection.selectedCount === 0) return;
+    navigate("/agent/broadcasts", {
+      state: { selectedCustomerIds: selection.selectedIds },
+    });
+  };
+
+  useEffect(() => {
+    if (!loading && totalCustomersCount > 0 && currentPage > totalPages) {
+      handlePageChange(totalPages, false);
+    }
+  }, [loading, totalCustomersCount, totalPages, currentPage]);
+
+  const getPageNumbers = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 3) return [1, 2, 3, 4, '...', total];
+    if (current >= total - 2) return [1, '...', total - 3, total - 2, total - 1, total];
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
+
   const handleOrderSuccess = () => { fetchCustomers(); setShowOrderModal(false); setSelectedCustomer(null); };
 
   const thCell: React.CSSProperties = {
@@ -858,14 +1015,26 @@ const CustomersPage: React.FC = () => {
             type="text"
             placeholder="Search by name or phone…"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => {
+              setSearchTerm(e.target.value);
+              handlePageChange(1, false);
+            }}
             style={{ ...inputStyle, paddingLeft: 32 }}
             onFocus={onFocusG} onBlur={onBlurG}
           />
         </div>
 
         {/* Filters */}
-        <select value={progressCategory} onChange={e => { setProgressCategory(e.target.value as any); setProgressStage(""); }} style={{ ...selectStyle, width: 'auto', minWidth: 130 }} onFocus={onFocusG} onBlur={onBlurG}>
+        <select
+          value={progressCategory}
+          onChange={e => {
+            setProgressCategory(e.target.value as any);
+            setProgressStage("");
+            handlePageChange(1, false);
+          }}
+          style={{ ...selectStyle, width: 'auto', minWidth: 130 }}
+          onFocus={onFocusG} onBlur={onBlurG}
+        >
           <option value="all">All Progress</option>
           <option value="lead">Lead Stage</option>
           <option value="interest">Interest Stage</option>
@@ -873,7 +1042,15 @@ const CustomersPage: React.FC = () => {
         </select>
 
         {progressCategory !== "all" && (
-          <select value={progressStage} onChange={e => setProgressStage(e.target.value)} style={{ ...selectStyle, width: 'auto', minWidth: 140 }} onFocus={onFocusG} onBlur={onBlurG}>
+          <select
+            value={progressStage}
+            onChange={e => {
+              setProgressStage(e.target.value);
+              handlePageChange(1, false);
+            }}
+            style={{ ...selectStyle, width: 'auto', minWidth: 140 }}
+            onFocus={onFocusG} onBlur={onBlurG}
+          >
             <option value="">All {progressCategory === "lead" ? "Leads" : progressCategory === "interest" ? "Interests" : "Conversions"}</option>
             {(progressCategory === "lead" ? leadStages : progressCategory === "interest" ? interestStages : conversionStages).map(s => (
               <option key={s} value={s}>{s}</option>
@@ -881,13 +1058,44 @@ const CustomersPage: React.FC = () => {
           </select>
         )}
 
-        <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} style={{ ...selectStyle, width: 'auto', minWidth: 140 }} onFocus={onFocusG} onBlur={onBlurG}>
+        <select
+          value={sortBy}
+          onChange={e => {
+            setSortBy(e.target.value as any);
+            handlePageChange(1, false);
+          }}
+          style={{ ...selectStyle, width: 'auto', minWidth: 140 }}
+          onFocus={onFocusG} onBlur={onBlurG}
+        >
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
           <option value="orders">Most Orders</option>
         </select>
 
-        <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+        <TimeRangeFilter
+          value={timeRange}
+          onChange={range => {
+            setTimeRange(range);
+            handlePageChange(1, false);
+          }}
+        />
+
+        {/* Rows per page */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <span style={{ ...DM, fontSize: 12, color: '#71717a', whiteSpace: 'nowrap', fontWeight: 500 }}>Rows:</span>
+          <select
+            value={rowsPerPage}
+            onChange={e => handleRowsPerPageChange(Number(e.target.value))}
+            style={{ ...selectStyle, width: 'auto', minWidth: 65, padding: '9px 10px', fontSize: 12 }}
+            onFocus={onFocusG}
+            onBlur={onBlurG}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
 
         <button
           onClick={() => setShowCreateModal(true)}
@@ -897,10 +1105,20 @@ const CustomersPage: React.FC = () => {
         </button>
       </motion.div>
 
+      {/* Bulk Actions Bar */}
+      <CustomerBulkActionsBar
+        selectedCount={selection.selectedCount}
+        onBulkBroadcast={handleBulkBroadcast}
+        onBulkDelete={handleBulkDelete}
+        onClearSelection={selection.clearSelection}
+        isProcessing={isBulkProcessing}
+      />
+
       {/* Table */}
       <motion.div
+        ref={tableRef}
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.5 }}
-        style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}
+        style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden', scrollMarginTop: 20 }}
       >
         {sortedCustomers.length === 0 ? (
           <div style={{ padding: '56px 24px', textAlign: 'center' }}>
@@ -925,19 +1143,40 @@ const CustomersPage: React.FC = () => {
             {/* Mobile/Tablet Card Layout */}
             <div className="block lg:hidden">
               <div className="flex flex-col divide-y divide-[#f4f4f5]">
-                {sortedCustomers.map((customer: Customer, index: number) => {
+                {paginatedCustomers.map((customer: Customer, index: number) => {
                   const profile = profileImages.find(img => img.phone === customer.phone);
                   const hasImage = profile?.url && !profile?.error;
+                  const isCardSelected = selection.isSelected(customer.id);
 
                   return (
                     <motion.div
                       key={customer.id}
                       variants={rowVariants} custom={index}
                       initial="hidden" animate="visible"
-                      style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
+                      style={{
+                        padding: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12,
+                        background: isCardSelected ? '#f0fdf4' : 'transparent',
+                        transition: 'background 0.15s ease',
+                      }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={isCardSelected}
+                            onChange={() => selection.toggleSelect(customer.id)}
+                            aria-label={`Select customer ${customer.name}`}
+                            style={{
+                              cursor: 'pointer',
+                              accentColor: '#22c55e',
+                              width: 16,
+                              height: 16,
+                              flexShrink: 0,
+                            }}
+                          />
                           <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
                             {profile?.loading ? (
                               <div style={{ width: 36, height: 36, background: '#f4f4f5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1010,7 +1249,7 @@ const CustomersPage: React.FC = () => {
                           title="Create new order"
                           onClick={() => { setSelectedCustomer(customer); setShowOrderModal(true); }}
                           disabled={!agentPrefix || !agentId}
-                          style={{ padding: '6px 12px', borderRadius: 8, background: (!agentPrefix || !agentId) ? '#f4f4f5' : 'rgba(8,145,178,0.08)', border: 'none', cursor: (!agentPrefix || !agentId) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, ...DM, fontSize: 12, fontWeight: 600, color: (!agentPrefix || !agentId) ? '#d4d4d8' : '#0891b2', transition: 'background 0.12s' }}
+                          style={{ padding: '6px 12px', borderRadius: 8, background: (!agentPrefix || !agentId) ? '#f4f4f5' : 'rgba(8,145,178,0.08)', border: 'none', cursor: (!agentPrefix || !agentId) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, ...DM, fontSize: 12, fontWeight: 600, color: (!agentPrefix || !agentId) ? '#a1a1aa' : '#0891b2', transition: 'background 0.12s' }}
                           onMouseEnter={e => { if (agentPrefix && agentId) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(8,145,178,0.15)'; }}
                           onMouseLeave={e => { if (agentPrefix && agentId) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(8,145,178,0.08)'; }}
                         >
@@ -1021,11 +1260,11 @@ const CustomersPage: React.FC = () => {
                         <button
                           title="Delete customer"
                           onClick={() => setDeletingCustomer(customer)}
-                          style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.12s' }}
+                          style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, ...DM, fontSize: 12, fontWeight: 600, color: '#ef4444', transition: 'background 0.12s' }}
                           onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.15)'}
                           onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)'}
                         >
-                          <Trash2 size={13} style={{ color: '#ef4444' }} />
+                          <Trash2 size={13} /> Delete
                         </button>
                       </div>
                     </motion.div>
@@ -1034,35 +1273,78 @@ const CustomersPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Desktop Table Layout */}
-            <div className="hidden lg:block overflow-x-auto">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {/* Desktop Table Layout - No horizontal scroll */}
+            <div className="hidden lg:block w-full">
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <thead>
                 <tr>
-                  {['Name', 'Phone', 'Orders', 'Progress', 'Joined', 'Actions'].map((h, i) => (
-                    <th key={h} style={{ ...thCell, textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
-                  ))}
+                  <th style={{ ...thCell, width: '38px', textAlign: 'center', padding: '10px 6px' }}>
+                    <input
+                      ref={selectAllCheckboxRef}
+                      type="checkbox"
+                      checked={isAllPageSelected}
+                      onChange={() => selection.selectAll(pageIds)}
+                      aria-label="Select all customers on page"
+                      style={{
+                        cursor: 'pointer',
+                        accentColor: '#22c55e',
+                        width: 15,
+                        height: 15,
+                      }}
+                    />
+                  </th>
+                  <th style={{ ...thCell, width: '26%' }}>Name</th>
+                  <th style={{ ...thCell, width: '18%' }}>Phone</th>
+                  <th style={{ ...thCell, width: '10%' }}>Orders</th>
+                  <th style={{ ...thCell, width: '18%' }}>Progress</th>
+                  <th style={{ ...thCell, width: '14%' }}>Joined</th>
+                  <th style={{ ...thCell, textAlign: 'right', width: '14%', minWidth: 155 }}>Actions</th>
                 </tr>
               </thead>
               <motion.tbody
                 initial="hidden" animate="visible"
                 variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
               >
-                {sortedCustomers.map((customer: Customer, index: number) => {
+                {paginatedCustomers.map((customer: Customer, index: number) => {
                   const profile = profileImages.find(img => img.phone === customer.phone);
                   const hasImage = profile?.url && !profile?.error;
+                  const isRowSelected = selection.isSelected(customer.id);
 
                   return (
                     <motion.tr
                       key={customer.id}
                       variants={rowVariants} custom={index}
-                      style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
-                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
+                      style={{
+                        borderBottom: '1px solid #f4f4f5',
+                        transition: 'background 0.1s',
+                        background: isRowSelected ? '#f0fdf4' : 'transparent',
+                      }}
+                      onMouseEnter={e => {
+                        if (!isRowSelected) (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)';
+                      }}
+                      onMouseLeave={e => {
+                        if (!isRowSelected) (e.currentTarget as HTMLTableRowElement).style.background = 'transparent';
+                      }}
                     >
+                      {/* Checkbox */}
+                      <td style={{ textAlign: 'center', padding: '12px 6px', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="checkbox"
+                          checked={isRowSelected}
+                          onChange={() => selection.toggleSelect(customer.id)}
+                          aria-label={`Select customer ${customer.name}`}
+                          style={{
+                            cursor: 'pointer',
+                            accentColor: '#22c55e',
+                            width: 15,
+                            height: 15,
+                          }}
+                        />
+                      </td>
+
                       {/* Name */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                           <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
                             {profile?.loading ? (
                               <div style={{ width: 36, height: 36, background: '#f4f4f5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1087,7 +1369,7 @@ const CustomersPage: React.FC = () => {
                               </div>
                             )}
                           </div>
-                          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{customer.name}</span>
+                          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={customer.name}>{customer.name}</span>
                         </div>
                       </td>
 
@@ -1119,7 +1401,7 @@ const CustomersPage: React.FC = () => {
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ padding: '12px 16px', width: '14%', minWidth: 155 }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                           {/* Chat */}
                           <button
@@ -1177,6 +1459,113 @@ const CustomersPage: React.FC = () => {
                 })}
               </motion.tbody>
             </table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div
+            style={{
+              padding: '12px 18px',
+              borderTop: '1px solid #ebebeb',
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            {/* Entries Status */}
+            <div style={{ ...DM, fontSize: 12, color: '#71717a' }}>
+              Showing <strong style={{ color: '#0c1a0e' }}>{totalCustomersCount === 0 ? 0 : startIndex + 1}</strong> to <strong style={{ color: '#0c1a0e' }}>{endIndex}</strong> of <strong style={{ color: '#0c1a0e' }}>{totalCustomersCount}</strong> customers
+            </div>
+
+            {/* Page Navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {/* Previous Button */}
+              <button
+                onClick={() => handlePageChange(Math.max(1, effectiveCurrentPage - 1), true)}
+                disabled={effectiveCurrentPage <= 1}
+                title="Previous page"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  borderRadius: 7,
+                  border: '1px solid #ebebeb',
+                  background: effectiveCurrentPage <= 1 ? '#f9f9f9' : '#fff',
+                  color: effectiveCurrentPage <= 1 ? '#d4d4d8' : '#3f3f46',
+                  cursor: effectiveCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { if (effectiveCurrentPage > 1) (e.currentTarget as HTMLButtonElement).style.borderColor = '#22c55e'; }}
+                onMouseLeave={e => { if (effectiveCurrentPage > 1) (e.currentTarget as HTMLButtonElement).style.borderColor = '#ebebeb'; }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+
+              {/* Page Number Buttons */}
+              {getPageNumbers(effectiveCurrentPage, totalPages).map((p, idx) => {
+                if (p === '...') {
+                  return (
+                    <span key={`dots-${idx}`} style={{ ...DM, fontSize: 12, color: '#a1a1aa', padding: '0 4px' }}>
+                      …
+                    </span>
+                  );
+                }
+                const isCurrent = p === effectiveCurrentPage;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => handlePageChange(p as number, true)}
+                    style={{
+                      minWidth: 30,
+                      height: 30,
+                      padding: '0 6px',
+                      borderRadius: 7,
+                      border: isCurrent ? 'none' : '1px solid #ebebeb',
+                      background: isCurrent ? 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' : '#fff',
+                      color: isCurrent ? '#fff' : '#3f3f46',
+                      ...DM,
+                      fontSize: 12,
+                      fontWeight: isCurrent ? 700 : 500,
+                      cursor: 'pointer',
+                      boxShadow: isCurrent ? '0 2px 6px rgba(34,197,94,0.3)' : 'none',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!isCurrent) (e.currentTarget as HTMLButtonElement).style.borderColor = '#22c55e'; }}
+                    onMouseLeave={e => { if (!isCurrent) (e.currentTarget as HTMLButtonElement).style.borderColor = '#ebebeb'; }}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+
+              {/* Next Button */}
+              <button
+                onClick={() => handlePageChange(Math.min(totalPages, effectiveCurrentPage + 1), true)}
+                disabled={effectiveCurrentPage >= totalPages}
+                title="Next page"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  borderRadius: 7,
+                  border: '1px solid #ebebeb',
+                  background: effectiveCurrentPage >= totalPages ? '#f9f9f9' : '#fff',
+                  color: effectiveCurrentPage >= totalPages ? '#d4d4d8' : '#3f3f46',
+                  cursor: effectiveCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { if (effectiveCurrentPage < totalPages) (e.currentTarget as HTMLButtonElement).style.borderColor = '#22c55e'; }}
+                onMouseLeave={e => { if (effectiveCurrentPage < totalPages) (e.currentTarget as HTMLButtonElement).style.borderColor = '#ebebeb'; }}
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
         </>
       )}

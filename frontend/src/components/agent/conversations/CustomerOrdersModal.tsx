@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../lib/auth";
 import { Order, Appointment } from "../../../types/index";
-import { Plus, X, FileText, Calendar } from "lucide-react";
+import { Plus, X, FileText, Calendar, CheckCircle2 } from "lucide-react";
 import {
   getOrders,
   createOrder,
@@ -10,6 +10,7 @@ import {
   getInvoices,
   updateInvoiceStatus,
   deleteInvoice,
+  createOrderFromInvoice,
   getAppointments,
   createAppointment as apiCreateAppointment,
   updateAppointment as apiUpdateAppointment,
@@ -59,12 +60,19 @@ interface AgentDetails {
 
 interface Invoice {
   id: number;
-  order_id: number;
+  order_id?: number | null;
+  customer_id?: number;
   name: string;
   pdf_url: string;
-  total_amount: number;
+  total_amount?: number;
+  total?: number;
+  advance_amount?: number;
+  discount_percentage?: number;
+  notes?: string;
   status: string;
-  created_at: string;
+  created_at?: string;
+  generated_at?: string;
+  linked_order_id?: number | null;
 }
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
@@ -80,7 +88,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   agentId,
 }) => {
   const { toast, confirm: dlgConfirm } = useDialog();
-  const [activeTab, setActiveTab] = useState<"orders" | "invoices" | "appointments">("orders");
+  const [activeTab, setActiveTab] = useState<"orders" | "invoices" | "appointments">("invoices");
   const [orders, setOrders] = useState<Order[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -106,6 +114,14 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  // Mark Paid & Create Order modal state
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+  const [orderShippingAddress, setOrderShippingAddress] = useState("");
+  const [orderEstimatedDelivery, setOrderEstimatedDelivery] = useState("");
+  const [orderPaidAmount, setOrderPaidAmount] = useState<number>(0);
+  const [orderNotes, setOrderNotes] = useState("");
+  const [creatingOrderFromInv, setCreatingOrderFromInv] = useState(false);
 
   useEffect(() => {
     if (isOpen && customerPhone && agentPrefix) {
@@ -196,11 +212,16 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         .map((inv: any) => ({
           id: inv.id,
           order_id: inv.order_id,
+          customer_id: inv.customer_id,
           name: inv.name,
           pdf_url: inv.pdf_url,
-          total_amount: inv.total || 0,
+          total_amount: Number(inv.total || inv.total_amount || 0),
+          advance_amount: Number(inv.advance_amount || 0),
+          discount_percentage: Number(inv.discount_percentage || 0),
+          notes: inv.notes,
           status: inv.status,
-          created_at: inv.generated_at,
+          created_at: inv.generated_at || inv.created_at,
+          linked_order_id: inv.order_id || inv.linked_order_id,
         }));
 
       setInvoices(transformedInvoices);
@@ -325,44 +346,27 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
         throw new Error("User not authenticated");
       }
 
-      const agent = await getCurrentAgent();
-      if (!agent) {
-        throw new Error("Agent not found");
-      }
-
-      const body = {
-        user_id: agent.user_id,
-        customer_phone: customerPhone,
-        invoice_url: invoice.pdf_url,
-        invoice_name: invoice.name,
-        order_number: invoice.order_id.toString(),
-        total_amount: invoice.total_amount.toString(),
-        customer_name: customerName,
-      };
-
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/send-invoice-template`,
+        `${import.meta.env.VITE_BACKEND_URL}/manage-invoices?action=send`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ invoice_id: invoice.id }),
         }
       );
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send invoice");
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || data.error || "Failed to send invoice");
       }
 
-      if (data && data.success) {
-        toast("Invoice sent successfully via WhatsApp!", 'success');
-      } else {
-        throw new Error("Failed to send invoice");
-      }
+      toast("Invoice sent successfully via WhatsApp!", 'success');
+      await fetchCustomerData();
+      setError(null);
     } catch (err: any) {
       setError("Failed to send invoice: " + err.message);
       console.error("Error sending invoice:", err);
@@ -398,35 +402,79 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   };
 
   const handleMarkPaid = async (invoice: Invoice) => {
-    if (!agentPrefix) {
-      setError("Missing agent prefix");
-      return;
-    }
+    setPayingInvoice(invoice);
+    const amount = Number(invoice.advance_amount || invoice.total_amount || invoice.total || 0);
+    setOrderPaidAmount(amount);
+    setOrderShippingAddress("");
+    setOrderEstimatedDelivery("");
+    setOrderNotes(invoice.notes || "");
+  };
 
-    setUpdatingId(invoice.id);
-
+  const handleConfirmPaymentAndCreateOrder = async () => {
+    if (!payingInvoice) return;
+    setCreatingOrderFromInv(true);
     try {
-      await updateInvoiceStatus(invoice.id, "paid");
-      toast("Marked invoice as paid", 'success');
+      await createOrderFromInvoice({
+        invoice_id: payingInvoice.id,
+        advance_amount: Number(orderPaidAmount) || 0,
+        shipping_address: orderShippingAddress.trim() || undefined,
+        estimated_delivery_date: orderEstimatedDelivery || undefined,
+        notes: orderNotes.trim() || undefined,
+      });
+      toast("Payment confirmed! Order created in CRM successfully.", "success");
+      setPayingInvoice(null);
+      await fetchCustomerData();
+      setActiveTab("orders");
+    } catch (err: any) {
+      console.error("Create order from invoice error:", err);
+      toast(err.message || "Failed to create order from invoice", "error");
+    } finally {
+      setCreatingOrderFromInv(false);
+    }
+  };
+
+  const handleMarkPaidFull = async (invoice: Invoice) => {
+    try {
+      const totalAmt = Number(invoice.total_amount || invoice.total || 0);
+      await updateInvoiceStatus(invoice.id, "paid", totalAmt, invoice.linked_order_id || invoice.order_id);
+      toast("Marked invoice as paid in full and sent confirmation!", "success");
       await fetchCustomerData();
     } catch (err: any) {
-      setError("Failed to mark as paid: " + err.message);
+      console.error("Mark paid full error:", err);
+      toast(err.message || "Failed to mark invoice as paid in full", "error");
+    }
+  };
+
+  const handleMarkPaidOnly = async () => {
+    if (!payingInvoice) return;
+    setCreatingOrderFromInv(true);
+    try {
+      const totalAmt = Number(payingInvoice.total_amount || payingInvoice.total || 0);
+      const paidAmt = Number(orderPaidAmount) || 0;
+      const isFull = paidAmt >= totalAmt && totalAmt > 0;
+      const status = isFull ? "paid" : "partially_paid";
+      await updateInvoiceStatus(payingInvoice.id, status, paidAmt, payingInvoice.linked_order_id || payingInvoice.order_id);
+      toast(isFull ? "Marked invoice as paid in full" : "Marked invoice as partially paid (advance received)", "success");
+      setPayingInvoice(null);
+      await fetchCustomerData();
+    } catch (err: any) {
       console.error("Mark paid error:", err);
+      toast(err.message || "Failed to mark invoice as paid", "error");
     } finally {
-      setUpdatingId(null);
+      setCreatingOrderFromInv(false);
     }
   };
 
   if (!isOpen) return null;
 
   const TAB_DEFS = [
-    { key: "orders" as const, label: "Orders", count: orders.length, badge: { bg: "rgba(8,145,178,0.1)", color: "#0891b2" } },
     { key: "invoices" as const, label: "Invoices", count: invoices.length, badge: { bg: "rgba(34,197,94,0.1)", color: "#059669" } },
+    { key: "orders" as const, label: "Orders", count: orders.length, badge: { bg: "rgba(8,145,178,0.1)", color: "#0891b2" } },
     { key: "appointments" as const, label: "Appointments", count: appointments.length, badge: { bg: "rgba(217,119,6,0.1)", color: "#d97706" } },
   ];
 
   const actionDisabled = !customerId || loading;
-  const invoiceActionDisabled = !customerId || loading || orders.length === 0;
+  const invoiceActionDisabled = !customerId || loading;
 
   const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
     display: "flex",
@@ -694,6 +742,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
                     onSendInvoice={handleSendInvoice}
                     onDeleteInvoice={handleDeleteInvoice}
                     onMarkPaid={handleMarkPaid}
+                    onMarkPaidFull={handleMarkPaidFull}
                   />
                 )}
                 {activeTab === "appointments" && (
@@ -796,12 +845,292 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
             orders={orders}
             customerName={customerName}
             customerId={customerId}
+            customerPhone={customerPhone}
             agentPrefix={agentPrefix}
             agentId={agentId}
             agentDetails={agentDetails}
             invoiceTemplatePath={invoiceTemplatePath}
             onSuccess={fetchCustomerData}
           />
+        )}
+
+        {/* Mark Paid & Create Order Modal */}
+        {payingInvoice && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 70,
+              background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+            }}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 20,
+                border: "1px solid #ebebeb",
+                boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+                width: "100%",
+                maxWidth: "min(480px, 90vw)",
+                maxHeight: "90vh",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: "18px 22px 14px",
+                  borderBottom: "1px solid #ebebeb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      background: "rgba(34,197,94,0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CheckCircle2 size={15} style={{ color: "#059669" }} />
+                  </div>
+                  <div>
+                    <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: "#0c1a0e", display: "block" }}>
+                      Mark Paid & Create Order
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPayingInvoice(null)}
+                  disabled={creatingOrderFromInv}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "rgba(0,0,0,0.06)",
+                    border: "none",
+                    borderRadius: 7,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#71717a",
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Modal Form Body */}
+              <div style={{ padding: 22, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+                <div
+                  style={{
+                    background: "#f9f9fb",
+                    border: "1px solid #ebebeb",
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>Invoice:</span>
+                    <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#0c1a0e" }}>
+                      #{payingInvoice.id.toString().padStart(4, "0")} — {payingInvoice.name}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>Invoice Total:</span>
+                    <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: "#059669" }}>
+                      LKR {Number(payingInvoice.total_amount || payingInvoice.total || 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+                    Confirmed Paid / Advance Amount (LKR)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={orderPaidAmount}
+                    onChange={(e) => setOrderPaidAmount(parseFloat(e.target.value) || 0)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      ...DM,
+                      fontSize: 13,
+                      border: "1px solid #ebebeb",
+                      borderRadius: 8,
+                      outline: "none",
+                      background: "#f9f9f9",
+                    }}
+                  />
+                  <span style={{ ...DM, fontSize: 11, color: "#71717a", marginTop: 3, display: "block" }}>
+                    {orderPaidAmount >= Number(payingInvoice.total_amount || payingInvoice.total || 0)
+                      ? "Full payment received (Payment status: Paid)"
+                      : orderPaidAmount > 0
+                      ? "Partial deposit received (Payment status: Partially Paid)"
+                      : "Unpaid order"}
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+                    Shipping / Delivery Address (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter customer shipping address..."
+                    value={orderShippingAddress}
+                    onChange={(e) => setOrderShippingAddress(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      ...DM,
+                      fontSize: 13,
+                      border: "1px solid #ebebeb",
+                      borderRadius: 8,
+                      outline: "none",
+                      background: "#f9f9f9",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+                    Estimated Delivery Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={orderEstimatedDelivery}
+                    onChange={(e) => setOrderEstimatedDelivery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      ...DM,
+                      fontSize: 13,
+                      border: "1px solid #ebebeb",
+                      borderRadius: 8,
+                      outline: "none",
+                      background: "#f9f9f9",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+                    Order Notes (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Notes, delivery instructions or terms..."
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      ...DM,
+                      fontSize: 13,
+                      border: "1px solid #ebebeb",
+                      borderRadius: 8,
+                      outline: "none",
+                      background: "#f9f9f9",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  padding: "14px 22px",
+                  borderTop: "1px solid #ebebeb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  background: "#fff",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleMarkPaidOnly}
+                  disabled={creatingOrderFromInv}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#71717a",
+                    ...DM,
+                    fontSize: 12,
+                    textDecoration: "underline",
+                    cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Quick Confirm (Auto-create Order)
+                </button>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPayingInvoice(null)}
+                    disabled={creatingOrderFromInv}
+                    style={{
+                      padding: "8px 14px",
+                      background: "rgba(0,0,0,0.06)",
+                      color: "#3f3f46",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
+                      ...DM,
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmPaymentAndCreateOrder}
+                    disabled={creatingOrderFromInv}
+                    style={{
+                      padding: "8px 18px",
+                      background: creatingOrderFromInv
+                        ? "rgba(34,197,94,0.3)"
+                        : "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
+                      ...DM,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      boxShadow: "0 2px 10px rgba(34,197,94,0.25)",
+                    }}
+                  >
+                    <CheckCircle2 size={14} />
+                    {creatingOrderFromInv ? "Creating Order…" : "Confirm & Create Order"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </Portal>

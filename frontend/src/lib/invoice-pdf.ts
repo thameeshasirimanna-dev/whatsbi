@@ -167,7 +167,7 @@ export const generateInvoicePDF = async (
   // Agent details
   doc.setFontSize(10);
   doc.setFont("Poppins", "normal");
-  let currentY = 80;
+  let currentY = 68;
   if (agentDetails.name.trim()) {
     doc.setFont("Poppins", "bold");
     doc.text(agentDetails.name, 20, currentY);
@@ -194,27 +194,27 @@ export const generateInvoicePDF = async (
   // Invoice details (right aligned)
   const rightX = doc.internal.pageSize.getWidth() - 20;
   doc.setFont("Poppins", "bold");
-  doc.text("Invoice Details", rightX, 80, { align: "right" });
+  doc.text("Invoice Details", rightX, 68, { align: "right" });
   doc.setFont("Poppins", "normal");
   doc.text(
     `Date: ${new Date(orderData.created_at).toLocaleDateString()}`,
     rightX,
-    88,
+    76,
     { align: "right" }
   );
   doc.text(
     `Order #: #${orderData.id.toString().padStart(4, "0")}`,
     rightX,
-    96,
+    84,
     { align: "right" }
   );
-  doc.text(`Status: ${orderData.status}`, rightX, 104, { align: "right" });
+  doc.text(`Status: ${orderData.status}`, rightX, 92, { align: "right" });
 
   // Customer details
   doc.setFont("Poppins", "bold");
-  doc.text("Bill To:", 20, 120);
+  doc.text("Bill To:", 20, 108);
   doc.setFont("Poppins", "normal");
-  doc.text(customerName, 20, 130);
+  doc.text(customerName, 20, 116);
 
   // Items table
   let yPosition = 145;
@@ -378,12 +378,18 @@ export const generateInvoicePDF = async (
 
 export const uploadAndSaveInvoice = async (
   pdfBlob: Blob,
-  orderId: number,
+  orderId: number | null | undefined,
   invoiceName: string,
   agentPrefix: string,
   customerId: number,
-  discountPercentage: number
-): Promise<string> => {
+  discountPercentage: number,
+  options?: {
+    totalAmount?: number;
+    advanceAmount?: number;
+    notes?: string;
+    items?: Array<{ name: string; quantity: number; price: number }>;
+  }
+): Promise<{ publicUrl: string; invoice?: any }> => {
   const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
     let binary = "";
     const bytes = new Uint8Array(buffer);
@@ -406,19 +412,24 @@ export const uploadAndSaveInvoice = async (
       'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({
-      orderId,
+      orderId: orderId || null,
       invoiceName,
       agentPrefix,
       customerId,
       discountPercentage,
+      totalAmount: options?.totalAmount,
+      advanceAmount: options?.advanceAmount,
+      notes: options?.notes,
+      items: options?.items,
       pdfBase64,
     }),
   });
 
   if (!uploadResponse.ok) {
-    throw new Error("Failed to upload invoice");
+    const errData = await uploadResponse.json().catch(() => ({}));
+    throw new Error(errData.error || "Failed to upload invoice");
   }
 
-  const { publicUrl } = await uploadResponse.json();
-  return publicUrl;
+  const data = await uploadResponse.json();
+  return { publicUrl: data.publicUrl, invoice: data.invoice };
 };

@@ -251,83 +251,23 @@ const ConversationsPage: React.FC = () => {
       // Refresh conversation
       await fetchSelectedConversation();
 
-      // Trigger agent's webhook with product details and command (regardless of ai_enabled)
+      // Trigger native DeepSeek AI assistant to generate and dispatch product overview
       try {
-        const headers = getAuthHeaders();
-        if (!headers.Authorization) return;
-
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${
-            user.id
-          }`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          const configData = await response.json();
-          if (configData.success && configData.whatsapp_config) {
-            const config =
-              configData.whatsapp_config[0] || configData.whatsapp_config;
-            if (config?.webhook_url) {
-              const combinedText = `I want full details of ${product.name} and sku is ${product.id} without images.`;
-
-              const webhookPayload = {
-                event: "message_received",
-                jwt_token: token,
-                data: {
-                  id: `product-select-${Date.now()}`,
-                  customer_id: selectedConversation.customerId,
-                  message: combinedText,
-                  direction: "inbound",
-                  timestamp: new Date().toISOString(),
-                  is_read: false,
-                  media_type: "none",
-                  media_url: null,
-                  caption: null,
-                  customer_phone: formattedPhone,
-                  customer_name: selectedConversation.customerName,
-                  agent_prefix: agentPrefix,
-                  agent_user_id: user.id,
-                  phone_number_id: config.phone_number_id || null,
-                },
-              };
-
-              let webhookResponse = await fetch(config.webhook_url, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(webhookPayload),
-              });
-
-              if (webhookResponse.status === 404 && config.webhook_url.includes('/webhook/')) {
-                const testWebhookUrl = config.webhook_url.replace('/webhook/', '/webhook-test/');
-                webhookResponse = await fetch(testWebhookUrl, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                  },
-                  body: JSON.stringify(webhookPayload),
-                });
-              }
-
-              if (webhookResponse.ok) {
-              } else {
-                const errorText = await webhookResponse.text();
-              }
-            } else {
-            }
-          }
-        }
-      } catch (webhookError) {}
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/trigger-ai-response`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            customer_id: selectedConversation.customerId,
+            action_type: "product_inquiry",
+            product_id: product.id,
+          }),
+        });
+      } catch (aiTriggerError) {
+        console.error("Error triggering native AI response for product:", aiTriggerError);
+      }
 
       // Send images directly from our side
       const imageResponse = await fetch(
@@ -733,13 +673,19 @@ const ConversationsPage: React.FC = () => {
 
       s.on("new-message", async (messageData: any) => {
         // Handle new message similar to realtime logic
+        const isOutbound =
+          messageData.sender_type === "agent" ||
+          messageData.sender_type === "chatbot" ||
+          messageData.direction === "outbound";
+        const sender: "agent" | "customer" = isOutbound ? "agent" : "customer";
+
         const newMsg: Message = {
           id: messageData.id,
           text: messageData.message || "",
-          sender: messageData.sender_type,
+          sender,
           timestamp: messageData.timestamp ? new Date(messageData.timestamp).toISOString() : new Date().toISOString(),
           rawTimestamp: new Date(messageData.timestamp).getTime(),
-          isRead: messageData.sender_type === "agent",
+          isRead: isOutbound,
           media_type: messageData.media_type || "none",
           media_url: messageData.media_url || null,
           caption: messageData.caption || null,
@@ -747,7 +693,7 @@ const ConversationsPage: React.FC = () => {
 
         // If inbound and selected conversation, mark as read
         if (
-          messageData.sender_type === "customer" &&
+          !isOutbound &&
           selectedConversationIdRef.current === messageData.customer_id
         ) {
           // For real-time updates, we mark as read in the UI
@@ -879,7 +825,7 @@ const ConversationsPage: React.FC = () => {
         });
 
         // Dispatch event for navbar update if message is unread
-        if (messageData.sender_type === "customer" && !newMsg.isRead) {
+        if (!isOutbound && !newMsg.isRead) {
           window.dispatchEvent(
             new CustomEvent("unread-message-received", {
               detail: {
@@ -2710,11 +2656,11 @@ const ConversationsPage: React.FC = () => {
   }, [showTemplateModal, agentPrefix, agentId]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const modifierKey = isMac ? e.metaKey : e.ctrlKey;
-    if (e.key === "Enter" && !modifierKey) {
+    const isEnter = e.key === "Enter";
+    if (isEnter && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       sendMessage();
-    } else if (e.key === "Enter" && modifierKey) {
+    } else if (isEnter && (e.shiftKey || e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       const textarea = e.target as HTMLTextAreaElement;
       const start = textarea.selectionStart || 0;

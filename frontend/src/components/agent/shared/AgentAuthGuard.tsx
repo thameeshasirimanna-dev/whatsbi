@@ -1,17 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from "react-router-dom";
+import MaintenanceScreen from '../../MaintenanceScreen';
 
 interface AgentAuthGuardProps {
   children: React.ReactNode;
 }
 
+interface MaintenanceInfo {
+  active: boolean;
+  title?: string;
+  message?: string;
+  estimatedEnd?: string | null;
+}
+
 const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 1. Check maintenance mode
+        try {
+          const mRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/maintenance-status`);
+          if (mRes.ok) {
+            const mData = await mRes.json();
+            if (mData.maintenance_mode) {
+              setMaintenanceInfo({
+                active: true,
+                title: mData.maintenance_title,
+                message: mData.maintenance_message,
+                estimatedEnd: mData.estimated_end,
+              });
+            }
+          }
+        } catch (mErr) {
+          console.warn('Could not check maintenance status:', mErr);
+        }
+
         const token = localStorage.getItem('auth_token');
         if (!token) {
           setIsAuthenticated(false);
@@ -29,7 +57,9 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
         });
 
         const data = await response.json();
-        setIsAuthenticated(response.ok && data.success && !!data.user);
+        const authed = response.ok && data.success && !!data.user;
+        setIsAuthenticated(authed);
+        setIsAdmin(data.user?.role === 'admin');
       } catch (error) {
         console.error('AgentAuthGuard: Auth check failed:', error);
         setIsAuthenticated(false);
@@ -41,7 +71,6 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-
   if (isLoading) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf8' }}>
@@ -51,6 +80,17 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#71717a', margin: 0 }}>Checking authentication...</p>
         </div>
       </div>
+    );
+  }
+
+  // If maintenance is active and user is NOT a Super Admin, show MaintenanceScreen
+  if (maintenanceInfo?.active && !isAdmin) {
+    return (
+      <MaintenanceScreen
+        title={maintenanceInfo.title}
+        message={maintenanceInfo.message}
+        estimatedEnd={maintenanceInfo.estimatedEnd}
+      />
     );
   }
 

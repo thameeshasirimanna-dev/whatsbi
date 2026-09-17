@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getToken } from "../../../lib/auth";
 import { Menu, Transition } from "@headlessui/react";
 import { motion } from "framer-motion";
 import {
   ShoppingBag, DollarSign, Clock, CheckCircle,
   Search, Plus, Eye, Pencil, MessageCircle, Trash2, ChevronDown,
-  X, Users, Calendar,
+  X, Users, Calendar, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import EditOrderModal from "./EditOrderModal";
 import ViewOrderModal from "./ViewOrderModal";
@@ -16,6 +16,8 @@ import { Order } from "../../../types";
 import { useDialog } from "../shared/DialogProvider";
 import TimeRangeFilter, { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 import { SkeletonPage } from "../shared/Skeleton";
+import { useTableSelection } from "../shared/useTableSelection";
+import OrderBulkActionsBar from "./OrderBulkActionsBar";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
@@ -59,6 +61,8 @@ const getPaymentStatusStyle = (paymentStatus: string): React.CSSProperties => {
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -81,6 +85,76 @@ const OrdersPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount">("newest");
   const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [estDeliveryDateFilter, setEstDeliveryDateFilter] = useState<string>("");
+  const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
+    const param = searchParams.get("rows");
+    if (param && [10, 20, 50, 100].includes(Number(param))) return Number(param);
+    const saved = sessionStorage.getItem("orders_rows_per_page");
+    if (saved && [10, 20, 50, 100].includes(Number(saved))) return Number(saved);
+    return 20;
+  });
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    const param = searchParams.get("page");
+    if (param) {
+      const parsed = parseInt(param, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    const saved = sessionStorage.getItem("orders_page");
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return 1;
+  });
+
+  const handlePageChange = (newPage: number, shouldScroll = true) => {
+    const p = Math.max(1, newPage);
+    setCurrentPage(p);
+    sessionStorage.setItem("orders_page", String(p));
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (p === 1) next.delete("page");
+      else next.set("page", String(p));
+      return next;
+    }, { replace: true });
+
+    if (shouldScroll) {
+      tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleRowsPerPageChange = (newRows: number) => {
+    setRowsPerPage(newRows);
+    sessionStorage.setItem("orders_rows_per_page", String(newRows));
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (newRows === 20) next.delete("rows");
+      else next.set("rows", String(newRows));
+      return next;
+    }, { replace: true });
+    handlePageChange(1, false);
+  };
+
+  useEffect(() => {
+    if (currentPage > 1 && searchParams.get("page") !== String(currentPage)) {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set("page", String(currentPage));
+        return next;
+      }, { replace: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    const pageFromUrl = searchParams.get("page");
+    if (pageFromUrl) {
+      const parsed = parseInt(pageFromUrl, 10);
+      const validPage = !isNaN(parsed) && parsed > 0 ? parsed : 1;
+      if (validPage !== currentPage) {
+        setCurrentPage(validPage);
+        sessionStorage.setItem("orders_page", String(validPage));
+      }
+    }
+  }, [searchParams]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -230,6 +304,26 @@ const OrdersPage: React.FC = () => {
   const totalRevenue = filteredOrders.filter(o => ["completed", "delivered"].includes(o.status.toLowerCase()))
     .reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
+  const totalOrdersCount = filteredOrders.length;
+  const totalPages = Math.max(1, Math.ceil(totalOrdersCount / rowsPerPage));
+  const effectiveCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (effectiveCurrentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalOrdersCount);
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    if (!loading && totalOrdersCount > 0 && currentPage > totalPages) {
+      handlePageChange(totalPages, false);
+    }
+  }, [loading, totalOrdersCount, totalPages, currentPage]);
+
+  const getPageNumbers = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 3) return [1, 2, 3, 4, '...', total];
+    if (current >= total - 2) return [1, '...', total - 3, total - 2, total - 1, total];
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
+
   const handleEditOrderSuccess = () => { fetchOrders(); setShowEditModal(false); setSelectedOrder(null); };
   const handleCreateOrderSuccess = () => { fetchOrders(); setShowCreateModal(false); setSelectedCustomer(null); };
 
@@ -294,6 +388,152 @@ const OrdersPage: React.FC = () => {
     } catch (err: any) {
       console.error("Delete error:", err);
       toast(`Failed to delete order: ${err.message || "Unknown error"}`, 'error');
+    }
+  };
+
+  // Table selection & bulk actions
+  const selection = useTableSelection<number>([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+
+  const pageIds = paginatedOrders.map((o) => o.id);
+  const isAllPageSelected = selection.isAllSelected(pageIds);
+  const isPageIndeterminate = selection.isIndeterminate(pageIds);
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = isPageIndeterminate;
+    }
+  }, [isPageIndeterminate]);
+
+  const handleBulkMarkPaid = async () => {
+    const selected = orders.filter((o) => selection.selectedIds.includes(o.id));
+    const unpaid = selected.filter((o) => o.payment_status !== "paid");
+    if (unpaid.length === 0) {
+      toast("All selected orders are already marked as paid.", "info");
+      return;
+    }
+    if (
+      !(await dlgConfirm(
+        `Mark ${unpaid.length} selected order${unpaid.length > 1 ? "s" : ""} as fully paid?`
+      ))
+    )
+      return;
+
+    setIsBulkProcessing(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("User not authenticated", "error");
+        return;
+      }
+      let successCount = 0;
+      for (const order of unpaid) {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-orders`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: order.id,
+            payment_status: "paid",
+            advance_amount: Number(order.total_amount || 0),
+          }),
+        });
+        if (res.ok) successCount++;
+      }
+      toast(
+        `Marked ${successCount} order${successCount > 1 ? "s" : ""} as fully paid`,
+        "success"
+      );
+      selection.clearSelection();
+      await fetchOrders();
+    } catch (err: any) {
+      toast(`Bulk update failed: ${err.message || "Unknown error"}`, "error");
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkUpdateStatus = async (newStatus: string) => {
+    const count = selection.selectedCount;
+    if (count === 0) return;
+    if (
+      !(await dlgConfirm(
+        `Update status of ${count} selected order${count > 1 ? "s" : ""} to "${capitalizeFirst(newStatus)}"?`
+      ))
+    )
+      return;
+
+    setIsBulkProcessing(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("User not authenticated", "error");
+        return;
+      }
+      let successCount = 0;
+      for (const id of selection.selectedIds) {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-orders`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id, status: newStatus }),
+        });
+        if (res.ok) successCount++;
+      }
+      toast(
+        `Updated ${successCount} order${successCount > 1 ? "s" : ""} to ${newStatus}`,
+        "success"
+      );
+      selection.clearSelection();
+      await fetchOrders();
+    } catch (err: any) {
+      toast(`Bulk status update failed: ${err.message || "Unknown error"}`, "error");
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selection.selectedCount;
+    if (count === 0) return;
+    if (
+      !(await dlgConfirm(
+        `Are you sure you want to delete ${count} selected order${count > 1 ? "s" : ""}? This action cannot be undone.`,
+        { danger: true }
+      ))
+    )
+      return;
+
+    setIsBulkProcessing(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("User not authenticated", "error");
+        return;
+      }
+      let successCount = 0;
+      for (const id of selection.selectedIds) {
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/manage-orders?id=${id}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (res.ok) successCount++;
+      }
+      toast(`Deleted ${successCount} order${successCount > 1 ? "s" : ""}`, "success");
+      selection.clearSelection();
+      await fetchOrders();
+    } catch (err: any) {
+      toast(`Bulk delete failed: ${err.message || "Unknown error"}`, "error");
+    } finally {
+      setIsBulkProcessing(false);
     }
   };
 
@@ -435,20 +675,56 @@ const OrdersPage: React.FC = () => {
         >
           <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
             <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa', pointerEvents: 'none' }} />
-            <input type="text" placeholder="Search by ID, customer, or phone…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ ...inputStyle, paddingLeft: 30 }} onFocus={onFocusG} onBlur={onBlurG} />
+            <input
+              type="text"
+              placeholder="Search by ID, customer, or phone…"
+              value={searchTerm}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                handlePageChange(1, false);
+              }}
+              style={{ ...inputStyle, paddingLeft: 30 }}
+              onFocus={onFocusG}
+              onBlur={onBlurG}
+            />
           </div>
 
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle} onFocus={onFocusG} onBlur={onBlurG}>
+          <select
+            value={statusFilter}
+            onChange={e => {
+              setStatusFilter(e.target.value);
+              handlePageChange(1, false);
+            }}
+            style={selectStyle}
+            onFocus={onFocusG}
+            onBlur={onBlurG}
+          >
             {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
-          <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} style={selectStyle} onFocus={onFocusG} onBlur={onBlurG}>
+          <select
+            value={sortBy}
+            onChange={e => {
+              setSortBy(e.target.value as any);
+              handlePageChange(1, false);
+            }}
+            style={selectStyle}
+            onFocus={onFocusG}
+            onBlur={onBlurG}
+          >
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
             <option value="amount">Amount (High → Low)</option>
           </select>
 
-          <TimeRangeFilter value={timeRange} onChange={setTimeRange} placeholder="Placed Date..." />
+          <TimeRangeFilter
+            value={timeRange}
+            onChange={range => {
+              setTimeRange(range);
+              handlePageChange(1, false);
+            }}
+            placeholder="Placed Date..."
+          />
 
           {/* Est. Delivery Date Filter */}
           <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 6 }}>
@@ -467,7 +743,10 @@ const OrdersPage: React.FC = () => {
               <input
                 type="date"
                 value={estDeliveryDateFilter}
-                onChange={(e) => setEstDeliveryDateFilter(e.target.value)}
+                onChange={(e) => {
+                  setEstDeliveryDateFilter(e.target.value);
+                  handlePageChange(1, false);
+                }}
                 onFocus={onFocusG}
                 onBlur={onBlurG}
                 style={{
@@ -483,7 +762,10 @@ const OrdersPage: React.FC = () => {
             </div>
             {estDeliveryDateFilter && (
               <button
-                onClick={() => setEstDeliveryDateFilter('')}
+                onClick={() => {
+                  setEstDeliveryDateFilter('');
+                  handlePageChange(1, false);
+                }}
                 title="Clear estimated delivery date filter"
                 style={{
                   width: 32,
@@ -506,14 +788,41 @@ const OrdersPage: React.FC = () => {
             )}
           </div>
 
+          {/* Rows per page */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ ...DM, fontSize: 12, color: '#71717a', whiteSpace: 'nowrap', fontWeight: 500 }}>Rows:</span>
+            <select
+              value={rowsPerPage}
+              onChange={e => handleRowsPerPageChange(Number(e.target.value))}
+              style={{ ...selectStyle, width: 'auto', minWidth: 65, padding: '9px 10px', fontSize: 12 }}
+              onFocus={onFocusG}
+              onBlur={onBlurG}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+
           <button onClick={() => setShowCustomerSelect(true)} style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             <Plus size={14} /> New Order
           </button>
         </motion.div>
 
+        {/* Bulk Actions Bar */}
+        <OrderBulkActionsBar
+          selectedCount={selection.selectedCount}
+          onBulkMarkPaid={handleBulkMarkPaid}
+          onBulkUpdateStatus={handleBulkUpdateStatus}
+          onBulkDelete={handleBulkDelete}
+          onClearSelection={selection.clearSelection}
+          isProcessing={isBulkProcessing}
+        />
+
         {/* Table */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-          style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'visible' }}
+        <motion.div ref={tableRef} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'visible', scrollMarginTop: 20 }}
         >
           {orders.length === 0 ? (
             <div style={{ padding: '56px 24px', textAlign: 'center' }}>
@@ -541,29 +850,50 @@ const OrdersPage: React.FC = () => {
               {/* Mobile/Tablet Card Layout */}
               <div className="block lg:hidden">
                 <div className="flex flex-col divide-y divide-[#f4f4f5]">
-                  {filteredOrders.map((order, index) => (
-                    <motion.div
-                      key={order.id}
-                      variants={rowVariants} initial="hidden" animate="visible" custom={index}
-                      style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <span style={{ ...SYNE, fontSize: 12, fontWeight: 700, color: '#fff' }}>
-                              {order.customer_name?.charAt(0).toUpperCase() || "?"}
-                            </span>
+                  {paginatedOrders.map((order, index) => {
+                    const isSelected = selection.isSelected(order.id);
+                    return (
+                      <motion.div
+                        key={order.id}
+                        variants={rowVariants} initial="hidden" animate="visible" custom={index}
+                        style={{
+                          padding: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          background: isSelected ? '#f0fdf4' : 'transparent',
+                          transition: 'background 0.15s',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => selection.toggleSelect(order.id)}
+                              style={{
+                                cursor: 'pointer',
+                                accentColor: '#22c55e',
+                                width: 16,
+                                height: 16,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <span style={{ ...SYNE, fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                                {order.customer_name?.charAt(0).toUpperCase() || "?"}
+                              </span>
+                            </div>
+                            <div>
+                              <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{order.customer_name}</div>
+                              <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>{order.customer_phone || "No phone"}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{order.customer_name}</div>
-                            <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>{order.customer_phone || "No phone"}</div>
-                          </div>
-                        </div>
 
-                        <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#0c1a0e' }}>
-                          #{order.id.toString().padStart(4, "0")}
-                        </span>
-                      </div>
+                          <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#0c1a0e' }}>
+                            #{order.id.toString().padStart(4, "0")}
+                          </span>
+                        </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, background: '#fafafa', padding: '10px 12px', borderRadius: 8 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -661,45 +991,98 @@ const OrdersPage: React.FC = () => {
                         </div>
                       </div>
                     </motion.div>
-                  ))}
+                  );
+                })}
                 </div>
               </div>
 
-              {/* Desktop Table Layout */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              {/* Desktop Table Layout - No horizontal scroll */}
+              <div className="hidden lg:block w-full">
+                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
-                    {['Order ID', 'Customer', 'Date', 'Amount', 'Payment Status', 'Status', 'Actions'].map((h, i) => (
-                      <th key={h} style={{ ...thCell, textAlign: i === 3 || i === 6 ? 'right' : 'left' }}>{h}</th>
-                    ))}
+                    <th style={{ ...thCell, width: '38px', textAlign: 'center', padding: '10px 6px' }}>
+                      <input
+                        ref={selectAllCheckboxRef}
+                        type="checkbox"
+                        checked={isAllPageSelected}
+                        onChange={() => selection.selectAll(pageIds)}
+                        title="Select all on current page"
+                        style={{
+                          cursor: 'pointer',
+                          accentColor: '#22c55e',
+                          width: 15,
+                          height: 15,
+                          margin: 0,
+                          verticalAlign: 'middle',
+                        }}
+                      />
+                    </th>
+                    <th style={{ ...thCell, width: '10%' }}>Order ID</th>
+                    <th style={{ ...thCell, width: '22%' }}>Customer</th>
+                    <th style={{ ...thCell, width: '14%' }}>Date</th>
+                    <th style={{ ...thCell, textAlign: 'right', width: '14%' }}>Amount</th>
+                    <th style={{ ...thCell, width: '13%' }}>Payment Status</th>
+                    <th style={{ ...thCell, width: '13%' }}>Status</th>
+                    <th style={{ ...thCell, textAlign: 'right', width: '14%', minWidth: 155 }}>Actions</th>
                   </tr>
                 </thead>
                 <motion.tbody initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.04 } } }}>
-                  {filteredOrders.map((order, index) => (
-                    <motion.tr
-                      key={order.id}
-                      variants={rowVariants} initial="hidden" animate="visible" custom={index}
-                      style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
-                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
-                    >
-                      {/* Order ID */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>
-                          #{order.id.toString().padStart(4, "0")}
-                        </span>
-                      </td>
+                  {paginatedOrders.map((order, index) => {
+                    const isSelected = selection.isSelected(order.id);
+                    return (
+                      <motion.tr
+                        key={order.id}
+                        variants={rowVariants} initial="hidden" animate="visible" custom={index}
+                        style={{
+                          borderBottom: '1px solid #f4f4f5',
+                          transition: 'background 0.1s',
+                          background: isSelected ? '#f0fdf4' : 'transparent',
+                        }}
+                        onMouseEnter={e => {
+                          if (!isSelected) {
+                            (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!isSelected) {
+                            (e.currentTarget as HTMLTableRowElement).style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        {/* Checkbox */}
+                        <td style={{ textAlign: 'center', padding: '12px 6px', whiteSpace: 'nowrap' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => selection.toggleSelect(order.id)}
+                            style={{
+                              cursor: 'pointer',
+                              accentColor: '#22c55e',
+                              width: 15,
+                              height: 15,
+                              margin: 0,
+                              verticalAlign: 'middle',
+                            }}
+                          />
+                        </td>
+
+                        {/* Order ID */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>
+                            #{order.id.toString().padStart(4, "0")}
+                          </span>
+                        </td>
 
                       {/* Customer */}
                       <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <span style={{ ...SYNE, fontSize: 12, fontWeight: 700, color: '#fff' }}>
                               {order.customer_name?.charAt(0).toUpperCase() || "?"}
                             </span>
                           </div>
-                          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', whiteSpace: 'nowrap' }}>{order.customer_name}</span>
+                          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={order.customer_name}>{order.customer_name}</span>
                         </div>
                       </td>
 
@@ -787,7 +1170,7 @@ const OrdersPage: React.FC = () => {
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ padding: '12px 16px', width: '14%', minWidth: 155 }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
                           {[
                             { Icon: Eye, color: '#22c55e', bg: 'rgba(34,197,94,0.08)', hbg: 'rgba(34,197,94,0.15)', title: 'View', onClick: () => { setSelectedOrderForView(order); setShowViewModal(true); } },
@@ -807,9 +1190,117 @@ const OrdersPage: React.FC = () => {
                         </div>
                       </td>
                     </motion.tr>
-                  ))}
+                  );
+                })}
                 </motion.tbody>
               </table>
+            </div>
+
+            {/* Pagination Footer */}
+            <div
+              style={{
+                padding: '12px 18px',
+                borderTop: '1px solid #ebebeb',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12,
+              }}
+            >
+              {/* Entries Status */}
+              <div style={{ ...DM, fontSize: 12, color: '#71717a' }}>
+                Showing <strong style={{ color: '#0c1a0e' }}>{totalOrdersCount === 0 ? 0 : startIndex + 1}</strong> to <strong style={{ color: '#0c1a0e' }}>{endIndex}</strong> of <strong style={{ color: '#0c1a0e' }}>{totalOrdersCount}</strong> orders
+              </div>
+
+              {/* Page Navigation */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {/* Previous Button */}
+                <button
+                  onClick={() => handlePageChange(Math.max(1, effectiveCurrentPage - 1), true)}
+                  disabled={effectiveCurrentPage <= 1}
+                  title="Previous page"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 30,
+                    height: 30,
+                    borderRadius: 7,
+                    border: '1px solid #ebebeb',
+                    background: effectiveCurrentPage <= 1 ? '#f9f9f9' : '#fff',
+                    color: effectiveCurrentPage <= 1 ? '#d4d4d8' : '#3f3f46',
+                    cursor: effectiveCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { if (effectiveCurrentPage > 1) (e.currentTarget as HTMLButtonElement).style.borderColor = '#22c55e'; }}
+                  onMouseLeave={e => { if (effectiveCurrentPage > 1) (e.currentTarget as HTMLButtonElement).style.borderColor = '#ebebeb'; }}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                {/* Page Number Buttons */}
+                {getPageNumbers(effectiveCurrentPage, totalPages).map((p, idx) => {
+                  if (p === '...') {
+                    return (
+                      <span key={`dots-${idx}`} style={{ ...DM, fontSize: 12, color: '#a1a1aa', padding: '0 4px' }}>
+                        …
+                      </span>
+                    );
+                  }
+                  const isCurrent = p === effectiveCurrentPage;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => handlePageChange(p as number, true)}
+                      style={{
+                        minWidth: 30,
+                        height: 30,
+                        padding: '0 6px',
+                        borderRadius: 7,
+                        border: isCurrent ? 'none' : '1px solid #ebebeb',
+                        background: isCurrent ? 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' : '#fff',
+                        color: isCurrent ? '#fff' : '#3f3f46',
+                        ...DM,
+                        fontSize: 12,
+                        fontWeight: isCurrent ? 700 : 500,
+                        cursor: 'pointer',
+                        boxShadow: isCurrent ? '0 2px 6px rgba(34,197,94,0.3)' : 'none',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { if (!isCurrent) (e.currentTarget as HTMLButtonElement).style.borderColor = '#22c55e'; }}
+                      onMouseLeave={e => { if (!isCurrent) (e.currentTarget as HTMLButtonElement).style.borderColor = '#ebebeb'; }}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+
+                {/* Next Button */}
+                <button
+                  onClick={() => handlePageChange(Math.min(totalPages, effectiveCurrentPage + 1), true)}
+                  disabled={effectiveCurrentPage >= totalPages}
+                  title="Next page"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 30,
+                    height: 30,
+                    borderRadius: 7,
+                    border: '1px solid #ebebeb',
+                    background: effectiveCurrentPage >= totalPages ? '#f9f9f9' : '#fff',
+                    color: effectiveCurrentPage >= totalPages ? '#d4d4d8' : '#3f3f46',
+                    cursor: effectiveCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { if (effectiveCurrentPage < totalPages) (e.currentTarget as HTMLButtonElement).style.borderColor = '#22c55e'; }}
+                  onMouseLeave={e => { if (effectiveCurrentPage < totalPages) (e.currentTarget as HTMLButtonElement).style.borderColor = '#ebebeb'; }}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
             </div>
           </>
         )}

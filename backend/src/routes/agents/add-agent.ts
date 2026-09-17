@@ -110,18 +110,19 @@ export default async function addAgentRoutes(fastify: FastifyInstance, pgClient:
       let whatsappConfig: any = null;
 
       // 4️⃣ Optionally create WhatsApp configuration if provided
-      if (whatsapp_number && webhook_url) {
+      if (whatsapp_number) {
         try {
           const { rows: configRows, rowCount: configInserted } = await pgClient.query(
-            `INSERT INTO whatsapp_configuration (user_id, whatsapp_number, webhook_url, api_key, business_account_id, phone_number_id)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            `INSERT INTO whatsapp_configuration (user_id, whatsapp_number, webhook_url, api_key, business_account_id, phone_number_id, deepseek_api_key)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
             [
               authUserId,
               whatsapp_number,
-              webhook_url,
+              webhook_url || null,
               api_key || null,
               business_account_id || null,
-              phone_number_id || null
+              phone_number_id || null,
+              body.deepseek_api_key || null
             ]
           );
 

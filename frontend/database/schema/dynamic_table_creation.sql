@@ -18,7 +18,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role, authenticated;
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        GRANT EXECUTE ON FUNCTION update_updated_at_column() TO authenticated;
+    END IF;
+END $$;
 
 -- Function to create agent-specific tables
 CREATE OR REPLACE FUNCTION create_agent_tables(p_agent_prefix TEXT, p_agent_id BIGINT)
@@ -111,6 +119,7 @@ BEGIN
             notes TEXT,
             shipping_address TEXT,
             estimated_delivery_date TIMESTAMPTZ DEFAULT NULL,
+            invoice_id INTEGER,
             created_at TIMESTAMPTZ DEFAULT now(),
             updated_at TIMESTAMPTZ DEFAULT now()
         );
@@ -120,6 +129,7 @@ BEGIN
 
     -- Create optimized index for orders
     EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (customer_id);', 'idx_' || orders_table || '_customer_id', orders_table);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (invoice_id);', 'idx_' || orders_table || '_invoice_id', orders_table);
 
     EXECUTE format('
         DROP POLICY IF EXISTS "Agent can access own orders" ON %I;
@@ -130,12 +140,61 @@ BEGIN
 
     -- Add orders to publication if not already added
     PERFORM add_to_publication_if_not_exists(orders_table);
+
+    -- Create invoices table for the agent
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I (
+            id SERIAL PRIMARY KEY,
+            customer_id INTEGER NOT NULL REFERENCES %I(id) ON DELETE CASCADE,
+            order_id INTEGER REFERENCES %I(id) ON DELETE SET NULL,
+            name TEXT NOT NULL,
+            pdf_url TEXT NOT NULL,
+            total_amount DECIMAL(10,2) DEFAULT 0,
+            advance_amount DECIMAL(10,2) DEFAULT 0,
+            notes TEXT,
+            generated_at TIMESTAMPTZ DEFAULT now(),
+            status VARCHAR(20) DEFAULT ''generated'' CHECK (status IN (''generated'', ''sent'', ''paid'')),
+            discount_percentage DECIMAL(5,2) DEFAULT 0 CHECK (discount_percentage >= 0 AND discount_percentage <= 100),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        );
+        ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
+        CREATE INDEX IF NOT EXISTS idx_%I_customer_id ON %I (customer_id);
+        CREATE INDEX IF NOT EXISTS idx_%I_order_id ON %I (order_id);
+        CREATE INDEX IF NOT EXISTS idx_%I_status ON %I (status);
+        DROP POLICY IF EXISTS "Agent can access own invoices" ON %I;
+        CREATE POLICY "Agent can access own invoices" ON %I
+            FOR ALL USING (
+                EXISTS (
+                    SELECT 1 FROM %I c
+                    WHERE c.id = customer_id
+                    AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
+                )
+            )
+            WITH CHECK (
+                EXISTS (
+                    SELECT 1 FROM %I c
+                    WHERE c.id = customer_id
+                    AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
+                )
+            );
+    ', orders_table || '_invoices', customers_table, orders_table, orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', customers_table, customers_table);
+
+    -- Add invoices to publication if not already added
+    PERFORM add_to_publication_if_not_exists(orders_table || '_invoices');
+
+    -- Add foreign key from orders to orders_invoices if not exists
+    BEGIN
+        EXECUTE format('ALTER TABLE %I ADD CONSTRAINT fk_%I_invoice FOREIGN KEY (invoice_id) REFERENCES %I(id) ON DELETE SET NULL', orders_table, orders_table, orders_table || '_invoices');
+    EXCEPTION WHEN OTHERS THEN
+        NULL;
+    END;
     
     -- Create order_items table for the agent
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I (
             id SERIAL PRIMARY KEY,
-            order_id INTEGER NOT NULL REFERENCES %I(id) ON DELETE CASCADE,
+            order_id INTEGER REFERENCES %I(id) ON DELETE CASCADE,
+            invoice_id INTEGER REFERENCES %I(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
             quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
             price NUMERIC NOT NULL DEFAULT 0 CHECK (price >= 0),
@@ -144,74 +203,49 @@ BEGIN
         );
         ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
         CREATE INDEX IF NOT EXISTS idx_%I_order_id ON %I (order_id);
-    ', orders_table || '_items', orders_table, orders_table || '_items', orders_table || '_items', orders_table || '_items');
+        CREATE INDEX IF NOT EXISTS idx_%I_invoice_id ON %I (invoice_id);
+    ', orders_table || '_items', orders_table, orders_table || '_invoices', orders_table || '_items', orders_table || '_items', orders_table || '_items', orders_table || '_items', orders_table || '_items');
 
-    -- Simplified RLS for order items - check via order's customer ownership
+    -- Simplified RLS for order items - check via customer ownership
     EXECUTE format('
         DROP POLICY IF EXISTS "Agent can access own order items" ON %I;
         CREATE POLICY "Agent can access own order items" ON %I
             FOR ALL USING (
-                EXISTS (
+                (order_id IS NOT NULL AND EXISTS (
                     SELECT 1 FROM %I o
                     JOIN %I c ON c.id = o.customer_id
                     WHERE o.id = order_id
                     AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
-                )
+                ))
+                OR
+                (invoice_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM %I inv
+                    JOIN %I c ON c.id = inv.customer_id
+                    WHERE inv.id = invoice_id
+                    AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
+                ))
             )
             WITH CHECK (
-                EXISTS (
+                (order_id IS NOT NULL AND EXISTS (
                     SELECT 1 FROM %I o
                     JOIN %I c ON c.id = o.customer_id
                     WHERE o.id = order_id
                     AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
-                )
+                ))
+                OR
+                (invoice_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM %I inv
+                    JOIN %I c ON c.id = inv.customer_id
+                    WHERE inv.id = invoice_id
+                    AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
+                ))
             );
         ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
-        GRANT ALL ON %I TO authenticated, service_role;
         COMMENT ON POLICY "Agent can access own order items" ON %I IS ''Allows agents to access and modify order items for customers they own via direct table joins'';
-    ', orders_table || '_items', orders_table || '_items', orders_table, customers_table, orders_table, customers_table, orders_table || '_items', orders_table || '_items', orders_table || '_items');
+    ', orders_table || '_items', orders_table || '_items', orders_table, customers_table, orders_table || '_invoices', customers_table, orders_table, customers_table, orders_table || '_invoices', customers_table, orders_table || '_items', orders_table || '_items');
 
     -- Add order_items to publication if not already added
     PERFORM add_to_publication_if_not_exists(orders_table || '_items');
- 
-    -- Create invoices table for the agent
-    EXECUTE format('
-        CREATE TABLE IF NOT EXISTS %I (
-            id SERIAL PRIMARY KEY,
-            order_id INTEGER NOT NULL REFERENCES %I(id) ON DELETE CASCADE,
-            name TEXT NOT NULL,
-            pdf_url TEXT NOT NULL,
-            generated_at TIMESTAMPTZ DEFAULT now(),
-            status VARCHAR(20) DEFAULT ''generated'' CHECK (status IN (''generated'', ''sent'', ''paid'')),
-            discount_percentage DECIMAL(5,2) DEFAULT 0 CHECK (discount_percentage >= 0 AND discount_percentage <= 100),
-            updated_at TIMESTAMPTZ DEFAULT now()
-        );
-        ALTER TABLE %I ENABLE ROW LEVEL SECURITY;
-        CREATE INDEX IF NOT EXISTS idx_%I_order_id ON %I (order_id);
-        CREATE INDEX IF NOT EXISTS idx_%I_status ON %I (status);
-        DROP POLICY IF EXISTS "Agent can access own invoices" ON %I;
-        CREATE POLICY "Agent can access own invoices" ON %I
-            FOR ALL USING (
-                EXISTS (
-                    SELECT 1 FROM %I o
-                    JOIN %I c ON c.id = o.customer_id
-                    WHERE o.id = order_id
-                    AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
-                )
-            )
-            WITH CHECK (
-                EXISTS (
-                    SELECT 1 FROM %I o
-                    JOIN %I c ON c.id = o.customer_id
-                    WHERE o.id = order_id
-                    AND c.agent_id IN (SELECT id FROM agents WHERE user_id = auth.uid())
-                )
-            );
-        GRANT ALL ON %I TO authenticated, service_role;
-    ', orders_table || '_invoices', orders_table, orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table || '_invoices', orders_table, customers_table, orders_table, customers_table, orders_table || '_invoices');
-
-    -- Add invoices to publication if not already added
-    PERFORM add_to_publication_if_not_exists(orders_table || '_invoices');
     
     -- Create appointments table for the agent
     EXECUTE format('
@@ -497,11 +531,20 @@ CREATE TRIGGER trigger_create_agent_tables
     FOR EACH ROW
     EXECUTE FUNCTION trigger_create_agent_tables();
 
--- Grant execute permissions
-GRANT EXECUTE ON FUNCTION create_agent_tables(TEXT, BIGINT) TO service_role, authenticated;
-GRANT EXECUTE ON FUNCTION drop_agent_tables(TEXT) TO service_role;
-GRANT EXECUTE ON FUNCTION trigger_create_agent_tables() TO service_role;
-GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role, authenticated;
+-- Grant execute permissions if roles exist
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        GRANT EXECUTE ON FUNCTION create_agent_tables(TEXT, BIGINT) TO service_role;
+        GRANT EXECUTE ON FUNCTION drop_agent_tables(TEXT) TO service_role;
+        GRANT EXECUTE ON FUNCTION trigger_create_agent_tables() TO service_role;
+        GRANT EXECUTE ON FUNCTION update_updated_at_column() TO service_role;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        GRANT EXECUTE ON FUNCTION create_agent_tables(TEXT, BIGINT) TO authenticated;
+        GRANT EXECUTE ON FUNCTION update_updated_at_column() TO authenticated;
+    END IF;
+END $$;
 
 -- Comments for documentation
 COMMENT ON FUNCTION create_agent_tables IS 'Creates dynamic tables (customers, messages, orders, appointments, invoices, templates, categories, inventory_items, services, service_packages) for a new agent based on their prefix and ID. Uses generic update_updated_at_column() for timestamps.';

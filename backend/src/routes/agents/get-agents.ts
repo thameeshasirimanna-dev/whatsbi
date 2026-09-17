@@ -67,6 +67,7 @@ export default async function getAgentsRoutes(
                   business_account_id:
                     configItem.business_account_id || undefined,
                   phone_number_id: configItem.phone_number_id || undefined,
+                  deepseek_api_key: configItem.deepseek_api_key || undefined,
                   is_active: Boolean(configItem.is_active),
                 };
               }

@@ -4,12 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, MessageSquare, BarChart3, Settings, LogOut,
   Plus, Pencil, Trash2, CheckCircle, Phone, Mail, ShieldCheck, ShieldX,
-  Menu, X,
+  Menu, X, AlertTriangle,
 } from 'lucide-react';
 import { AddAgentModal } from './AddAgentModal';
 import { EditAgentModal } from './EditAgentModal';
 import { WhatsAppSetupModal } from './WhatsAppSetupModal';
 import { useDialog } from './agent/shared/DialogProvider';
+import { AdminSettingsTab } from './admin/settings/AdminSettingsTab';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
@@ -36,11 +37,12 @@ interface Agent {
   is_email_verified: boolean;
   whatsapp_config?: {
     whatsapp_number: string;
-    webhook_url: string;
+    webhook_url?: string;
     api_key?: string;
     business_account_id?: string;
     phone_number_id?: string;
     whatsapp_app_secret?: string;
+    deepseek_api_key?: string;
     is_active: boolean;
   } | null;
 }
@@ -79,6 +81,7 @@ const AdminDashboard: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [customUser, setCustomUser] = useState<User | null>(null);
+  const [maintenanceActive, setMaintenanceActive] = useState(false);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -101,6 +104,14 @@ const AdminDashboard: React.FC = () => {
         setAdminUserId(data.user.id);
         setCustomUser(data.user);
         setAnalytics(data.analytics);
+
+        // Fetch maintenance status
+        fetch(`${backendUrl}/maintenance-status`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) setMaintenanceActive(Boolean(d.maintenance_mode));
+          })
+          .catch(() => {});
       } catch (err: any) {
         console.error('Admin verification error:', err);
         setError('Database connection error during authentication.');
@@ -249,6 +260,7 @@ const AdminDashboard: React.FC = () => {
             business_account_id: actualConfig.business_account_id || '',
             phone_number_id: actualConfig.phone_number_id || '',
             whatsapp_app_secret: actualConfig.whatsapp_app_secret || '',
+            deepseek_api_key: actualConfig.deepseek_api_key || '',
             is_active: Boolean(actualConfig.is_active),
           };
         }
@@ -355,10 +367,8 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0, flex: 1 }}>
-                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Webhook</span>
-                        {agent.whatsapp_config?.webhook_url ? (
-                          <a href={agent.whatsapp_config.webhook_url} target="_blank" rel="noopener noreferrer" style={{ ...DM, fontSize: 12, color: '#22c55e', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>View Webhook</a>
-                        ) : <span style={{ color: '#a1a1aa', fontSize: 12 }}>—</span>}
+                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>AI Engine</span>
+                        <span style={{ ...DM, fontSize: 12, color: '#15803d', fontWeight: 600 }}>DeepSeek (Native)</span>
                       </div>
                     </div>
 
@@ -383,7 +393,7 @@ const AdminDashboard: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['Agent', 'WhatsApp Number', 'Status', 'Webhook', 'Actions'].map(h => (
+                    {['Agent', 'WhatsApp Number', 'Status', 'AI Engine', 'Actions'].map(h => (
                       <th key={h} style={thCell}>{h}</th>
                     ))}
                   </tr>
@@ -402,9 +412,9 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       </td>
                       <td style={{ ...tdCell, maxWidth: 180 }}>
-                        {agent.whatsapp_config?.webhook_url ? (
-                          <a href={agent.whatsapp_config.webhook_url} target="_blank" rel="noopener noreferrer" style={{ ...DM, fontSize: 12, color: '#22c55e', textDecoration: 'none' }}>View Webhook</a>
-                        ) : <span style={{ color: '#a1a1aa' }}>—</span>}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '3px 8px', borderRadius: 6, ...DM, fontSize: 11, fontWeight: 600 }}>
+                          DeepSeek Built-in
+                        </span>
                       </td>
                       <td style={tdCell}>
                         {agent.whatsapp_config ? (
@@ -650,9 +660,9 @@ const AdminDashboard: React.FC = () => {
         return <AnalyticsWidgets />;
       case 'settings':
         return (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', padding: '24px 28px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-            <span style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#0c1a0e' }}>Settings</span>
-          </div>
+          <AdminSettingsTab
+            onMaintenanceStatusChange={(active) => setMaintenanceActive(active)}
+          />
         );
       default:
         return null;
@@ -793,6 +803,46 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
         </header>
+
+        {/* Maintenance Mode Alert Banner */}
+        {maintenanceActive && (
+          <div
+            style={{
+              background: '#fffbeb',
+              borderBottom: '1px solid #fde68a',
+              padding: '10px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={15} style={{ color: '#d97706' }} />
+              <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#92400e' }}>
+                MAINTENANCE MODE IS ACTIVE — Regular agents and public users are currently blocked.
+              </span>
+            </div>
+            <button
+              onClick={() => setActiveTab('settings')}
+              style={{
+                background: '#d97706',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                ...DM,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Manage Settings
+            </button>
+          </div>
+        )}
 
         <main
           key={activeTab}

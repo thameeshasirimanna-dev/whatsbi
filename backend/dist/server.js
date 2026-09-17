@@ -27,6 +27,7 @@ import getConversationMessagesRoutes from "./routes/conversations/get-conversati
 import markMessagesReadRoutes from "./routes/conversations/mark-messages-read.js";
 import getBotContextRoutes from "./routes/bot/get-bot-context.js";
 import chatbotReplyRoutes from "./routes/bot/chatbot-reply.js";
+import triggerAiResponseRoutes from "./routes/bot/trigger-ai-response.js";
 import manageServicesRoutes from "./routes/services/manage-services.js";
 import manageInventoryRoutes from "./routes/inventory/manage-inventory.js";
 import manageCustomersRoutes from "./routes/customers/manage-customers.js";
@@ -147,6 +148,7 @@ async function registerRoutes() {
     await markMessagesReadRoutes(server, pgClient, cacheService);
     await getBotContextRoutes(server, pgClient, cacheService);
     await chatbotReplyRoutes(server, pgClient, cacheService, emitNewMessage);
+    await triggerAiResponseRoutes(server, pgClient, cacheService, emitNewMessage);
     await manageServicesRoutes(server, pgClient);
     await manageInventoryRoutes(server, pgClient);
     await manageCustomersRoutes(server, pgClient, cacheService);

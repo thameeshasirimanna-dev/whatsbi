@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { downloadWhatsAppMedia, uploadMediaToStorage } from '../../utils/helpers.js';
 import { CacheService } from '../../utils/cache.js';
+import { formatBankDetails, sanitizeWhatsAppFormatting } from '../../services/ai-chatbot.service.js';
 
 const CHATBOT_SECRET = process.env.CHATBOT_SECRET ?? 'default-secret-change-in-prod';
 
@@ -138,6 +139,8 @@ export default async function chatbotReplyRoutes(
 
       // Prepare WhatsApp payload
       let whatsappPayload: any;
+      const effectiveMessage = message ? sanitizeWhatsAppFormatting(formatBankDetails(message)) : message;
+      const effectiveCaption = caption ? sanitizeWhatsAppFormatting(formatBankDetails(caption)) : caption;
 
       if (type === 'text') {
         whatsappPayload = {
@@ -145,7 +148,7 @@ export default async function chatbotReplyRoutes(
           recipient_type: 'individual',
           to: normalizedPhone,
           type: 'text',
-          text: { body: message },
+          text: { body: effectiveMessage },
         };
       } else if (type === 'image') {
         whatsappPayload = {
@@ -155,7 +158,7 @@ export default async function chatbotReplyRoutes(
           type: 'image',
           image: {
             id: media_id,
-            ...(caption && { caption }),
+            ...(effectiveCaption && { caption: effectiveCaption }),
           },
         };
       } else if (type === 'document') {
@@ -166,7 +169,7 @@ export default async function chatbotReplyRoutes(
           type: 'document',
           document: {
             id: media_id,
-            ...(caption && { caption }),
+            ...(effectiveCaption && { caption: effectiveCaption }),
           },
         };
       } else {
@@ -196,7 +199,7 @@ export default async function chatbotReplyRoutes(
       const messageId = result.messages?.[0]?.id;
 
       // Store message in database
-      const messageText = message || `[${type.toUpperCase()}] Media file`;
+      const messageText = type === 'text' ? (effectiveMessage || '') : (effectiveCaption || '');
       const mediaTypeVal = type === 'text' ? 'none' : type;
 
       const { rows: insertedMessageRows } = await pgClient.query(
@@ -208,7 +211,7 @@ export default async function chatbotReplyRoutes(
           'outbound',
           mediaTypeVal,
           storedMediaUrl,
-          caption || null
+          effectiveCaption || null
         ]
       );
 
@@ -237,19 +240,23 @@ export default async function chatbotReplyRoutes(
 
       // Log to whatsapp_message_logs
       if (messageId) {
-        await pgClient.query(
-          `INSERT INTO whatsapp_message_logs (user_id, agent_id, customer_phone, message_type, category, status, whatsapp_message_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            user_id,
-            agent.id,
-            customer_phone,
-            type,
-            'chatbot',
-            'sent',
-            messageId
-          ]
-        );
+        try {
+          await pgClient.query(
+            `INSERT INTO whatsapp_message_logs (user_id, agent_id, customer_phone, message_type, category, status, whatsapp_message_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              user_id,
+              agent.id,
+              customer_phone,
+              type,
+              'chatbot',
+              'sent',
+              messageId
+            ]
+          );
+        } catch (logErr: any) {
+          console.warn('Notice: could not record in whatsapp_message_logs:', logErr.message);
+        }
       }
 
       return reply.code(200).send({

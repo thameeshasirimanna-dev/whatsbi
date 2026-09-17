@@ -618,7 +618,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                           marginRight: 6,
                         }}
                       >
-                        {conversation.lastMessage}
+                        {conversation.lastMessage ? conversation.lastMessage.replace(/\*/g, "") : ""}
                       </span>
                       <span
                         style={{

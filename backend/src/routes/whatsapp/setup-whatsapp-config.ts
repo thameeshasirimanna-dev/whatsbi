@@ -20,11 +20,10 @@ export default async function setupWhatsappConfigRoutes(
         });
       }
 
-      if (!body.whatsapp_number || !body.webhook_url) {
+      if (!body.whatsapp_number) {
         return reply.code(400).send({
           success: false,
-          message:
-            "whatsapp_number and webhook_url are required for WhatsApp setup",
+          message: "whatsapp_number is required for WhatsApp setup",
         });
       }
 
@@ -66,42 +65,162 @@ export default async function setupWhatsappConfigRoutes(
         });
       }
 
-      // Create or update WhatsApp configuration using function
-      let configRows;
+      const configUserId = agentData.user_id || targetUserId;
+
+      // Ensure whatsapp_configuration columns and constraints are ready
       try {
-        const result = await pgClient.query(
-          "SELECT * FROM create_whatsapp_config($1, $2, $3, $4, $5, $6, $7)",
-          [
-            agentData.user_id,
+        await pgClient.query(`
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS deepseek_api_key TEXT;
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS whatsapp_app_secret TEXT;
+          ALTER TABLE whatsapp_configuration ALTER COLUMN webhook_url DROP NOT NULL;
+        `);
+      } catch (colErr: any) {
+        console.warn("Notice: could not alter whatsapp_configuration columns:", colErr.message);
+      }
+
+      const webhookUrl = body.webhook_url ? String(body.webhook_url).trim() : "";
+      const trimmedDeepSeekKey = body.deepseek_api_key !== undefined && body.deepseek_api_key !== null
+        ? String(body.deepseek_api_key).trim() || null
+        : null;
+
+      // Check if WhatsApp configuration already exists for this user/agent
+      const { rows: existingRows } = await pgClient.query(
+        "SELECT id FROM whatsapp_configuration WHERE user_id = $1",
+        [configUserId]
+      );
+
+      let configData: any = null;
+
+      if (existingRows.length > 0) {
+        // UPDATE existing record
+        try {
+          const { rows: updateRows } = await pgClient.query(`
+            UPDATE whatsapp_configuration
+            SET
+              whatsapp_number = $1,
+              webhook_url = COALESCE($2, webhook_url, ''),
+              api_key = COALESCE($3, api_key),
+              business_account_id = COALESCE($4, business_account_id),
+              phone_number_id = COALESCE($5, phone_number_id),
+              whatsapp_app_secret = COALESCE($6, whatsapp_app_secret),
+              deepseek_api_key = $7,
+              is_active = true,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $8
+            RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
+          `, [
             body.whatsapp_number,
-            body.webhook_url,
+            webhookUrl,
             body.api_key || null,
             body.business_account_id || null,
             body.phone_number_id || null,
             body.whatsapp_app_secret || null,
-          ]
-        );
-        configRows = result.rows;
-      } catch (dbError) {
-        console.error("Database query failed:", dbError);
+            trimmedDeepSeekKey,
+            configUserId,
+          ]);
+
+          if (updateRows.length > 0) {
+            configData = updateRows[0].config;
+          }
+        } catch (updateErr: any) {
+          console.warn("Update with whatsapp_app_secret failed, trying fallback:", updateErr.message);
+          const { rows: fallbackUpdateRows } = await pgClient.query(`
+            UPDATE whatsapp_configuration
+            SET
+              whatsapp_number = $1,
+              webhook_url = COALESCE($2, webhook_url, ''),
+              api_key = COALESCE($3, api_key),
+              business_account_id = COALESCE($4, business_account_id),
+              phone_number_id = COALESCE($5, phone_number_id),
+              deepseek_api_key = $6,
+              is_active = true,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $7
+            RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
+          `, [
+            body.whatsapp_number,
+            webhookUrl,
+            body.api_key || null,
+            body.business_account_id || null,
+            body.phone_number_id || null,
+            trimmedDeepSeekKey,
+            configUserId,
+          ]);
+
+          if (fallbackUpdateRows.length > 0) {
+            configData = fallbackUpdateRows[0].config;
+          }
+        }
+      } else {
+        // INSERT new record
+        try {
+          const { rows: insertRows } = await pgClient.query(`
+            INSERT INTO whatsapp_configuration (
+              user_id,
+              whatsapp_number,
+              webhook_url,
+              api_key,
+              business_account_id,
+              phone_number_id,
+              whatsapp_app_secret,
+              deepseek_api_key,
+              is_active,
+              updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, CURRENT_TIMESTAMP)
+            RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
+          `, [
+            configUserId,
+            body.whatsapp_number,
+            webhookUrl,
+            body.api_key || null,
+            body.business_account_id || null,
+            body.phone_number_id || null,
+            body.whatsapp_app_secret || null,
+            trimmedDeepSeekKey,
+          ]);
+
+          if (insertRows.length > 0) {
+            configData = insertRows[0].config;
+          }
+        } catch (insertErr: any) {
+          console.warn("Insert with whatsapp_app_secret failed, trying fallback:", insertErr.message);
+          const { rows: fallbackInsertRows } = await pgClient.query(`
+            INSERT INTO whatsapp_configuration (
+              user_id,
+              whatsapp_number,
+              webhook_url,
+              api_key,
+              business_account_id,
+              phone_number_id,
+              deepseek_api_key,
+              is_active,
+              updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, true, CURRENT_TIMESTAMP)
+            RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
+          `, [
+            configUserId,
+            body.whatsapp_number,
+            webhookUrl,
+            body.api_key || null,
+            body.business_account_id || null,
+            body.phone_number_id || null,
+            trimmedDeepSeekKey,
+          ]);
+
+          if (fallbackInsertRows.length > 0) {
+            configData = fallbackInsertRows[0].config;
+          }
+        }
+      }
+
+      if (!configData) {
         return reply.code(500).send({
           success: false,
-          message: "Database error: " + (dbError as Error).message,
+          message: "Failed to persist WhatsApp configuration in database",
         });
       }
-
-      if (configRows.length === 0 || !configRows[0].success) {
-        console.error(
-          "Failed to setup WhatsApp configuration. Rows:",
-          configRows
-        );
-        return reply.code(400).send({
-          success: false,
-          message: "Failed to setup WhatsApp configuration",
-        });
-      }
-
-      const configData = configRows[0].config;
 
       // Create default templates
       const templatesTable = `${agentData.agent_prefix}_templates`;

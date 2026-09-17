@@ -36,7 +36,7 @@ WhatsBi transforms chaotic WhatsApp chat threads into a structured, revenue-gene
 3. **Dual Business Operating Modes**:
    - **Product Businesses**: SKU inventory management, stock tracking, and item selection.
    - **Service Businesses**: Tiered service package catalogs and appointment booking.
-4. **Autonomous AI Bot Hand-off**: Context-aware AI chatbot endpoints that allow agents to delegate repetitive inquiries while preserving human escalation paths.
+4. **Native DeepSeek AI Chatbot**: Built-in, context-aware AI chatbot powered by DeepSeek (`deepseek-chat`) that automatically responds to customer inquiries using real catalog items, prices, and business policies without external webhook friction, while preserving seamless human agent escalation.
 
 ---
 

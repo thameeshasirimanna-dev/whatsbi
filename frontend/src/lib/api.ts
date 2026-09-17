@@ -162,16 +162,59 @@ export const deleteOrder = async (id: number): Promise<void> => {
 // Invoices API
 export interface Invoice {
   id: number;
-  order_id: number;
+  order_id?: number | null;
   name: string;
   pdf_url: string;
   status: string;
   generated_at: string;
   customer_id?: number;
   customer_name?: string;
-  order_number?: string;
+  customer_phone?: string;
+  order_number?: string | null;
+  invoice_number?: string;
   total?: number;
+  total_amount?: number;
+  advance_amount?: number;
+  discount_percentage?: number;
+  notes?: string;
+  linked_order_id?: number | null;
+  order_status?: string | null;
+  order_payment_status?: string | null;
+  items?: any[];
 }
+
+export const createOrderFromInvoice = async (params: {
+  invoice_id: number;
+  shipping_address?: string;
+  estimated_delivery_date?: string;
+  advance_amount?: number;
+  payment_status?: string;
+  notes?: string;
+}): Promise<{ order: any; invoice: any }> => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('No token');
+
+    const response = await fetch(`${BACKEND_URL}/manage-invoices?action=create-order-from-invoice`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to create order from invoice');
+    }
+
+    return { order: data.order, invoice: data.invoice };
+  } catch (err) {
+    console.error('Create order from invoice error:', err);
+    throw err;
+  }
+};
 
 export const getInvoices = async (params?: { customer_id?: number }): Promise<Invoice[]> => {
   try {
@@ -203,10 +246,23 @@ export const getInvoices = async (params?: { customer_id?: number }): Promise<In
   }
 };
 
-export const updateInvoiceStatus = async (id: number, status: string): Promise<Invoice> => {
+export const updateInvoiceStatus = async (
+  id: number,
+  status: string,
+  advanceAmount?: number,
+  orderId?: number | null
+): Promise<Invoice> => {
   try {
     const token = getToken();
     if (!token) throw new Error('No token');
+
+    const body: any = { id, status };
+    if (advanceAmount !== undefined) {
+      body.advance_amount = advanceAmount;
+    }
+    if (orderId !== undefined) {
+      body.order_id = orderId;
+    }
 
     const response = await fetch(`${BACKEND_URL}/manage-invoices`, {
       method: 'PUT',
@@ -214,7 +270,7 @@ export const updateInvoiceStatus = async (id: number, status: string): Promise<I
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ id, status }),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();

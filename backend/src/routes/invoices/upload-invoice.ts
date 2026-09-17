@@ -18,17 +18,20 @@ export default async function uploadInvoiceRoutes(
         agentPrefix,
         customerId,
         discountPercentage,
+        totalAmount,
+        advanceAmount,
+        notes,
+        items,
         pdfBase64,
       } = body;
 
       if (
-        !orderId ||
         !invoiceName ||
         !agentPrefix ||
         !customerId ||
         !pdfBase64
       ) {
-        return reply.code(400).send({ error: "Missing required fields" });
+        return reply.code(400).send({ error: "Missing required fields: invoiceName, agentPrefix, customerId, pdfBase64" });
       }
 
       // Decode base64 to buffer
@@ -44,7 +47,8 @@ export default async function uploadInvoiceRoutes(
         now.getSeconds()
       ).padStart(2, "0")}`;
 
-      const fileName = `invoice_${orderId}${formattedDate}.pdf`;
+      const filePrefix = orderId ? `order_${orderId}` : `cust_${customerId}`;
+      const fileName = `invoice_${filePrefix}_${formattedDate}.pdf`;
       const r2Key = `${agentPrefix}/invoices/${customerId}/${fileName}`;
 
       // Upload to R2
@@ -63,19 +67,65 @@ export default async function uploadInvoiceRoutes(
 
       // Insert invoice record
       const invoicesTable = `${agentPrefix}_orders_invoices`;
+      const itemsTable = `${agentPrefix}_orders_items`;
+
       const insertQuery = `
-        INSERT INTO ${invoicesTable} (order_id, name, pdf_url, status, discount_percentage)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO ${invoicesTable} (customer_id, order_id, name, pdf_url, status, discount_percentage, total_amount, advance_amount, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
       `;
-      await pgClient.query(insertQuery, [
-        orderId,
+      const { rows: invoiceRows } = await pgClient.query(insertQuery, [
+        customerId,
+        orderId || null,
         invoiceName,
         uploadedUrl,
         "generated",
         discountPercentage || 0,
+        totalAmount || 0,
+        advanceAmount || 0,
+        notes || null,
       ]);
 
-      return reply.code(200).send({ success: true, publicUrl: uploadedUrl });
+      const invoice = invoiceRows[0];
+
+      // If items were provided, insert into itemsTable with invoice_id
+      if (items && Array.isArray(items) && items.length > 0) {
+        const orderItems = items.map((item: any) => ({
+          order_id: orderId || null,
+          invoice_id: invoice.id,
+          name: item.name.trim(),
+          quantity: Number(item.quantity) || 1,
+          price: Number(item.price) || 0,
+        }));
+
+        const values = orderItems
+          .map(
+            (_, i) =>
+              `($${i * 5 + 1}, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5})`
+          )
+          .join(", ");
+        const params = orderItems.flatMap((item) => [
+          item.order_id,
+          item.invoice_id,
+          item.name,
+          item.quantity,
+          item.price,
+        ]);
+
+        await pgClient.query(
+          `INSERT INTO ${itemsTable} (order_id, invoice_id, name, quantity, price) VALUES ${values}`,
+          params
+        );
+      }
+
+      return reply.code(200).send({
+        success: true,
+        publicUrl: uploadedUrl,
+        invoice: {
+          ...invoice,
+          items: items || [],
+        },
+      });
     } catch (error) {
       console.error("Upload invoice error:", error);
       return reply.code(500).send({ error: "Internal server error" });

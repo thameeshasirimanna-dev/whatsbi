@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import crypto from 'crypto';
 import { processIncomingMessage, processMessageStatus } from '../../utils/helpers.js';
+import { getCachedMaintenanceSettings } from '../admin/maintenance.js';
 
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? '';
 
@@ -114,6 +115,19 @@ export default async function whatsappWebhookRoutes(
         const authHeader = request.headers.authorization;
         const userAgent = request.headers["user-agent"] || "unknown";
         const origin = request.headers.origin || "none";
+
+        // Check maintenance mode: if active and webhook_retry_mode is true, signal Meta to hold and retry
+        const maintenance = getCachedMaintenanceSettings();
+        if (maintenance.maintenance_mode && maintenance.webhook_retry_mode) {
+          return reply
+            .code(503)
+            .headers({
+              ...corsHeaders,
+              "Content-Type": "text/plain",
+              "Retry-After": "60",
+            })
+            .send("System Under Maintenance - Meta Retry Requested");
+        }
 
         try {
           const payload = request.body as any;

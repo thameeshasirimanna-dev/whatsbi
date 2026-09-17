@@ -7,7 +7,12 @@ export class CacheService {
     this.redis = redis;
   }
 
+  private get isReady(): boolean {
+    return this.redis.status === 'ready';
+  }
+
   async get(key: string): Promise<string | null> {
+    if (!this.isReady) return null;
     try {
       return await this.redis.get(key);
     } catch (error) {
@@ -17,6 +22,7 @@ export class CacheService {
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
+    if (!this.isReady) return;
     try {
       if (ttlSeconds) {
         await this.redis.setex(key, ttlSeconds, value);
@@ -29,6 +35,7 @@ export class CacheService {
   }
 
   async del(key: string): Promise<void> {
+    if (!this.isReady) return;
     try {
       await this.redis.del(key);
     } catch (error) {
@@ -37,10 +44,12 @@ export class CacheService {
   }
 
   async invalidateChatList(agentId: number): Promise<void> {
+    if (!this.isReady) return;
     await this.del(CacheService.chatListKey(agentId));
   }
 
   async invalidateRecentMessages(agentId: number, customerId: number): Promise<void> {
+    if (!this.isReady) return;
     try {
       // Invalidate all paginated versions by scanning and deleting keys matching the pattern
       const pattern = `recent_messages:${agentId}:${customerId}*`;
@@ -61,6 +70,7 @@ export class CacheService {
   }
 
   async invalidateBotContext(agentId: number, customerId: number): Promise<void> {
+    if (!this.isReady) return;
     await this.del(CacheService.botContextKey(agentId, customerId));
   }
 

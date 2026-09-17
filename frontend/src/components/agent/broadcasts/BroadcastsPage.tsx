@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getCurrentAgent } from "../../../lib/agent";
 import { getToken } from "../../../lib/auth";
 import { getCustomers, getBroadcasts, getBroadcastDetails, createBroadcast, deleteBroadcast, Customer, Broadcast, BroadcastRecipient } from "../../../lib/api";
@@ -104,6 +105,18 @@ const BroadcastsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const incomingIds = (location.state as any)?.selectedCustomerIds;
+    if (Array.isArray(incomingIds) && incomingIds.length > 0) {
+      setSelectedCustomerIds(incomingIds);
+      setTargetAudienceType('manual');
+      setShowCreateModal(true);
+      setWizardStep(1);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     loadData();

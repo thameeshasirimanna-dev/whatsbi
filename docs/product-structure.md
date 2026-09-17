@@ -9,7 +9,8 @@
 - **Real-Time Delivery**: Socket.IO v4 bi-directional event transport between backend and browser.
 - **High-Performance Caching**: Redis CacheService caching chat lists, message history, and unread counters.
 - **Media Ingestion**: Automated download of WhatsApp media and streaming storage into Cloudflare R2.
-- **External Bot Integration**: Dedicated webhook handoff enabling third-party AI assistants to read conversation history and dispatch replies.
+- **Native DeepSeek AI Chatbot**: Built-in autonomous conversation AI powered by DeepSeek (`deepseek-chat`), grounded in tenant inventory/service catalogs, company overview knowledge, and conversation memory.
+- **Real-Time AI Dispatch**: Automated outbound messaging via Meta Cloud API v23.0 with instant Socket.IO agent inbox synchronization.
 
 ---
 
@@ -79,8 +80,8 @@ Each agent is assigned an alphanumeric prefix (e.g., `agt_a82f`). All entity tab
 1. `{prefix}_customers`: Contact records, phone numbers, pipeline stages, language.
 2. `{prefix}_messages`: Conversation history, media URLs, timestamps, read receipts.
 3. `{prefix}_orders`: Customer orders, advance amounts, delivery dates, statuses.
-4. `{prefix}_orders_items`: Order line items with generated totals.
-5. `{prefix}_orders_invoices`: Invoice PDFs stored in R2, discounts, statuses.
+4. `{prefix}_orders_items`: Line items linked to orders and/or invoices with generated totals.
+5. `{prefix}_orders_invoices`: Customer invoice records, PDF paths in R2, discounts, advance amount, payment statuses, and link to resulting CRM order.
 6. `{prefix}_appointments`: Customer appointment bookings and durations.
 7. `{prefix}_templates`: Agent-specific WhatsApp message templates.
 8. `{prefix}_categories`: Product categories for inventory organization.
@@ -135,7 +136,8 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 ### Business Entities
 - `/manage-customers`: CRUD operations for CRM customer records.
 - `/manage-orders`: CRUD operations for orders and items.
-- `/manage-invoices`: CRUD operations for invoices and PDF generation.
+- `/manage-invoices`: CRUD operations for invoices, PDF generation, and `POST /manage-invoices?action=create-order-from-invoice` (atomically marks invoice as paid and generates CRM order).
+- `/upload-invoice`: Uploads generated PDF invoice and persists invoice items linked directly to the customer in the invoice-first lifecycle.
 - `/manage-appointments`: CRUD operations for appointment bookings.
 - `/manage-templates`: WhatsApp template management.
 - `/manage-inventory`: Inventory items and category operations.
@@ -143,9 +145,10 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 - `/upload-media`: Media upload to Cloudflare R2 bucket.
 - `/get-media-preview`: Authenticated media preview proxy.
 
-### Autonomous Bot Gateway
-- `GET /get-bot-context`: Aggregates customer history and catalog data for AI bots.
-- `POST /chatbot-reply`: Allows authorized AI bots (`CHATBOT_SECRET`) to dispatch replies.
+### Native AI Chatbot & Bot Gateway
+- `POST /trigger-ai-response`: Authenticated trigger for on-demand DeepSeek AI responses (product inquiries, service inquiries, or custom prompts).
+- `GET /bot-context/:customerId`: Aggregates customer history and catalog data for AI bots.
+- `POST /chatbot-reply`: Allows authorized AI bots (`CHATBOT_SECRET`) or legacy integrations to dispatch replies.
 
 ---
 

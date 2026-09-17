@@ -162,8 +162,10 @@ The following rules apply to all frontend components, views, modals, and landing
 ## 8. Data Tables
 
 - **Toolbar**: Header title, search filter input, and action triggers.
-- **Table Header**: Background `#f8faf8`, border bottom `1px solid #ebebeb`, uppercase typography `0.625rem`, letter-spacing `0.08em`, font weight `700`, color `#52525b`.
+- **Table Header**: Background `#f8faf8`, border bottom `1px solid #ebebeb`, uppercase typography `0.625rem`, letter-spacing `0.08em`, font weight `700`, color `#52525b`. Includes "Select All" checkbox supporting indeterminate dash state.
 - **Table Rows**: Height `48px`, font size `0.875rem`, hover highlight `background: #fafffe`.
+- **Row Multi-Selection**: Individual row checkboxes with `#22c55e` accent; selected rows highlight with `#f0fdf4` (`green-50`) background.
+- **Bulk Actions Bar**: Docked/floating dark bar (`#0c1a0e` / `forest-900`, border `#1a3620`, shadow `0 8px 24px rgba(12,26,14,0.25)`) displaying selected count badge and contextual batch actions (Mark Paid, Download, Delete, Clear).
 - **Pagination Controls**: Active page `#22c55e` with white text; inactive pages `#ffffff` with border `1px solid #e4e4e7`.
 
 ---

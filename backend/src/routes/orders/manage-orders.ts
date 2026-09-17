@@ -169,9 +169,83 @@ export default async function manageOrdersRoutes(
 
         case "POST": {
           const body = parsedBody;
-          const { customer_id, notes, shipping_address, items, order_id, advance_amount, payment_status, estimated_delivery_date } =
+          const { customer_id, notes, shipping_address, items, order_id, invoice_id, advance_amount, payment_status, estimated_delivery_date } =
             body || {};
           const type = url.searchParams.get("type");
+
+          // Handle from-invoice creation directly
+          if (type === "from-invoice" || (invoice_id && (!items || items.length === 0))) {
+            const targetInvoiceId = invoice_id || body?.invoice_id;
+            if (!targetInvoiceId || typeof targetInvoiceId !== "number") {
+              return reply.code(400).send({
+                success: false,
+                message: "Valid invoice ID is required",
+              });
+            }
+
+            const client = await pgClient.connect();
+            try {
+              await client.query("BEGIN");
+              const { rows: invRows } = await client.query(
+                `SELECT * FROM ${agentPrefix}_orders_invoices WHERE id = $1 FOR UPDATE`,
+                [targetInvoiceId]
+              );
+              if (invRows.length === 0) {
+                await client.query("ROLLBACK");
+                return reply.code(404).send({ success: false, message: "Invoice not found" });
+              }
+
+              const inv = invRows[0];
+              const totalAmount = parseFloat(inv.total_amount) || 0;
+              const advanceVal = advance_amount !== undefined && !isNaN(Number(advance_amount))
+                ? Number(advance_amount)
+                : (parseFloat(inv.advance_amount) || totalAmount);
+              const payStatus = payment_status || (advanceVal >= totalAmount ? 'paid' : (advanceVal > 0 ? 'partially_paid' : 'unpaid'));
+              const orderNotes = notes || inv.notes || null;
+
+              const { rows: orderRows } = await client.query(
+                `INSERT INTO ${agentPrefix}_orders (customer_id, invoice_id, total_amount, advance_amount, payment_status, status, notes, shipping_address, estimated_delivery_date, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+                 RETURNING *`,
+                [
+                  inv.customer_id,
+                  inv.id,
+                  totalAmount,
+                  advanceVal,
+                  payStatus,
+                  'pending',
+                  orderNotes,
+                  shipping_address ? shipping_address.trim() : null,
+                  estimated_delivery_date ? new Date(estimated_delivery_date).toISOString() : null,
+                ]
+              );
+              const createdOrder = orderRows[0];
+
+              await client.query(
+                `UPDATE ${agentPrefix}_orders_items SET order_id = $1 WHERE invoice_id = $2`,
+                [createdOrder.id, inv.id]
+              );
+
+              await client.query(
+                `UPDATE ${agentPrefix}_orders_invoices SET status = 'paid', order_id = $1, advance_amount = $2, updated_at = NOW() WHERE id = $3`,
+                [createdOrder.id, advanceVal, inv.id]
+              );
+
+              await client.query("COMMIT");
+
+              return reply.code(201).send({
+                success: true,
+                message: "Order created from invoice successfully",
+                order: createdOrder,
+              });
+            } catch (err) {
+              await client.query("ROLLBACK");
+              console.error("Create order from invoice error:", err);
+              return reply.code(500).send({ success: false, message: "Failed to create order from invoice" });
+            } finally {
+              client.release();
+            }
+          }
 
           // Handle insert-items type
           if (type === "insert-items") {
@@ -325,6 +399,7 @@ export default async function manageOrdersRoutes(
             notes: notes ? notes.trim() : null,
             shipping_address: shipping_address ? shipping_address.trim() : null,
             estimated_delivery_date: estimated_delivery_date ? new Date(estimated_delivery_date).toISOString() : null,
+            invoice_id: invoice_id || null,
             updated_at: new Date().toISOString(),
           };
 
@@ -335,7 +410,7 @@ export default async function manageOrdersRoutes(
 
             // Insert order
             const { rows: orderRows } = await client.query(
-              `INSERT INTO ${agentPrefix}_orders (customer_id, total_amount, advance_amount, payment_status, status, notes, shipping_address, estimated_delivery_date, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+              `INSERT INTO ${agentPrefix}_orders (customer_id, total_amount, advance_amount, payment_status, status, notes, shipping_address, estimated_delivery_date, invoice_id, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
               [
                 orderData.customer_id,
                 orderData.total_amount,
@@ -345,6 +420,7 @@ export default async function manageOrdersRoutes(
                 orderData.notes,
                 orderData.shipping_address,
                 orderData.estimated_delivery_date,
+                orderData.invoice_id,
                 orderData.updated_at,
               ]
             );
@@ -384,6 +460,18 @@ export default async function manageOrdersRoutes(
               await client.query(
                 `INSERT INTO ${agentPrefix}_orders_items (order_id, name, quantity, price) VALUES ${values}`,
                 params
+              );
+            }
+
+            // If invoice_id was provided, update the invoice to point to this order and set paid
+            if (invoice_id) {
+              await client.query(
+                `UPDATE ${agentPrefix}_orders_invoices SET order_id = $1, status = 'paid', updated_at = NOW() WHERE id = $2`,
+                [order.id, invoice_id]
+              );
+              await client.query(
+                `UPDATE ${agentPrefix}_orders_items SET order_id = $1 WHERE invoice_id = $2 AND order_id IS NULL`,
+                [order.id, invoice_id]
               );
             }
 

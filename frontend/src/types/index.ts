@@ -62,7 +62,32 @@ export interface Order {
    parsed_order_details?: any;
    type?: "order";
    order_items?: OrderItem[];
+   invoice_id?: number | null;
  }
+
+export interface Invoice {
+  id: number;
+  order_id?: number | null;
+  customer_id: number;
+  customer_name?: string;
+  customer_phone?: string;
+  name: string;
+  pdf_url: string;
+  status: 'generated' | 'sent' | 'partially_paid' | 'paid';
+  generated_at: string;
+  updated_at?: string;
+  discount_percentage?: number;
+  total_amount?: number;
+  total?: number;
+  advance_amount?: number;
+  notes?: string;
+  linked_order_id?: number | null;
+  order_status?: string | null;
+  order_payment_status?: string | null;
+  order_number?: string | null;
+  invoice_number?: string;
+  items?: any[];
+}
 
 export type LeadStage = 'New Lead' | 'Contacted' | 'Not Responding' | 'Follow-up Needed';
 

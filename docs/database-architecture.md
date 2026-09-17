@@ -51,8 +51,10 @@ erDiagram
     dynamic_customers ||--o{ dynamic_appointments : "books"
     dynamic_customers ||--o{ dynamic_broadcast_recipients : "receives"
 
+    dynamic_customers ||--o{ dynamic_orders_invoices : "issued to"
+    dynamic_orders_invoices ||--o| dynamic_orders : "converts upon payment"
     dynamic_orders ||--o{ dynamic_orders_items : "contains"
-    dynamic_orders ||--o| dynamic_orders_invoices : "billed via"
+    dynamic_orders_invoices ||--o{ dynamic_orders_items : "bills"
 
     dynamic_categories ||--o{ dynamic_inventory_items : "classifies"
     dynamic_services ||--o{ dynamic_service_packages : "tiers"
@@ -129,7 +131,7 @@ CREATE TABLE agents (
 | `credits` | INTEGER | DEFAULT 50 | Remaining AI automation message balance |
 | `invoice_template_path`| TEXT | NULLABLE | Cloudflare R2 object key for invoice layout |
 | `company_overview_path`| TEXT | NULLABLE | Cloudflare R2 key for company context doc |
-| `webhook_url` | TEXT | NULLABLE | Third-party AI bot endpoint for incoming chats |
+| `webhook_url` | TEXT | NULLABLE | Optional external webhook endpoint (native AI handled via built-in DeepSeek model) |
 | `created_at` | TIMESTAMPTZ | DEFAULT now() | Registration timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT now() | Modification timestamp |
 
@@ -147,6 +149,7 @@ CREATE TABLE whatsapp_configuration (
     business_account_id VARCHAR(100) NOT NULL,
     api_key TEXT NOT NULL,
     webhook_url TEXT,
+    deepseek_api_key TEXT,
     verify_token TEXT NOT NULL,
     app_secret TEXT,
     is_active BOOLEAN DEFAULT true,
@@ -163,12 +166,42 @@ CREATE TABLE whatsapp_configuration (
 | `phone_number_id` | VARCHAR(100) | NOT NULL | Meta Graph API Phone Number ID |
 | `business_account_id` | VARCHAR(100) | NOT NULL | Meta WhatsApp Business Account ID (WABA) |
 | `api_key` | TEXT | NOT NULL | Permanent Meta System User Access Token |
-| `webhook_url` | TEXT | NULLABLE | Endpoint URL receiving Meta webhooks |
+| `webhook_url` | TEXT | NULLABLE | Deprecated/Optional (AI handled natively by DeepSeek) |
+| `deepseek_api_key` | TEXT | NULLABLE | Dedicated DeepSeek API key (1 per agent) for autonomous chatbot |
 | `verify_token` | TEXT | NOT NULL | Shared secret for Meta webhook GET verification |
 | `app_secret` | TEXT | NULLABLE | Meta App Secret for SHA256 signature validation |
 | `is_active` | BOOLEAN | DEFAULT true | Toggles active webhook processing |
 | `created_at` | TIMESTAMPTZ | DEFAULT now() | Registration timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT now() | Modification timestamp |
+
+---
+
+### 3.4. `system_settings` Table
+Platform-wide operational settings, global maintenance mode configuration, and webhook queuing policies.
+
+```sql
+CREATE TABLE system_settings (
+    id VARCHAR(50) PRIMARY KEY,
+    maintenance_mode BOOLEAN DEFAULT false,
+    maintenance_title VARCHAR(255) DEFAULT 'System Maintenance Underway',
+    maintenance_message TEXT DEFAULT 'We are currently performing scheduled maintenance to improve system stability. Services will resume shortly.',
+    estimated_end VARCHAR(100),
+    webhook_retry_mode BOOLEAN DEFAULT true,
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | VARCHAR(50) | PRIMARY KEY | Configuration scope identifier (e.g. `'system'`) |
+| `maintenance_mode` | BOOLEAN | DEFAULT false | Global flag gating non-admin access |
+| `maintenance_title` | VARCHAR(255) | | Header text displayed on public maintenance screen |
+| `maintenance_message`| TEXT | | Detailed explanation message for users |
+| `estimated_end` | VARCHAR(100) | NULLABLE | Estimated completion time string or timestamp |
+| `webhook_retry_mode`| BOOLEAN | DEFAULT true | When true, responds to `/whatsapp-webhook` with HTTP 503 + Retry-After: 60 |
+| `updated_at` | TIMESTAMPTZ | DEFAULT now() | Timestamp of last settings modification |
+| `updated_by` | UUID | FK -> users(id) | Super Admin who last updated settings |
 
 ---
 
@@ -233,12 +266,13 @@ CREATE TABLE {prefix}_orders (
 ```
 
 ### 4.4. `{prefix}_orders_items`
-Individual line items attached to a specific order.
+Individual line items attached to a specific order or invoice.
 
 ```sql
 CREATE TABLE {prefix}_orders_items (
     id SERIAL PRIMARY KEY,
-    order_id INTEGER NOT NULL REFERENCES {prefix}_orders(id) ON DELETE CASCADE,
+    order_id INTEGER REFERENCES {prefix}_orders(id) ON DELETE CASCADE,
+    invoice_id INTEGER REFERENCES {prefix}_orders_invoices(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     quantity INTEGER NOT NULL CHECK (quantity >= 1),
     price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
@@ -247,16 +281,20 @@ CREATE TABLE {prefix}_orders_items (
 ```
 
 ### 4.5. `{prefix}_orders_invoices`
-Generated billing invoices and PDF storage paths.
+Issued billing invoices and PDF storage paths. Supports the invoice-first flow (issued directly to a customer; converts to an order upon payment).
 
 ```sql
 CREATE TABLE {prefix}_orders_invoices (
     id SERIAL PRIMARY KEY,
-    order_id INTEGER NOT NULL REFERENCES {prefix}_orders(id) ON DELETE CASCADE,
+    order_id INTEGER REFERENCES {prefix}_orders(id) ON DELETE SET NULL,
+    customer_id INTEGER REFERENCES {prefix}_customers(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     pdf_url TEXT,
     status VARCHAR(50) DEFAULT 'generated' CHECK (status IN ('generated', 'sent', 'paid')),
     discount_percentage DECIMAL(5, 2) DEFAULT 0.00 CHECK (discount_percentage >= 0 AND discount_percentage <= 100),
+    total_amount NUMERIC(10, 2) DEFAULT 0.00,
+    advance_amount NUMERIC(10, 2) DEFAULT 0.00,
+    notes TEXT,
     generated_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -557,3 +595,4 @@ All database transformations are tracked in `frontend/database/migrations/`:
 | `037` | `037_add_estimated_delivery_date_to_orders.sql` | Added estimated_delivery_date to orders |
 | `038` | `038_add_broadcasts_tables.sql` | Provisioned dynamic broadcasts and recipient logs |
 | `039` | `039_change_default_language_to_sinhala.sql` | Set default customer language to Sinhala |
+| `040` | `040_invoices_first_flow.sql` | Invert sales lifecycle: invoice-first flow, customer_id/advance/total/notes on invoices, optional order_id, invoice_id on items and orders |

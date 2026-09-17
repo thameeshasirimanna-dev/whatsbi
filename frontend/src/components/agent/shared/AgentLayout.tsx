@@ -227,6 +227,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
               flexDirection: 'column',
               minHeight: 0,
               overflowY: location.pathname.includes('/conversations') ? 'hidden' : 'auto',
+              overflowX: 'hidden',
               background: '#f8faf8',
             }}
           >
