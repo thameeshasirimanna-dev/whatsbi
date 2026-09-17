@@ -8,6 +8,7 @@ export * from './dashboard/ShowcaseDashboard';
 export * from './tokens/TokenSystemView';
 export * from './tokens/ButtonsBadgesPanel';
 export * from './tokens/FormsFeedbackPanel';
+export * from './tokens/DateTimePickerPanel';
 export * from './tokens/ModalDrawerPreview';
 export * from './tokens/MotionAnimationPanel';
 export * from './StyleGuideApp';

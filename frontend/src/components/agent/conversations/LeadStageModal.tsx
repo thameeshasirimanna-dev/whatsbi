@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, TrendingUp } from "lucide-react";
+import { X, TrendingUp, Check } from "lucide-react";
 import { getCustomers, updateCustomer } from "../../../lib/api";
 import Portal from "../shared/Portal";
+import CustomDropdown from "../shared/CustomDropdown";
 
 export type LeadStage =
   | "New Lead"
@@ -30,47 +31,6 @@ interface LeadStageModalProps {
   }) => void;
   onRefreshConversations?: () => void;
 }
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
-const selectStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '9px 12px',
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 13,
-  color: '#3f3f46',
-  background: '#f9f9f9',
-  border: '1px solid #ebebeb',
-  borderRadius: 9,
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.15s, box-shadow 0.15s',
-  appearance: 'none',
-  cursor: 'pointer',
-};
-
-const disabledSelectStyle: React.CSSProperties = {
-  ...selectStyle,
-  background: '#f4f4f5',
-  color: '#a1a1aa',
-  cursor: 'not-allowed',
-};
-
-const onFocus = (e: React.FocusEvent<HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#22c55e';
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
-};
-const onBlur = (e: React.FocusEvent<HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#ebebeb';
-  e.currentTarget.style.boxShadow = 'none';
-};
-
-const getProgressStyle = (type: 'conversion' | 'interest' | 'lead'): React.CSSProperties => {
-  if (type === 'conversion') return { background: 'rgba(34,197,94,0.1)', color: '#059669', border: '1px solid rgba(34,197,94,0.2)' };
-  if (type === 'interest') return { background: 'rgba(217,119,6,0.1)', color: '#d97706', border: '1px solid rgba(217,119,6,0.2)' };
-  return { background: 'rgba(8,145,178,0.1)', color: '#0891b2', border: '1px solid rgba(8,145,178,0.2)' };
-};
 
 const LeadStageModal: React.FC<LeadStageModalProps> = ({
   isOpen,
@@ -201,182 +161,146 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
   if (!isOpen) return null;
 
   const submitDisabled = !selectedLeadStage || updating || loading;
-
-  const progressType = currentConversionStage ? 'conversion' : currentInterestStage ? 'interest' : 'lead';
   const progressLabel = currentConversionStage || currentInterestStage || currentLeadStage || 'New Lead';
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <style>{`@keyframes lsm-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
+      <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-modal-card">
           {/* Header */}
-          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <TrendingUp size={16} style={{ color: '#22c55e' }} />
+          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center">
+                <TrendingUp size={16} />
               </div>
               <div>
-                <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>
+                <h3 className="font-sans text-base font-bold text-[#16281D]">
                   {customerName ? `${customerName}'s Stage` : 'Lead Stage'}
-                </span>
-                <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>Update customer progression</span>
+                </h3>
+                <p className="font-sans text-xs text-[#71717A]">
+                  Update customer progression & status
+                </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+              aria-label="Close modal"
             >
-              <X size={15} style={{ color: '#71717a' }} />
+              <X size={15} />
             </button>
           </div>
 
           {/* Content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+          <div className="flex-1 overflow-y-auto p-6">
             {loading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #ebebeb', borderTopColor: '#22c55e', animation: 'lsm-spin 0.7s linear infinite' }} />
+              <div className="flex items-center justify-center py-10">
+                <div className="w-7 h-7 rounded-full border-2 border-[#16281D]/20 border-t-[#16281D] animate-spin" />
               </div>
             ) : error ? (
-              <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
+              <div className="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FEE2E2] font-sans text-xs text-[#EF4444] mb-4">
                 {error}
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-                {/* Current Progress */}
-                <div style={{ background: '#f9f9f9', borderRadius: 12, border: '1px solid #ebebeb', padding: '14px 16px' }}>
-                  <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Current Progress</span>
-                  <span style={{ ...DM, fontSize: 13, fontWeight: 600, padding: '4px 10px', borderRadius: 20, display: 'inline-block', ...getProgressStyle(progressType) }}>
-                    {progressLabel}
+              <div className="space-y-5">
+                {/* Current Stage Capsule Card */}
+                <div className="p-4 rounded-2xl bg-[#F4F7F4] border border-[#EAEAEA]">
+                  <span className="block text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1.5">
+                    Current Progress
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-sans bg-[#16281D] text-[#9FE870]">
+                    <Check size={12} />
+                    <span>{progressLabel}</span>
                   </span>
                 </div>
 
-                {/* Stage Selects */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
+                {/* Stage Select Fields */}
+                <div className="space-y-4">
                   {/* Lead Stage */}
                   <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
-                      Lead Stage
-                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, ...getProgressStyle('lead') }}>Initial</span>
+                    <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                      Lead Stage <span className="text-[10px] font-medium text-[#71717A]">(Initial)</span>
                     </label>
-                    <div style={{ position: 'relative' }}>
-                      <select
-                        value={selectedLeadStage || ""}
-                        onChange={(e) => handleStageChange("lead_stage", e.target.value)}
-                        disabled={loading || updating}
-                        style={loading || updating ? disabledSelectStyle : selectStyle}
-                        onFocus={onFocus}
-                        onBlur={onBlur}
-                      >
-                        {leadStages.map((stage) => (
-                          <option key={stage} value={stage}>{stage}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <CustomDropdown
+                      value={selectedLeadStage || ""}
+                      onChange={(val) => handleStageChange("lead_stage", val)}
+                      disabled={loading || updating}
+                      options={leadStages.map((stage) => ({ value: stage, label: stage }))}
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Interest Stage */}
                   <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
-                      Interest Stage
-                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, ...getProgressStyle('interest') }}>Optional</span>
+                    <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                      Interest Stage <span className="text-[10px] font-medium text-[#71717A]">(Optional)</span>
                     </label>
-                    <select
+                    <CustomDropdown
                       value={selectedInterestStage || ""}
-                      onChange={(e) => handleStageChange("interest_stage", e.target.value)}
+                      onChange={(val) => handleStageChange("interest_stage", val)}
                       disabled={selectedLeadStage === "New Lead" || loading || updating}
-                      style={(selectedLeadStage === "New Lead" || loading || updating) ? disabledSelectStyle : selectStyle}
-                      onFocus={onFocus}
-                      onBlur={onBlur}
-                    >
-                      <option value="">No interest stage</option>
-                      {interestStages.map((stage) => (
-                        <option key={stage} value={stage}>{stage}</option>
-                      ))}
-                    </select>
+                      options={[
+                        { value: "", label: "No interest stage" },
+                        ...interestStages.map((stage) => ({ value: stage, label: stage })),
+                      ]}
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Conversion Stage */}
                   <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
-                      Conversion Stage
-                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, ...getProgressStyle('conversion') }}>Optional</span>
+                    <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                      Conversion Stage <span className="text-[10px] font-medium text-[#71717A]">(Optional)</span>
                     </label>
-                    <select
+                    <CustomDropdown
                       value={selectedConversionStage || ""}
-                      onChange={(e) => handleStageChange("conversion_stage", e.target.value)}
+                      onChange={(val) => handleStageChange("conversion_stage", val)}
                       disabled={!selectedInterestStage || loading || updating}
-                      style={(!selectedInterestStage || loading || updating) ? disabledSelectStyle : selectStyle}
-                      onFocus={onFocus}
-                      onBlur={onBlur}
-                    >
-                      <option value="">No conversion stage</option>
-                      {conversionStages.map((stage) => (
-                        <option key={stage} value={stage}>{stage}</option>
-                      ))}
-                    </select>
+                      options={[
+                        { value: "", label: "No conversion stage" },
+                        ...conversionStages.map((stage) => ({ value: stage, label: stage })),
+                      ]}
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Note */}
                   <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
-                      Note
-                      <span style={{ marginLeft: 6, fontSize: 11, padding: '2px 7px', borderRadius: 20, background: 'rgba(113,113,122,0.08)', color: '#71717a', border: '1px solid rgba(113,113,122,0.15)' }}>Optional</span>
+                    <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                      Note <span className="text-[10px] font-medium text-[#71717A]">(Optional)</span>
                     </label>
                     <textarea
                       value={leadStageNote}
                       onChange={(e) => setLeadStageNote(e.target.value)}
                       disabled={loading || updating}
-                      placeholder="Add a note about this lead's current stage…"
+                      placeholder="Add a note about this lead's current stage..."
                       rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px',
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: 13,
-                        color: loading || updating ? '#a1a1aa' : '#3f3f46',
-                        background: loading || updating ? '#f4f4f5' : '#f9f9f9',
-                        border: '1px solid #ebebeb',
-                        borderRadius: 9,
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                        resize: 'vertical',
-                        cursor: loading || updating ? 'not-allowed' : 'text',
-                        transition: 'border-color 0.15s, box-shadow 0.15s',
-                        lineHeight: 1.5,
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
+                      className="w-full px-3.5 py-2.5 text-sm font-sans text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 outline-none transition-all resize-none disabled:opacity-50 placeholder:text-[#A1A1AA]"
                     />
                   </div>
                 </div>
 
                 {/* Footer Buttons */}
-                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                <div className="flex gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                    className="flex-1 h-10 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] font-sans text-xs font-bold text-[#52525B] transition-all cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleStageUpdate}
                     disabled={submitDisabled}
-                    style={{ flex: 1, background: submitDisabled ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: submitDisabled ? 'not-allowed' : 'pointer', boxShadow: submitDisabled ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                    className="flex-1 h-10 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
                   >
                     {updating ? (
-                      <>
-                        <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'lsm-spin 0.7s linear infinite' }} />
-                        Updating…
-                      </>
-                    ) : 'Update Stages'}
+                      <span className="inline-block w-4 h-4 border-2 border-[#16281D]/20 border-t-[#16281D] rounded-full animate-spin" />
+                    ) : (
+                      'Update Stages'
+                    )}
                   </button>
                 </div>
-
               </div>
             )}
           </div>
@@ -387,3 +311,4 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
 };
 
 export default LeadStageModal;
+

@@ -1,6 +1,5 @@
 import React from "react";
 import { FileText, DollarSign, Send, CheckCircle } from "lucide-react";
-import { SYNE, DM } from "./constants";
 
 interface InvoiceSummaryCardsProps {
   totalInvoices: number;
@@ -20,80 +19,50 @@ export const InvoiceSummaryCards: React.FC<InvoiceSummaryCardsProps> = ({
       Icon: FileText,
       label: "Total Invoices",
       value: totalInvoices,
-      iconColor: "#22c55e",
-      iconBg: "rgba(34,197,94,0.1)",
+      iconColor: "text-[#15803D]",
+      iconBg: "bg-[#F0FDF4] border border-[#BBF7D0]",
     },
     {
       Icon: DollarSign,
       label: "Revenue Collected",
-      value: `LKR ${totalPaidRevenue.toFixed(2)}`,
-      iconColor: "#059669",
-      iconBg: "rgba(5,150,105,0.1)",
+      value: `LKR ${totalPaidRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      iconColor: "text-[#059669]",
+      iconBg: "bg-[#ECFDF5] border border-[#A7F3D0]",
     },
     {
       Icon: Send,
       label: "Sent (Awaiting)",
       value: sentCount,
-      iconColor: "#d97706",
-      iconBg: "rgba(217,119,6,0.1)",
+      iconColor: "text-[#D97706]",
+      iconBg: "bg-[#FFFBEB] border border-[#FDE68A]",
     },
     {
       Icon: CheckCircle,
       label: "Paid Invoices",
       value: paidCount,
-      iconColor: "#0891b2",
-      iconBg: "rgba(8,145,178,0.1)",
+      iconColor: "text-[#0284C7]",
+      iconBg: "bg-[#F0F9FF] border border-[#BAE6FD]",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 font-sans select-none">
       {cards.map(({ Icon, label, value, iconColor, iconBg }) => (
         <div
           key={label}
-          style={{
-            background: "#fff",
-            borderRadius: 14,
-            padding: "20px 22px",
-            border: "1px solid #ebebeb",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-          }}
+          className="bg-white rounded-[20px] p-5 border border-[#EAEAEA] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_28px_rgba(20,40,24,0.06)] hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between"
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              marginBottom: 14,
-            }}
-          >
+          <div className="flex items-start justify-between mb-3.5">
             <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: iconBg,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              className={`w-10 h-10 rounded-2xl ${iconBg} ${iconColor} flex items-center justify-center shrink-0 shadow-2xs`}
             >
-              <Icon size={17} style={{ color: iconColor }} />
+              <Icon size={18} strokeWidth={2.4} />
             </div>
           </div>
-          <div
-            style={{
-              ...SYNE,
-              fontSize: 26,
-              fontWeight: 800,
-              color: "#0c1a0e",
-              lineHeight: 1,
-              marginBottom: 4,
-            }}
-          >
+          <div className="font-mono text-2xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1.5">
             {value}
           </div>
-          <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: "#71717a" }}>
+          <div className="text-xs font-semibold text-[#71717A] leading-tight">
             {label}
           </div>
         </div>

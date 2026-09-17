@@ -12,6 +12,8 @@ import {
   ArrowRight,
   ChevronDown,
 } from 'lucide-react';
+import { DatePicker } from '../../agent/shared/DatePicker';
+import { TimePicker } from '../../agent/shared/TimePicker';
 
 export const FormsFeedbackPanel: React.FC = () => {
   const [toggleActive, setToggleActive] = useState(true);
@@ -19,9 +21,11 @@ export const FormsFeedbackPanel: React.FC = () => {
   const [selectedRow, setSelectedRow] = useState<number | null>(1);
   const [inputValue, setInputValue] = useState('john.doe@company.com');
   const [isSelectOpen, setIsSelectOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('DeepSeek Chat V3');
+  const [selectedModel, setSelectedModel] = useState('WhatsApp AI Agent');
   const [isDarkSelectOpen, setIsDarkSelectOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('Super Admin');
+  const [selectedRole, setSelectedRole] = useState('Tenant Administrator');
+  const [demoDate, setDemoDate] = useState<string | null>('2026-09-18');
+  const [demoTime, setDemoTime] = useState<string | null>('11:00 AM');
 
   const selectRef = useRef<HTMLDivElement>(null);
   const darkSelectRef = useRef<HTMLDivElement>(null);
@@ -147,98 +151,122 @@ export const FormsFeedbackPanel: React.FC = () => {
             </label>
           </div>
 
-          {/* Interactive Form Select Menu (Custom Dropdown) */}
+          {/* Interactive Form Select Menu (Button Styled Dropdown) */}
           <div className="bg-white rounded-2xl p-5 border border-[#EAEAEA] flex flex-col gap-2 relative">
-            <span className="text-xs font-bold text-[#16281D]">Select Menu / Dropdown</span>
+            <span className="text-xs font-bold text-[#16281D]">Select Menu / Dropdown (Button Style)</span>
             <div ref={selectRef} className="relative">
               <button
                 type="button"
                 onClick={() => setIsSelectOpen(!isSelectOpen)}
-                className={`w-full px-3.5 py-2.5 rounded-xl bg-[#FAFAFA] border text-xs text-[#16281D] font-medium flex items-center justify-between transition-all cursor-pointer ${
+                className={`w-full h-10 px-4 rounded-full text-xs font-bold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98] ${
                   isSelectOpen
-                    ? 'border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white'
-                    : 'border-[#E4E4E7] hover:border-[#16281D]/40'
+                    ? 'border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white text-[#16281D]'
+                    : 'border border-black/5 bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D]'
                 }`}
               >
-                <span>{selectedModel}</span>
+                <span className="truncate">{selectedModel}</span>
                 <ChevronDown
                   size={14}
-                  className={`text-[#71717A] transition-transform duration-200 ${
+                  className={`text-[#71717A] shrink-0 transition-transform duration-200 ${
                     isSelectOpen ? 'rotate-180 text-[#16281D]' : ''
                   }`}
                 />
               </button>
 
               {isSelectOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] z-30 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
-                  {['DeepSeek Chat V3', 'DeepSeek Reasoner R1', 'Meta Llama 3.3 70B', 'GPT-4o Mini'].map((opt) => (
-                    <div
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                  {['WhatsApp AI Agent', 'Sales Concierge', 'Customer Care', 'Booking Specialist'].map((opt) => (
+                    <button
+                      type="button"
                       key={opt}
                       onClick={() => {
                         setSelectedModel(opt);
                         setIsSelectOpen(false);
                       }}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors flex items-center justify-between ${
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0 ${
                         selectedModel === opt
-                          ? 'bg-[#F0FDF4] text-[#15803D]'
-                          : 'text-[#16281D] hover:bg-[#F4F7F4]'
+                          ? 'bg-[#9FE870] text-[#16281D] shadow-xs'
+                          : 'text-[#16281D] hover:bg-[#F4F7F4] bg-transparent'
                       }`}
                     >
                       <span>{opt}</span>
-                      {selectedModel === opt && <Check size={13} strokeWidth={2.6} />}
-                    </div>
+                      {selectedModel === opt && <Check size={13} strokeWidth={2.8} />}
+                    </button>
                   ))}
                 </div>
               )}
             </div>
-            <span className="text-[10px] text-[#A1A1AA]">Supports lime focus ring & custom menu</span>
+            <span className="text-[10px] text-[#A1A1AA]">Capsule button trigger with pill selection items</span>
           </div>
 
           {/* Dark Surface Dropdown */}
           <div className="bg-[#16281D] rounded-2xl p-5 border border-white/5 flex flex-col gap-2 relative">
-            <span className="text-xs font-bold text-white">Dark Surface Dropdown</span>
+            <span className="text-xs font-bold text-white">Dark Surface Dropdown (Button Style)</span>
             <div ref={darkSelectRef} className="relative">
               <button
                 type="button"
                 onClick={() => setIsDarkSelectOpen(!isDarkSelectOpen)}
-                className={`w-full px-3.5 py-2.5 rounded-xl bg-[#203628] border text-xs text-white font-medium flex items-center justify-between transition-all cursor-pointer ${
+                className={`w-full h-10 px-4 rounded-full text-xs font-bold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98] ${
                   isDarkSelectOpen
-                    ? 'border-[#9FE870] ring-3 ring-[#9FE870]/25'
-                    : 'border-white/10 hover:border-white/30'
+                    ? 'border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-[#203628] text-white'
+                    : 'border border-white/10 hover:border-white/25 bg-[#203628] hover:bg-[#274232] text-white'
                 }`}
               >
-                <span>{selectedRole}</span>
+                <span className="truncate">{selectedRole}</span>
                 <ChevronDown
                   size={14}
-                  className={`text-[#8FA89B] transition-transform duration-200 ${
+                  className={`text-[#8FA89B] shrink-0 transition-transform duration-200 ${
                     isDarkSelectOpen ? 'rotate-180 text-[#9FE870]' : ''
                   }`}
                 />
               </button>
 
               {isDarkSelectOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-[#16281D] rounded-2xl border border-white/10 p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.35)] z-30 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
-                  {['Super Admin', 'Tenant Administrator', 'Support Operator', 'Auditor (Read-Only)'].map((role) => (
-                    <div
+                <div className="absolute top-full left-0 right-0 mt-2 bg-[#16281D] rounded-2xl border border-white/10 p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.35)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                  {['Tenant Administrator', 'Senior Agent', 'Support Specialist', 'Auditor (Read-Only)'].map((role) => (
+                    <button
+                      type="button"
                       key={role}
                       onClick={() => {
                         setSelectedRole(role);
                         setIsDarkSelectOpen(false);
                       }}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors flex items-center justify-between ${
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0 ${
                         selectedRole === role
-                          ? 'bg-[#203628] text-[#9FE870]'
-                          : 'text-[#E4E4E7] hover:bg-[#203628]/60 hover:text-white'
+                          ? 'bg-[#9FE870] text-[#16281D] shadow-xs'
+                          : 'text-[#E4E4E7] hover:bg-[#203628] hover:text-white bg-transparent'
                       }`}
                     >
                       <span>{role}</span>
-                      {selectedRole === role && <Check size={13} strokeWidth={2.6} />}
-                    </div>
+                      {selectedRole === role && <Check size={13} strokeWidth={2.8} />}
+                    </button>
                   ))}
                 </div>
               )}
             </div>
-            <span className="text-[10px] text-[#8FA89B]">Inspector panel dark styling</span>
+            <span className="text-[10px] text-[#8FA89B]">Inspector panel dark capsule styling</span>
+          </div>
+
+          {/* Date Picker Trigger Card */}
+          <div className="bg-white rounded-2xl p-5 border border-[#EAEAEA] flex flex-col gap-2">
+            <span className="text-xs font-bold text-[#16281D]">Capsule Date Picker</span>
+            <DatePicker
+              value={demoDate}
+              onChange={setDemoDate}
+              placeholder="Select date..."
+            />
+            <span className="text-[10px] text-[#A1A1AA]">Interactive calendar popover with quick presets</span>
+          </div>
+
+          {/* Time Picker Trigger Card */}
+          <div className="bg-white rounded-2xl p-5 border border-[#EAEAEA] flex flex-col gap-2">
+            <span className="text-xs font-bold text-[#16281D]">Capsule Time Picker</span>
+            <TimePicker
+              value={demoTime}
+              onChange={setDemoTime}
+              placeholder="Select time..."
+            />
+            <span className="text-[10px] text-[#A1A1AA]">12-hour wheel selector and common slot chips</span>
           </div>
         </div>
       </section>

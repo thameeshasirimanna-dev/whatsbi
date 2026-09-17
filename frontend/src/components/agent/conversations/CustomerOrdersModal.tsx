@@ -29,6 +29,7 @@ import OrdersTab from "./OrdersTab";
 import InvoicesTab from "./InvoicesTab";
 import AppointmentsTab from "./AppointmentsTab";
 import GenerateInvoiceModal from "./GenerateInvoiceModal";
+import MarkPaidModal from "./MarkPaidModal";
 import { useDialog } from "../shared/DialogProvider";
 import Portal from "../shared/Portal";
 import { SkeletonBase } from "../shared/Skeleton";
@@ -74,9 +75,6 @@ interface Invoice {
   generated_at?: string;
   linked_order_id?: number | null;
 }
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   isOpen,
@@ -476,240 +474,123 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   const actionDisabled = !customerId || loading;
   const invoiceActionDisabled = !customerId || loading;
 
-  const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "8px 16px",
-    background: disabled ? "rgba(34,197,94,0.3)" : "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    cursor: disabled ? "not-allowed" : "pointer",
-    ...DM,
-    fontSize: 13,
-    fontWeight: 600,
-    boxShadow: disabled ? "none" : "0 4px 14px rgba(34,197,94,0.3)",
-    transition: "opacity 0.15s",
-    flexShrink: 0,
-  });
+  const primaryBtnClass =
+    "h-9 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shrink-0 border-0";
 
   return (
-    <Portal>
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 50,
-          background: "rgba(0,0,0,0.5)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
-      >
-        <style>{`@keyframes com-spin { to { transform: rotate(360deg); } }`}</style>
+    <>
+      <Portal>
+        <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
+          <style>{`@keyframes com-spin { to { transform: rotate(360deg); } }`}</style>
 
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 20,
-            border: "1px solid #ebebeb",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
-            width: "100%",
-            maxWidth: 1100,
-            maxHeight: "95vh",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
+        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-modal-card">
           {/* Header */}
-          <div
-            className="px-4 pt-4 md:px-6 md:pt-5"
-            style={{
-              flexShrink: 0,
-              borderBottom: "1px solid #ebebeb",
-              background: "#fff",
-            }}
-          >
-            {/* Title row */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
+          <div className="px-6 py-4 border-b border-[#EAEAEA] bg-white flex items-center justify-between shrink-0">
+            <h2 className="font-sans text-base md:text-lg font-bold text-[#16281D] truncate">
+              {customerName ? `${customerName}'s Records` : "Customer Records"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer border-0"
+              aria-label="Close modal"
             >
-              <span 
-                className="text-base md:text-lg"
-                style={{ ...SYNE, fontWeight: 700, color: "#0c1a0e", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 12 }}
-              >
-                {customerName ? `${customerName}'s Records` : "Customer Records"}
-              </span>
-              <button
-                onClick={onClose}
-                style={{
-                  width: 32,
-                  height: 32,
-                  background: "rgba(0,0,0,0.06)",
-                  border: "none",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#71717a",
-                  transition: "background 0.15s",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.06)")}
-              >
-                <X size={16} />
-              </button>
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* Subheader / Tabs toolbar */}
+          <div className="px-6 py-3 border-b border-[#EAEAEA] bg-[#F4F7F4]/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+            {/* Segmented Capsule Tabs */}
+            <div className="bg-[#F4F7F4] p-1 rounded-full flex items-center gap-1 border border-[#EAEAEA]">
+              {TAB_DEFS.map(({ key, label, count }) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className={`px-3.5 py-1.5 rounded-full font-sans text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border-0 ${
+                      isActive
+                        ? "bg-[#16281D] text-white shadow-xs"
+                        : "text-[#71717A] hover:text-[#16281D] hover:bg-white/60 bg-transparent"
+                    }`}
+                  >
+                    <span>{label}</span>
+                    <span
+                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                        isActive
+                          ? "bg-[#9FE870] text-[#16281D] font-bold"
+                          : "bg-black/5 text-[#71717A] font-semibold"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Tabs + action button row */}
-            <div
-              className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-0"
-              style={{
-                justifyContent: "space-between",
-              }}
-            >
-              <div 
-                className="overflow-x-auto scrollbar-none"
-                style={{ display: "flex", gap: 0, maxWidth: "100%" }}
-              >
-                {TAB_DEFS.map(({ key, label, count, badge }) => {
-                  const isActive = activeTab === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setActiveTab(key)}
-                      style={{
-                        ...DM,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        padding: "10px 14px",
-                        background: "none",
-                        border: "none",
-                        borderBottom: isActive ? "2px solid #22c55e" : "2px solid transparent",
-                        color: isActive ? "#059669" : "#71717a",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        transition: "color 0.15s, border-color 0.15s",
-                        marginBottom: -1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {label}
-                      <span
-                        style={{
-                          ...DM,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: "1px 7px",
-                          borderRadius: 9999,
-                          background: badge.bg,
-                          color: badge.color,
-                        }}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div 
-                className="justify-start md:justify-end"
-                style={{ display: "flex", gap: 8, paddingBottom: 12 }}
-              >
-                {activeTab === "orders" && (
-                  <button
-                    onClick={() => setShowCreateOrderModal(true)}
-                    disabled={actionDisabled}
-                    style={primaryBtnStyle(actionDisabled)}
-                  >
-                    <Plus size={15} />
-                    New Order
-                  </button>
-                )}
-                {activeTab === "invoices" && (
-                  <button
-                    onClick={() => {
-                      setSelectedOrderId(null);
-                      setShowGenerateModal(true);
-                    }}
-                    disabled={invoiceActionDisabled}
-                    style={primaryBtnStyle(invoiceActionDisabled)}
-                  >
-                    <FileText size={15} />
-                    Generate Invoice
-                  </button>
-                )}
-                {activeTab === "appointments" && (
-                  <button
-                    onClick={() => setShowCreateAppointmentModal(true)}
-                    disabled={actionDisabled}
-                    style={primaryBtnStyle(actionDisabled)}
-                  >
-                    <Calendar size={15} />
-                    New Appointment
-                  </button>
-                )}
-              </div>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              {activeTab === "orders" && (
+                <button
+                  onClick={() => setShowCreateOrderModal(true)}
+                  disabled={actionDisabled}
+                  className={primaryBtnClass}
+                >
+                  <Plus size={14} strokeWidth={2.4} />
+                  <span>New Order</span>
+                </button>
+              )}
+              {activeTab === "invoices" && (
+                <button
+                  onClick={() => {
+                    setSelectedOrderId(null);
+                    setShowGenerateModal(true);
+                  }}
+                  disabled={invoiceActionDisabled}
+                  className={primaryBtnClass}
+                >
+                  <FileText size={14} strokeWidth={2.4} />
+                  <span>Generate Invoice</span>
+                </button>
+              )}
+              {activeTab === "appointments" && (
+                <button
+                  onClick={() => setShowCreateAppointmentModal(true)}
+                  disabled={actionDisabled}
+                  className={primaryBtnClass}
+                >
+                  <Calendar size={14} strokeWidth={2.4} />
+                  <span>New Appointment</span>
+                </button>
+              )}
             </div>
           </div>
 
           {/* Scrollable content */}
-          <div className="p-4 md:p-6" style={{ flex: 1, overflowY: "auto" }}>
+          <div className="p-4 sm:p-6 flex-1 overflow-y-auto bg-[#FAFAF9]/60">
             {loading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="flex flex-col gap-4">
                 {Array.from({ length: 3 }).map((_, idx) => (
                   <div
                     key={idx}
-                    style={{
-                      background: '#fff',
-                      border: '1px solid #ebebeb',
-                      borderRadius: 14,
-                      padding: '16px 18px',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 10
-                    }}
+                    className="bg-white border border-[#EAEAEA] rounded-2xl p-5 shadow-xs flex flex-col gap-3"
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <SkeletonBase style={{ width: 100, height: 14, borderRadius: 4 }} />
-                      <SkeletonBase style={{ width: 80, height: 18, borderRadius: 9999 }} />
+                    <div className="flex justify-between items-center">
+                      <SkeletonBase className="w-32 h-4 rounded" />
+                      <SkeletonBase className="w-20 h-5 rounded-full" />
                     </div>
-                    <SkeletonBase style={{ width: 150, height: 12, borderRadius: 3, marginTop: 4 }} />
-                    <SkeletonBase style={{ width: 120, height: 11, borderRadius: 3 }} />
-                    <div style={{ display: 'flex', gap: 8, marginTop: 12, borderTop: '1px solid #f4f4f5', paddingTop: 12 }}>
-                      <SkeletonBase style={{ width: 65, height: 26, borderRadius: 8 }} />
-                      <SkeletonBase style={{ width: 65, height: 26, borderRadius: 8 }} />
-                      <SkeletonBase style={{ width: 120, height: 26, borderRadius: 8 }} />
-                      <SkeletonBase style={{ width: 75, height: 26, borderRadius: 8 }} />
+                    <SkeletonBase className="w-full h-10 rounded-xl" />
+                    <div className="flex gap-2 pt-3 border-t border-[#F4F7F4]">
+                      <SkeletonBase className="w-16 h-8 rounded-full" />
+                      <SkeletonBase className="w-16 h-8 rounded-full" />
+                      <SkeletonBase className="w-28 h-8 rounded-full" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : error ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "48px 0",
-                  ...DM,
-                  fontSize: 14,
-                  color: "#f43f5e",
-                }}
-              >
+              <div className="text-center py-12 font-sans text-sm text-[#E11D48]">
                 {error}
               </div>
             ) : (
@@ -758,8 +639,10 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
             )}
           </div>
         </div>
+      </div>
+    </Portal>
 
-        {showCreateOrderModal && customerId && (
+    {showCreateOrderModal && customerId && (
           <CreateOrderModal
             customer={{
               id: customerId,
@@ -856,284 +739,23 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
 
         {/* Mark Paid & Create Order Modal */}
         {payingInvoice && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 70,
-              background: "rgba(0,0,0,0.5)",
-              backdropFilter: "blur(4px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 16,
-            }}
-          >
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 20,
-                border: "1px solid #ebebeb",
-                boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
-                width: "100%",
-                maxWidth: "min(480px, 90vw)",
-                maxHeight: "90vh",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-              }}
-            >
-              {/* Modal Header */}
-              <div
-                style={{
-                  padding: "18px 22px 14px",
-                  borderBottom: "1px solid #ebebeb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 8,
-                      background: "rgba(34,197,94,0.1)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <CheckCircle2 size={15} style={{ color: "#059669" }} />
-                  </div>
-                  <div>
-                    <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: "#0c1a0e", display: "block" }}>
-                      Mark Paid & Create Order
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setPayingInvoice(null)}
-                  disabled={creatingOrderFromInv}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    background: "rgba(0,0,0,0.06)",
-                    border: "none",
-                    borderRadius: 7,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#71717a",
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              {/* Modal Form Body */}
-              <div style={{ padding: 22, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-                <div
-                  style={{
-                    background: "#f9f9fb",
-                    border: "1px solid #ebebeb",
-                    borderRadius: 12,
-                    padding: "12px 16px",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>Invoice:</span>
-                    <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#0c1a0e" }}>
-                      #{payingInvoice.id.toString().padStart(4, "0")} — {payingInvoice.name}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>Invoice Total:</span>
-                    <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: "#059669" }}>
-                      LKR {Number(payingInvoice.total_amount || payingInvoice.total || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
-                    Confirmed Paid / Advance Amount (LKR)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={orderPaidAmount}
-                    onChange={(e) => setOrderPaidAmount(parseFloat(e.target.value) || 0)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      ...DM,
-                      fontSize: 13,
-                      border: "1px solid #ebebeb",
-                      borderRadius: 8,
-                      outline: "none",
-                      background: "#f9f9f9",
-                    }}
-                  />
-                  <span style={{ ...DM, fontSize: 11, color: "#71717a", marginTop: 3, display: "block" }}>
-                    {orderPaidAmount >= Number(payingInvoice.total_amount || payingInvoice.total || 0)
-                      ? "Full payment received (Payment status: Paid)"
-                      : orderPaidAmount > 0
-                      ? "Partial deposit received (Payment status: Partially Paid)"
-                      : "Unpaid order"}
-                  </span>
-                </div>
-
-                <div>
-                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
-                    Shipping / Delivery Address (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter customer shipping address..."
-                    value={orderShippingAddress}
-                    onChange={(e) => setOrderShippingAddress(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      ...DM,
-                      fontSize: 13,
-                      border: "1px solid #ebebeb",
-                      borderRadius: 8,
-                      outline: "none",
-                      background: "#f9f9f9",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
-                    Estimated Delivery Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={orderEstimatedDelivery}
-                    onChange={(e) => setOrderEstimatedDelivery(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      ...DM,
-                      fontSize: 13,
-                      border: "1px solid #ebebeb",
-                      borderRadius: 8,
-                      outline: "none",
-                      background: "#f9f9f9",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
-                    Order Notes (Optional)
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Notes, delivery instructions or terms..."
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      ...DM,
-                      fontSize: 13,
-                      border: "1px solid #ebebeb",
-                      borderRadius: 8,
-                      outline: "none",
-                      background: "#f9f9f9",
-                      resize: "vertical",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div
-                style={{
-                  padding: "14px 22px",
-                  borderTop: "1px solid #ebebeb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  background: "#fff",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={handleMarkPaidOnly}
-                  disabled={creatingOrderFromInv}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#71717a",
-                    ...DM,
-                    fontSize: 12,
-                    textDecoration: "underline",
-                    cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-                  }}
-                >
-                  Quick Confirm (Auto-create Order)
-                </button>
-
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setPayingInvoice(null)}
-                    disabled={creatingOrderFromInv}
-                    style={{
-                      padding: "8px 14px",
-                      background: "rgba(0,0,0,0.06)",
-                      color: "#3f3f46",
-                      border: "none",
-                      borderRadius: 8,
-                      cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-                      ...DM,
-                      fontSize: 13,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmPaymentAndCreateOrder}
-                    disabled={creatingOrderFromInv}
-                    style={{
-                      padding: "8px 18px",
-                      background: creatingOrderFromInv
-                        ? "rgba(34,197,94,0.3)"
-                        : "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 8,
-                      cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-                      ...DM,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      boxShadow: "0 2px 10px rgba(34,197,94,0.25)",
-                    }}
-                  >
-                    <CheckCircle2 size={14} />
-                    {creatingOrderFromInv ? "Creating Order…" : "Confirm & Create Order"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <MarkPaidModal
+            payingInvoice={payingInvoice}
+            onClose={() => setPayingInvoice(null)}
+            orderPaidAmount={orderPaidAmount}
+            setOrderPaidAmount={setOrderPaidAmount}
+            orderShippingAddress={orderShippingAddress}
+            setOrderShippingAddress={setOrderShippingAddress}
+            orderEstimatedDelivery={orderEstimatedDelivery}
+            setOrderEstimatedDelivery={setOrderEstimatedDelivery}
+            orderNotes={orderNotes}
+            setOrderNotes={setOrderNotes}
+            creatingOrderFromInv={creatingOrderFromInv}
+            onQuickConfirm={handleMarkPaidOnly}
+            onConfirmAndCreate={handleConfirmPaymentAndCreateOrder}
+          />
         )}
-      </div>
-    </Portal>
+    </>
   );
 };
 

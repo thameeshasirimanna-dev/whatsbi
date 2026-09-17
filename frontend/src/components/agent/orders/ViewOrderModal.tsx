@@ -6,23 +6,23 @@ import { useDialog } from '../shared/DialogProvider';
 import { SkeletonBase } from '../shared/Skeleton';
 import Portal from '../shared/Portal';
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+const SYNE: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
 
 const getPaymentStatusStyle = (paymentStatus: string): React.CSSProperties => {
   const s = paymentStatus?.toLowerCase();
-  if (s === 'paid') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
-  if (s === 'partially_paid') return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
-  if (s === 'unpaid') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
-  return { background: '#f4f4f5', color: '#71717a' };
+  if (s === 'paid') return { background: 'rgba(34,197,94,0.1)', color: '#15803D', borderRadius: 9999 };
+  if (s === 'partially_paid') return { background: 'rgba(59,130,246,0.1)', color: '#1D4ED8', borderRadius: 9999 };
+  if (s === 'unpaid') return { background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 9999 };
+  return { background: '#F4F7F4', color: '#71717a', borderRadius: 9999 };
 };
 
 const getStatusStyle = (status: string): React.CSSProperties => {
   const s = status?.toLowerCase();
-  if (s === 'completed') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
-  if (s === 'pending') return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
-  if (s === 'cancelled') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
-  return { background: '#f4f4f5', color: '#71717a' };
+  if (s === 'completed' || s === 'delivered') return { background: 'rgba(34,197,94,0.1)', color: '#15803D', borderRadius: 9999 };
+  if (s === 'pending') return { background: 'rgba(245,158,11,0.1)', color: '#B45309', borderRadius: 9999 };
+  if (s === 'cancelled') return { background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 9999 };
+  return { background: '#F4F7F4', color: '#71717a', borderRadius: 9999 };
 };
 
 const capitalizeFirst = (str: string): string => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
@@ -210,29 +210,30 @@ Thank you!`;
   };
 
   const overlayStyle: React.CSSProperties = {
-    position: 'fixed', inset: 0, zIndex: 60,
-    background: 'rgba(0,0,0,0.5)',
-    backdropFilter: 'blur(4px)',
+    position: 'fixed', inset: 0, zIndex: 110,
+    background: 'rgba(15, 23, 18, 0.65)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     padding: 16,
   };
 
   const cardStyle: React.CSSProperties = {
     background: '#fff',
-    borderRadius: 20,
-    border: '1px solid #ebebeb',
-    boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
+    borderRadius: 24,
+    border: '1px solid #EAEAEA',
+    boxShadow: '0 24px 64px rgba(0,0,0,0.14)',
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
   };
 
   if (loading && !fullOrderDetails) {
     return (
       <Portal>
-        <div style={overlayStyle}>
+        <div style={overlayStyle} className="animate-modal-backdrop">
         <div
+          className="animate-modal-card"
           style={{
             ...cardStyle,
             maxWidth: 900,
@@ -325,8 +326,8 @@ Thank you!`;
   if (error || !fullOrderDetails || !fullOrderDetails.id || typeof fullOrderDetails.id !== 'number' || fullOrderDetails.id <= 0) {
     return (
       <Portal>
-        <div style={overlayStyle}>
-        <div style={{ ...cardStyle, maxWidth: 360, padding: 32, alignItems: 'center', gap: 16 }}>
+        <div style={overlayStyle} className="animate-modal-backdrop">
+        <div className="animate-modal-card" style={{ ...cardStyle, maxWidth: 360, padding: 32, alignItems: 'center', gap: 16 }}>
           <p style={{ ...DM, fontSize: 14, color: '#f43f5e', textAlign: 'center' }}>{error || 'Order not found or invalid'}</p>
           <button onClick={onClose} style={{ padding: '10px 20px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 10, ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46', cursor: 'pointer' }}>
             Close
@@ -342,31 +343,31 @@ Thank you!`;
 
   return (
     <Portal>
-      <div style={overlayStyle}>
+      <div style={overlayStyle} className="animate-modal-backdrop">
       <style>{`@keyframes vom-spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ ...cardStyle, maxWidth: 900, maxHeight: '95vh' }}>
+      <div className="animate-modal-card" style={{ ...cardStyle, maxWidth: 900, maxHeight: '95vh' }}>
 
         {/* Header */}
-        <div style={{ flexShrink: 0, padding: '18px 24px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ flexShrink: 0, padding: '18px 24px 14px', borderBottom: '1px solid #EAEAEA', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 36, height: 36, background: 'rgba(34,197,94,0.1)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Package size={18} style={{ color: '#059669' }} />
+            <div style={{ width: 36, height: 36, background: 'rgba(159,232,112,0.25)', borderRadius: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Package size={18} style={{ color: '#16281D' }} />
             </div>
             <div>
-              <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#16281D', display: 'block', fontFamily: "'JetBrains Mono', monospace" }}>
                 Order #{fullOrderDetails.id.toString().padStart(4, '0')}
               </span>
               <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, ...getStatusStyle(fullOrderDetails.status) }}>
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 9999, ...getStatusStyle(fullOrderDetails.status) }}>
                   {fullOrderDetails.status}
                 </span>
-                <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, ...getPaymentStatusStyle(fullOrderDetails.payment_status || 'unpaid') }}>
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 9999, ...getPaymentStatusStyle(fullOrderDetails.payment_status || 'unpaid') }}>
                   {fullOrderDetails.payment_status === 'partially_paid' ? 'Partially Paid' : fullOrderDetails.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
                 </span>
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} style={{ width: 32, height: 32, background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 9999, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
             <X size={15} style={{ color: '#71717a' }} />
           </button>
         </div>
@@ -379,30 +380,30 @@ Thank you!`;
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
               {/* Customer info */}
-              <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 12, padding: '12px 14px' }}>
+              <div style={{ background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 16, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <User size={13} style={{ color: '#059669' }} />
-                  <span style={{ ...DM, fontSize: 11, fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customer</span>
+                  <User size={13} style={{ color: '#16281D' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#16281D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customer</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Name</span>
-                    <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#0c1a0e' }}>{fullOrderDetails.customer_name}</span>
+                    <span style={{ fontSize: 11, color: '#71717a' }}>Name</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#16281D' }}>{fullOrderDetails.customer_name}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Phone</span>
-                    <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#0c1a0e' }}>{fullOrderDetails.customer_phone || 'N/A'}</span>
+                    <span style={{ fontSize: 11, color: '#71717a' }}>Phone</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#16281D' }}>{fullOrderDetails.customer_phone || 'N/A'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Date</span>
-                    <span style={{ ...DM, fontSize: 11, color: '#0c1a0e' }}>
+                    <span style={{ fontSize: 11, color: '#71717a' }}>Date</span>
+                    <span style={{ fontSize: 11, color: '#16281D' }}>
                       {new Date(fullOrderDetails.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                   </div>
                   {fullOrderDetails.estimated_delivery_date && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Est. Delivery</span>
-                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#059669' }}>
+                      <span style={{ fontSize: 11, color: '#71717a' }}>Est. Delivery</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#15803D' }}>
                         {new Date(fullOrderDetails.estimated_delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
@@ -411,24 +412,24 @@ Thank you!`;
               </div>
 
               {/* Actions */}
-              <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 12, padding: '12px 14px' }}>
-                <span style={{ ...DM, fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 10 }}>Actions</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ background: '#fff', border: '1px solid #EAEAEA', borderRadius: 16, padding: '14px 16px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 10 }}>Actions</span>
+                <div className="flex flex-col gap-2">
                   <button
                     onClick={sendWhatsAppMessage}
                     disabled={!fullOrderDetails.customer_phone}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: (!fullOrderDetails.customer_phone) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 8, cursor: (!fullOrderDetails.customer_phone) ? 'not-allowed' : 'pointer', ...DM, fontSize: 12, fontWeight: 600, boxShadow: (!fullOrderDetails.customer_phone) ? 'none' : '0 3px 10px rgba(34,197,94,0.3)' }}
+                    className="w-full h-9 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-bold text-xs shadow-[0_2px_10px_rgba(159,232,112,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed border-0 cursor-pointer"
                   >
                     <MessageCircle size={14} />
-                    WhatsApp Update
+                    <span>WhatsApp Update</span>
                   </button>
                   {fullOrderDetails.payment_status !== 'paid' && (
                     <button
                       onClick={handleMarkAsPaid}
                       disabled={updatingPayment}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', ...DM, fontSize: 12, fontWeight: 600, boxShadow: '0 3px 10px rgba(2,132,199,0.3)' }}
+                      className="w-full h-9 px-4 rounded-full bg-[#16281D] hover:bg-[#1f3829] text-[#9FE870] border-0 text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
                     >
-                      {updatingPayment ? 'Updating…' : 'Mark as Fully Paid'}
+                      <span>{updatingPayment ? 'Updating…' : 'Mark as Fully Paid'}</span>
                     </button>
                   )}
                 </div>
@@ -447,38 +448,38 @@ Thank you!`;
                   { label: 'Items', value: itemCount },
                   { label: 'Total Qty', value: totalQty },
                 ].map((stat) => (
-                  <div key={stat.label} style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 6px', textAlign: 'center' }}>
-                    <div style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={stat.value.toString()}>{stat.value}</div>
-                    <div style={{ ...DM, fontSize: 9, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
+                  <div key={stat.label} style={{ background: '#fff', border: '1px solid #EAEAEA', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={stat.value.toString()}>{stat.value}</div>
+                    <div style={{ fontSize: 9, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
                   </div>
                 ))}
               </div>
 
               {/* Items table */}
-              <div style={{ background: '#fff', border: '1px solid #ebebeb', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '10px 14px', borderBottom: '1px solid #f4f4f5', background: '#fafafa' }}>
-                  <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>Order Items ({itemCount})</span>
+              <div style={{ background: '#fff', border: '1px solid #EAEAEA', borderRadius: 16, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #EAEAEA', background: '#F4F7F4' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#16281D' }}>Order Items ({itemCount})</span>
                 </div>
                 <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                   {itemCount === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '32px 0', ...DM, fontSize: 13, color: '#a1a1aa' }}>No items in this order.</div>
+                    <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: '#a1a1aa' }}>No items in this order.</div>
                   ) : (
                     <>
                       {fullOrderDetails.parsed_order_details?.items?.map((item: OrderItem, index: number) => (
-                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #f9f9f9', transition: 'background 0.1s' }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
+                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #EAEAEA', transition: 'background 0.1s' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#F4F7F4')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
                           <div>
-                            <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', marginBottom: 2 }}>{item.name}</div>
-                            <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>Qty: {item.quantity} × LKR {item.price.toFixed(2)}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#16281D', marginBottom: 2 }}>{item.name}</div>
+                            <div style={{ fontSize: 11, color: '#71717a' }}>Qty: {item.quantity} × <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>LKR {item.price.toFixed(2)}</span></div>
                           </div>
-                          <div style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>LKR {(item.quantity * item.price).toLocaleString()}</div>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D' }}>LKR {(item.quantity * item.price).toLocaleString()}</div>
                         </div>
                       ))}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(34,197,94,0.05)', borderTop: '1px solid rgba(34,197,94,0.1)' }}>
-                        <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>Total</span>
-                        <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#059669' }}>LKR {(fullOrderDetails.total_amount || 0).toLocaleString()}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F4F7F4', borderTop: '1px solid #EAEAEA' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#16281D' }}>Total</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 800, color: '#16281D' }}>LKR {(fullOrderDetails.total_amount || 0).toLocaleString()}</span>
                       </div>
                     </>
                   )}
@@ -489,15 +490,15 @@ Thank you!`;
               {(fullOrderDetails.notes || fullOrderDetails.parsed_order_details?.shipping_address) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {fullOrderDetails.notes && (
-                    <div style={{ background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 10, padding: '10px 14px' }}>
-                      <div style={{ ...DM, fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Notes</div>
-                      <p style={{ ...DM, fontSize: 12, color: '#3f3f46', margin: 0 }}>{fullOrderDetails.notes}</p>
+                    <div style={{ background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 14, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Notes</div>
+                      <p style={{ fontSize: 12, color: '#16281D', margin: 0 }}>{fullOrderDetails.notes}</p>
                     </div>
                   )}
                   {fullOrderDetails.parsed_order_details?.shipping_address && (
-                    <div style={{ background: 'rgba(8,145,178,0.05)', border: '1px solid rgba(8,145,178,0.15)', borderRadius: 10, padding: '10px 14px' }}>
-                      <div style={{ ...DM, fontSize: 11, fontWeight: 700, color: '#0891b2', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Shipping</div>
-                      <p style={{ ...DM, fontSize: 12, color: '#3f3f46', margin: 0 }}>{fullOrderDetails.parsed_order_details.shipping_address}</p>
+                    <div style={{ background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 14, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#16281D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Shipping</div>
+                      <p style={{ fontSize: 12, color: '#16281D', margin: 0 }}>{fullOrderDetails.parsed_order_details.shipping_address}</p>
                     </div>
                   )}
                 </div>
@@ -507,8 +508,11 @@ Thank you!`;
         </div>
 
         {/* Footer */}
-        <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #ebebeb', display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '9px 20px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 10, ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46', cursor: 'pointer' }}>
+        <div className="shrink-0 px-6 py-3.5 border-t border-[#EAEAEA] bg-white flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 rounded-full bg-[#F4F7F4] border border-[#EAEAEA] hover:bg-[#EAEAEA] text-[#16281D] font-sans text-xs font-semibold transition-colors cursor-pointer"
+          >
             Close
           </button>
         </div>

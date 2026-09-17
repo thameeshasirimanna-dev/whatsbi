@@ -1,41 +1,58 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import {
   Wallet,
+  FileText,
   MessageSquare,
   Users,
   ShoppingBag,
   Clock,
-  TrendingUp,
-  TrendingDown,
 } from 'lucide-react';
 import { DashboardMetrics } from './dashboard.types';
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 interface DashboardMetricsGridProps {
   metrics: DashboardMetrics;
   balance?: number;
+  templateCredits?: number;
 }
 
 export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
   metrics,
   balance = 4.0,
+  templateCredits,
 }) => {
-  const formattedBalance = typeof balance === 'number' ? balance.toFixed(2) : parseFloat(String(balance) || '0').toFixed(2);
+  const formattedBalance =
+    typeof balance === 'number'
+      ? balance.toFixed(2)
+      : parseFloat(String(balance) || '0').toFixed(2);
+
+  const rawCredits = templateCredits ?? metrics.template_credits ?? 0;
+  const formattedCredits =
+    typeof rawCredits === 'number'
+      ? Math.floor(rawCredits)
+      : parseInt(String(rawCredits) || '0', 10);
 
   const metricCards = [
     {
-      title: 'Available Balance',
+      title: 'AI Balance',
       value: `$${formattedBalance}`,
       badge: 'USD',
       trend: 'up' as const,
       change: 'USD',
       icon: Wallet,
-      iconColor: '#16a34a',
-      iconBg: 'rgba(22, 163, 74, 0.1)',
-      description: 'AI query balance',
+      iconColor: 'text-[#15803D]',
+      iconBg: 'bg-[#F0FDF4] border border-[#BBF7D0]',
+      description: 'Live AI query liquidity',
+    },
+    {
+      title: 'Template Credits',
+      value: formattedCredits,
+      badge: 'Msg',
+      trend: 'up' as const,
+      change: 'Credits',
+      icon: FileText,
+      iconColor: 'text-[#059669]',
+      iconBg: 'bg-[#ECFDF5] border border-[#A7F3D0]',
+      description: 'WhatsApp template credits',
     },
     {
       title: 'Active Conversations',
@@ -44,9 +61,9 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
       trend: 'up' as const,
       change: `+${metrics.activeConversations}`,
       icon: MessageSquare,
-      iconColor: '#22c55e',
-      iconBg: 'rgba(34, 197, 94, 0.1)',
-      description: 'Live customer conversations',
+      iconColor: 'text-[#16A34A]',
+      iconBg: 'bg-[#F0FDF4] border border-[#BBF7D0]',
+      description: 'Active customer chats',
     },
     {
       title: 'Total Customers',
@@ -55,143 +72,100 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
       trend: 'up' as const,
       change: `+${metrics.totalCustomers}`,
       icon: Users,
-      iconColor: '#059669',
-      iconBg: 'rgba(5, 150, 105, 0.1)',
-      description: 'Registered customers',
+      iconColor: 'text-[#0284C7]',
+      iconBg: 'bg-[#F0F9FF] border border-[#BAE6FD]',
+      description: 'Verified contact profiles',
     },
     {
       title: 'Orders Today',
       value: metrics.ordersToday,
       badge: null,
-      trend: 'down' as const,
-      change: '0',
+      trend: metrics.ordersToday > 0 ? ('up' as const) : ('neutral' as const),
+      change: `${metrics.ordersToday}`,
       icon: ShoppingBag,
-      iconColor: '#0891b2',
-      iconBg: 'rgba(8, 145, 178, 0.1)',
-      description: 'New orders received',
+      iconColor: 'text-[#7C3AED]',
+      iconBg: 'bg-[#F5F3FF] border border-[#DDD6FE]',
+      description: 'WhatsApp catalog orders',
     },
     {
       title: 'Avg Response Time',
-      value: metrics.avgResponseTime || '2.3 min',
+      value: metrics.avgResponseTime || '1.8 min',
       badge: null,
       trend: 'down' as const,
       change: '-0.4',
       icon: Clock,
-      iconColor: '#d97706',
-      iconBg: 'rgba(217, 119, 6, 0.1)',
-      description: 'Average reply time',
+      iconColor: 'text-[#D97706]',
+      iconBg: 'bg-[#FFFBEB] border border-[#FDE68A]',
+      description: 'Automated AI reply speed',
     },
   ];
 
-  const getTrendIcon = (trend: 'up' | 'down') =>
-    trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />;
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3 md:gap-3.5">
       {metricCards.map((card, index) => {
         const Icon = card.icon;
+        const isPositive = card.trend === 'up';
+        const isNegative = card.trend === 'down';
+
         return (
-          <motion.div
+          <div
             key={card.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06, duration: 0.35 }}
-            whileHover={{ y: -3, transition: { duration: 0.15 } }}
-            style={{
-              background: '#fff',
-              borderRadius: 14,
-              padding: '20px 20px',
-              border: '1px solid #ebebeb',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-              cursor: 'default',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-            }}
+            className="col-span-1 bg-white rounded-[24px] border border-[#EAEAEA] p-3.5 sm:p-4 md:p-5 shadow-xs hover:shadow-[0_12px_28px_rgba(20,40,24,0.08)] transition-shadow duration-200 flex flex-col justify-between"
           >
             <div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  marginBottom: 14,
-                }}
-              >
+              {/* Header: Icon container + Trend/Status Badge */}
+              <div className="flex items-start justify-between mb-2.5 sm:mb-3">
                 <div
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 10,
-                    background: card.iconBg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl ${card.iconBg} ${card.iconColor} flex items-center justify-center shrink-0 shadow-xs`}
                 >
-                  <Icon size={18} style={{ color: card.iconColor }} />
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.4} />
                 </div>
 
                 <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '3px 8px',
-                    borderRadius: 9999,
-                    background:
-                      card.badge
-                        ? 'rgba(22, 163, 74, 0.08)'
-                        : card.trend === 'up'
-                        ? 'rgba(34,197,94,0.08)'
-                        : 'rgba(244,63,94,0.08)',
-                    color:
-                      card.badge
-                        ? '#15803d'
-                        : card.trend === 'up'
-                        ? '#059669'
-                        : '#f43f5e',
-                    ...DM,
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold ${
+                    card.badge
+                      ? 'bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]'
+                      : isPositive
+                      ? 'bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]'
+                      : isNegative
+                      ? 'bg-[#FFF1F2] text-[#E11D48] border border-[#FECDD3]'
+                      : 'bg-[#F4F7F4] text-[#52525B] border border-black/5'
+                  }`}
                 >
-                  {!card.badge && getTrendIcon(card.trend)}
-                  {card.badge ? card.badge : card.change}
+                  {!card.badge ? (
+                    <>
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isPositive ? 'bg-[#22C55E]' : isNegative ? 'bg-[#EF4444]' : 'bg-[#71717A]'
+                        }`}
+                      />
+                      <span>{card.change}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
+                      <span>{card.badge}</span>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div
-                style={{
-                  ...SYNE,
-                  fontSize: 26,
-                  fontWeight: 700,
-                  color: '#0c1a0e',
-                  lineHeight: 1,
-                  marginBottom: 4,
-                  letterSpacing: '-0.02em',
-                }}
-              >
+              {/* Numeric Value */}
+              <div className="text-xl sm:text-2xl lg:text-[25px] font-extrabold text-[#16281D] tracking-tight leading-tight font-mono">
                 {card.value}
               </div>
 
-              <div
-                style={{
-                  ...DM,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#3f3f46',
-                  marginBottom: 2,
-                }}
-              >
+              {/* Title */}
+              <div className="text-xs sm:text-[13px] font-bold text-[#52525B] mt-1 truncate">
                 {card.title}
               </div>
             </div>
 
-            <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 6 }}>
-              {card.description}
+            {/* Description / Footer */}
+            <div className="text-[10px] sm:text-[11px] text-[#71717A] mt-3 pt-2.5 border-t border-[#F4F4F5] flex items-center justify-between font-medium">
+              <span className="truncate">{card.description}</span>
             </div>
-          </motion.div>
+          </div>
         );
       })}
     </div>

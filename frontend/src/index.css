@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Syne:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Syne:wght@600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -52,7 +52,44 @@ html, body, #root {
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Keyframes for standard premium animations */
+/* Scoped, lightweight custom scrollbars for smooth 60fps scrolling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+html, body, .custom-scrollbar, [class*="overflow-"] {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* High-performance GPU-composited Keyframes */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -61,90 +98,176 @@ html, body, #root {
 @keyframes dropdownReveal {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.96);
+    transform: translate3d(0, -6px, 0) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
-@keyframes modalSlideIn {
+@keyframes modalContentIn {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.97);
+    transform: translate3d(0, 8px, 0) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
-/* Custom transition and animation utility classes */
-.transition-premium {
-  transition: all 0.2s var(--ease-out-quart);
+@keyframes zoomIn95 {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
-.transition-slow {
-  transition: all 0.3s var(--ease-out-quart);
+@keyframes zoomIn90 {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.2s var(--ease-out-quart) forwards;
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translate3d(24px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
-.animate-backdrop {
-  animation: fadeIn 0.25s var(--ease-out-quart) forwards;
+@keyframes slideInBottom3 {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
-.animate-modal {
-  animation: modalSlideIn 0.3s var(--ease-out-quart) forwards;
+/* Snappy, lightweight animation utility classes */
+.animate-modal-backdrop {
+  animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity;
+}
+
+.animate-modal-card {
+  animation: modalContentIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .animate-dropdown {
-  animation: dropdownReveal 0.2s var(--ease-out-quart) forwards;
+  animation: dropdownReveal 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
 }
 
-/* Auto-animate all modal backdrops in the application */
-div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"],
-div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"],
-div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"],
-div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"],
-div[style*="position: fixed"][style*="backdrop-filter"] {
-  animation: fadeIn 0.25s var(--ease-out-quart) forwards !important;
+.animate-fade-in {
+  animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity;
 }
 
-/* Auto-animate all modal content cards (first child of the backdrop) */
-div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"] > div,
-div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"] > div,
-div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"] > div,
-div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"] > div,
-div[style*="position: fixed"][style*="backdrop-filter"] > div {
-  animation: modalSlideIn 0.3s var(--ease-out-quart) forwards !important;
+.animate-backdrop {
+  animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity;
 }
 
-/* Ensure the sidebar has relative positioning on desktop so absolute children / pseudo-elements are contained correctly */
+.animate-modal {
+  animation: modalContentIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Tailwind-compatible animate-in primitives with GPU compositing */
+.animate-in {
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.zoom-in-95 {
+  animation-name: zoomIn95;
+}
+
+.zoom-in-90 {
+  animation-name: zoomIn90;
+}
+
+.slide-in-from-right {
+  animation-name: slideInRight;
+}
+
+.slide-in-from-bottom-3 {
+  animation-name: slideInBottom3;
+}
+
+.duration-150 {
+  animation-duration: 150ms;
+}
+
+.duration-200 {
+  animation-duration: 180ms;
+}
+
+.duration-250 {
+  animation-duration: 200ms;
+}
+
+.duration-300 {
+  animation-duration: 220ms;
+}
+
+.duration-350 {
+  animation-duration: 250ms;
+}
+
+/* Performance optimization helpers */
+.gpu-layer {
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.scroll-smooth-snappy {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+}
+
+.contain-scroll {
+  contain: layout paint;
+  will-change: scroll-position;
+}
+
+/* Ensure the sidebar has relative positioning on desktop */
 @media (min-width: 768px) {
   .layout-sidebar {
     position: relative !important;
   }
 }
-
-/* Disable pointer events and selection on header/sidebar when a modal backdrop is active */
-body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-header,
-body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-header,
-body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-header,
-body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-header,
-body:has(div[style*="position: fixed"][style*="backdrop-filter"]) .layout-header,
-body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.5)"]) .layout-sidebar,
-body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]) .layout-sidebar,
-body:has(div[style*="position: fixed"][style*="rgba(0, 0, 0, 0.4)"]) .layout-sidebar,
-body:has(div[style*="position: fixed"][style*="rgba(0,0,0,0.4)"]) .layout-sidebar,
-body:has(div[style*="position: fixed"][style*="backdrop-filter"]) .layout-sidebar {
-  pointer-events: none !important;
-  user-select: none !important;
-}
-
 
 /* Accessibility: prefers-reduced-motion fallback */
 @media (prefers-reduced-motion: reduce) {

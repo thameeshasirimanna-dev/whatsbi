@@ -92,8 +92,8 @@ export const AgentDetailsModal: React.FC<AgentDetailsModalProps> = ({
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs font-sans">
-      <div className="bg-white rounded-[28px] max-w-2xl w-full border border-[#EAEAEA] shadow-[0_24px_60px_rgba(20,40,24,0.2)] overflow-hidden flex flex-col max-h-[92vh] animate-scale-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#16281D]/65 font-sans animate-modal-backdrop">
+      <div className="bg-white rounded-[28px] max-w-2xl w-full border border-[#EAEAEA] shadow-[0_24px_60px_rgba(20,40,24,0.2)] overflow-hidden flex flex-col max-h-[92vh] animate-modal-card">
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3.5 min-w-0">

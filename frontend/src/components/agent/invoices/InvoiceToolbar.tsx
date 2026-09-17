@@ -2,7 +2,7 @@ import React from "react";
 import { Search, Plus } from "lucide-react";
 import { Customer } from "./types";
 import TimeRangeFilter, { TimeRange } from "../shared/TimeRangeFilter";
-import { DM, inputStyle, selectStyle, onFocusG, onBlurG } from "./constants";
+import CustomDropdown from "../shared/CustomDropdown";
 
 interface InvoiceToolbarProps {
   searchTerm: string;
@@ -30,125 +30,64 @@ export const InvoiceToolbar: React.FC<InvoiceToolbarProps> = ({
   onCreateInvoiceClick,
 }) => {
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 14,
-        border: "1px solid #ebebeb",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-        padding: "14px 18px",
-        display: "flex",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 10,
-      }}
-    >
-      {/* Search Bar */}
-      <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
+    <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-xs p-3.5 sm:p-4 flex items-center flex-wrap gap-2.5 font-sans">
+      {/* Search Bar Capsule */}
+      <div className="relative flex-1 min-w-[220px]">
         <Search
-          size={13}
-          style={{
-            position: "absolute",
-            left: 10,
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "#a1a1aa",
-            pointerEvents: "none",
-          }}
+          size={14}
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A1A1AA] pointer-events-none"
         />
         <input
           type="text"
           placeholder="Search by invoice #, customer, name, or status…"
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          style={{ ...inputStyle, paddingLeft: 30 }}
-          onFocus={onFocusG}
-          onBlur={onBlurG}
+          className="w-full h-10 pl-9 pr-4 rounded-full bg-[#FAFAFA] border border-[#E4E4E7] focus:bg-white focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 text-xs font-medium text-[#16281D] placeholder-[#A1A1AA] outline-none transition-all box-border"
         />
       </div>
 
       {/* Customer Filter */}
-      <select
+      <CustomDropdown
         value={selectedCustomerFilter?.toString() || ""}
-        onChange={(e) =>
-          onCustomerFilterChange(e.target.value ? parseInt(e.target.value) : null)
+        onChange={(val) =>
+          onCustomerFilterChange(val ? parseInt(val) : null)
         }
-        style={{ ...selectStyle, width: "auto", minWidth: 150 }}
-        onFocus={onFocusG}
-        onBlur={onBlurG}
-      >
-        <option value="">All Customers</option>
-        {customers.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+        options={[
+          { value: "", label: "All Customers" },
+          ...customers.map((c) => ({ value: c.id.toString(), label: c.name })),
+        ]}
+        placeholder="All Customers"
+        minWidth={150}
+      />
 
       {/* Time Range Filter */}
       <TimeRangeFilter value={timeRange} onChange={onTimeRangeChange} />
 
       {/* Rows Per Page */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            ...DM,
-            fontSize: 12,
-            color: "#71717a",
-            whiteSpace: "nowrap",
-            fontWeight: 500,
-          }}
-        >
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className="text-xs font-semibold text-[#71717A] whitespace-nowrap">
           Rows:
         </span>
-        <select
+        <CustomDropdown
           value={rowsPerPage}
-          onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
-          style={{
-            ...selectStyle,
-            width: "auto",
-            minWidth: 65,
-            padding: "9px 10px",
-            fontSize: 12,
-          }}
-          onFocus={onFocusG}
-          onBlur={onBlurG}
-        >
-          <option value={10}>10</option>
-          <option value={20}>20</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
+          onChange={(val) => onRowsPerPageChange(Number(val))}
+          options={[
+            { value: 10, label: "10" },
+            { value: 20, label: "20" },
+            { value: 50, label: "50" },
+            { value: 100, label: "100" },
+          ]}
+          minWidth={75}
+        />
       </div>
 
-      {/* Create Invoice Button */}
+      {/* Primary Lime Capsule Create Invoice Button */}
       <button
+        type="button"
         onClick={onCreateInvoiceClick}
-        style={{
-          background: "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-          color: "#fff",
-          border: "none",
-          borderRadius: 9,
-          padding: "9px 16px",
-          ...DM,
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: "pointer",
-          boxShadow: "0 4px 12px rgba(34,197,94,0.25)",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          flexShrink: 0,
-        }}
+        className="inline-flex items-center gap-1.5 bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs py-2.5 px-4 rounded-full shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all shrink-0"
       >
-        <Plus size={14} /> Create Invoice
+        <Plus size={14} strokeWidth={2.8} /> Create Invoice
       </button>
     </div>
   );

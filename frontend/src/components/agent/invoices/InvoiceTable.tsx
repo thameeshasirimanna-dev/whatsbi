@@ -1,19 +1,19 @@
 import React, { useRef, useEffect } from "react";
 import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package } from "lucide-react";
 import { InvoiceWithDetails } from "./types";
-import { DM, getStatusStyle, capitalizeFirst } from "./constants";
+import { getStatusStyle, getStatusDotColor, capitalizeFirst } from "./constants";
 
 const thCell: React.CSSProperties = {
-  padding: "10px 10px",
-  ...DM,
+  padding: "12px 14px",
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
   fontSize: 11,
-  fontWeight: 600,
-  color: "#71717a",
+  fontWeight: 700,
+  color: "#52525B",
   textTransform: "uppercase",
   letterSpacing: "0.05em",
   textAlign: "left",
-  background: "#fafafa",
-  borderBottom: "1px solid #ebebeb",
+  background: "#F8FAF8",
+  borderBottom: "1px solid #EAEAEA",
   whiteSpace: "nowrap",
 };
 
@@ -59,11 +59,10 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
   const pageIds = invoices.map((inv) => inv.id);
 
   return (
-    <div className="hidden lg:block w-full overflow-x-auto">
-      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+    <div className="hidden lg:block w-full overflow-x-auto font-sans select-none">
+      <table className="w-full border-collapse table-fixed">
         <thead>
           <tr>
-            {/* Checkbox Column */}
             <th style={{ ...thCell, width: "38px", textAlign: "center", padding: "10px 6px" }}>
               <input
                 ref={selectAllCheckboxRef}
@@ -71,14 +70,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 checked={isAllSelected}
                 onChange={() => onSelectAll(pageIds)}
                 title="Select all on current page"
-                style={{
-                  cursor: "pointer",
-                  accentColor: "#22c55e",
-                  width: 15,
-                  height: 15,
-                  margin: 0,
-                  verticalAlign: "middle",
-                }}
+                className="cursor-pointer w-4 h-4 rounded accent-[#9FE870] m-0 align-middle"
               />
             </th>
             <th style={{ ...thCell, width: "11%" }}>Invoice #</th>
@@ -86,83 +78,44 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
             <th style={{ ...thCell, width: "15%" }}>Customer</th>
             <th style={{ ...thCell, width: "10%" }}>Order</th>
             <th style={{ ...thCell, width: "11%" }}>Total</th>
-            <th style={{ ...thCell, width: "11%" }}>Status</th>
+            <th style={{ ...thCell, width: "12%" }}>Status</th>
             <th style={{ ...thCell, width: "10%" }}>Date</th>
-            <th style={{ ...thCell, textAlign: "right", width: "15%" }}>Actions</th>
+            <th style={{ ...thCell, textAlign: "right", width: "14%" }}>Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-[#F4F4F5]">
           {invoices.map((invoice) => {
             const isSelected = selectedIds.includes(invoice.id);
+            const isUpdating = updatingId === invoice.id;
+
             return (
               <tr
                 key={invoice.id}
-                style={{
-                  borderBottom: "1px solid #f4f4f5",
-                  transition: "background 0.1s",
-                  background: isSelected ? "#f0fdf4" : "transparent",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    (e.currentTarget as HTMLTableRowElement).style.background =
-                      "rgba(34,197,94,0.02)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    (e.currentTarget as HTMLTableRowElement).style.background =
-                      "transparent";
-                  }
-                }}
+                className={`transition-colors duration-150 ${
+                  isSelected ? "bg-[#F0FDF4]" : "hover:bg-[#FAFFFE] bg-transparent"
+                }`}
               >
                 {/* Row Checkbox */}
-                <td style={{ textAlign: "center", padding: "10px 6px", whiteSpace: "nowrap" }}>
+                <td className="text-center p-2.5 whitespace-nowrap">
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onToggleSelect(invoice.id)}
-                    style={{
-                      cursor: "pointer",
-                      accentColor: "#22c55e",
-                      width: 15,
-                      height: 15,
-                      margin: 0,
-                      verticalAlign: "middle",
-                    }}
+                    className="cursor-pointer w-4 h-4 rounded accent-[#9FE870] m-0 align-middle"
                   />
                 </td>
 
                 {/* Invoice Number */}
-                <td style={{ padding: "10px 10px", whiteSpace: "nowrap" }}>
-                  <span
-                    style={{
-                      ...DM,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "#0891b2",
-                      background: "rgba(8,145,178,0.08)",
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                      display: "inline-block",
-                    }}
-                  >
-                    {invoice.invoice_number ||
-                      `#INV-${invoice.id.toString().padStart(4, "0")}`}
+                <td className="p-2.5 whitespace-nowrap">
+                  <span className="font-mono text-[11px] font-bold text-[#16281D] bg-[#F4F7F4] border border-[#E4E4E7] px-2 py-0.5 rounded-md">
+                    {invoice.invoice_number || `#INV-${invoice.id.toString().padStart(4, "0")}`}
                   </span>
                 </td>
 
                 {/* Invoice Name */}
-                <td style={{ padding: "10px 10px", overflow: "hidden" }}>
+                <td className="p-2.5 overflow-hidden">
                   <div
-                    style={{
-                      ...DM,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "#0c1a0e",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="text-xs font-bold text-[#16281D] truncate"
                     title={invoice.name}
                   >
                     {invoice.name}
@@ -170,17 +123,9 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 </td>
 
                 {/* Customer */}
-                <td style={{ padding: "10px 10px", overflow: "hidden" }}>
+                <td className="p-2.5 overflow-hidden">
                   <div
-                    style={{
-                      ...DM,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: "#0c1a0e",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="text-xs font-semibold text-[#52525B] truncate"
                     title={invoice.customer_name}
                   >
                     {invoice.customer_name}
@@ -188,66 +133,45 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 </td>
 
                 {/* Order Linked */}
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
+                <td className="p-2.5 whitespace-nowrap overflow-hidden">
                   {invoice.order_id || invoice.linked_order_id ? (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        padding: "2px 7px",
-                        borderRadius: 5,
-                        background: "rgba(5,150,105,0.08)",
-                        color: "#059669",
-                        ...DM,
-                        fontSize: 11,
-                        fontWeight: 600,
-                      }}
-                    >
-                      <Package size={11} />#
-                      {invoice.order_id || invoice.linked_order_id}
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] text-[11px] font-bold font-mono">
+                      <Package size={11} strokeWidth={2.4} />#{invoice.order_id || invoice.linked_order_id}
                     </span>
                   ) : (
-                    <span style={{ ...DM, fontSize: 12, color: "#a1a1aa" }}>—</span>
+                    <span className="text-xs text-[#A1A1AA] font-mono">—</span>
                   )}
                 </td>
 
                 {/* Total */}
-                <td style={{ padding: "10px 10px", whiteSpace: "nowrap" }}>
-                  <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#0c1a0e" }}>
+                <td className="p-2.5 whitespace-nowrap">
+                  <span className="font-mono text-xs font-extrabold text-[#16281D]">
                     LKR {invoice.total.toFixed(2)}
                   </span>
                 </td>
 
-                {/* Status */}
-                <td style={{ padding: "10px 10px", whiteSpace: "nowrap" }}>
-                  <span
-                    style={{
-                      ...DM,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: "2px 8px",
-                      borderRadius: 20,
-                      display: "inline-block",
-                      ...getStatusStyle(invoice.status),
-                    }}
-                  >
-                    {invoice.status === "partially_paid"
-                      ? "Partially Paid"
-                      : capitalizeFirst(invoice.status)}
+                {/* Status Badge with Dot Token */}
+                <td className="p-2.5 whitespace-nowrap">
+                  <span style={getStatusStyle(invoice.status)}>
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        backgroundColor: getStatusDotColor(invoice.status),
+                      }}
+                    />
+                    <span>
+                      {invoice.status === "partially_paid"
+                        ? "Partially Paid"
+                        : capitalizeFirst(invoice.status || "generated")}
+                    </span>
                   </span>
                 </td>
 
                 {/* Date */}
-                <td style={{ padding: "10px 10px", whiteSpace: "nowrap" }}>
-                  <span style={{ ...DM, fontSize: 11, color: "#71717a" }}>
+                <td className="p-2.5 whitespace-nowrap">
+                  <span className="text-[11px] font-medium text-[#71717A]">
                     {new Date(invoice.generated_at).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "short",
@@ -257,236 +181,96 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 </td>
 
                 {/* Actions */}
-                <td style={{ padding: "10px 10px", textAlign: "right" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      alignItems: "center",
-                      gap: 4,
-                      flexWrap: "nowrap",
-                    }}
-                  >
+                <td className="p-2.5 text-right">
+                  <div className="flex items-center justify-end gap-1 flex-nowrap">
                     {/* View */}
                     <button
+                      type="button"
                       onClick={() => onView(invoice)}
                       title="View PDF"
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 6,
-                        border: "none",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(8,145,178,0.08)",
-                        color: "#0891b2",
-                        flexShrink: 0,
-                        transition: "background 0.12s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(8,145,178,0.18)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "rgba(8,145,178,0.08)";
-                      }}
+                      className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D] flex items-center justify-center border-0 cursor-pointer transition-all"
                     >
-                      <Eye size={12} />
+                      <Eye size={12} strokeWidth={2.4} />
                     </button>
 
                     {/* Download */}
                     <button
+                      type="button"
                       onClick={() => onDownload(invoice)}
                       title="Download PDF"
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 6,
-                        border: "none",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(34,197,94,0.08)",
-                        color: "#22c55e",
-                        flexShrink: 0,
-                        transition: "background 0.12s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(34,197,94,0.18)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "rgba(34,197,94,0.08)";
-                      }}
+                      className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D] flex items-center justify-center border-0 cursor-pointer transition-all"
                     >
-                      <Download size={12} />
+                      <Download size={12} strokeWidth={2.4} />
                     </button>
 
                     {/* Send / Resend */}
                     {invoice.status !== "paid" && (
                       <button
+                        type="button"
                         onClick={() => onSend(invoice)}
-                        disabled={updatingId === invoice.id}
-                        title={
-                          invoice.status === "generated"
-                            ? "Send via WhatsApp"
-                            : "Resend via WhatsApp"
-                        }
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 6,
-                          border: "none",
-                          cursor:
-                            updatingId === invoice.id ? "not-allowed" : "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background:
-                            updatingId === invoice.id
-                              ? "#f4f4f5"
-                              : "rgba(217,119,6,0.08)",
-                          color:
-                            updatingId === invoice.id ? "#a1a1aa" : "#d97706",
-                          flexShrink: 0,
-                          transition: "background 0.12s",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (updatingId !== invoice.id)
-                            e.currentTarget.style.background =
-                              "rgba(217,119,6,0.18)";
-                        }}
-                        onMouseLeave={(e) => {
-                          if (updatingId !== invoice.id)
-                            e.currentTarget.style.background =
-                              "rgba(217,119,6,0.08)";
-                        }}
+                        disabled={isUpdating}
+                        title={invoice.status === "generated" ? "Send via WhatsApp" : "Resend via WhatsApp"}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center border-0 transition-all ${
+                          isUpdating
+                            ? "bg-[#F4F4F5] text-[#A1A1AA] cursor-not-allowed"
+                            : "bg-[#ECFDF5] hover:bg-[#A7F3D0] text-[#059669] cursor-pointer"
+                        }`}
                       >
-                        <Send size={12} />
+                        <Send size={12} strokeWidth={2.4} />
                       </button>
                     )}
 
                     {/* Mark Paid & Create Order */}
                     {(invoice.status === "generated" || invoice.status === "sent") && (
                       <button
+                        type="button"
                         onClick={() => onMarkPaid(invoice)}
-                        disabled={updatingId === invoice.id}
+                        disabled={isUpdating}
                         title="Mark Paid & Create Order"
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 6,
-                          border: "none",
-                          cursor:
-                            updatingId === invoice.id ? "not-allowed" : "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background:
-                            updatingId === invoice.id
-                              ? "#f4f4f5"
-                              : "rgba(34,197,94,0.08)",
-                          color:
-                            updatingId === invoice.id ? "#a1a1aa" : "#059669",
-                          flexShrink: 0,
-                          transition: "background 0.12s",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (updatingId !== invoice.id)
-                            e.currentTarget.style.background =
-                              "rgba(34,197,94,0.18)";
-                        }}
-                        onMouseLeave={(e) => {
-                          if (updatingId !== invoice.id)
-                            e.currentTarget.style.background =
-                              "rgba(34,197,94,0.08)";
-                        }}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center border-0 transition-all ${
+                          isUpdating
+                            ? "bg-[#F4F4F5] text-[#A1A1AA] cursor-not-allowed"
+                            : "bg-[#F0FDF4] hover:bg-[#BBF7D0] text-[#15803D] cursor-pointer"
+                        }`}
                       >
-                        <CheckCircle2 size={12} />
+                        <CheckCircle2 size={12} strokeWidth={2.4} />
                       </button>
                     )}
 
-                    {/* Mark as Paid Full */}
+                    {/* Mark Paid Full */}
                     {(invoice.status === "partially_paid" ||
                       (Number(invoice.advance_amount) > 0 &&
                         Number(invoice.advance_amount) <
                           Number(invoice.total || invoice.total_amount || 0) &&
                         invoice.status !== "paid")) && (
                       <button
+                        type="button"
                         onClick={() => onMarkPaidFull(invoice)}
-                        disabled={updatingId === invoice.id}
+                        disabled={isUpdating}
                         title="Mark as Paid Full"
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 6,
-                          border: "none",
-                          cursor:
-                            updatingId === invoice.id ? "not-allowed" : "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background:
-                            updatingId === invoice.id
-                              ? "#f4f4f5"
-                              : "rgba(34,197,94,0.08)",
-                          color:
-                            updatingId === invoice.id ? "#a1a1aa" : "#059669",
-                          flexShrink: 0,
-                          transition: "background 0.12s",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (updatingId !== invoice.id)
-                            e.currentTarget.style.background =
-                              "rgba(34,197,94,0.18)";
-                        }}
-                        onMouseLeave={(e) => {
-                          if (updatingId !== invoice.id)
-                            e.currentTarget.style.background =
-                              "rgba(34,197,94,0.08)";
-                        }}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center border-0 transition-all ${
+                          isUpdating
+                            ? "bg-[#F4F4F5] text-[#A1A1AA] cursor-not-allowed"
+                            : "bg-[#F0FDF4] hover:bg-[#BBF7D0] text-[#15803D] cursor-pointer"
+                        }`}
                       >
-                        <CheckCircle size={12} />
+                        <CheckCircle size={12} strokeWidth={2.4} />
                       </button>
                     )}
 
                     {/* Delete */}
                     <button
+                      type="button"
                       onClick={() => onDelete(invoice)}
-                      disabled={updatingId === invoice.id}
+                      disabled={isUpdating}
                       title="Delete invoice"
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 6,
-                        border: "none",
-                        cursor:
-                          updatingId === invoice.id ? "not-allowed" : "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background:
-                          updatingId === invoice.id
-                            ? "#f4f4f5"
-                            : "rgba(244,63,94,0.06)",
-                        color:
-                          updatingId === invoice.id ? "#a1a1aa" : "#f43f5e",
-                        flexShrink: 0,
-                        transition: "background 0.12s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (updatingId !== invoice.id)
-                          e.currentTarget.style.background =
-                            "rgba(244,63,94,0.14)";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (updatingId !== invoice.id)
-                          e.currentTarget.style.background =
-                            "rgba(244,63,94,0.06)";
-                      }}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center border-0 transition-all ${
+                        isUpdating
+                          ? "bg-[#F4F4F5] text-[#A1A1AA] cursor-not-allowed"
+                          : "bg-[#FFF1F2] hover:bg-[#FECDD3] text-[#E11D48] cursor-pointer"
+                      }`}
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={12} strokeWidth={2.4} />
                     </button>
                   </div>
                 </td>

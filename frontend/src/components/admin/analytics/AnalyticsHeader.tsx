@@ -1,6 +1,7 @@
 import React from 'react';
-import { RefreshCw, Calendar, ChevronRight } from 'lucide-react';
+import { RefreshCw, ChevronRight } from 'lucide-react';
 import { TimeframeRange } from './types';
+import { DatePicker } from '../../agent/shared/DatePicker';
 
 interface AnalyticsHeaderProps {
   timeframe: TimeframeRange;
@@ -56,22 +57,23 @@ export const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({
 
         {/* Custom Date Range Picker when 'custom' is active */}
         {timeframe === 'custom' && (
-          <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-full border border-[#EAEAEA] shadow-2xs text-xs animate-in fade-in zoom-in-95 duration-150">
-            <Calendar size={13} className="text-[#059669] shrink-0" />
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => onCustomDateChange(e.target.value, customEndDate)}
-              aria-label="Start Date"
-              className="bg-transparent border-0 outline-none text-xs font-semibold text-[#16281D] cursor-pointer"
+          <div className="flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-150">
+            <DatePicker
+              value={customStartDate || null}
+              onChange={(val) => onCustomDateChange(val || '', customEndDate)}
+              placeholder="Start Date"
+              size="sm"
+              variant="white"
+              maxDate={customEndDate || undefined}
             />
             <ChevronRight size={12} className="text-[#A1A1AA] shrink-0" />
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => onCustomDateChange(customStartDate, e.target.value)}
-              aria-label="End Date"
-              className="bg-transparent border-0 outline-none text-xs font-semibold text-[#16281D] cursor-pointer"
+            <DatePicker
+              value={customEndDate || null}
+              onChange={(val) => onCustomDateChange(customStartDate, val || '')}
+              placeholder="End Date"
+              size="sm"
+              variant="white"
+              minDate={customStartDate || undefined}
             />
           </div>
         )}

@@ -94,211 +94,196 @@ The WhatsBi interface merges high-density operational telemetry with human-craft
 
 | Token | Dimension | Application |
 |---|---|---|
-| `radius-outer-frame` | `40px` / `44px` | Outer dashboard shell frame |
-| `radius-panel` | `32px` | Left navigation rail dock & right agent inspector |
-| `radius-card` | `20px` - `24px` | Welcome hero banner, telemetry chart cards |
-| `radius-pill` | `9999px` | Search bar, export button, workflow action pills, CTA button |
-| `padding-rail` | `28px 14px` (`py-7 px-3.5`) | Left navigation dock interior padding |
-| `padding-inspector` | `24px - 28px` (`p-6 md:p-7`) | Right inspector drawer interior padding |
-| `padding-card` | `20px - 24px` (`p-5 md:p-6`) | Telemetry metric cards interior padding |
+| `radius-outer-frame` | `36px` / `44px` (`rounded-[36px] md:rounded-[44px]`) | Outer dashboard shell frame |
+| `radius-panel` | `32px` (`rounded-[32px]`) | Left navigation rail dock & right agent inspector drawer |
+| `radius-card` | `20px` / `24px` (`rounded-[20px]` / `rounded-[24px]`) | Hero banner, telemetry cards, automation list cards |
+| `radius-modal` | `24px` / `32px` (`rounded-3xl`) | Centered modal containers, custom popovers (`rounded-2xl`) |
+| `radius-capsule` | `9999px` (`rounded-full`) | **All buttons**, select dropdowns & action menus, status badges, search pills, time filter tags |
+| `padding-rail` | `28px 14px` (`py-7 px-3.5`) | Left navigation rail dock interior padding |
+| `padding-inspector` | `24px - 28px` (`p-6 md:p-7`) | Right campaign inspector drawer interior padding |
+| `padding-card` | `20px - 24px` (`p-5 md:p-6`) | Telemetry metric cards & modal containers interior padding |
 | `gutter-columns` | `20px` (`gap-5`) | Spacing between dock, canvas, and inspector |
 
 ---
 
 ## 5. Core Layout Primitives
 
-### 1. Navigation Dock (Left Rail)
-- **Geometry**: Compact rounded dock (`width: 76px`, `border-radius: 32px`, `background: #16281D`).
-- **Brand Mark**: Top circular logo badge (`width: 48px`, `height: 48px`, `background: #203628`, border `1px solid rgba(255,255,255,0.1)`, 4 vibrant lime dots `#9FE870`). Keeps the non-page brand mark visually distinct from the active page indicator.
-- **Active Nav Item**: Rounded circular container (`width: 48px`, `height: 48px`, `border-radius: 9999px` / `rounded-full`, `background: #9FE870`, dark icon `#16281D`, shadow `0 4px 14px rgba(159,232,112,0.35)`).
-- **Inactive Nav Items**: Subtle circular buttons (`width: 44px`, `height: 44px`, icon color `#8FA89B`, hover `rgba(255,255,255,0.08)`).
-- **Theme Switcher**: Pill capsule containing Sun (in `#9FE870` circle) and Moon (in `#16281D` circle).
+### 1. Navigation Rail (Left Dock)
+- **Geometry**: Compact rounded rail (`w-[74px] md:w-[80px]`, `rounded-[32px]`, `bg-[#16281D]`, `py-7 px-3.5`).
+- **Brand Mark**: Top circular diamond logo badge (`w-12 h-12 rounded-full bg-[#203628] border border-white/10`, 4 lime dots `w-1.5 h-1.5 rounded-full bg-[#9FE870]`).
+- **Active Nav Item**: `w-12 h-12 rounded-full bg-[#9FE870] text-[#16281D] shadow-[0_4px_14px_rgba(159,232,112,0.35)]`.
+- **Inactive Nav Items**: `w-12 h-12 rounded-full text-[#8FA89B] hover:text-white hover:bg-white/5 transition-all`.
+- **Theme Switcher Capsule**: `bg-[#0E1C13] p-1.5 rounded-full gap-1 border border-white/5` with `w-8 h-8 rounded-full` buttons (`bg-[#9FE870] text-[#16281D]` when active, `text-[#8FA89B] hover:text-white` when inactive).
 
-### 2. Global Search & Hero Card
-- **Search Pill**: Capsule input (`height: 44px`, `border-radius: 9999px`, `background: #FFFFFF`, border `1px solid #EAEAEA`, left search icon, right mic & notification triggers).
-- **Hero Card**: Deep forest banner (`border-radius: 24px`, `background: #16281D`, `color: #FFFFFF`, padding `20px 24px`).
-  - Title: `"Welcome back, Liam Gallagher!! 👋"`
-  - Subtitle: `"Multi-tenant WhatsApp Cloud API & AI routing are active."`
+### 2. Global Search, Hero & Automations
+- **Search Pill**: `w-full h-12 bg-white rounded-full px-5 border border-[#EAEAEA] shadow-[0_1px_4px_rgba(0,0,0,0.02)]` with left `Search size={17}` and right circular actions (`Mic`, `Bell`).
+- **Hero Banner**: `w-full bg-[#16281D] text-white rounded-[24px] p-6 md:p-7 relative overflow-hidden shadow-sm` with background radial glow `radial-gradient(circle, #9FE870 0%, rgba(22,40,29,0) 70%)`.
+- **Automations List**: Header with `w-8 h-8 rounded-full bg-[#9FE870] text-[#16281D]` plus CTA. Cards: `bg-white rounded-[20px] p-3 md:px-4 md:py-2.5 border border-[#EAEAEA] shadow-[0_2px_6px_rgba(0,0,0,0.02)] hover:border-[#9FE870]`, icon ring `w-9 h-9 rounded-full bg-[#E8F8EE] text-[#059669] group-hover:bg-[#9FE870] group-hover:text-[#16281D]`.
 
 ### 3. Telemetry Visualizations (2x2 Grid)
-1. **Message Throughput (Traffic Spike Waveform)**: Header with `"Hourly ▾"`, smooth SVG traffic wave, floating badge `"90 msg/s"`, numeric `"90 msg/s"`.
-2. **AI Token Consumption (Token Volume Area Curve)**: Header with `"Monthly ▾"`, gradient area curve showing DeepSeek token usage, tooltip badge `"6M tokens"`, month labels.
-3. **Active Chat Sessions (Session Barbell Dumbbells)**: Header with `"Hourly ▾"`, coral dumbbell bars (`#F87171`), numeric `"4000 sessions"`.
-4. **AI Capacity & Quota Gauge (Radial Speedometer Arc Gauge)**: Header with `"Monthly ▾"`, 180° radial arc, active lime capsule `"65% used"`, quota tags (45%, 55%, 65%, 75%, 85%).
+1. **Message Throughput**: Header with `"Hourly ▾"` filter tag (`inline-flex items-center gap-1 text-[11px] font-semibold text-[#16281D] bg-[#F4F7F4] px-3 py-1 rounded-full border border-black/5 hover:bg-[#EAEFEA]`), smooth SVG wave (`stroke="#9FE870" strokeWidth="2.5"`), floating badge `bg-[#9FE870] text-[#16281D] rounded-full px-2.5 py-0.5 font-bold text-[10px]` ("90 msg/s"), numeric `90 msg/s`.
+2. **AI Token Usage**: Header with `"Monthly ▾"` tag, linear-gradient area fill (`#9FE870` 40% to 2%), peak circle markers, floating badge `"6M tokens"`, month axis.
+3. **Active Conversations**: Header with `"Hourly ▾"` tag, 8 coral barbell dumbbell lines (`stroke="#F87171" strokeWidth="3.5"`) with rounded circle caps (`#EF4444`), numeric `4000 chats`.
+4. **AI Model Quota**: Header with `"Monthly ▾"` tag, 180° speedometer radial arc gauge with highlighted lime ticks, central quota badge `bg-[#9FE870] text-[#16281D] px-3.5 py-1 rounded-xl font-extrabold text-[13px]` ("65% used"), radial percentages (45%, 55%, 65%, 75%, 85%).
 
-### 4. Contextual Inspector (Right Panel)
-- **Geometry**: Dark forest panel (`width: 310px`, `border-radius: 32px`, `background: #16281D`, padding `24px`).
-- **Profile**: Avatar (`48×48px` with `#9FE870` ring), user badges (`+100k Messages`, `99.9% Uptime`, `★ 4.9`).
-  - Agent Name: `"Apex Customer AI"`
-  - Domain: `"DeepSeek V3 • WhatsApp Auto-Responder"`
-- **Campaign Scheduler (Broadcast Day Picker)**:
-  - 7-day weekday headers, selected date day `17` in vibrant lime circle (`#9FE870`).
-  - Legend: `Scheduled` (green dot), `Broadcasting` (muted dot), `Idle` (dark dot).
-- **Broadcast Time Slots**: Capsules (`09:00 AM`, `10:00 AM`, active `11:00 AM` in `#9FE870`).
-- **Primary CTA**: Capsule `"Deploy Campaign"` (`height: 48px`, `background: #9FE870`, text `#16281D`, font-bold).
+### 4. Campaign Inspector Drawer (Right Panel)
+- **Geometry**: Dark forest panel (`w-full xl:w-[330px] self-stretch bg-[#16281D] rounded-[32px] p-6 md:p-7 text-white shadow-sm`).
+- **Search Bar**: `bg-[#203628] rounded-full px-3.5 py-1.5 border border-white/5` with filter button `w-7.5 h-7.5 rounded-full bg-[#9FE870] text-[#16281D]`.
+- **Profile Card**: Avatar `w-12 h-12 rounded-full border-2 border-[#9FE870]`, profile tags (`+100k Msgs` in `#203628`/`#9FE870`, `99.9% Uptime` in `#2E3C2B`/`#D9F99D`, `★ 4.9 (40)` in `#3A4E31`/`#A3E635`).
+- **Schedule Day Picker**: 7-day grid, selected date `w-7.5 h-7.5 rounded-full bg-[#9FE870] text-[#16281D] font-extrabold shadow-[0_2px_8px_rgba(159,232,112,0.4)]`. Legend with lime, white/40, and white/10 dots.
+- **Broadcast Time Slots**: Pills `px-3.5 py-1.5 rounded-full text-xs font-bold` (`bg-[#9FE870] text-[#16281D]` active, `bg-[#203628] text-white/80` inactive).
+- **Primary CTA**: `w-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-sm py-3.5 rounded-full shadow-[0_4px_16px_rgba(159,232,112,0.35)]`.
 
 ---
 
 ## 6. Button Hierarchy, Affordances & Interactive States
 
+> **Strict Geometry Directives**: Per `/style-guide`, **ALL standard buttons and action triggers use `rounded-full` (capsule pill / `border-radius: 9999px`)**. Standard buttons must NEVER use `rounded-xl`, `rounded-lg`, or square corners.
+
 ### Button Variants
 
-| Variant | Background | Border | Text | Hover State | Usage |
-|---|---|---|---|---|---|
-| **Primary Lime** | `#9FE870` | None | `#16281D` (Bold) | `bg-[#8CE05A]` + lime shadow | Main page actions ("Deploy Campaign", "Save Changes") |
-| **Secondary Forest** | `#16281D` | None | `#FFFFFF` (Bold) | `bg-[#203628]` | Alternative actions ("Add Tenant", "Apply Filters") |
-| **Soft Mint** | `#F4F7F4` | `1px solid rgba(0,0,0,0.05)` | `#16281D` | `bg-[#E8ECE8]` | Secondary controls, dropdown toggles |
-| **Outline / Ghost** | Transparent | `1.5px solid #E4E4E7` | `#52525B` | `bg-black/5` or `border-[#16281D]` | Secondary actions ("Cancel", "Export") |
-| **Destructive** | `#FFF1F2` | `1px solid #FECDD3` | `#E11D48` | `bg-[#FFE4E6]` | Destructive operations ("Delete Tenant", "Revoke Token") |
+| Variant | Exact Tailwind Class Specification | Usage |
+|---|---|---|
+| **Primary Lime** | `bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs py-2.5 px-4 rounded-full shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all` | Main CTAs & primary actions ("Deploy Campaign", "Save & Verify") |
+| **Secondary Forest** | `bg-[#16281D] hover:bg-[#203628] active:scale-[0.98] text-white font-bold text-xs py-2.5 px-4 rounded-full shadow-xs cursor-pointer border-0 transition-all` | Alternative dark workflows ("Tenant Settings", "Launch Inspector") |
+| **Soft Mint** | `bg-[#F4F7F4] hover:bg-[#E8ECE8] active:scale-[0.98] text-[#16281D] font-bold text-xs py-2.5 px-4 rounded-full border border-black/5 cursor-pointer transition-all` | Utility, filters & export actions ("Export CSV", time pills) |
+| **Ghost / Outline** | `bg-transparent hover:bg-black/5 active:scale-[0.98] text-[#52525B] font-bold text-xs py-2.5 px-4 rounded-full border border-[#E4E4E7] cursor-pointer transition-all` | Secondary actions, dismissals & modal backout ("Cancel", "Dismiss") |
+| **Destructive** | `bg-[#FFF1F2] hover:bg-[#FFE4E6] active:scale-[0.98] text-[#E11D48] font-bold text-xs py-2.5 px-4 rounded-full border border-[#FECDD3] cursor-pointer transition-all` | Irreversible operations ("Delete Record", "Revoke Token") |
 
 ### Button Sizing Scale
 
-- **Small (`sm`)**: `height: 32px` (`h-8`), `padding: 0 12px` (`px-3`), `font-size: 0.75rem` (`text-xs`), icon `size={12}`.
-- **Medium (`md`)**: `height: 40px` (`h-10`), `padding: 0 16px` (`px-4`), `font-size: 0.8125rem` (`text-[13px]`), icon `size={14}`.
-- **Large (`lg`)**: `height: 48px` (`h-12`), `padding: 0 24px` (`px-6`), `font-size: 0.875rem` (`text-sm`), icon `size={16}`.
-- **Icon Only**: `32×32px` (micro), `40×40px` (toolbar), `48×48px` (nav dock), always `border-radius: 9999px` (`rounded-full`).
+- **Small (`sm` / 32px)**: `h-8 px-3 rounded-full text-[11px] font-bold`, icon `size={12-13}`.
+- **Medium (`md` / 40px)**: `h-10 px-4 rounded-full text-xs font-bold`, icon `size={14}`.
+- **Large (`lg` / 48px)**: `h-12 px-6 rounded-full text-sm font-bold`, icon `size={15-16}`.
+- **Icon-Only**: `w-8 h-8 rounded-full` (micro/utility), `w-10 h-10 rounded-full` (toolbar), `w-12 h-12 rounded-full` (dock/action).
 
-### Button States
+### Interactive States
 
-1. **Default**: Crisp border/background with stable typography.
-2. **Hover**: Smooth color transition (`duration-150`), subtle upward translation (`-translate-y-0.5`), glowing shadow on lime buttons.
-3. **Pressed (Active)**: Scale down (`active:scale-[0.98]`).
-4. **Disabled**: `opacity-45 pointer-events-none cursor-not-allowed`.
-5. **Loading**: Replaces leading icon with circular spinner (`<Loader2 className="animate-spin" />`), label switches to present participle ("Saving...").
+1. **Hover Elevation**: Smooth color shift with `-translate-y-0.5` or `shadow-[0_4px_14px_rgba(159,232,112,0.35)]`.
+2. **Pressed (Active)**: Immediate physical tactile compression: `active:scale-[0.98]` or `active:scale-95`.
+3. **Loading State**: Button remains `rounded-full` while replacing icon with `<Loader2 size={14} className="animate-spin text-[#9FE870]" />` and active text ("Syncing...", "Saving...").
+4. **Disabled State**: `bg-[#E4E4E7] text-[#A1A1AA] font-bold text-xs h-10 px-4 rounded-full border-0 cursor-not-allowed opacity-60 pointer-events-none`.
+
+### Button Dropdowns & Menu Triggers
+All dropdown menus and select controls in WhatsBi share the exact button token system and capsule geometry (`rounded-full`), accompanied by rotating vector chevrons:
+- **Primary Lime Action Dropdown**: `bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs h-10 px-4 rounded-full shadow-[0_4px_14px_rgba(159,232,112,0.35)] flex items-center justify-between gap-2 border-0`
+- **Soft Mint Filter Dropdown**: `bg-[#F4F7F4] hover:bg-[#E8ECE8] active:scale-[0.98] text-[#16281D] font-bold text-xs h-10 px-4 rounded-full border border-black/5 hover:border-black/10 flex items-center justify-between gap-2 shadow-xs` (open: `border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white`)
+- **Secondary Forest Dark Dropdown**: `bg-[#16281D] hover:bg-[#203628] active:scale-[0.98] text-white font-bold text-xs h-10 px-4 rounded-full shadow-xs flex items-center justify-between gap-2 border-0` (open: `ring-3 ring-[#9FE870]/30`)
+- **Ghost / Outline Dropdown**: `bg-white hover:bg-[#F4F7F4] active:scale-[0.98] text-[#52525B] font-bold text-xs h-10 px-4 rounded-full border border-[#E4E4E7] hover:border-[#16281D]/30 flex items-center justify-between gap-2 shadow-xs`
 
 ---
 
 ## 7. Status Badges, System Indicators & Pill Tags
 
-### Operational Status Badges
+### Operational Status Badges (with 8px Colored Dot)
 
-| Status | Dot Token | Badge Background | Badge Text | Usage |
-|---|---|---|---|---|
-| **Active / Online** | `#22C55E` | `#F0FDF4` | `#15803D` | Active tenant, healthy webhook, connected agent |
-| **Warning / Low** | `#F59E0B` | `#FFFBEB` | `#92400E` | Low credit balance, high latency, queue backlog |
-| **Critical / Failed** | `#EF4444` | `#FFF1F2` | `#E11D48` | Meta API error, failed invoice, disconnected agent |
-| **Neutral / Draft** | `#71717A` | `#F4F4F5` | `#52525B` | Unsaved draft, offline agent, archived record |
+| Status | Dot Token | Badge Classes | Usage |
+|---|---|---|---|
+| **Active / Online** | `w-2 h-2 rounded-full bg-[#22C55E]` | `bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]` | Active agent, healthy webhook, connected tenant |
+| **Low Balance Warning** | `w-2 h-2 rounded-full bg-[#F59E0B]` | `bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]` | Low credit balance, queue backlog |
+| **Critical / Failed** | `w-2 h-2 rounded-full bg-[#EF4444]` | `bg-[#FFF1F2] text-[#E11D48] border border-[#FECDD3]` | Meta API error, 401 unauthorized, disconnected agent |
+| **Offline / Draft** | `w-2 h-2 rounded-full bg-[#71717A]` | `bg-[#F4F4F5] text-[#52525B] border border-[#E4E4E7]` | Unsaved draft, offline agent, archived record |
 
-### Value Badges & Telemetry Tags
+*Base badge geometry*: `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold`.
 
-- **Lime Telemetry Tag**: `background: #9FE870`, `text: #16281D`, font-bold, radius `9999px`, padding `4px 10px` (e.g. `90 msg/s`, `6M tokens`, `65% used`).
-- **Dark Inspector Metadata Badges**:
-  - Message Volume Badge: `background: #203628`, `text: #9FE870`, icon `MessageSquare` (`+100k Messages`).
-  - System Uptime Badge: `background: #2E3C2B`, `text: #D9F99D`, icon `Zap` (`99.9% Uptime`).
-  - Rating Badge: `background: #3A4E31`, `text: #A3E635`, icon `Star` fill (`★ 4.9 (40 Reviews)`).
+### Telemetry Tags & Dark Inspector Badges
 
+- **High-Contrast Telemetry Tags**: `bg-[#9FE870] text-[#16281D] font-bold text-xs px-3 py-1 rounded-full shadow-xs` (e.g. `90 msg/s`, `6M tokens`, `65% quota`) and `bg-[#F87171] text-white` (`4000 sessions`).
+- **Dark Inspector Badges**:
+  - Message Volume: `inline-flex items-center gap-1.5 bg-[#203628] text-[#9FE870] px-3.5 py-1.5 rounded-full text-xs font-bold` (`MessageSquare size={13}`).
+  - System Uptime: `inline-flex items-center gap-1.5 bg-[#2E3C2B] text-[#D9F99D] px-3.5 py-1.5 rounded-full text-xs font-bold` (`ShieldCheck size={13}`).
+  - Rating: `inline-flex items-center gap-1.5 bg-[#3A4E31] text-[#A3E635] px-3.5 py-1.5 rounded-full text-xs font-bold` (`Star size={13} fill="#A3E635"`).
 
 ---
 
 ## 8. Card Anatomy & Structural Containers
 
-### Card Architecture
-Every card consists of:
-1. **Header Zone**: Icon badge or category label on the left; action menu or filter pill on the right.
-2. **Content Canvas**: Primary numeric readout, SVG chart, or structured list.
-3. **Footer Zone**: Optional time stamp, legend indicators, or inline CTA.
-
-### Container Surface Types
-- **Light Workspace Card**: `background: #FFFFFF`, border `1px solid #EAEAEA`, `border-radius: 20px` - `24px`, padding `20px` - `24px`, shadow `0 2px 6px rgba(0,0,0,0.05)`.
-- **Dark Inspector Card**: `background: #16281D` or `#1E3527`, border `1px solid rgba(255,255,255,0.08)`, `border-radius: 24px` - `32px`, padding `20px` - `28px`.
-- **Soft Mint Card**: `background: #F4F7F4`, border `1px solid #E4E8E4`, `border-radius: 16px` - `20px`.
+- **Light Workspace Card**: `bg-white rounded-2xl p-5 md:p-6 border border-[#EAEAEA] shadow-sm` (hover lift: `hover:-translate-y-1.5 hover:shadow-[0_12px_28px_rgba(20,40,24,0.1)] transition-all duration-200`).
+- **Dark Inspector Card / Tile**: `bg-[#203628] p-3.5 rounded-2xl border border-white/5 flex items-center justify-between text-white`.
+- **Soft Mint Card**: `bg-[#F4F7F4] p-3.5 rounded-xl border border-black/5`.
 
 ---
 
 ## 9. Navigation Systems, Segmented Controls & Breadcrumbs
 
 ### Segmented Capsule Switch
-- **Track**: `background: #E8ECE8`, padding `4px`, border-radius `9999px`, border `1px solid rgba(0,0,0,0.05)`.
-- **Active Segment**: `background: #16281D`, `color: #FFFFFF`, font-weight `700`, shadow `0 1px 2px rgba(0,0,0,0.1)`.
-- **Inactive Segment**: `color: #52525B`, hover `color: #16281D`.
+- **Track**: `bg-[#E8ECE8] p-1 rounded-full border border-black/5 flex items-center gap-1`.
+- **Active Segment**: `px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#16281D] text-white shadow-xs cursor-pointer border-0 transition-all`.
+- **Inactive Segment**: `px-3.5 py-1.5 rounded-full text-xs font-bold text-[#52525B] hover:text-[#16281D] bg-transparent cursor-pointer border-0 transition-all`.
 
-### Breadcrumbs
-- Typography: `font-size: 0.75rem` (`text-xs`), medium weight.
-- Divider: `ChevronRight size={12} text-[#A1A1AA]`.
-- Active crumb: `font-bold text-[#16281D]`.
+### Hierarchical Breadcrumbs
+- `flex items-center gap-1.5 text-xs text-[#71717A]` with `ChevronRight size={13} text-[#A1A1AA]` and active crumb `font-bold text-[#16281D]`.
 
 ---
 
-## 10. Form Controls & Inputs
+## 10. Form Controls, Custom Select Menus & Toggles
 
-### Text Inputs & Textareas
-- **Base Input**: Background `#FFFFFF` or `#FAFAFA`, border `1.5px solid #E4E4E7`, border-radius `12px` or `9999px` for search pills, padding `10px 14px`, font size `0.875rem` (14px).
-- **Focus State**: Border `1.5px solid #9FE870`, box-shadow `0 0 0 3px rgba(159, 232, 112, 0.25)`.
-- **Error State**: Background `#FFF1F2`, border `1.5px solid #F43F5E`, box-shadow `0 0 0 3px rgba(244, 63, 94, 0.15)`.
-- **Dark Surface Inputs**: Inside `#16281D` panels, inputs use background `#203628`, border `1px solid rgba(255,255,255,0.08)`, text `#FFFFFF`, placeholder `#8FA89B`.
+### Text Inputs
+- **Standard Input**: `w-full px-3.5 py-2.5 rounded-xl bg-[#FAFAFA] border border-[#E4E4E7] text-xs text-[#16281D] outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all font-sans`.
+- **Focus State (Lime Glow)**: `bg-white border border-[#9FE870] ring-3 ring-[#9FE870]/25 text-xs text-[#16281D] font-medium outline-none`.
+- **Error State**: `bg-[#FFF1F2] border border-[#F43F5E] ring-3 ring-[#F43F5E]/15 text-xs text-[#E11D48] outline-none`.
+- **Dark Surface Input**: `bg-[#203628] border border-white/10 text-xs text-white placeholder-[#8FA89B] outline-none`.
 
-### Select Menus & Custom Dropdowns
-- **Form Select Trigger**:
-  - Height: `40px` (`h-10`), border-radius: `12px` (`rounded-xl`), padding: `0 14px`.
-  - Base State: Background `#FAFAFA`, border `1.5px solid #E4E4E7`, text `#16281D`, font-size `0.8125rem` (13px), font-weight `500`.
-  - Focus / Open State: Border `1.5px solid #9FE870`, box-shadow `0 0 0 3px rgba(159, 232, 112, 0.25)`.
-  - Indicator: `ChevronDown size={14}` on right, animating with `transform rotate-180` when open.
-- **Flyout Popover Menu**:
-  - Container: Background `#FFFFFF`, border `1px solid #EAEAEA`, border-radius `16px`, padding `6px`, box-shadow `0 12px 36px rgba(20, 40, 24, 0.14)`, z-index `30` (`z-dropdown`).
-  - Menu Items: Padding `8px 12px`, border-radius `10px`, font-size `0.75rem` (12px), font-weight `600`, color `#16281D`.
-  - Item Hover: Background `#F4F7F4`, color `#16281D`.
-  - Selected Item: Background `#F0FDF4`, color `#15803D`, right checkmark SVG (`Check size={13} strokeWidth={2.6}`).
-- **Filter Pill Dropdowns (Telemetry / Toolbar Tag)**:
-  - Height: `32px` (`h-8`), border-radius: `9999px` (`rounded-full`), background `#F4F7F4`, border `1px solid rgba(0,0,0,0.06)`, padding `0 12px`, font-size `0.6875rem` (11px), font-weight `700`, text `#16281D`.
-- **Dark Surface Dropdown (Inspector Panels)**:
-  - Trigger: Background `#203628`, border `1px solid rgba(255,255,255,0.1)`, text `#FFFFFF`, chevron `#8FA89B`.
-  - Menu: Background `#16281D`, border `1px solid rgba(255,255,255,0.1)`, item hover `#203628`, selected text `#9FE870`.
+### Custom Select Menus & Button Dropdowns
+Dropdown triggers in WhatsBi are first-class interactive button triggers and strictly adopt capsule button ergonomics (`rounded-full` / `border-radius: 9999px`) with 180° rotating chevrons, never boxy rectangular input fields (`rounded-xl`).
 
-### Toggle Switches
-- **Track**: Dimensions `42×24px`, border-radius `9999px`. Inactive: `#E4E4E7` (or `#203628` on dark). Active: `#9FE870` (or `#22C55E`).
-- **Thumb**: Dimensions `18×18px`, border-radius `50%`, color `#FFFFFF`, shadow `0 1px 3px rgba(0,0,0,0.2)`. Transitions smoothly via `transform: translateX(18px)`.
+- **Light Select / Filter Trigger (Soft Mint Button Style)**: `w-full h-10 px-4 rounded-full text-xs font-bold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]` (open: `border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white text-[#16281D]`, closed: `border border-black/5 bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D]`). Chevron: `ChevronDown size={14} transition-transform duration-200` (`rotate-180 text-[#16281D]`).
+- **Primary Lime Action Dropdown Trigger**: `w-full h-10 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all flex items-center justify-between gap-2` (open: `ring-3 ring-[#16281D]/20`).
+- **Dark Surface Dropdown Trigger (Inspector & Dock)**: `w-full h-10 px-4 rounded-full text-xs font-bold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]` (open: `border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-[#203628] text-white`, closed: `border border-white/10 hover:border-white/25 bg-[#203628] hover:bg-[#274232] text-white`). Chevron: `rotate-180 text-[#9FE870]`.
+- **Floating Popover Menu**: `absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150` (dark surfaces: `bg-[#16281D] border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.35)]`).
+- **Pill Menu Selection Items**: Option buttons are capsule pill items: `px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0` (active: `bg-[#9FE870] text-[#16281D] shadow-xs`, inactive: `text-[#16281D] hover:bg-[#F4F7F4] bg-transparent`, with `Check size={13} strokeWidth={2.8}`). Dark options: active `bg-[#9FE870] text-[#16281D]`, inactive `text-[#E4E4E7] hover:bg-[#203628] hover:text-white`.
 
-### Checkboxes
-- **Checked**: Dimensions `18×18px`, background `#9FE870` (or `#22C55E`), border `2px solid #9FE870`, white check SVG icon.
-- **Indeterminate**: Background `#9FE870`, horizontal white dash icon.
-- **Unchecked**: Dimensions `18×18px`, background `#FFFFFF`, border `2px solid #D4D4D8`, border-radius `5px`.
+### Toggle Switches & Checkboxes
+- **Toggle Switch**: Track `w-11 h-6 rounded-full transition-colors cursor-pointer p-0.5 border-0 flex items-center` (`bg-[#9FE870]` active, `bg-[#E4E4E7]` inactive) with thumb `w-5 h-5 rounded-full bg-white shadow-sm transition-transform` (`translate-x-5` active, `translate-x-0` inactive).
+- **Checkbox**: `w-5 h-5 rounded-md flex items-center justify-center transition-all border cursor-pointer` (`bg-[#9FE870] border-[#9FE870] text-[#16281D]` with `Check size={13} strokeWidth={3}` when checked, `bg-white border-[#D4D4D8]` when unchecked).
 
 ---
 
 ## 11. Data Tables & Record Management
 
-- **Toolbar**: Search filter input, view toggles (grid/list), and primary action pill buttons.
-- **Table Header**: Background `#F8FAF8`, border bottom `1px solid #EBEBEB`, typography `0.6875rem` (11px), uppercase, `letter-spacing: 0.08em`, font weight `700`, color `#52525b`. Includes "Select All" checkbox.
-- **Table Rows**: Standard height `52px`, font size `0.8125rem` (13px), hover highlight `background: #FAFFFE`.
-- **Row Selection**: Checkbox column with `#9FE870` / `#22C55E` accent; selected rows highlight with `#F0FDF4` background tint.
-- **Floating Bulk Actions Bar**: Docked/floating dark pill bar (`background: #16281D`, border `1px solid rgba(255,255,255,0.1)`, shadow `0 12px 36px rgba(22,40,29,0.25)`) displaying selected count badge and batch operations (Mark Paid, Export, Delete, Clear).
-- **Pagination Controls**: Active page `#9FE870` with `#16281D` text; inactive pages `#FFFFFF` with border `1px solid #E4E4E7`.
+- **Table Header**: `bg-[#F8FAF8] border-b border-[#EAEAEA]`, cells `px-4 py-3 text-[11px] font-bold text-[#52525B] uppercase tracking-wider text-left`.
+- **Table Rows**: Row padding `px-4 py-3 text-xs`, hover highlight `hover:bg-[#FAFFFE]`, selected highlight `bg-[#F0FDF4] transition-colors cursor-pointer`.
+- **Tenant Cell**: Avatar `w-7 h-7 rounded-full bg-[#16281D] text-[#9FE870] flex items-center justify-center font-bold text-[11px]`.
+- **Action Link**: `inline-flex items-center gap-1 text-[11px] font-bold text-[#059669] hover:text-[#047857] transition-colors cursor-pointer bg-transparent border-0`.
 
 ---
 
 ## 12. Modal Dialogs & Contextual Drawers
 
-### Modal Dialogs
-- **Backdrop Overlay**: Background `rgba(0, 0, 0, 0.5)`, backdrop-filter `blur(4px)`, z-index `60`.
-- **Modal Container**: Border-radius `24px` (`1.5rem`), background `#FFFFFF`, border `1px solid #EAEAEA`, shadow `0 24px 64px rgba(0,0,0,0.16)`, max-width `540px` (standard) or `720px` (wide).
-- **Header**: Title in `Plus Jakarta Sans` 700 bold, close button in circular soft frame (`hover:bg-[#F4F7F4]`).
-- **Footer**: Cancel ghost/soft button + primary action pill button. Danger actions use `#F43F5E` red.
+### Centered Modal Dialogs
+- **Backdrop Scrim**: `fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity z-50 flex items-center justify-center p-4`.
+- **Modal Container**: `relative bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.22)] z-10 flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200`.
+- **Header**: Icon badge `w-10 h-10 rounded-2xl bg-[#16281D] text-[#9FE870] flex items-center justify-center shrink-0`, title `font-bold text-base text-[#16281D]`, close button `w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#71717A] hover:text-[#16281D] flex items-center justify-center border-0 cursor-pointer transition-colors`.
+- **Footer Actions**: Cancel `px-4 py-2.5 rounded-full text-xs font-bold text-[#52525B] hover:text-[#16281D] hover:bg-[#F4F7F4] border border-[#E4E4E7] cursor-pointer transition-all`, Primary CTA `px-5 py-2.5 rounded-full text-xs font-bold bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] shadow-[0_4px_14px_rgba(159,232,112,0.3)] cursor-pointer border-0 transition-all flex items-center gap-1.5`.
 
-### Slide-Over Drawers (Inspector Panels)
-- **Geometry**: Slides in from right, width `340px` - `420px`, background `#16281D` (dark) or `#FFFFFF` (light), full height `100vh`, z-index `50`.
-- **Header**: Breadcrumb/title with close button, body scrollable area, pinned footer with high-contrast primary CTA.
+### Slide-Over Contextual Drawers
+- **Backdrop Scrim**: `fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity z-50`.
+- **Slide-Over Panel**: `fixed inset-y-0 right-0 max-w-full flex pl-10` → `w-screen max-w-md bg-[#16281D] text-white p-7 shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300`.
+- **Header**: Live beacon `w-2.5 h-2.5 rounded-full bg-[#9FE870] animate-pulse`, title `text-xl font-bold text-white`, close `w-8 h-8 rounded-full bg-[#203628] hover:bg-[#264432] text-[#8FA89B] hover:text-white`.
+- **Attributes**: `bg-[#203628] p-3.5 rounded-2xl border border-white/5 flex items-center justify-between`.
+- **Pinned Footer**: Primary CTA `w-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-bold text-sm py-3.5 rounded-full shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all flex items-center justify-center gap-2`, Dismiss `w-full bg-transparent text-[#8FA89B] hover:text-white font-semibold text-xs py-2 border-0 cursor-pointer`.
 
 ---
 
 ## 13. Alerts, Banners & Toast Notifications
 
-| Variant | Background | Border | Text | Icon Token | Usage |
+| Variant | Background | Border | Title Text | Body Text | Icon Token |
 |---|---|---|---|---|---|
-| **Success** | `#F0FDF4` | `#BBF7D0` | `#15803D` | `CheckCircle2` | Successful save, payment received, message sent |
-| **Warning** | `#FFFBEB` | `#FDE68A` | `#92400E` | `AlertTriangle` | Low credits, maintenance mode active, expiring token |
-| **Danger** | `#FFF1F2` | `#FECDD3` | `#E11D48` | `AlertCircle` | Failed delivery, validation errors, unauthorized access |
-| **Info** | `#F0F9FF` | `#BAE6FD` | `#0369A1` | `Info` | Webhook guidance, system updates, new feature notices |
+| **Success** | `#F0FDF4` | `#BBF7D0` | `#15803D` (Bold `text-xs`) | `#166534` (`text-[11px]`) | `CheckCircle2 size={18} text-[#15803D]` |
+| **Warning** | `#FFFBEB` | `#FDE68A` | `#92400E` (Bold `text-xs`) | `#B45309` (`text-[11px]`) | `AlertTriangle size={18} text-[#D97706]` |
+| **Danger** | `#FFF1F2` | `#FECDD3` | `#E11D48` (Bold `text-xs`) | `#BE123C` (`text-[11px]`) | `AlertCircle size={18} text-[#E11D48]` |
+| **Info** | `#F0F9FF` | `#BAE6FD` | `#0369A1` (Bold `text-xs`) | `#075985` (`text-[11px]`) | `Info size={18} text-[#0284C7]` |
 
-*Toast notifications animate in with `translateY(-8px) scale(0.98)` to `translateY(0) scale(1)` over 200ms with auto-dismiss after 4000ms.*
+*Container Class*: `border p-3.5 rounded-xl flex items-center gap-3`.
 
 ---
 
 ## 14. Loading, Feedback & Empty States
 
-- **Skeleton Shimmers**: Linear gradient shimmer moving from `#E8F5E9` to `#C8E6C9` over `1.4s infinite linear`, border-radius `8px`.
-- **Spinners**: Circular 2px vector SVG spinner rotating at `0.9s linear infinite` (`text-[#9FE870]` or `text-[#059669]`).
-- **Typing Pulse Indicator**: 3-dot staggered bounce (`animation: bounce 0.6s infinite alternate`) for agent/AI chatbot drafting states.
-- **Empty States**: Centered illustration or icon inside a soft green circle (`width: 56px`, `height: 56px`, `background: #ECFDF5`), clear title, helper subtitle, and primary call-to-action button.
+- **Skeleton Shimmers**: Circular avatar `w-10 h-10 rounded-full bg-zinc-200 animate-pulse`, title bar `h-3.5 bg-zinc-200 rounded-md w-3/4 animate-pulse`, card block `h-14 bg-zinc-100 rounded-xl w-full animate-pulse`.
+- **Vector Spinners**: `Loader2 size={20} className="animate-spin text-[#059669]"` accompanied by `text-xs font-medium text-[#16281D]` label.
+- **Typing Pulse Indicator**: 3-dot staggered bounce (`w-1.5 h-1.5 rounded-full bg-[#059669] animate-bounce` with `[animation-delay:0.2s]` and `[animation-delay:0.4s]`) inside `bg-[#F4F7F4] px-3 py-1.5 rounded-full border border-black/5`.
+- **Empty States**: Centered illustration inside soft green circle (`w-10 h-10 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center justify-center`), title `text-xs font-bold text-[#16281D]`, helper subtitle `text-[11px] text-[#71717A]`, and primary CTA pill `bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-bold text-[11px] px-3 py-1.5 rounded-full shadow-xs cursor-pointer border-0`.
 
 ---
 
@@ -306,87 +291,52 @@ Every card consists of:
 
 - **Primary Vector Library**: `lucide-react`.
 - **Strict Emoji Ban**: Functional navigation symbols, status indicators, and buttons MUST NEVER use raw emoji characters (`🔥`, `🚀`, `💡`, `🏥`, `💉`).
-- **Stroke Width**: Standard `2px` (or `2.4px` for micro icons ≤ 14px).
+- **Stroke Width**: Standard `2px` (or `2.4px` - `2.6px` for micro icons ≤ 14px).
 - **Icon Sizing Grid**:
-  - Micro (`12px` - `14px`): Badges, tooltips, inline stats.
-  - Action / Field (`16px` - `18px`): Buttons, search inputs, table actions.
-  - Card & Section (`20px` - `22px`): Section titles, alert banners, metric headers.
-  - Rail & Navigation (`24px`): Left dock icon shortcuts.
+  - Micro (`11px` - `13px`): Badges, tooltips, inline stats (`Star`, `MessageSquare`, `Clock`).
+  - Action / Field (`14px` - `16px`): Buttons, search inputs, dropdown chevrons.
+  - Card & Section (`18px` - `22px`): Alerts, modal headers, empty state icons.
+  - Rail & Navigation (`20px`): Left dock icon shortcuts (`LayoutGrid`, `FileText`, `MessageSquare`).
 
 ---
 
 ## 16. Accessibility (WCAG AAA), Focus Rings & Usability
 
 - **High-Contrast Validation**: The signature pairing of Deep Forest `#16281D` text on Vibrant Lime `#9FE870` yields an **11.5:1** contrast ratio, surpassing the WCAG AAA requirement of 7:1.
-- **Keyboard Navigation**: All interactive elements (buttons, inputs, toggles, row selections) must provide visible focus indicators: `focus-visible:ring-2 focus-visible:ring-[#9FE870] focus-visible:ring-offset-2 outline-none`.
-- **Minimum Touch Targets**: All touch targets for tablet and mobile devices must be at least `44×44px`.
-- **Screen Reader Support**: Use `aria-label` on icon-only buttons, `aria-expanded` on dropdowns, and `aria-checked` on checkboxes/toggles.
+- **Keyboard Navigation**: All interactive controls provide visible focus indicators: `focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/25 outline-none`.
+- **Minimum Touch Targets**: All mobile touch targets must be at least `44×44px`.
 
 ---
 
 ## 17. Motion System, Timing Tokens & Micro-Interactions
 
-WhatsBi relies on physical, responsive motion tokens to create high-velocity tactile feedback while preserving operational calmness.
+### 1. Duration Tokens & Easing Curves
 
-### 1. Duration & Timing Tokens
-
-| Token | Milliseconds | Usage | CSS Utility |
+| Easing Token | Bezier Definition | Duration | Usage |
 |---|---|---|---|
-| `motion-fast` | `150ms` | Button hover, icon color shifts, checkbox ticks, tooltips | `duration-150` |
-| `motion-normal` | `250ms` | Dropdowns, alert banners, accordion expansions, tabs | `duration-250` |
-| `motion-deliberate` | `350ms` | Slide-over inspector drawers, modal reveals, backdrop scrims | `duration-350` |
-| `motion-slow` | `500ms` | Layout reorganizations, multi-card container resizes | `duration-500` |
+| **Snappy Ease-Out** | `cubic-bezier(0.16, 1, 0.3, 1)` | `350ms` | **UI Default**: Dropdowns, drawers, modal reveals, cards |
+| **Tactile Spring** | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `400ms` | Micro-interactions: Toggle switches, active tags, star ratings |
+| **Standard Smooth** | `cubic-bezier(0.4, 0, 0.2, 1)` | `250ms` | Transitions: Color shifts, border glows, opacity |
+| **Linear** | `linear` | `900ms` | Continuous loops: Vector spinners, telemetry beacons |
 
-### 2. Cubic-Bezier Easing Scale
+### 2. Tactile Micro-Interactions
+- **Card Hover Lift**: `hover:-translate-y-1.5 hover:shadow-[0_12px_28px_rgba(20,40,24,0.1)] transition-all duration-200 cursor-pointer`.
+- **Button Compression**: `active:scale-[0.98]` or `active:scale-95 transition-transform duration-100`.
+- **Lime Glow Pulse**: Saved state confirmation via `ring-4 ring-[#9FE870] shadow-[0_0_24px_rgba(159,232,112,0.6)] duration-300`.
+- **Chevron Rotation**: 180° flip on expansion (`transition-transform duration-200 transform rotate-180`).
 
-| Easing Token | Bezier Definition | Characteristics | Usage |
-|---|---|---|---|
-| **Snappy Ease-Out** | `cubic-bezier(0.16, 1, 0.3, 1)` | High-velocity start with abrupt, smooth deceleration | **Primary UI default**: Modals, drawers, dropdowns, cards |
-| **Tactile Spring** | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Physics-calibrated slight overshoot | Toggle switches, star rating clicks, badge pop-ins |
-| **Standard Smooth** | `cubic-bezier(0.4, 0, 0.2, 1)` | Balanced entry and exit acceleration | Color transitions, opacity shifts, border glows |
-| **Linear** | `linear` | Constant speed | Vector spinners (`animate-spin`), skeleton sweeps |
+### 3. Continuous Operational Telemetry Loops
+- **Radar Beacon Ping**: Expanding concentric ring (`animate-ping absolute inline-flex h-10 w-10 rounded-full bg-[#9FE870] opacity-60` with inner `h-4 w-4 rounded-full bg-[#16281D] border-2 border-[#9FE870]`).
+- **Throughput Traffic Pulse**: `w-12 h-12 rounded-2xl bg-[#ECFDF5] text-[#059669] flex items-center justify-center animate-pulse` with `Activity size={22}`.
+- **AI Drafting 3-Dot Stagger**: 3 circular dots bouncing vertically with staggered delays (`0s`, `0.18s`, `0.36s`): `w-2 h-2 rounded-full bg-[#059669] animate-bounce` inside `bg-[#F4F7F4] px-4 py-3 rounded-full border border-black/5`.
 
-### 3. Tactile Micro-Interactions
+### 4. Choreographed Entrance Transitions
+- **Agent Page Entrances**: Uniformly governed by `animate-fade-in` (`fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)`) on `<main key={location.pathname}>`. Subcomponents (metric cards, toolbars, tables, and widgets) must NEVER introduce artificial delayed waterfalls (`delay: ...`), ensuring every agent page transitions instantaneously and identically at 60–120 FPS.
+- **Modal Dialogs**: `animate-modal-backdrop` (`fadeIn 0.15s`) and `animate-modal-card` (`modalContentIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)`).
+- **Slide-Over Contextual Drawers**: `animate-in slide-in-from-right duration-200`.
+- **Toast Notifications**: `animate-in fade-in slide-in-from-bottom-3 duration-200`.
 
-- **Card Hover Elevation**:
-  ```css
-  /* Hover lift with soft elevation */
-  .card-interactive {
-    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms ease-out;
-  }
-  .card-interactive:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px rgba(20, 40, 24, 0.10);
-  }
-  ```
-- **Button Tactile Compression**:
-  ```css
-  /* Immediate physical press feeling */
-  .btn-tactile {
-    transition: transform 100ms ease-out;
-  }
-  .btn-tactile:active {
-    transform: scale(0.96);
-  }
-  ```
-- **Chevron Indicator Flip**: Rotates 180° upon trigger expansion (`transition-transform duration-200 ease-out transform rotate-180`).
-- **Signature Lime Pulse**: Glowing pulse ring on confirmation (`ring-4 ring-[#9FE870]/40 shadow-[0_0_24px_rgba(159,232,112,0.6)]`).
-
-### 4. Continuous Operational Telemetry Loops
-
-- **Radar Beacon Ping**: Expanding concentric ring (`animate-ping` with `duration: 1.5s` and `opacity: 0.6`) indicating active tenant webhook streaming.
-- **Throughput Traffic Ping**: Periodic vector pulse (`animation: pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite`) representing live WhatsApp Cloud API message throughput spikes (90 msg/s).
-- **AI Drafting 3-Dot Stagger**: 3 circular dots bouncing vertically with staggered delays (`0s`, `0.18s`, `0.36s`) representing DeepSeek AI inference and agent drafting.
-- **Shimmer Sweep**: Continuous diagonal highlight gradient moving infinitely from left to right (`animation: shimmer 1.4s linear infinite`).
-
-### 5. Choreographed Entrance Transitions
-
-- **Modal Dialogs**: `animate-in fade-in zoom-in-90 duration-300 ease-out`
-- **Slide-Over Contextual Drawers**: `animate-in slide-in-from-right duration-350 ease-out`
-- **Toast Notifications**: `animate-in fade-in slide-in-from-top-2 duration-200 ease-out`
-- **Select Menu Popovers**: `animate-in fade-in zoom-in-95 duration-150 ease-out`
-
-### 6. Accessibility & Reduced Motion (`prefers-reduced-motion`)
+### 5. Accessibility & Reduced Motion (`prefers-reduced-motion`)
 
 All animation sequences MUST respect user system accessibility preferences:
 ```css
@@ -439,6 +389,85 @@ All animation sequences MUST respect user system accessibility preferences:
 - **Form Surface (`lg:w-7/12`)**: Pure white `#FFFFFF` interior with high-contrast inputs (`#F9FAFB` transitioning to `#FFFFFF`), Caps Lock detection indicator, custom accessible checkbox, and signature lime capsule CTA button (`#9FE870`).
 - **Brand Guardrail**: Strictly unified under "Agent Portal" / "Workspace Login", with zero mentions of "Super Admin" across client-facing authentication surfaces. Zero mentions of DeepSeek or internal infrastructure across all agent-facing views.
 
+---
 
+## 21. Conversation Workspace & Messaging Ergonomics
+
+- **Split Workspace Architecture**:
+  - **Left Stream Dock (`w-full md:w-80 lg:w-96`)**: Surface `#FFFFFF` on `#F4F7F4` floor, segmented capsule filter tabs (`All`, `Unread`, `AI`, `Orders`) with live unread counter badges. Capsule search input with `Plus` shortcut button in `#16281D` with `#9FE870` accent. Active conversation rendered with full containment rounded pill container (`bg-[#F0FDF4] border border-[#BBF7D0]`), strictly avoiding legacy 3px side-stripe borders.
+  - **Center Messaging Canvas**: Floor `#F4F7F4`, glassmorphic top header (`bg-white/95 backdrop-blur-md border-b border-[#EAEAEA]`), WhatsApp 24-hour window status badge (`Free Messaging` in `#F0FDF4` / `#15803D` vs `Template Required` in `#FFFBEB` / `#D97706`), quick utility icon actions (`Layers`, `ShoppingBag`, `Info`) in circular `#F4F7F4` hover-elevated buttons.
+- **Message Bubble Hierarchy**:
+  - **Customer Messages**: Pure `#FFFFFF` rounded-2xl speech bubble, border `1px solid #EAEAEA`, primary typography `#16281D`, soft drop shadow `shadow-xs`.
+  - **Agent Outgoing Messages**: Deep Forest `#16281D` rounded-2xl speech bubble, subtle border `1px solid rgba(255,255,255,0.08)`, typography `#FFFFFF`.
+  - **Message Timestamps**: JetBrains Mono (`font-mono`) uppercase, high-contrast readable timestamps.
+- **Chat Input Ergonomics**:
+  - Auto-resizing capsule textarea with `#F4F7F4` floor transitioning to pure white on focus, enclosed with `#9FE870` ring.
+  - Circular vector actions for product (`Package`), service (`Layers`), attachment (`Paperclip`), and voice note recording (`Mic`).
+  - Signature Vibrant Lime capsule Send button (`bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D]`) with vector `Send` icon.
+- **Contextual Modals & Slide-over Drawer**:
+  - **Contact Details Drawer**: 380px slide-over sheet with Deep Forest `#16281D` avatar, `#9FE870` typography initial, live toggle for AI Agent co-pilot, and dual metric tiles for total messages and last seen timestamp.
+  - **Product & Service Pickers**: Modal rounded-3xl with quick search filters and card select states in `#F0FDF4`.
+  - **Lead Stage Modal**: Stepped progression selectors with color-coded stage pills (`Initial`, `Optional`) and high-contrast update actions.
+
+---
+
+## 22. Date & Time Picker Ergonomics & Specification
+
+> **Live Interactive Component Reference**: [`/style-guide`](http://localhost:5173/style-guide) → *Date & Time Pickers* tab  
+> **Component Primitives**: [`DatePicker.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/DatePicker.tsx), [`TimePicker.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/TimePicker.tsx), [`DateTimePicker.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/DateTimePicker.tsx)
+
+### 1. Architectural Philosophy & Geometry Scale
+The WhatsBi Date and Time Pickers replace raw browser inputs (`<input type="date">` / `<input type="time">`) with human-crafted, tactile components that adhere strictly to the WhatsBi Design System:
+
+| Component Level | Geometry Token | Dimension Scale | Visual Styling |
+|---|---|---|---|
+| **Trigger Button** | `rounded-full` | `h-10 px-4` (`md`) / `h-8 px-3` (`sm`) | Capsule button with vector icon, display value & quick `X` clear action. |
+| **Floating Popover Card** | `rounded-3xl` | `w-[280px]` - `w-[340px]` | Floating popover with `shadow-[0_16px_48px_rgba(20,40,24,0.16)]` and `z-50`. |
+| **Calendar Day Cells** | `rounded-full` | `32×32px` (`w-8 h-8`) | High-contrast circular targets, `JetBrains Mono` bold numerics. |
+| **Quick Preset Chips** | `rounded-full` | `px-2.5 py-1 text-[11px]` | Instant single-tap accelerators for standard scheduling offsets. |
+| **Time Selector Wells** | `rounded-xl` | `w-12 h-36` | Vertical scrollable column containers for hours and minutes. |
+| **AM/PM Switcher** | `rounded-full` | `w-10 py-1.5` | Segmented vertical capsule pills. |
+
+### 2. Color Tokens & Surface Variants
+
+#### Light Canvas Surfaces (`variant="mint"`, `variant="white"`)
+- **Trigger**: Soft mint `bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D] border border-black/5` (or pure white `bg-white border-[#EAEAEA]`).
+- **Popover**: Pure white `bg-white border border-[#EAEAEA] text-[#16281D]` with `shadow-[0_16px_48px_rgba(20,40,24,0.16)]`.
+- **Today Ring**: `border border-[#9FE870] text-[#16281D] font-bold`.
+- **Selected Day**: `bg-[#9FE870] text-[#16281D] font-bold shadow-xs scale-105`.
+- **Day Hover**: `hover:bg-[#F4F7F4] text-[#16281D]`.
+
+#### Dark Inspector Surfaces (`variant="forest"`)
+- **Trigger**: Deep forest dark `bg-[#203628] hover:bg-[#274232] text-white border border-white/10`.
+- **Popover**: Deep forest dark `bg-[#16281D] border border-white/10 text-white shadow-2xl`.
+- **Today Ring**: `border border-[#9FE870] text-white font-bold`.
+- **Selected Day**: `bg-[#9FE870] text-[#16281D] font-bold shadow-xs`.
+- **Day Hover**: `hover:bg-[#203628] text-white`.
+
+### 3. Presets & Scheduling Accelerators
+1. **Date Pickers**:
+   - `Today` (0-day offset)
+   - `Tomorrow` (+1 day offset)
+   - `+3 Days` (expedited delivery offset)
+   - `+1 Week` (standard appointment buffer)
+2. **Time Pickers**:
+   - `09:00 AM` (morning opening)
+   - `10:30 AM` (mid-morning slot)
+   - `11:00 AM` (late morning slot)
+   - `02:00 PM` (afternoon operational window)
+   - `03:30 PM` (afternoon consultation)
+   - `05:00 PM` (evening review)
+
+### 4. Accessibility & Contrast Verification (WCAG AAA)
+- **Contrast Ratio**: The signature pairing of active `#9FE870` and `#16281D` yields an **11.5:1** contrast ratio, surpassing the WCAG AAA threshold of 7:1.
+- **ARIA Semantics**: Triggers include `aria-haspopup="dialog"`, `aria-expanded`, and `aria-label`. The popover carries `role="dialog"`.
+- **Keyboard Dismissal**: Pressing `Escape` or clicking outside immediately closes the popover without discarding valid selections.
+
+### 5. System-Wide Deployment Reference
+All legacy `<input type="date">` and `<input type="datetime-local">` controls have been replaced across the platform:
+- **Order Delivery Estimates**: `CreateOrderModal.tsx`, `EditOrderModal.tsx`, `MarkPaidModal.tsx`, `InvoicePaymentModal.tsx` (`<DatePicker variant="white" />`).
+- **Order Filters**: `OrdersPage.tsx` (`<DatePicker size="sm" variant="mint" />`).
+- **Appointment Scheduling**: `CreateAppointmentModal.tsx`, `EditAppointmentModal.tsx` (`<DateTimePicker variant="mint" outputFormat="datetime-local" />`).
+- **Analytics & Time Range Filters**: `TimeRangeFilter.tsx`, `AnalyticsHeader.tsx` (`<DatePicker size="sm" />`).
 
 

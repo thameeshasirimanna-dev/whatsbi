@@ -1,29 +1,31 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import Portal from '../shared/Portal';
+import CustomDropdown from '../shared/CustomDropdown';
+import { DateTimePicker } from '../shared/DateTimePicker';
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+const PJS: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
+const MONO: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace" };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '9px 12px',
-  fontFamily: "'DM Sans', sans-serif",
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
   fontSize: 13,
-  color: '#3f3f46',
-  background: '#f9f9f9',
-  border: '1px solid #ebebeb',
-  borderRadius: 9,
+  color: '#16281D',
+  background: '#F4F7F4',
+  border: '1px solid #EAEAEA',
+  borderRadius: 12,
   outline: 'none',
   boxSizing: 'border-box',
   transition: 'border-color 0.15s, box-shadow 0.15s',
 };
 const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#22c55e';
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
+  e.currentTarget.style.borderColor = '#9FE870';
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(159,232,112,0.25)';
 };
 const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#ebebeb';
+  e.currentTarget.style.borderColor = '#EAEAEA';
   e.currentTarget.style.boxShadow = 'none';
 };
 
@@ -119,68 +121,84 @@ const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(22, 40, 29, 0.45)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 24, border: '1px solid #EAEAEA', boxShadow: '0 24px 64px rgba(22,40,29,0.18)', width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
   
           {/* Header */}
-          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #EAEAEA', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div>
-              <span style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e', display: 'block', marginBottom: 4 }}>
+              <span style={{ ...PJS, fontSize: 17, fontWeight: 700, color: '#16281D', display: 'block', marginBottom: 4 }}>
                 Create Appointment
               </span>
-              <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>
-                For <strong style={{ color: '#3f3f46' }}>{customer.name}</strong> · {customer.phone}
+              <span style={{ ...PJS, fontSize: 12, color: '#71717A' }}>
+                For <strong style={{ color: '#16281D' }}>{customer.name}</strong> · {customer.phone}
               </span>
             </div>
-            <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
-              <X size={15} style={{ color: '#71717a' }} />
+            <button onClick={onClose} style={{ width: 32, height: 32, background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 9999, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
+              <X size={15} style={{ color: '#71717A' }} />
             </button>
           </div>
   
           {/* Content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
             {error && (
-              <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
+              <div style={{ padding: '10px 14px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 12, ...PJS, fontSize: 13, color: '#EF4444', marginBottom: 16 }}>
                 {error}
               </div>
             )}
   
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Title *</label>
+                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Title *</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Appointment title" required maxLength={100} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
               </div>
   
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Date & Time *</label>
-                <input type="datetime-local" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} required style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Date & Time *</label>
+                <DateTimePicker
+                  value={appointmentDate || null}
+                  onChange={(val) => setAppointmentDate(val || '')}
+                  placeholder="Select appointment date & time..."
+                  className="w-full"
+                  variant="mint"
+                  outputFormat="datetime-local"
+                  minDate={new Date().toISOString().split('T')[0]}
+                />
               </div>
   
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Duration (minutes)</label>
-                <input type="number" min="1" max="1440" value={durationMinutes} onChange={(e) => setDurationMinutes(parseInt(e.target.value) || 30)} placeholder="30" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Duration (minutes)</label>
+                <input type="number" min="1" max="1440" value={durationMinutes} onChange={(e) => setDurationMinutes(parseInt(e.target.value) || 30)} placeholder="30" style={{ ...inputStyle, ...MONO }} onFocus={onFocus} onBlur={onBlur} />
               </div>
   
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle} onFocus={onFocus} onBlur={onBlur}>
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Status</label>
+                <CustomDropdown
+                  value={status}
+                  onChange={(val) => setStatus(val)}
+                  options={statusOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
+                  className="w-full"
+                />
               </div>
   
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Notes (Optional)</label>
+                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Notes (Optional)</label>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Additional notes..." style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocus} onBlur={onBlur} />
               </div>
   
-              <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                <button type="button" onClick={onClose} style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 px-4 rounded-full bg-white border border-[#EAEAEA] hover:bg-[#F4F7F4] font-sans text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={loading || !title.trim() || !appointmentDate}
-                  style={{ flex: 1, background: (loading || !title.trim() || !appointmentDate) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: (loading || !title.trim() || !appointmentDate) ? 'not-allowed' : 'pointer', boxShadow: (loading || !title.trim() || !appointmentDate) ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <button
+                  type="submit"
+                  disabled={loading || !title.trim() || !appointmentDate}
+                  className="flex-1 py-2.5 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none cursor-pointer border-0"
+                >
                   {loading ? 'Creating…' : 'Create Appointment'}
                 </button>
               </div>

@@ -4,9 +4,6 @@ import { getToken } from "../../../lib/auth";
 import Portal from "../shared/Portal";
 import { SkeletonBase } from "../shared/Skeleton";
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
 interface Product {
   id: string;
   name: string;
@@ -78,104 +75,116 @@ const ProductSelectorModal: React.FC<ProductSelectorModalProps> = ({
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <style>{`@keyframes ps-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* Header */}
-        <div style={{ flexShrink: 0, padding: '18px 20px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Package size={15} style={{ color: '#22c55e' }} />
+      <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-modal-card">
+          {/* Header */}
+          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center">
+                <Package size={16} />
+              </div>
+              <h3 className="font-sans text-base font-bold text-[#16281D]">
+                Select Product
+              </h3>
             </div>
-            <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>Select Product</span>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X size={15} />
+            </button>
           </div>
-          <button onClick={onClose} style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={14} style={{ color: '#71717a' }} />
-          </button>
-        </div>
 
-        {/* Search */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #ebebeb' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa' }} />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px 8px 32px', border: '1px solid #ebebeb', borderRadius: 8, fontSize: 13, background: '#f9f9f9', color: '#0c1a0e', outline: 'none', ...DM, boxSizing: 'border-box' }}
-              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.12)'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
-            />
+          {/* Search Input */}
+          <div className="shrink-0 p-4 border-b border-[#EAEAEA] bg-[#F4F7F4]/50">
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A]" />
+              <input
+                type="text"
+                placeholder="Search products by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 text-xs font-medium font-sans text-[#16281D] bg-white border border-[#EAEAEA] rounded-full focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 outline-none transition-all placeholder:text-[#A1A1AA]"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          {loading && products.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 12 }}
-                >
-                  <SkeletonBase style={{ width: 44, height: 44, borderRadius: 8, flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <SkeletonBase style={{ width: '60%', height: 13, borderRadius: 4, marginBottom: 6 }} />
-                    <SkeletonBase style={{ width: '80%', height: 11, borderRadius: 4, marginBottom: 6 }} />
-                    <SkeletonBase style={{ width: '30%', height: 12, borderRadius: 4 }} />
+          {/* Product List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {loading && products.length === 0 ? (
+              <div className="space-y-2.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 p-3 border border-[#EAEAEA] rounded-2xl"
+                  >
+                    <SkeletonBase className="w-12 h-12 rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <SkeletonBase className="w-3/5 h-3.5 rounded" />
+                      <SkeletonBase className="w-4/5 h-3 rounded" />
+                      <SkeletonBase className="w-1/4 h-3.5 rounded" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', ...DM, fontSize: 13, color: '#71717a' }}>
-              {searchTerm ? "No products found." : "No products available."}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredProducts.map((product) => (
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-10 font-sans text-xs text-[#71717A]">
+                {searchTerm ? "No products matching your search." : "No products available."}
+              </div>
+            ) : (
+              filteredProducts.map((product) => (
                 <div
                   key={product.id}
                   onClick={() => { onSelectProduct(product); onClose(); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 12, cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.04)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.25)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#ebebeb'; }}
+                  className="flex items-center gap-3 p-3 border border-[#EAEAEA] rounded-2xl bg-white hover:bg-[#F0FDF4] hover:border-[#BBF7D0] cursor-pointer transition-all group"
                 >
                   {product.images && product.images.length > 0 ? (
-                    <img src={product.images[0]} alt={product.name} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: '1px solid #ebebeb' }}
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-12 h-12 object-cover rounded-xl shrink-0 border border-[#EAEAEA]"
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
                   ) : (
-                    <div style={{ width: 44, height: 44, borderRadius: 8, background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Package size={18} style={{ color: '#a1a1aa' }} />
+                    <div className="w-12 h-12 rounded-xl bg-[#F4F7F4] group-hover:bg-white flex items-center justify-center shrink-0 text-[#71717A] transition-colors">
+                      <Package size={20} />
                     </div>
                   )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-sans text-sm font-bold text-[#16281D] truncate group-hover:text-[#16281D]">
+                      {product.name}
+                    </div>
                     {product.description && (
-                      <div style={{ ...DM, fontSize: 12, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{product.description}</div>
+                      <div className="font-sans text-xs text-[#71717A] truncate mt-0.5">
+                        {product.description}
+                      </div>
                     )}
                     {product.price !== undefined && (
-                      <div style={{ ...DM, fontSize: 12, fontWeight: 700, color: '#059669', marginTop: 2 }}>LKR {product.price.toFixed(2)}</div>
+                      <div className="font-mono text-xs font-bold text-[#16281D] mt-1">
+                        LKR {product.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              ))
+            )}
+          </div>
 
-        {/* Footer */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #ebebeb', background: '#fafafa' }}>
-          <button onClick={onClose} style={{ width: '100%', padding: '9px 0', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 9, cursor: 'pointer', ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>
-            Cancel
-          </button>
+          {/* Footer */}
+          <div className="shrink-0 p-4 border-t border-[#EAEAEA] bg-[#F4F7F4]/40 flex justify-end">
+            <button
+              onClick={onClose}
+              className="h-9 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] font-sans text-xs font-bold text-[#52525B] transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     </Portal>
   );
 };
 
 export default ProductSelectorModal;
+

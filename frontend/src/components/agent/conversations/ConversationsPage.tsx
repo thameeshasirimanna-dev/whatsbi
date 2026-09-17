@@ -14,6 +14,7 @@ import ProductSelectorModal from "./ProductSelectorModal";
 import ViewTemplateModal from "../templates/ViewTemplateModal";
 import { Eye } from "lucide-react";
 import Portal from "../shared/Portal";
+import CustomDropdown from "../shared/CustomDropdown";
 
 // Auth utilities - JWT token based
 const getToken = () => {
@@ -134,6 +135,7 @@ const ConversationsPage: React.FC = () => {
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+  const loadedConversationIdsRef = useRef<Set<number>>(new Set());
   const [searchConversations, setSearchConversations] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "unread" | "ai" | "orders">("all");
   const [stageFilter, setStageFilter] = useState<string | null>(null);
@@ -1081,12 +1083,7 @@ const ConversationsPage: React.FC = () => {
     setConversations((prev) => {
       const exists = prev.find((conv) => conv.customerId === customerId);
       if (exists) {
-        const updated = prev.map((conv) =>
-          conv.customerId === customerId
-            ? { ...newConversation, rawLastTimestamp: Date.now() }
-            : conv
-        );
-        return updated;
+        return prev;
       }
       const updated = [
         { ...newConversation, rawLastTimestamp: Date.now() },
@@ -1095,6 +1092,7 @@ const ConversationsPage: React.FC = () => {
       return updated;
     });
 
+    loadedConversationIdsRef.current.add(customerId);
     setSelectedConversationId(customerId);
     setShowNewConversationModal(false);
   };
@@ -1106,7 +1104,7 @@ const ConversationsPage: React.FC = () => {
     );
     if (existingConv) {
       // Just select the existing conversation
-      setSelectedConversationId(existingConv.id);
+      selectConversation(existingConv);
     } else {
       // Create new empty conversation for customer without existing messages
       startConversationWithCustomer(
@@ -1171,14 +1169,19 @@ const ConversationsPage: React.FC = () => {
 
   // Function to fetch only the selected conversation's messages
   const fetchSelectedConversation = useCallback(
-    async (loadMore = false) => {
-      if (!selectedConversationId || !agentId) return;
+    async (loadMore = false, targetConvId?: number) => {
+      const activeId = targetConvId ?? selectedConversationIdRef.current;
+      if (!activeId || !agentId) return;
 
-      if (!loadMore) {
-        const existingConv = conversations.find(
-          (c) => c.id === selectedConversationId
+      const isInitial = !loadedConversationIdsRef.current.has(activeId);
+      loadedConversationIdsRef.current.add(activeId);
+
+      if (!loadMore && isInitial) {
+        const existingConv = conversationsRef.current.find(
+          (c) => c.id === activeId
         );
-        const hasExistingMessages = existingConv && existingConv.messages && existingConv.messages.length > 0;
+        const hasExistingMessages =
+          existingConv && existingConv.messages && existingConv.messages.length > 0;
         if (!hasExistingMessages) {
           setLoadingMessages(true);
         }
@@ -1189,7 +1192,7 @@ const ConversationsPage: React.FC = () => {
         const token = getToken();
         if (!token) return;
 
-        const currentOffset = messageOffset[selectedConversationId] || 0;
+        const currentOffset = messageOffset[activeId] || 0;
         const limit = 50;
         const offset = loadMore ? currentOffset : 0;
 
@@ -1197,7 +1200,7 @@ const ConversationsPage: React.FC = () => {
         const messagesResponse = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
-          }/conversations/${selectedConversationId}/messages?agentId=${agentId}&limit=${limit}&offset=${offset}`,
+          }/conversations/${activeId}/messages?agentId=${agentId}&limit=${limit}&offset=${offset}`,
           {
             method: "GET",
             headers: {
@@ -1215,84 +1218,83 @@ const ConversationsPage: React.FC = () => {
         const newOffset = offset + processedMessages.length;
         setMessageOffset((prev) => ({
           ...prev,
-          [selectedConversationId]: newOffset,
+          [activeId]: newOffset,
         }));
         setHasMoreMessages((prev) => ({
           ...prev,
-          [selectedConversationId]: processedMessages.length === limit,
+          [activeId]: processedMessages.length === limit,
         }));
 
-        // Get existing conversation
-        const existingConv = conversations.find(
-          (c) => c.id === selectedConversationId
-        );
-        if (!existingConv) return;
+        setConversations((prev) => {
+          const existingConv = prev.find((c) => c.id === activeId);
+          if (!existingConv) return prev;
 
-        let updatedMessages: Message[];
-        if (loadMore) {
-          // Prepend older messages to existing ones
-          updatedMessages = [...processedMessages, ...existingConv.messages];
-          setMessagesWerePrepended(true);
-          setMessagesPrependedCount(processedMessages.length);
-          setLastRealtimeEvent(Date.now()); // Prevent polling from overriding
-        } else {
-          // Merge with existing messages to preserve real-time updates
-          const existingMessages = existingConv.messages || [];
-          const allMessages = [...processedMessages, ...existingMessages];
+          let updatedMessages: Message[];
+          if (loadMore) {
+            // Prepend older messages to existing ones
+            updatedMessages = [...processedMessages, ...(existingConv.messages || [])];
+            setMessagesWerePrepended(true);
+            setMessagesPrependedCount(processedMessages.length);
+            setLastRealtimeEvent(Date.now()); // Prevent polling from overriding
+          } else {
+            // Merge with existing messages to preserve real-time updates
+            const existingMessages = existingConv.messages || [];
+            const allMessages = [...processedMessages, ...existingMessages];
 
-          // Remove duplicates based on id and keep the most recent version
-          const messageMap = new Map<string | number, Message>();
-          allMessages.forEach((msg) => {
-            const existing = messageMap.get(msg.id);
-            if (
-              !existing ||
-              (msg.rawTimestamp || 0) > (existing.rawTimestamp || 0)
-            ) {
-              messageMap.set(msg.id, msg);
-            }
-          });
+            // Remove duplicates based on id and keep the most recent version
+            const messageMap = new Map<string | number, Message>();
+            allMessages.forEach((msg) => {
+              const existing = messageMap.get(msg.id);
+              if (
+                !existing ||
+                (msg.rawTimestamp || 0) > (existing.rawTimestamp || 0)
+              ) {
+                messageMap.set(msg.id, msg);
+              }
+            });
 
-          updatedMessages = Array.from(messageMap.values()).sort((a, b) => {
-            const aTime = a.rawTimestamp || new Date(a.timestamp).getTime();
-            const bTime = b.rawTimestamp || new Date(b.timestamp).getTime();
-            return aTime - bTime;
-          });
+            updatedMessages = Array.from(messageMap.values()).sort((a, b) => {
+              const aTime = a.rawTimestamp || new Date(a.timestamp).getTime();
+              const bTime = b.rawTimestamp || new Date(b.timestamp).getTime();
+              return aTime - bTime;
+            });
 
-          setMessagesWerePrepended(false);
-          setMessagesPrependedCount(0);
-        }
+            setMessagesWerePrepended(false);
+            setMessagesPrependedCount(0);
+          }
 
-        const unreadCount = updatedMessages.filter(
-          (m) => m.sender === "customer" && !m.isRead
-        ).length;
+          const unreadCount = updatedMessages.filter(
+            (m) => m.sender === "customer" && !m.isRead
+          ).length;
 
-        const lastMsg = updatedMessages[updatedMessages.length - 1];
-        const lastMessageText = lastMsg
-          ? processMessageText(
-              lastMsg.text,
-              lastMsg.media_type || null,
-              lastMsg.caption || null
-            )
-          : "No messages yet";
-        const lastMessageTime = lastMsg
-          ? lastMsg.timestamp
-          : new Date().toISOString();
-        const rawLastTimestamp = lastMsg ? lastMsg.rawTimestamp : Date.now();
+          const lastMsg = updatedMessages[updatedMessages.length - 1];
+          const lastMessageText = lastMsg
+            ? processMessageText(
+                lastMsg.text,
+                lastMsg.media_type || null,
+                lastMsg.caption || null
+              )
+            : (existingConv.lastMessage || "No messages yet");
+          const lastMessageTime = lastMsg
+            ? lastMsg.timestamp
+            : (existingConv.lastMessageTime || "");
+          const rawLastTimestamp = lastMsg
+            ? (lastMsg.rawTimestamp || new Date(lastMsg.timestamp).getTime())
+            : (existingConv.rawLastTimestamp ?? 0);
 
-        const updatedConv = {
-          ...existingConv,
-          lastMessage: lastMessageText,
-          lastMessageTime: lastMessageTime,
-          rawLastTimestamp: rawLastTimestamp ?? Date.now(),
-          unreadCount,
-          messages: updatedMessages,
-        } as Conversation;
+          const updatedConv = {
+            ...existingConv,
+            lastMessage: lastMessageText,
+            lastMessageTime: lastMessageTime,
+            rawLastTimestamp: rawLastTimestamp,
+            unreadCount,
+            messages: updatedMessages,
+          } as Conversation;
 
-        setConversations((prev) =>
-          prev.map((conv) =>
-            conv.id === selectedConversationId ? updatedConv : conv
-          )
-        );
+          return prev.map((conv) =>
+            conv.id === activeId ? updatedConv : conv
+          );
+        });
 
         // Scroll to bottom only for initial load
         if (!loadMore && messagesContainerRef.current) {
@@ -1305,19 +1307,16 @@ const ConversationsPage: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching selected conversation:", error);
+        if (isInitial) {
+          loadedConversationIdsRef.current.delete(activeId);
+        }
       } finally {
         if (!loadMore) {
           setLoadingMessages(false);
         }
       }
     },
-    [
-      selectedConversationId,
-      agentId,
-      conversations,
-      processMessageText,
-      messageOffset,
-    ]
+    [agentId, processMessageText, messageOffset]
   );
 
   // Extracted fetch function to make it reusable
@@ -1423,7 +1422,14 @@ const ConversationsPage: React.FC = () => {
             
             // If the local conversation has a newer message (e.g. from an optimistic update or a real-time event),
             // preserve the newer message info to prevent flickering/blinking.
-            if (existingConv && existingConv.rawLastTimestamp > newConv.rawLastTimestamp) {
+            const hasLocalMessages =
+              existingConv &&
+              existingConv.messages &&
+              existingConv.messages.length > 0;
+            if (
+              hasLocalMessages &&
+              existingConv.rawLastTimestamp > newConv.rawLastTimestamp
+            ) {
               mergedConv = {
                 ...mergedConv,
                 lastMessage: existingConv.lastMessage,
@@ -1471,7 +1477,7 @@ const ConversationsPage: React.FC = () => {
 
     setLoadingMoreMessages(true);
     try {
-      await fetchSelectedConversation(true);
+      await fetchSelectedConversation(true, selectedConversationId);
     } finally {
       setLoadingMoreMessages(false);
     }
@@ -1503,7 +1509,7 @@ const ConversationsPage: React.FC = () => {
             ? {
                 ...conv,
                 unreadCount: 0,
-                messages: conv.messages.map((msg) =>
+                messages: (conv.messages || []).map((msg) =>
                   msg.sender === "customer" && !msg.isRead
                     ? { ...msg, isRead: true }
                     : msg
@@ -1560,10 +1566,12 @@ const ConversationsPage: React.FC = () => {
         );
       }
 
-      // Fetch messages after marking as read
-      await fetchSelectedConversation();
+      // Fetch messages after marking as read if not loaded yet
+      if (!loadedConversationIdsRef.current.has(conversation.id)) {
+        await fetchSelectedConversation(false, conversation.id);
+      }
     },
-    [agentPrefix, agentId, fetchSelectedConversation]
+    [agentId, fetchSelectedConversation]
   );
 
   useEffect(() => {
@@ -1585,17 +1593,25 @@ const ConversationsPage: React.FC = () => {
     navigate,
   ]);
 
-  // Ensure messages are loaded when conversation is selected but has no messages
+  // Ensure messages are loaded when conversation is selected
   useEffect(() => {
-    if (
-      selectedConversationId &&
-      selectedConversation &&
-      (!selectedConversation.messages ||
-        selectedConversation.messages.length === 0)
-    ) {
-      fetchSelectedConversation();
+    if (!selectedConversationId) return;
+
+    if (!loadedConversationIdsRef.current.has(selectedConversationId)) {
+      const existingConv = conversationsRef.current.find(
+        (c) => c.id === selectedConversationId
+      );
+      if (
+        existingConv &&
+        existingConv.messages &&
+        existingConv.messages.length > 0
+      ) {
+        loadedConversationIdsRef.current.add(selectedConversationId);
+        return;
+      }
+      fetchSelectedConversation(false, selectedConversationId);
     }
-  }, [selectedConversationId, selectedConversation, fetchSelectedConversation]);
+  }, [selectedConversationId, fetchSelectedConversation]);
 
   // True realtime updates via 1-second polling
 
@@ -2781,7 +2797,7 @@ const ConversationsPage: React.FC = () => {
     <div
       className="flex overflow-hidden w-full h-full"
       ref={containerRef}
-      style={{ position: "relative", background: '#f8faf8', height: '100%' }}
+      style={{ position: "relative", background: '#F4F7F4', height: '100%' }}
     >
       <ConversationList
         conversations={conversations}
@@ -2843,221 +2859,205 @@ const ConversationsPage: React.FC = () => {
       {/* New Conversation Modal */}
       {showNewConversationModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
-          <div style={{ background: '#fff', borderRadius: 18, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: '#0c1a0e' }}>
-                New Conversation
-              </span>
-              <button
-                onClick={() => setShowNewConversationModal(false)}
-                style={{ background: 'rgba(0,0,0,0.06)', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', transition: 'background 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.1)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.06)')}
-              >
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <div style={{ padding: '20px 22px' }}>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Search existing customer
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by name or phone..."
-                  value={searchCustomer}
-                  onChange={handleCustomerSearch}
-                  style={{ width: '100%', padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', boxSizing: 'border-box' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
-                />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-[#EAEAEA]">
+              <div className="px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+                <span className="font-sans text-base font-bold text-[#16281D]">
+                  New Conversation
+                </span>
+                <button
+                  onClick={() => setShowNewConversationModal(false)}
+                  className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+                >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
               </div>
 
-              {filteredCustomers.length > 0 && (
-                <div style={{ marginBottom: 20, maxHeight: 180, overflowY: 'auto' }}>
-                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    Existing Customers
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {filteredCustomers.map((customer) => (
-                      <button
-                        key={customer.id}
-                        onClick={() => handleSelectCustomer(customer)}
-                        style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 10, background: 'none', cursor: 'pointer', transition: 'background 0.12s, border-color 0.12s' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.04)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.2)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#ebebeb'; }}
-                      >
-                        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{customer.name}</div>
-                        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a' }}>{customer.phone}</div>
-                      </button>
-                    ))}
-                  </div>
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-2">
+                    Search existing customer
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Search by name or phone..."
+                    value={searchCustomer}
+                    onChange={handleCustomerSearch}
+                    className="w-full h-10 px-4 text-xs font-medium font-sans text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-full focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 outline-none transition-all placeholder:text-[#A1A1AA]"
+                  />
                 </div>
-              )}
 
-              <div style={{ borderTop: '1px solid #f4f4f5', paddingTop: 20 }}>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Or create new customer
-                </div>
-                <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46', display: 'block', marginBottom: 5 }}>
-                      Customer Name
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      placeholder="Enter customer name"
-                      value={customerForm.name}
-                      onChange={handleCustomerFormChange}
-                      required
-                      style={{ width: '100%', padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
-                    />
+                {filteredCustomers.length > 0 && (
+                  <div className="space-y-2 max-h-44 overflow-y-auto">
+                    <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider">
+                      Existing Customers
+                    </div>
+                    <div className="space-y-1.5">
+                      {filteredCustomers.map((customer) => (
+                        <button
+                          key={customer.id}
+                          onClick={() => handleSelectCustomer(customer)}
+                          className="w-full text-left p-3 border border-[#EAEAEA] rounded-xl bg-white hover:bg-[#F0FDF4] hover:border-[#BBF7D0] transition-colors group"
+                        >
+                          <div className="font-sans text-sm font-bold text-[#16281D] group-hover:text-[#16281D]">{customer.name}</div>
+                          <div className="font-mono text-xs text-[#71717A]">{customer.phone}</div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46', display: 'block', marginBottom: 5 }}>
-                      Phone Number
-                    </label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <select
-                        value={selectedConversationCountryCode}
-                        onChange={(e) => handleConversationCountryChange(e.target.value)}
-                        style={{ padding: '9px 8px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', width: 110, flexShrink: 0 }}
-                      >
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+91">🇮🇳 +91</option>
-                        <option value="+94">🇱🇰 +94</option>
-                        <option value="+971">🇦🇪 +971</option>
-                        <option value="+966">🇸🇦 +966</option>
-                        <option value="+92">🇵🇰 +92</option>
-                        <option value="+880">🇧🇩 +880</option>
-                        <option value="+98">🇮🇷 +98</option>
-                        <option value="+20">🇪🇬 +20</option>
-                      </select>
+                )}
+
+                <div className="border-t border-[#EAEAEA] pt-4">
+                  <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-3">
+                    Or create new customer
+                  </div>
+                  <form onSubmit={handleCreateCustomer} className="space-y-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                        Customer Name
+                      </label>
                       <input
-                        type="tel"
-                        name="phone"
-                        placeholder="Phone Number"
-                        value={customerForm.phone}
+                        type="text"
+                        name="name"
+                        placeholder="Enter customer name"
+                        value={customerForm.name}
                         onChange={handleCustomerFormChange}
                         required
-                        style={{ flex: 1, padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none' }}
-                        onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
-                        onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
+                        className="w-full px-3.5 py-2.5 text-sm font-sans text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#16281D] focus:ring-2 focus:ring-[#9FE870]/30 outline-none transition-all"
                       />
                     </div>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>
-                      Full number will be: {selectedConversationCountryCode} {customerForm.phone}
-                    </p>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={creatingCustomer}
-                    style={{
-                      width: '100%',
-                      background: creatingCustomer ? 'rgba(34,197,94,0.5)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-                      color: '#fff', border: 'none', borderRadius: 10,
-                      padding: '11px 0',
-                      fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600,
-                      cursor: creatingCustomer ? 'not-allowed' : 'pointer',
-                      boxShadow: creatingCustomer ? 'none' : '0 4px 14px rgba(34,197,94,0.3)',
-                    }}
-                  >
-                    {creatingCustomer ? "Creating..." : "Create Customer & Start Chat"}
-                  </button>
-                </form>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                        Phone Number
+                      </label>
+                      <div className="flex gap-2">
+                        <CustomDropdown
+                          value={selectedConversationCountryCode}
+                          onChange={(val) => setSelectedConversationCountryCode(val)}
+                          options={[
+                            { value: '+1', label: '🇺🇸 +1' },
+                            { value: '+44', label: '🇬🇧 +44' },
+                            { value: '+91', label: '🇮🇳 +91' },
+                            { value: '+94', label: '🇱🇰 +94' },
+                            { value: '+971', label: '🇦🇪 +971' },
+                            { value: '+966', label: '🇸🇦 +966' },
+                            { value: '+92', label: '🇵🇰 +92' },
+                            { value: '+880', label: '🇧🇩 +880' },
+                            { value: '+98', label: '🇮🇷 +98' },
+                            { value: '+20', label: '🇪🇬 +20' },
+                          ]}
+                          minWidth={115}
+                        />
+                        <input
+                          type="tel"
+                          name="phone"
+                          placeholder="Phone Number"
+                          value={customerForm.phone}
+                          onChange={handleCustomerFormChange}
+                          required
+                          className="flex-1 px-3.5 py-2.5 text-sm font-mono text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#16281D] focus:ring-2 focus:ring-[#9FE870]/30 outline-none transition-all"
+                        />
+                      </div>
+                      <p className="text-[11px] font-mono text-[#71717A] mt-1.5">
+                        Full number will be: {selectedConversationCountryCode} {customerForm.phone}
+                      </p>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={creatingCustomer}
+                      className="w-full h-10 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
+                    >
+                      {creatingCustomer ? (
+                        <span className="inline-block w-4 h-4 border-2 border-[#16281D]/20 border-t-[#16281D] rounded-full animate-spin" />
+                      ) : (
+                        "Create Customer & Start Chat"
+                      )}
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Portal>
-    )}
+        </Portal>
+      )}
 
       {/* Template Selection Modal */}
       {showTemplateModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, backdropFilter: 'blur(3px)' }}>
-          <div style={{ background: '#fff', borderRadius: 18, maxWidth: 440, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: '#0c1a0e' }}>
-                Template Required
-              </span>
-              <button
-                onClick={handleCloseTemplateModal}
-                style={{ background: 'rgba(0,0,0,0.06)', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', transition: 'background 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.1)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.06)')}
-              >
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl border border-[#EAEAEA]">
+              <div className="px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+                <span className="font-sans text-base font-bold text-[#16281D]">
+                  Template Required
+                </span>
+                <button
+                  onClick={handleCloseTemplateModal}
+                  className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+                >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
 
-            <div style={{ padding: '16px 22px 22px' }}>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#71717a', marginBottom: 16, lineHeight: 1.5 }}>
-                The 24-hour messaging window has expired. Please select an approved template to continue the conversation.
-              </p>
+              <div className="p-6 space-y-4">
+                <p className="font-sans text-xs text-[#71717A] leading-relaxed">
+                  The 24-hour messaging window has expired. Please select an approved template to continue the conversation.
+                </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                 {templateError && (
-                  <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 10, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#f43f5e' }}>
+                  <div className="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FEE2E2] text-xs font-sans text-[#EF4444]">
                     {templateError}
                   </div>
                 )}
+
                 {templates.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '28px 16px' }}>
-                    <svg style={{ width: 40, height: 40, margin: '0 auto 10px', display: 'block', color: '#d4d4d8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="text-center py-8">
+                    <svg className="w-10 h-10 mx-auto mb-2 text-[#D4D4D8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#71717a' }}>No templates available yet</p>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#a1a1aa' }}>Templates will appear here once configured</p>
+                    <p className="font-sans text-xs font-semibold text-[#71717A]">No templates available yet</p>
+                    <p className="font-sans text-[11px] text-[#A1A1AA]">Templates will appear here once configured</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-semibold text-[#71717A] uppercase tracking-wider">
                       Select Template
                     </label>
-                    {templates.map((template) => (
-                      <div
-                        key={template.name}
-                        style={{
-                          padding: '10px 12px',
-                          border: selectedTemplate?.name === template.name ? '1px solid rgba(34,197,94,0.4)' : '1px solid #ebebeb',
-                          borderRadius: 10,
-                          background: selectedTemplate?.name === template.name ? 'rgba(34,197,94,0.06)' : '#fff',
-                          transition: 'all 0.12s',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <button
-                            onClick={() => handleTemplateSelect(template)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
-                          >
-                            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {templates.map((template) => (
+                        <div
+                          key={template.name}
+                          className={`p-3 rounded-xl border transition-all ${
+                            selectedTemplate?.name === template.name
+                              ? 'bg-[#F0FDF4] border-[#9FE870] ring-1 ring-[#9FE870]'
+                              : 'bg-white border-[#EAEAEA] hover:bg-[#F4F7F4]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <button
+                              onClick={() => handleTemplateSelect(template)}
+                              className="text-left font-sans text-xs font-bold text-[#16281D] truncate flex-1 mr-2"
+                            >
                               {template.name.replace(/_/g, " ").toUpperCase()}
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => handleViewTemplate(template)}
-                            style={{ background: 'rgba(8,145,178,0.08)', border: 'none', cursor: 'pointer', width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0891b2', flexShrink: 0 }}
-                            title="View template"
-                          >
-                            <Eye size={14} />
-                          </button>
+                            </button>
+                            <button
+                              onClick={() => handleViewTemplate(template)}
+                              className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#16281D] shrink-0 transition-colors border-0 cursor-pointer"
+                              title="View template"
+                            >
+                              <Eye size={13} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
+
                 {selectedTemplate && (
-                  <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #f4f4f5', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="pt-4 border-t border-[#EAEAEA] space-y-3">
                     {requiresMediaHeader && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46' }}>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-[#16281D]">
                           Media Header (Required)
                         </label>
                         <input
@@ -3069,23 +3069,23 @@ const ConversationsPage: React.FC = () => {
                               ? "video/*" : "*"
                           }
                           onChange={(e) => { const file = e.target.files?.[0]; if (file) handleTemplateMediaSelect(file); }}
-                          style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13 }}
+                          className="font-sans text-xs text-[#71717A]"
                         />
-                        {templateMediaUpload && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a' }}>Uploading media...</p>}
-                        {templateMedia && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#059669' }}>Media uploaded: {templateMedia.type.toUpperCase()}</p>}
+                        {templateMediaUpload && <p className="font-sans text-xs text-[#71717A]">Uploading media...</p>}
+                        {templateMedia && <p className="font-sans text-xs text-[#16281D] font-medium">Media uploaded: {templateMedia.type.toUpperCase()}</p>}
                       </div>
                     )}
                     {selectedTemplate.name === "welcome_template" ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46' }}>Business Name</label>
-                        <div style={{ padding: '9px 12px', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46' }}>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-[#16281D]">Business Name</label>
+                        <div className="px-3.5 py-2 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl font-sans text-xs font-medium text-[#16281D]">
                           {agentName || "Your Name"}
                         </div>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#a1a1aa' }}>This will automatically use your name as the business name.</p>
+                        <p className="font-sans text-[11px] text-[#A1A1AA]">This will automatically use your name as the business name.</p>
                       </div>
                     ) : templateParams.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, color: '#3f3f46' }}>Parameters</label>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-[#16281D]">Parameters</label>
                         {templateParams.map((_, index) => (
                           <input
                             key={index}
@@ -3093,51 +3093,38 @@ const ConversationsPage: React.FC = () => {
                             placeholder={`Parameter ${index + 1}`}
                             value={paramInputs[index] || ""}
                             onChange={(e) => handleParamChange(index, e.target.value)}
-                            style={{ width: '100%', padding: '9px 12px', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46', background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9, outline: 'none', boxSizing: 'border-box' }}
-                            onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
+                            className="w-full px-3.5 py-2 font-sans text-xs text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#16281D] focus:ring-2 focus:ring-[#9FE870]/30 outline-none transition-all"
                           />
                         ))}
                       </div>
                     ) : null}
                   </div>
                 )}
-              </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 16, borderTop: '1px solid #f4f4f5' }}>
-                <button
-                  onClick={handleCloseTemplateModal}
-                  style={{ padding: '9px 18px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, color: '#3f3f46', transition: 'background 0.15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.1)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.06)')}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={sendTemplateMessage}
-                  disabled={
-                    !selectedTemplate ||
-                    (selectedTemplate.name !== "welcome_template" && templateParams.some((p) => !p.trim())) ||
-                    (requiresMediaHeader && !templateMedia)
-                  }
-                  style={{
-                    padding: '9px 22px',
-                    background: (!selectedTemplate || (selectedTemplate.name !== "welcome_template" && templateParams.some((p) => !p.trim())) || (requiresMediaHeader && !templateMedia))
-                      ? 'rgba(34,197,94,0.4)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-                    color: '#fff', border: 'none', borderRadius: 9,
-                    cursor: (!selectedTemplate) ? 'not-allowed' : 'pointer',
-                    fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 600,
-                    boxShadow: '0 4px 14px rgba(34,197,94,0.3)',
-                  }}
-                >
-                  {sending ? "Sending..." : "Send Template"}
-                </button>
+                <div className="flex justify-end gap-2.5 pt-4 border-t border-[#EAEAEA]">
+                  <button
+                    onClick={handleCloseTemplateModal}
+                    className="h-10 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] text-[#52525B] text-xs font-bold font-sans transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={sendTemplateMessage}
+                    disabled={
+                      !selectedTemplate ||
+                      (selectedTemplate.name !== "welcome_template" && templateParams.some((p) => !p.trim())) ||
+                      (requiresMediaHeader && !templateMedia)
+                    }
+                    className="h-10 px-5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold font-sans shadow-[0_4px_14px_rgba(159,232,112,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
+                  >
+                    {sending ? "Sending..." : "Send Template"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Portal>
-    )}
+        </Portal>
+      )}
 
       {/* Contact Details Panel */}
       {showContactDetails && selectedConversation && (

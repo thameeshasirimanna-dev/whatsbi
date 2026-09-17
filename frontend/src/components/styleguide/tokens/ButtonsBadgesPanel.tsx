@@ -16,11 +16,18 @@ import {
   MessageSquare,
   ShieldCheck,
   Calendar,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 
 export const ButtonsBadgesPanel: React.FC = () => {
   const [loadingButton, setLoadingButton] = useState(false);
   const [activeSegment, setActiveSegment] = useState<'day' | 'week' | 'month'>('week');
+  const [openDropdown, setOpenDropdown] = useState<'lime' | 'mint' | 'forest' | 'outline' | null>(null);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('This Month');
+  const [selectedExport, setSelectedExport] = useState('Export CSV');
+  const [selectedStatus, setSelectedStatus] = useState('All Records');
+  const [selectedAction, setSelectedAction] = useState('Quick Actions');
 
   const triggerLoading = () => {
     setLoadingButton(true);
@@ -142,6 +149,206 @@ export const ButtonsBadgesPanel: React.FC = () => {
               >
                 Disabled Action
               </button>
+            </div>
+          </div>
+
+          {/* Button Dropdowns & Action Menus Matrix */}
+          <div className="border-t border-[#F4F4F5] pt-5 flex flex-col gap-4">
+            <div>
+              <span className="text-xs font-bold text-[#16281D]">Button Dropdowns & Menu Triggers</span>
+              <p className="text-[11px] text-[#71717A] m-0 mt-0.5 font-medium">
+                All dropdown select triggers use standard capsule button geometry (<code className="text-[#16281D] font-mono text-[10px]">rounded-full</code>) with chevron state rotation.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Primary Lime Action Dropdown */}
+              <div className="flex flex-col gap-2 relative">
+                <span className="text-[11px] font-bold text-[#16281D] uppercase tracking-wider">Primary Lime Dropdown</span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'lime' ? null : 'lime')}
+                    className={`w-full h-10 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all flex items-center justify-between gap-2 ${
+                      openDropdown === 'lime' ? 'ring-3 ring-[#16281D]/20' : ''
+                    }`}
+                  >
+                    <span className="truncate">{selectedAction}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-[#16281D] shrink-0 transition-transform duration-200 ${
+                        openDropdown === 'lime' ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {openDropdown === 'lime' && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                      {['Quick Actions', 'Send Broadcast', 'Generate Invoice', 'Schedule Sync'].map((opt) => (
+                        <button
+                          type="button"
+                          key={opt}
+                          onClick={() => {
+                            setSelectedAction(opt);
+                            setOpenDropdown(null);
+                          }}
+                          className={`px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0 ${
+                            selectedAction === opt
+                              ? 'bg-[#9FE870] text-[#16281D] shadow-xs'
+                              : 'text-[#16281D] hover:bg-[#F4F7F4] bg-transparent'
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {selectedAction === opt && <Check size={13} strokeWidth={2.8} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-[#A1A1AA]">Primary CTA action menu</span>
+              </div>
+
+              {/* 2. Soft Mint Filter Dropdown */}
+              <div className="flex flex-col gap-2 relative">
+                <span className="text-[11px] font-bold text-[#16281D] uppercase tracking-wider">Soft Mint Dropdown</span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'mint' ? null : 'mint')}
+                    className={`w-full h-10 px-4 rounded-full active:scale-[0.98] text-[#16281D] font-bold text-xs transition-all cursor-pointer flex items-center justify-between gap-2 shadow-xs ${
+                      openDropdown === 'mint'
+                        ? 'border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white'
+                        : 'border border-black/5 bg-[#F4F7F4] hover:bg-[#E8ECE8]'
+                    }`}
+                  >
+                    <span className="truncate">{selectedTimeframe}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-[#71717A] shrink-0 transition-transform duration-200 ${
+                        openDropdown === 'mint' ? 'rotate-180 text-[#16281D]' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {openDropdown === 'mint' && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                      {['Today', 'This Week', 'This Month', 'Last 3 Months', 'All Time'].map((opt) => (
+                        <button
+                          type="button"
+                          key={opt}
+                          onClick={() => {
+                            setSelectedTimeframe(opt);
+                            setOpenDropdown(null);
+                          }}
+                          className={`px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0 ${
+                            selectedTimeframe === opt
+                              ? 'bg-[#9FE870] text-[#16281D] shadow-xs'
+                              : 'text-[#16281D] hover:bg-[#F4F7F4] bg-transparent'
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {selectedTimeframe === opt && <Check size={13} strokeWidth={2.8} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-[#A1A1AA]">Time range & table filters</span>
+              </div>
+
+              {/* 3. Secondary Forest Dropdown */}
+              <div className="flex flex-col gap-2 relative">
+                <span className="text-[11px] font-bold text-[#16281D] uppercase tracking-wider">Secondary Forest Dropdown</span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'forest' ? null : 'forest')}
+                    className={`w-full h-10 px-4 rounded-full bg-[#16281D] hover:bg-[#203628] active:scale-[0.98] text-white font-bold text-xs shadow-xs cursor-pointer border-0 transition-all flex items-center justify-between gap-2 ${
+                      openDropdown === 'forest' ? 'ring-3 ring-[#9FE870]/30' : ''
+                    }`}
+                  >
+                    <span className="truncate">{selectedStatus}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-[#8FA89B] shrink-0 transition-transform duration-200 ${
+                        openDropdown === 'forest' ? 'rotate-180 text-[#9FE870]' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {openDropdown === 'forest' && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#16281D] rounded-2xl border border-white/10 p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.35)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                      {['All Records', 'Active Leads', 'Converted Orders', 'Archived'].map((opt) => (
+                        <button
+                          type="button"
+                          key={opt}
+                          onClick={() => {
+                            setSelectedStatus(opt);
+                            setOpenDropdown(null);
+                          }}
+                          className={`px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0 ${
+                            selectedStatus === opt
+                              ? 'bg-[#9FE870] text-[#16281D] shadow-xs'
+                              : 'text-[#E4E4E7] hover:bg-white/10 hover:text-white bg-transparent'
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {selectedStatus === opt && <Check size={13} strokeWidth={2.8} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-[#A1A1AA]">Dark command & status menus</span>
+              </div>
+
+              {/* 4. Ghost / Outline Dropdown */}
+              <div className="flex flex-col gap-2 relative">
+                <span className="text-[11px] font-bold text-[#16281D] uppercase tracking-wider">Outline Dropdown</span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'outline' ? null : 'outline')}
+                    className={`w-full h-10 px-4 rounded-full active:scale-[0.98] text-[#52525B] font-bold text-xs transition-all cursor-pointer flex items-center justify-between gap-2 shadow-xs ${
+                      openDropdown === 'outline'
+                        ? 'border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white text-[#16281D]'
+                        : 'border border-[#E4E4E7] hover:border-[#16281D]/30 bg-white hover:bg-[#F4F7F4]'
+                    }`}
+                  >
+                    <span className="truncate">{selectedExport}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-[#71717A] shrink-0 transition-transform duration-200 ${
+                        openDropdown === 'outline' ? 'rotate-180 text-[#16281D]' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {openDropdown === 'outline' && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                      {['Export CSV', 'Export Excel (XLSX)', 'Export PDF Report', 'Print Invoice'].map((opt) => (
+                        <button
+                          type="button"
+                          key={opt}
+                          onClick={() => {
+                            setSelectedExport(opt);
+                            setOpenDropdown(null);
+                          }}
+                          className={`px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0 ${
+                            selectedExport === opt
+                              ? 'bg-[#9FE870] text-[#16281D] shadow-xs'
+                              : 'text-[#16281D] hover:bg-[#F4F7F4] bg-transparent'
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {selectedExport === opt && <Check size={13} strokeWidth={2.8} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-[#A1A1AA]">Export formats & secondary menus</span>
+              </div>
             </div>
           </div>
         </div>

@@ -4,9 +4,10 @@ import { getToken, getCurrentUser } from "../../../lib/auth";
 import { getCurrentAgent } from "../../../lib/agent";
 import { ArrowLeft, MessageSquare, Printer, Package } from 'lucide-react';
 import { useDialog } from '../shared/DialogProvider';
+import CustomDropdown from '../shared/CustomDropdown';
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+const SYNE: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
+const DM: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
 
 interface OrderItem {
   name: string;
@@ -35,28 +36,28 @@ interface OrderDetails {
 
 const getStatusStyle = (status: string): React.CSSProperties => {
   const s = status.toLowerCase();
-  if (s === 'pending') return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
-  if (s === 'processing') return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
-  if (s === 'shipped') return { background: 'rgba(124,58,237,0.1)', color: '#7c3aed' };
-  if (s === 'delivered' || s === 'completed') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
-  if (s === 'cancelled') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
-  return { background: '#f4f4f5', color: '#71717a' };
+  if (s === 'pending') return { background: 'rgba(245,158,11,0.1)', color: '#B45309', borderRadius: 9999 };
+  if (s === 'processing') return { background: 'rgba(59,130,246,0.1)', color: '#1D4ED8', borderRadius: 9999 };
+  if (s === 'shipped') return { background: 'rgba(124,58,237,0.1)', color: '#7c3aed', borderRadius: 9999 };
+  if (s === 'delivered' || s === 'completed') return { background: 'rgba(34,197,94,0.1)', color: '#15803D', borderRadius: 9999 };
+  if (s === 'cancelled') return { background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 9999 };
+  return { background: '#F4F7F4', color: '#71717a', borderRadius: 9999 };
 };
 
 const getPaymentStatusStyle = (paymentStatus: string): React.CSSProperties => {
   const s = paymentStatus?.toLowerCase() || 'unpaid';
-  if (s === 'paid') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
-  if (s === 'partially_paid') return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
-  if (s === 'unpaid') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
-  return { background: '#f4f4f5', color: '#71717a' };
+  if (s === 'paid') return { background: 'rgba(34,197,94,0.1)', color: '#15803D', borderRadius: 9999 };
+  if (s === 'partially_paid') return { background: 'rgba(59,130,246,0.1)', color: '#1D4ED8', borderRadius: 9999 };
+  if (s === 'unpaid') return { background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 9999 };
+  return { background: '#F4F7F4', color: '#71717a', borderRadius: 9999 };
 };
 
 const capitalizeFirst = (str: string): string => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 
 const selectStyle: React.CSSProperties = {
-  width: '100%', padding: '9px 12px',
-  fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
-  background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9,
+  width: '100%', padding: '9px 16px',
+  fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: '#16281D',
+  background: '#fff', border: '1px solid #EAEAEA', borderRadius: 9999,
   outline: 'none', boxSizing: 'border-box',
   transition: 'border-color 0.15s, box-shadow 0.15s',
   appearance: 'none', cursor: 'pointer',
@@ -64,8 +65,8 @@ const selectStyle: React.CSSProperties = {
 
 const infoRow = (label: string, value: string | React.ReactNode) => (
   <div style={{ marginBottom: 12 }}>
-    <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>
-    <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e' }}>{value}</div>
+    <div style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>
+    <div style={{ fontSize: 13, fontWeight: 500, color: '#16281D' }}>{value}</div>
   </div>
 );
 
@@ -252,7 +253,7 @@ const OrderDetailsPage: React.FC = () => {
 
   if (error || !order) {
     return (
-      <div style={{ padding: 24 }}>
+      <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
         <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
           {error || 'Order not found'}
         </div>
@@ -268,34 +269,34 @@ const OrderDetailsPage: React.FC = () => {
   return (
     <>
       <style>{`@keyframes odp-spin { to { transform: rotate(360deg); } }`}</style>
-      <div className="no-print" style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+      <div className="no-print w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <button onClick={() => navigate('/agent/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 9, padding: '8px 14px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => navigate('/agent/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F4F7F4', color: '#16281D', border: '1px solid #EAEAEA', borderRadius: 9999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
               <ArrowLeft size={14} /> Back
             </button>
             <div>
-              <div style={{ ...SYNE, fontSize: 22, fontWeight: 800, color: '#0c1a0e' }}>Order #{order.id.toString().padStart(4, '0')}</div>
-              <div style={{ ...DM, fontSize: 12, color: '#71717a' }}>Order details and customer information</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#16281D', fontFamily: "'JetBrains Mono', monospace" }}>Order #{order.id.toString().padStart(4, '0')}</div>
+              <div style={{ fontSize: 12, color: '#71717a' }}>Order details and customer information</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ ...DM, fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, ...getStatusStyle(order.status) }}>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 9999, ...getStatusStyle(order.status) }}>
               Status: {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
             </span>
-            <span style={{ ...DM, fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, ...getPaymentStatusStyle(order.payment_status || 'unpaid') }}>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 9999, ...getPaymentStatusStyle(order.payment_status || 'unpaid') }}>
               Payment: {order.payment_status === 'partially_paid' ? 'Partially Paid' : order.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
             </span>
-            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 9, padding: '8px 14px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F4F7F4', color: '#16281D', border: '1px solid #EAEAEA', borderRadius: 9999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
               <Printer size={14} /> Print Receipt
             </button>
           </div>
         </div>
 
         {error && (
-          <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
+          <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 12, fontSize: 13, color: '#EF4444', marginBottom: 16 }}>
             {error}
           </div>
         )}
@@ -305,62 +306,62 @@ const OrderDetailsPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Customer Info */}
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Package size={13} style={{ color: '#22c55e' }} />
+            <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #EAEAEA', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 9999, background: 'rgba(159,232,112,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Package size={15} style={{ color: '#16281D' }} />
                 </div>
-                <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>Customer Information</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#16281D' }}>Customer Information</span>
               </div>
 
               {/* Avatar */}
-              <div style={{ padding: '16px 18px 12px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f4f4f5' }}>
-                <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#fff' }}>{order.customer_name.charAt(0).toUpperCase()}</span>
+              <div style={{ padding: '18px 20px 14px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #EAEAEA' }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#16281D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#9FE870' }}>{order.customer_name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
-                  <div style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#0c1a0e' }}>{order.customer_name}</div>
-                  <div style={{ ...DM, fontSize: 12, color: '#71717a' }}>{order.customer_phone}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#16281D' }}>{order.customer_name}</div>
+                  <div style={{ fontSize: 12, color: '#71717a' }}>{order.customer_phone}</div>
                 </div>
               </div>
 
-              <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {infoRow('Order Date', new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }))}
                 {order.updated_at && infoRow('Last Updated', new Date(order.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))}
               </div>
             </div>
 
             {/* Update Status */}
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '16px 18px' }}>
-              <div style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', marginBottom: 14 }}>Update Status</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <select value={newStatus} onChange={e => setNewStatus(e.target.value)}
-                  style={selectStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
-                >
-                  {['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancelled'].map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                  ))}
-                </select>
+            <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', padding: '20px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#16281D', marginBottom: 14 }}>Update Status</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <CustomDropdown
+                  value={newStatus}
+                  onChange={(val) => setNewStatus(val)}
+                  options={['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancelled'].map(s => ({
+                    value: s,
+                    label: s.charAt(0).toUpperCase() + s.slice(1),
+                  }))}
+                  className="w-full"
+                />
                 <button onClick={updateOrderStatus} disabled={updatingStatus || newStatus === order.status}
-                  style={{ background: (updatingStatus || newStatus === order.status) ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: (updatingStatus || newStatus === order.status) ? 'not-allowed' : 'pointer', boxShadow: (updatingStatus || newStatus === order.status) ? 'none' : '0 4px 12px rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  style={{ background: (updatingStatus || newStatus === order.status) ? 'rgba(159,232,112,0.4)' : '#9FE870', color: '#16281D', border: 'none', borderRadius: 9999, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: (updatingStatus || newStatus === order.status) ? 'not-allowed' : 'pointer', boxShadow: (updatingStatus || newStatus === order.status) ? 'none' : '0 2px 10px rgba(159,232,112,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
                 >
                   {updatingStatus ? (
-                    <><div style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'odp-spin 0.7s linear infinite' }} />Updating…</>
+                    <><div style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(22,40,29,0.3)', borderTopColor: '#16281D', animation: 'odp-spin 0.7s linear infinite' }} />Updating…</>
                   ) : 'Update Status'}
                 </button>
                 {order.payment_status !== 'paid' && (
                   <button onClick={markAsFullyPaid} disabled={updatingStatus}
-                    style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 4px 12px rgba(2,132,199,0.25)' }}
+                    style={{ background: '#16281D', color: '#9FE870', border: 'none', borderRadius: 9999, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
                   >
                     Mark as Fully Paid
                   </button>
                 )}
                 <button onClick={sendWhatsAppMessage}
-                  style={{ background: 'rgba(34,197,94,0.08)', color: '#059669', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 9, padding: '10px 16px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                  onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.12)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
+                  style={{ background: '#F4F7F4', color: '#16281D', border: '1px solid #EAEAEA', borderRadius: 9999, padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(159,232,112,0.15)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = '#F4F7F4'}
                 >
                   <MessageSquare size={14} /> Send WhatsApp Update
                 </button>
@@ -372,49 +373,49 @@ const OrderDetailsPage: React.FC = () => {
           <div className="lg:col-span-2" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Summary Stats */}
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #f4f4f5' }}>
-                <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>Order Summary</span>
+            <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #EAEAEA' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#16281D' }}>Order Summary</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3" style={{ padding: '20px 24px' }}>
                 {[
-                  { value: `LKR ${Number(order.order_details.total_amount).toFixed(2)}`, label: 'Total Amount', color: '#22c55e' },
-                  { value: `LKR ${Number(order.advance_amount || 0).toFixed(2)}`, label: order.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid', color: '#0891b2' },
-                  { value: `LKR ${Math.max(0, Number(order.order_details.total_amount) - Number(order.advance_amount || 0)).toFixed(2)}`, label: 'Balance Due', color: '#ef4444' },
-                  { value: order.order_details.items.length, label: 'Line Items', color: '#4f46e5' },
-                  { value: totalQty, label: 'Total Qty', color: '#7c3aed' },
+                  { value: `LKR ${Number(order.order_details.total_amount).toFixed(2)}`, label: 'Total Amount', color: '#16281D' },
+                  { value: `LKR ${Number(order.advance_amount || 0).toFixed(2)}`, label: order.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid', color: '#1D4ED8' },
+                  { value: `LKR ${Math.max(0, Number(order.order_details.total_amount) - Number(order.advance_amount || 0)).toFixed(2)}`, label: 'Balance Due', color: '#EF4444' },
+                  { value: order.order_details.items.length, label: 'Line Items', color: '#7c3aed' },
+                  { value: totalQty, label: 'Total Qty', color: '#15803D' },
                 ].map((stat, i) => (
-                  <div key={stat.label} style={{ textAlign: 'center', padding: '4px 6px', borderRight: i < 4 ? '1px solid #f4f4f5' : 'none' }}>
-                    <div style={{ ...SYNE, fontSize: 15, fontWeight: 800, color: stat.color, lineHeight: 1, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stat.value}</div>
-                    <div style={{ ...DM, fontSize: 11, color: '#71717a' }}>{stat.label}</div>
+                  <div key={stat.label} style={{ textAlign: 'center', padding: '6px 8px', borderRight: i < 4 ? '1px solid #EAEAEA' : 'none' }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stat.value}</div>
+                    <div style={{ fontSize: 11, color: '#71717a' }}>{stat.label}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Order Items */}
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #f4f4f5' }}>
-                <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>Order Items</span>
+            <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #EAEAEA' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#16281D' }}>Order Items</span>
               </div>
               {order.order_details.items.length === 0 ? (
-                <div style={{ padding: '32px 24px', textAlign: 'center', ...DM, fontSize: 13, color: '#71717a' }}>No items in this order</div>
+                <div style={{ padding: '32px 24px', textAlign: 'center', fontSize: 13, color: '#71717a' }}>No items in this order</div>
               ) : (
                 <div>
                   <div style={{ maxHeight: 280, overflowY: 'auto' }}>
                     {order.order_details.items.map((item, index) => (
-                      <div key={index} style={{ padding: '12px 18px', borderBottom: '1px solid #f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                      <div key={index} style={{ padding: '14px 20px', borderBottom: '1px solid #EAEAEA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e' }}>{item.name}</div>
-                          <div style={{ ...DM, fontSize: 12, color: '#71717a' }}>Qty: {item.quantity} × LKR {item.price.toFixed(2)}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#16281D' }}>{item.name}</div>
+                          <div style={{ fontSize: 12, color: '#71717a' }}>Qty: {item.quantity} × <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>LKR {item.price.toFixed(2)}</span></div>
                         </div>
-                        <div style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0c1a0e', flexShrink: 0 }}>LKR {item.total.toFixed(2)}</div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D', flexShrink: 0 }}>LKR {item.total.toFixed(2)}</div>
                       </div>
                     ))}
                   </div>
-                  <div style={{ padding: '12px 18px', borderTop: '1px solid #ebebeb', display: 'flex', justifyContent: 'space-between', background: 'rgba(34,197,94,0.04)' }}>
-                    <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>Total</span>
-                    <span style={{ ...SYNE, fontSize: 14, fontWeight: 800, color: '#059669' }}>LKR {order.order_details.total_amount.toFixed(2)}</span>
+                  <div style={{ padding: '14px 20px', borderTop: '1px solid #EAEAEA', display: 'flex', justifyContent: 'space-between', background: '#F4F7F4' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#16281D' }}>Total</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 800, color: '#16281D' }}>LKR {order.order_details.total_amount.toFixed(2)}</span>
                   </div>
                 </div>
               )}
@@ -422,18 +423,18 @@ const OrderDetailsPage: React.FC = () => {
 
             {/* Notes / Shipping */}
             {(order.order_details.notes || order.order_details.shipping_address) && (
-              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '16px 18px' }}>
-                <div style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', marginBottom: 14 }}>Additional Information</div>
+              <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', padding: '20px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#16281D', marginBottom: 14 }}>Additional Information</div>
                 {order.order_details.notes && (
                   <div style={{ marginBottom: 12 }}>
-                    <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Notes</div>
-                    <div style={{ background: '#f9f9f9', borderRadius: 9, padding: '10px 12px', ...DM, fontSize: 13, color: '#3f3f46' }}>{order.order_details.notes}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Notes</div>
+                    <div style={{ background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#16281D' }}>{order.order_details.notes}</div>
                   </div>
                 )}
                 {order.order_details.shipping_address && (
                   <div>
-                    <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Shipping Address</div>
-                    <div style={{ background: '#f9f9f9', borderRadius: 9, padding: '10px 12px', ...DM, fontSize: 13, color: '#3f3f46' }}>{order.order_details.shipping_address}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Shipping Address</div>
+                    <div style={{ background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#16281D' }}>{order.order_details.shipping_address}</div>
                   </div>
                 )}
               </div>

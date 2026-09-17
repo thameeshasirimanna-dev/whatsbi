@@ -2,31 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Appointment } from '../../../types';
 import Portal from '../shared/Portal';
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '9px 12px',
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 13,
-  color: '#3f3f46',
-  background: '#f9f9f9',
-  border: '1px solid #ebebeb',
-  borderRadius: 9,
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.15s, box-shadow 0.15s',
-};
-const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#22c55e';
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
-};
-const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#ebebeb';
-  e.currentTarget.style.boxShadow = 'none';
-};
+import CustomDropdown from '../shared/CustomDropdown';
+import { DateTimePicker } from '../shared/DateTimePicker';
 
 interface UpdateAppointmentData {
   title?: string;
@@ -59,9 +36,6 @@ const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
   };
 
   const [title, setTitle] = useState(appointment.title);
-  console.log('Original appointment_date:', appointment.appointment_date);
-  console.log('Parsed date:', new Date(appointment.appointment_date));
-  console.log('Formatted local datetime:', formatLocalDateTime(new Date(appointment.appointment_date)));
   const [appointmentDate, setAppointmentDate] = useState(
     formatLocalDateTime(new Date(appointment.appointment_date))
   );
@@ -138,70 +112,121 @@ const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-  
+      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-[#16281D]/65 animate-modal-backdrop">
+        <div className="w-full max-w-lg bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_20px_50px_rgba(22,40,29,0.15)] overflow-hidden flex flex-col max-h-[90vh] animate-modal-card">
           {/* Header */}
-          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div className="px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between shrink-0 bg-white">
             <div>
-              <span style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e', display: 'block', marginBottom: 4 }}>Edit Appointment</span>
-              <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>
-                <strong style={{ color: '#3f3f46' }}>{appointment.customer_name}</strong> · {appointment.customer_phone}
-              </span>
+              <h3 className="font-sans text-base font-bold text-[#16281D]">Edit Appointment</h3>
+              <p className="font-sans text-xs text-[#71717A] mt-0.5">
+                <span className="font-medium text-[#16281D]">{appointment.customer_name}</span> · {appointment.customer_phone}
+              </p>
             </div>
-            <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
-              <X size={15} style={{ color: '#71717a' }} />
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X size={16} />
             </button>
           </div>
-  
-          {/* Content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {error && (
-              <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
+              <div className="p-3 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-xs text-[#EF4444] font-medium">
                 {error}
               </div>
             )}
-  
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            <form id="edit-appointment-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Title *</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Appointment title" required maxLength={100} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Appointment title"
+                  required
+                  maxLength={100}
+                  className="w-full h-10 px-3.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all"
+                />
               </div>
-  
+
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Date & Time *</label>
-                <input type="datetime-local" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} required style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                  Date & Time *
+                </label>
+                <DateTimePicker
+                  value={appointmentDate || null}
+                  onChange={(val) => setAppointmentDate(val || '')}
+                  placeholder="Select appointment date & time..."
+                  className="w-full"
+                  variant="mint"
+                  outputFormat="datetime-local"
+                />
               </div>
-  
+
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Duration (minutes)</label>
-                <input type="number" min="1" max="1440" value={durationMinutes} onChange={(e) => setDurationMinutes(parseInt(e.target.value) || 30)} placeholder="30" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                  Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1440"
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(parseInt(e.target.value) || 30)}
+                  placeholder="30"
+                  className="w-full h-10 px-3.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all font-mono"
+                />
               </div>
-  
+
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as 'pending' | 'confirmed' | 'completed' | 'cancelled')} style={inputStyle} onFocus={onFocus} onBlur={onBlur}>
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                  Status
+                </label>
+                <CustomDropdown
+                  value={status}
+                  onChange={(val) => setStatus(val as any)}
+                  options={statusOptions.map((option) => ({ value: option.value, label: option.label }))}
+                  className="w-full"
+                />
               </div>
-  
+
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Notes (Optional)</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Additional notes..." style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocus} onBlur={onBlur} />
-              </div>
-  
-              <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                <button type="button" onClick={onClose} style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitDisabled}
-                  style={{ flex: 1, background: submitDisabled ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: submitDisabled ? 'not-allowed' : 'pointer', boxShadow: submitDisabled ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {loading ? 'Updating…' : 'Update Appointment'}
-                </button>
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Additional notes..."
+                  className="w-full p-3 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all resize-none"
+                />
               </div>
             </form>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-[#EAEAEA] flex items-center justify-end gap-3 shrink-0 bg-white">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-appointment-form"
+              disabled={submitDisabled}
+              className="px-6 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none cursor-pointer border-0"
+            >
+              {loading ? 'Updating…' : 'Update Appointment'}
+            </button>
           </div>
         </div>
       </div>

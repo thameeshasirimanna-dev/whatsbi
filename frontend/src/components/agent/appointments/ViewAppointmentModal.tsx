@@ -3,22 +3,38 @@ import { X } from 'lucide-react';
 import { Appointment } from '../../../types';
 import Portal from '../shared/Portal';
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
-const getStatusStyle = (status: string): React.CSSProperties => {
-  const s = status.toLowerCase();
-  if (s === 'pending') return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
-  if (s === 'confirmed') return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
-  if (s === 'completed') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
-  if (s === 'cancelled') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
-  return { background: '#f4f4f5', color: '#71717a' };
-};
-
 interface ViewAppointmentModalProps {
   appointment: Appointment;
   onClose: () => void;
 }
+
+const getStatusBadge = (status: string) => {
+  const s = status.toLowerCase();
+  let bg = 'bg-[#71717A]/10 text-[#71717A]';
+  let dot = 'bg-[#71717A]';
+  let label = s.charAt(0).toUpperCase() + s.slice(1);
+
+  if (s === 'pending') {
+    bg = 'bg-[#F59E0B]/10 text-[#B45309] border border-[#F59E0B]/20';
+    dot = 'bg-[#F59E0B]';
+  } else if (s === 'confirmed') {
+    bg = 'bg-[#3B82F6]/10 text-[#1D4ED8] border border-[#3B82F6]/20';
+    dot = 'bg-[#3B82F6]';
+  } else if (s === 'completed') {
+    bg = 'bg-[#22C55E]/10 text-[#15803D] border border-[#22C55E]/20';
+    dot = 'bg-[#22C55E]';
+  } else if (s === 'cancelled') {
+    bg = 'bg-[#EF4444]/10 text-[#B91C1C] border border-[#EF4444]/20';
+    dot = 'bg-[#EF4444]';
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${bg}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      {label}
+    </span>
+  );
+};
 
 const ViewAppointmentModal: React.FC<ViewAppointmentModalProps> = ({ appointment, onClose }) => {
   const formatDate = (dateString: string) => {
@@ -33,73 +49,95 @@ const ViewAppointmentModal: React.FC<ViewAppointmentModalProps> = ({ appointment
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 460, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-  
+      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-[#16281D]/65 animate-modal-backdrop">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_20px_50px_rgba(22,40,29,0.15)] overflow-hidden flex flex-col max-h-[90vh] animate-modal-card">
           {/* Header */}
-          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ ...SYNE, fontSize: 17, fontWeight: 700, color: '#0c1a0e' }}>Appointment Details</span>
-            <button onClick={onClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={15} style={{ color: '#71717a' }} />
+          <div className="px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between shrink-0 bg-white">
+            <h3 className="font-sans text-base font-bold text-[#16281D]">Appointment Details</h3>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X size={16} />
             </button>
           </div>
-  
+
           {/* Content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-  
-              <div>
-                <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Appointment #</div>
-                <div style={{ ...DM, fontSize: 14, color: '#0c1a0e', fontWeight: 600 }}>#{appointment.id.toString().padStart(4, '0')}</div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div>
+              <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1">
+                Appointment ID
               </div>
-  
-              <div style={{ height: 1, background: '#f4f4f5' }} />
-  
-              <div>
-                <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Customer</div>
-                <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>{appointment.customer_name}</div>
-                <div style={{ ...DM, fontSize: 12, color: '#71717a', marginTop: 2 }}>{appointment.customer_phone}</div>
+              <div className="font-mono text-sm font-semibold text-[#16281D]">
+                #{appointment.id.toString().padStart(4, '0')}
               </div>
-  
-              <div>
-                <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Title</div>
-                <div style={{ ...DM, fontSize: 14, color: '#0c1a0e' }}>{appointment.title}</div>
+            </div>
+
+            <div className="h-px bg-[#EAEAEA]" />
+
+            <div>
+              <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1">
+                Customer
               </div>
-  
-              <div>
-                <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Date & Time</div>
-                <div style={{ ...DM, fontSize: 14, color: '#0c1a0e' }}>{formatDate(appointment.appointment_date)}</div>
+              <div className="text-sm font-bold text-[#16281D]">{appointment.customer_name}</div>
+              <div className="font-mono text-xs text-[#71717A] mt-0.5">{appointment.customer_phone}</div>
+            </div>
+
+            <div>
+              <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1">
+                Title
               </div>
-  
-              <div>
-                <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duration</div>
-                <div style={{ ...DM, fontSize: 14, color: '#0c1a0e' }}>{appointment.duration_minutes} minutes</div>
+              <div className="text-sm font-medium text-[#16281D]">{appointment.title}</div>
+            </div>
+
+            <div>
+              <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1">
+                Date & Time
               </div>
-  
-              <div>
-                <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Status</div>
-                <span style={{ ...DM, fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 9999, ...getStatusStyle(appointment.status) }}>
-                  {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                </span>
+              <div className="font-mono text-sm text-[#16281D]">{formatDate(appointment.appointment_date)}</div>
+            </div>
+
+            <div>
+              <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1">
+                Duration
               </div>
-  
-              {appointment.notes && (
-                <div>
-                  <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Notes</div>
-                  <div style={{ ...DM, fontSize: 13, color: '#3f3f46', padding: '10px 12px', background: '#f9f9f9', borderRadius: 9, border: '1px solid #ebebeb' }}>{appointment.notes}</div>
+              <div className="font-mono text-sm text-[#16281D]">{appointment.duration_minutes} minutes</div>
+            </div>
+
+            <div>
+              <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1.5">
+                Status
+              </div>
+              {getStatusBadge(appointment.status)}
+            </div>
+
+            {appointment.notes && (
+              <div>
+                <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1">
+                  Notes
                 </div>
-              )}
-  
-              <div>
-                <div style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Created</div>
-                <div style={{ ...DM, fontSize: 13, color: '#71717a' }}>{new Date(appointment.created_at).toLocaleDateString()}</div>
+                <div className="text-xs text-[#16281D] p-3 bg-[#F4F7F4] rounded-xl border border-[#EAEAEA] whitespace-pre-wrap">
+                  {appointment.notes}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider mb-1">
+                Created
+              </div>
+              <div className="font-mono text-xs text-[#71717A]">
+                {new Date(appointment.created_at).toLocaleDateString()}
               </div>
             </div>
           </div>
-  
+
           {/* Footer */}
-          <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #ebebeb', display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '10px 20px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <div className="px-6 py-4 border-t border-[#EAEAEA] flex justify-end shrink-0 bg-white">
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer"
+            >
               Close
             </button>
           </div>

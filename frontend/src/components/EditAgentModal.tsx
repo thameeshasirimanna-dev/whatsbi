@@ -174,8 +174,8 @@ export const EditAgentModal: React.FC<EditAgentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm font-sans animate-in fade-in duration-200">
-      <div className="bg-white rounded-[28px] border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.18)] max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#16281D]/65 font-sans animate-modal-backdrop">
+      <div className="bg-white rounded-[28px] border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.18)] max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col animate-modal-card">
         {showSuccess ? (
           <div className="p-8 sm:p-10 text-center flex flex-col items-center justify-center">
             <div className="w-16 h-16 rounded-full bg-[#E8F8EE] text-[#059669] flex items-center justify-center mb-4 shadow-xs">

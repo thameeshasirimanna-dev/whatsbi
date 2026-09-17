@@ -4,9 +4,6 @@ import { getToken } from "../../../lib/auth";
 import Portal from "../shared/Portal";
 import { SkeletonBase } from "../shared/Skeleton";
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
 interface Package {
   id: string;
   package_name: string;
@@ -102,93 +99,106 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <style>{`@keyframes ss-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* Header */}
-        <div style={{ flexShrink: 0, padding: '18px 20px 14px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(8,145,178,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Briefcase size={15} style={{ color: '#0891b2' }} />
+      <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-modal-card">
+          {/* Header */}
+          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center">
+                <Briefcase size={16} />
+              </div>
+              <h3 className="font-sans text-base font-bold text-[#16281D]">
+                Select Service
+              </h3>
             </div>
-            <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e' }}>Select Service</span>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X size={15} />
+            </button>
           </div>
-          <button onClick={onClose} style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={14} style={{ color: '#71717a' }} />
-          </button>
-        </div>
 
-        {/* Search */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #ebebeb' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa' }} />
-            <input
-              type="text"
-              placeholder="Search services..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px 8px 32px', border: '1px solid #ebebeb', borderRadius: 8, fontSize: 13, background: '#f9f9f9', color: '#0c1a0e', outline: 'none', ...DM, boxSizing: 'border-box' }}
-              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.12)'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
-            />
+          {/* Search Input */}
+          <div className="shrink-0 p-4 border-b border-[#EAEAEA] bg-[#F4F7F4]/50">
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A]" />
+              <input
+                type="text"
+                placeholder="Search services..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 text-xs font-medium font-sans text-[#16281D] bg-white border border-[#EAEAEA] rounded-full focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 outline-none transition-all placeholder:text-[#A1A1AA]"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          {loading && services.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  style={{ padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 12 }}
-                >
-                  <SkeletonBase style={{ width: '50%', height: 13, borderRadius: 4, marginBottom: 6 }} />
-                  <SkeletonBase style={{ width: '80%', height: 11, borderRadius: 4, marginBottom: 6 }} />
-                  <SkeletonBase style={{ width: '40%', height: 10, borderRadius: 4 }} />
-                </div>
-              ))}
-            </div>
-          ) : filteredServices.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', ...DM, fontSize: 13, color: '#71717a' }}>
-              {searchTerm ? "No services found." : "No services available."}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredServices.map((service) => (
+          {/* Service List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {loading && services.length === 0 ? (
+              <div className="space-y-2.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-3.5 border border-[#EAEAEA] rounded-2xl space-y-2"
+                  >
+                    <SkeletonBase className="w-1/2 h-3.5 rounded" />
+                    <SkeletonBase className="w-4/5 h-3 rounded" />
+                    <SkeletonBase className="w-1/3 h-2.5 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredServices.length === 0 ? (
+              <div className="text-center py-10 font-sans text-xs text-[#71717A]">
+                {searchTerm ? "No services matching your search." : "No services available."}
+              </div>
+            ) : (
+              filteredServices.map((service) => (
                 <div
                   key={service.id}
                   onClick={() => { onSelectService(service); onClose(); }}
-                  style={{ padding: '10px 12px', border: '1px solid #ebebeb', borderRadius: 12, cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.04)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.25)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#ebebeb'; }}
+                  className="p-3.5 border border-[#EAEAEA] rounded-2xl bg-white hover:bg-[#F0FDF4] hover:border-[#BBF7D0] cursor-pointer transition-all group"
                 >
-                  <div style={{ ...SYNE, fontSize: 13, fontWeight: 600, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{service.service_name}</div>
+                  <div className="font-sans text-sm font-bold text-[#16281D] truncate group-hover:text-[#16281D]">
+                    {service.service_name}
+                  </div>
                   {service.description && (
-                    <div style={{ ...DM, fontSize: 12, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{service.description}</div>
+                    <div className="font-sans text-xs text-[#71717A] truncate mt-0.5">
+                      {service.description}
+                    </div>
                   )}
                   {service.packages.length > 0 && (
-                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>
-                      {service.packages.map(p => p.package_name).join(' · ')}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {service.packages.map(p => (
+                        <span
+                          key={p.id}
+                          className="px-2.5 py-0.5 rounded-full bg-[#F4F7F4] border border-[#EAEAEA] text-[10px] font-sans font-semibold text-[#16281D]"
+                        >
+                          {p.package_name}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              ))
+            )}
+          </div>
 
-        {/* Footer */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #ebebeb', background: '#fafafa' }}>
-          <button onClick={onClose} style={{ width: '100%', padding: '9px 0', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 9, cursor: 'pointer', ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>
-            Cancel
-          </button>
+          {/* Footer */}
+          <div className="shrink-0 p-4 border-t border-[#EAEAEA] bg-[#F4F7F4]/40 flex justify-end">
+            <button
+              onClick={onClose}
+              className="h-9 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] font-sans text-xs font-bold text-[#52525B] transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     </Portal>
   );
 };
 
 export default ServiceSelectorModal;
+

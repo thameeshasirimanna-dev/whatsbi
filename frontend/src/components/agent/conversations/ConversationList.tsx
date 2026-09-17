@@ -1,10 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import { Conversation } from "./ConversationsPage";
-import { Search, Plus, MessageSquare, ChevronDown } from "lucide-react";
+import { Search, Plus, MessageSquare } from "lucide-react";
 import { SkeletonConversationList } from "../shared/Skeleton";
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+import CustomDropdown, { DropdownOption } from "../shared/CustomDropdown";
 
 const formatLastMessageTime = (timeStr: string) => {
   if (!timeStr) return "";
@@ -25,7 +23,7 @@ const formatLastMessageTime = (timeStr: string) => {
   } else if (targetMidnight.getTime() === yesterdayMidnight.getTime()) {
     return "Yesterday";
   } else if (diffDays < 7 && diffDays > 0) {
-    return date.toLocaleDateString([], { weekday: "long" });
+    return date.toLocaleDateString([], { weekday: "short" });
   } else {
     return date.toLocaleDateString([], { month: "short", day: "numeric" });
   }
@@ -53,20 +51,6 @@ interface ConversationListProps {
   loading?: boolean;
 }
 
-const STAGE_OPTIONS = [
-  { label: "All Stages", value: null, group: null },
-  { label: "New Lead", value: "New Lead", group: "Lead" },
-  { label: "Contacted", value: "Contacted", group: "Lead" },
-  { label: "Not Responding", value: "Not Responding", group: "Lead" },
-  { label: "Follow-up Needed", value: "Follow-up Needed", group: "Lead" },
-  { label: "Interested", value: "Interested", group: "Interest" },
-  { label: "Quotation Sent", value: "Quotation Sent", group: "Interest" },
-  { label: "Asked for More Info", value: "Asked for More Info", group: "Interest" },
-  { label: "Payment Pending", value: "Payment Pending", group: "Conversion" },
-  { label: "Paid", value: "Paid", group: "Conversion" },
-  { label: "Order Confirmed", value: "Order Confirmed", group: "Conversion" },
-];
-
 const ConversationList: React.FC<ConversationListProps> = ({
   conversations,
   filteredConversations,
@@ -90,8 +74,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
   useEffect(() => {
     if (selectedConversationRef.current) {
       selectedConversationRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
+        behavior: "auto",
+        block: "nearest",
       });
     }
   }, [selectedConversationId]);
@@ -101,172 +85,71 @@ const ConversationList: React.FC<ConversationListProps> = ({
     if (conversionStage) {
       return {
         stage: conversionStage,
-        style: { background: "rgba(34,197,94,0.1)", color: "#059669" },
+        badgeClass: "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]",
       };
     } else if (interestStage) {
       return {
         stage: interestStage,
-        style: { background: "rgba(217,119,6,0.1)", color: "#d97706" },
+        badgeClass: "bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]",
       };
     } else if (leadStage) {
       return {
         stage: leadStage,
-        style: { background: "rgba(8,145,178,0.1)", color: "#0891b2" },
+        badgeClass: "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
       };
     } else {
-      return { stage: null, style: {} };
+      return { stage: null, badgeClass: "" };
     }
   };
 
+  const tabs: { key: TabType; label: string; count: number }[] = [
+    { key: "all", label: "All", count: conversations.length },
+    {
+      key: "unread",
+      label: "Unread",
+      count: conversations.filter((c) => c.unreadCount > 0).length,
+    },
+    {
+      key: "ai",
+      label: "AI",
+      count: conversations.filter((c) => c.aiEnabled).length,
+    },
+    {
+      key: "orders",
+      label: "Orders",
+      count: conversations.filter((c) => c.conversionStage === "Order Confirmed").length,
+    },
+  ];
+
   return (
     <div
-      className={`h-full flex flex-col bg-white border-r border-[#ebebeb] shadow-[1px_0_4px_rgba(0,0,0,0.03)] ${
+      className={`h-full flex flex-col bg-white border-r border-[#EAEAEA] shadow-[1px_0_4px_rgba(20,40,24,0.02)] ${
         selectedConversationId !== null ? "hidden md:flex" : "flex"
-      } w-full md:w-[320px] md:flex-shrink-0`}
+      } w-full md:w-[320px] lg:w-[360px] xl:w-[380px] shrink-0 font-sans select-none`}
     >
-      {/* Header */}
-      <div
-        style={{
-          padding: "16px 16px 12px",
-          borderBottom: "1px solid #f4f4f5",
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span
-            style={{
-              ...SYNE,
-              fontSize: 20,
-              fontWeight: 700,
-              color: "#0c1a0e",
-              lineHeight: 1.2,
-            }}
-          >
-            Messages
-          </span>
-          <span
-            style={{
-              ...DM,
-              fontSize: 11,
-              fontWeight: 600,
-              padding: "2px 8px",
-              borderRadius: 9999,
-              background: "rgba(34,197,94,0.1)",
-              color: "#059669",
-              alignSelf: "flex-start",
-            }}
-          >
-            {totalUnread} unread
-          </span>
-        </div>
-        {onNewConversation && (
-          <button
-            onClick={onNewConversation}
-            style={{
-              width: 36,
-              height: 36,
-              background: "rgba(34,197,94,0.1)",
-              border: "none",
-              borderRadius: 10,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = "rgba(34,197,94,0.18)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = "rgba(34,197,94,0.1)")
-            }
-          >
-            <Plus size={17} style={{ color: "#22c55e" }} />
-          </button>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div
-        style={{
-          padding: "8px 12px 0",
-          borderBottom: "1px solid #f4f4f5",
-          flexShrink: 0,
-          display: "flex",
-          gap: 2,
-        }}
-      >
-        {(
-          [
-            { key: "all", label: "All", count: conversations.length },
-            {
-              key: "unread",
-              label: "Unread",
-              count: conversations.filter((c) => c.unreadCount > 0).length,
-            },
-            {
-              key: "ai",
-              label: "AI",
-              count: conversations.filter((c) => c.aiEnabled).length,
-            },
-            {
-              key: "orders",
-              label: "Orders",
-              count: conversations.filter((c) => c.conversionStage === "Order Confirmed").length,
-            },
-          ] as { key: TabType; label: string; count: number }[]
-        ).map((tab) => {
+      {/* 1. Segmented Capsule Filter Tabs */}
+      <div className="p-1 mx-3.5 mt-3.5 mb-2 bg-[#F4F7F4] rounded-full border border-[#EAEAEA] flex items-center gap-1 shrink-0">
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
+              type="button"
               onClick={() => onTabChange(tab.key)}
-              style={{
-                ...DM,
-                fontSize: 12,
-                fontWeight: isActive ? 700 : 500,
-                padding: "6px 10px 8px",
-                border: "none",
-                background: "none",
-                cursor: "pointer",
-                color: isActive ? "#22c55e" : "#71717a",
-                borderBottom: "2px solid",
-                borderBottomColor: isActive ? "#22c55e" : "transparent",
-                borderRadius: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                transition: "color 0.25s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.25s cubic-bezier(0.25, 1, 0.5, 1)",
-                marginBottom: -1,
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive)
-                  e.currentTarget.style.color = "#3f3f46";
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive)
-                  e.currentTarget.style.color = "#71717a";
-              }}
+              className={`flex-1 py-1.5 px-2.5 rounded-full text-xs font-bold transition-all cursor-pointer border-0 flex items-center justify-center gap-1.5 ${
+                isActive
+                  ? "bg-[#16281D] text-white shadow-xs"
+                  : "bg-transparent text-[#71717A] hover:text-[#16281D]"
+              }`}
             >
-              {tab.label}
+              <span>{tab.label}</span>
               {tab.count > 0 && (
                 <span
-                  style={{
-                    ...DM,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    padding: "1px 5px",
-                    borderRadius: 9999,
-                    background: isActive
-                      ? "rgba(34,197,94,0.15)"
-                      : "rgba(0,0,0,0.06)",
-                    color: isActive ? "#059669" : "#71717a",
-                  }}
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full font-mono ${
+                    isActive
+                      ? "bg-[#203628] text-[#9FE870]"
+                      : "bg-[#EAEAEA] text-[#71717A]"
+                  }`}
                 >
                   {tab.count}
                 </span>
@@ -276,375 +159,179 @@ const ConversationList: React.FC<ConversationListProps> = ({
         })}
       </div>
 
-      {/* Search + Stage Filter */}
-      <div
-        style={{
-          padding: "10px 12px",
-          borderBottom: "1px solid #f4f4f5",
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
-        <div style={{ position: "relative" }}>
+      {/* 2. Search & Filter Controls Bar */}
+      <div className="px-3.5 pb-3 pt-1 border-b border-[#EAEAEA] flex flex-col gap-2 shrink-0">
+        {/* Search Capsule Input */}
+        <div className="relative flex items-center">
           <Search
-            size={13}
-            style={{
-              position: "absolute",
-              left: 10,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#a1a1aa",
-              pointerEvents: "none",
-            }}
+            size={14}
+            className="absolute left-3.5 text-[#8FA89B] pointer-events-none"
+            strokeWidth={2.2}
           />
           <input
             type="text"
             value={searchConversations}
             onChange={onSearchChange}
             placeholder="Search conversations..."
-            style={{
-              width: "100%",
-              padding: "8px 10px 8px 30px",
-              ...DM,
-              fontSize: 13,
-              color: "#3f3f46",
-              background: "#f9f9f9",
-              border: "1px solid #ebebeb",
-              borderRadius: 9,
-              outline: "none",
-              boxSizing: "border-box",
-              transition: "border-color 0.15s, box-shadow 0.15s",
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = "#22c55e";
-              e.currentTarget.style.boxShadow =
-                "0 0 0 3px rgba(34,197,94,0.1)";
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "#ebebeb";
-              e.currentTarget.style.boxShadow = "none";
-            }}
+            className="w-full h-9 pl-9 pr-4 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] focus:bg-white text-xs font-medium text-[#16281D] placeholder-[#A1A1AA] border border-[#EAEAEA] focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 outline-none transition-all box-border"
           />
         </div>
-        {/* Stage filter + Time filter row */}
-        <div style={{ display: "flex", gap: 6 }}>
-          <div style={{ position: "relative", flex: 1 }}>
-            <select
-              value={stageFilter ?? ""}
-              onChange={(e) =>
-                onStageFilterChange(e.target.value === "" ? null : e.target.value)
-              }
-              style={{
-                width: "100%",
-                padding: "7px 24px 7px 10px",
-                ...DM,
-                fontSize: 12,
-                color: stageFilter ? "#0c1a0e" : "#a1a1aa",
-                background: stageFilter ? "rgba(34,197,94,0.06)" : "#f9f9f9",
-                border: stageFilter ? "1px solid rgba(34,197,94,0.35)" : "1px solid #ebebeb",
-                borderRadius: 9,
-                outline: "none",
-                appearance: "none",
-                cursor: "pointer",
-                transition: "border-color 0.15s",
-              }}
+
+        {/* Stage & Time Filter Row */}
+        <div className="flex items-center gap-2">
+          {/* Stage Dropdown */}
+          <CustomDropdown
+            value={stageFilter ?? ""}
+            onChange={(val) => onStageFilterChange(val === "" ? null : val)}
+            options={[
+              { value: "", label: "All Stages" },
+              { value: "New Lead", label: "New Lead", group: "Lead Stage" },
+              { value: "Contacted", label: "Contacted", group: "Lead Stage" },
+              { value: "Not Responding", label: "Not Responding", group: "Lead Stage" },
+              { value: "Follow-up Needed", label: "Follow-up Needed", group: "Lead Stage" },
+              { value: "Interested", label: "Interested", group: "Interest Stage" },
+              { value: "Quotation Sent", label: "Quotation Sent", group: "Interest Stage" },
+              { value: "Asked for More Info", label: "Asked for More Info", group: "Interest Stage" },
+              { value: "Payment Pending", label: "Payment Pending", group: "Conversion Stage" },
+              { value: "Paid", label: "Paid", group: "Conversion Stage" },
+              { value: "Order Confirmed", label: "Order Confirmed", group: "Conversion Stage" },
+            ]}
+            placeholder="All Stages"
+            size="sm"
+            className="flex-1 min-w-0"
+            triggerClassName={
+              stageFilter
+                ? "!bg-[#F0FDF4] !border-[#BBF7D0] !text-[#15803D]"
+                : ""
+            }
+          />
+
+          {/* Timeframe Dropdown */}
+          <CustomDropdown
+            value={timeFilter ?? ""}
+            onChange={(val) => onTimeFilterChange(val === "" ? null : (val as TimeFilterType))}
+            options={[
+              { value: "", label: "Any Time" },
+              { value: "today", label: "Today" },
+              { value: "yesterday", label: "Yesterday" },
+              { value: "week", label: "This Week" },
+              { value: "month", label: "This Month" },
+            ]}
+            placeholder="Any Time"
+            size="sm"
+            className="flex-1 min-w-0"
+            triggerClassName={
+              timeFilter
+                ? "!bg-[#F0FDF4] !border-[#BBF7D0] !text-[#15803D]"
+                : ""
+            }
+          />
+
+          {onNewConversation && (
+            <button
+              type="button"
+              onClick={onNewConversation}
+              className="w-8 h-8 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-95 text-[#16281D] flex items-center justify-center transition-all cursor-pointer border-0 shadow-[0_2px_8px_rgba(159,232,112,0.35)] shrink-0"
+              title="Start new customer conversation"
+              aria-label="Start new customer conversation"
             >
-              <option value="">Stage...</option>
-              <optgroup label="Lead Stage">
-                <option value="New Lead">New Lead</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Not Responding">Not Responding</option>
-                <option value="Follow-up Needed">Follow-up Needed</option>
-              </optgroup>
-              <optgroup label="Interest Stage">
-                <option value="Interested">Interested</option>
-                <option value="Quotation Sent">Quotation Sent</option>
-                <option value="Asked for More Info">Asked for More Info</option>
-              </optgroup>
-              <optgroup label="Conversion Stage">
-                <option value="Payment Pending">Payment Pending</option>
-                <option value="Paid">Paid</option>
-                <option value="Order Confirmed">Order Confirmed</option>
-              </optgroup>
-            </select>
-            <ChevronDown
-              size={12}
-              style={{
-                position: "absolute",
-                right: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#a1a1aa",
-                pointerEvents: "none",
-              }}
-            />
-          </div>
-          <div style={{ position: "relative", flex: 1 }}>
-            <select
-              value={timeFilter ?? ""}
-              onChange={(e) =>
-                onTimeFilterChange(e.target.value === "" ? null : (e.target.value as TimeFilterType))
-              }
-              style={{
-                width: "100%",
-                padding: "7px 24px 7px 10px",
-                ...DM,
-                fontSize: 12,
-                color: timeFilter ? "#0c1a0e" : "#a1a1aa",
-                background: timeFilter ? "rgba(34,197,94,0.06)" : "#f9f9f9",
-                border: timeFilter ? "1px solid rgba(34,197,94,0.35)" : "1px solid #ebebeb",
-                borderRadius: 9,
-                outline: "none",
-                appearance: "none",
-                cursor: "pointer",
-                transition: "border-color 0.15s",
-              }}
-            >
-              <option value="">Time...</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-            </select>
-            <ChevronDown
-              size={12}
-              style={{
-                position: "absolute",
-                right: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#a1a1aa",
-                pointerEvents: "none",
-              }}
-            />
-          </div>
+              <Plus size={16} strokeWidth={2.6} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* List */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      {/* 4. Scrollable Conversations Stream */}
+      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1 custom-scrollbar contain-scroll">
         {loading ? (
           <SkeletonConversationList count={6} />
         ) : conversations.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              padding: 24,
-            }}
-          >
-            <div style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  background: "#f4f4f5",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 12px",
-                }}
-              >
-                <MessageSquare size={22} style={{ color: "#d4d4d8" }} />
+          <div className="flex items-center justify-center h-full p-6 text-center">
+            <div>
+              <div className="w-12 h-12 rounded-full bg-[#F4F7F4] flex items-center justify-center mx-auto mb-3 text-[#A1A1AA]">
+                <MessageSquare size={20} />
               </div>
-              <div
-                style={{
-                  ...SYNE,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#0c1a0e",
-                  marginBottom: 4,
-                }}
-              >
+              <div className="text-sm font-bold text-[#16281D] mb-1">
                 No conversations yet
               </div>
-              <div style={{ ...DM, fontSize: 12, color: "#a1a1aa" }}>
-                Start a conversation with your customers
+              <div className="text-xs text-[#71717A]">
+                Customer inquiries will stream here automatically
               </div>
+            </div>
+          </div>
+        ) : filteredConversations.length === 0 ? (
+          <div className="p-8 text-center">
+            <div className="text-xs font-bold text-[#16281D] mb-1">
+              No matching conversations
+            </div>
+            <div className="text-[11px] text-[#71717A]">
+              Try adjusting your search query or stage filters
             </div>
           </div>
         ) : (
           filteredConversations.map((conversation, index) => {
             const stageInfo = getCurrentStageInfo(conversation);
             const isSelected = selectedConversationId === conversation.id;
+
             return (
               <div
                 key={`${conversation.id}-${index}`}
                 ref={isSelected ? selectedConversationRef : null}
                 onClick={() => onSelectConversation(conversation)}
-                style={{
-                  padding: "11px 16px 11px 13px",
-                  borderBottom: "1px solid #f9f9f9",
-                  cursor: "pointer",
-                  background: isSelected
-                    ? "rgba(34,197,94,0.08)"
-                    : "transparent",
-                  borderLeft: "3px solid",
-                  borderLeftColor: isSelected
-                    ? "#22c55e"
-                    : "transparent",
-                  transition: "background 0.2s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected)
-                    (e.currentTarget as HTMLDivElement).style.background =
-                      "rgba(34,197,94,0.04)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected)
-                    (e.currentTarget as HTMLDivElement).style.background =
-                      "transparent";
-                }}
+                className={`p-3 rounded-2xl transition-colors duration-150 cursor-pointer flex items-start gap-3 border ${
+                  isSelected
+                    ? "bg-[#F0FDF4] border-[#BBF7D0] shadow-xs"
+                    : "bg-transparent border-transparent hover:bg-[#F4F7F4]/80"
+                }`}
               >
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      flexShrink: 0,
-                      background:
-                        "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow: "0 2px 6px rgba(34,197,94,0.2)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        ...SYNE,
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "#fff",
-                      }}
-                    >
-                      {conversation.customerName.charAt(0).toUpperCase()}
+                {/* Customer Initials Avatar */}
+                <div
+                  className={`w-10 h-10 rounded-full font-bold text-xs flex items-center justify-center shrink-0 transition-colors duration-150 ${
+                    isSelected
+                      ? "bg-[#16281D] text-[#9FE870] border border-[#9FE870]/40 shadow-xs"
+                      : "bg-[#16281D] text-[#9FE870] border border-black/5"
+                  }`}
+                >
+                  {conversation.customerName ? conversation.customerName.charAt(0).toUpperCase() : "C"}
+                </div>
+
+                {/* Conversation Details */}
+                <div className="flex-1 min-w-0">
+                  {/* Top line: Name, Stage badge & Unread counter */}
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <span className="text-xs sm:text-[13px] font-bold text-[#16281D] truncate leading-tight">
+                      {conversation.customerName}
+                    </span>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {stageInfo.stage && (
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full truncate max-w-[80px] ${stageInfo.badgeClass}`}
+                        >
+                          {stageInfo.stage}
+                        </span>
+                      )}
+                      {conversation.unreadCount > 0 && (
+                        <span className="min-w-[17px] h-[17px] px-1 rounded-full bg-[#9FE870] text-[#16281D] text-[9px] font-extrabold flex items-center justify-center shadow-2xs font-mono">
+                          {conversation.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Middle line: Message preview & Relative timestamp */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-[#71717A] truncate flex-1 leading-tight">
+                      {conversation.lastMessage ? conversation.lastMessage.replace(/\*/g, "") : "No messages"}
+                    </span>
+                    <span className="text-[10px] text-[#A1A1AA] font-mono shrink-0">
+                      {formatLastMessageTime(conversation.lastMessageTime)}
                     </span>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 3,
-                      }}
-                    >
-                      <span
-                        style={{
-                          ...SYNE,
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: "#0c1a0e",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          flex: 1,
-                          marginRight: 6,
-                        }}
-                      >
-                        {conversation.customerName}
-                      </span>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {stageInfo.stage && (
-                          <span
-                            style={{
-                              ...DM,
-                              fontSize: 10,
-                              fontWeight: 600,
-                              padding: "2px 6px",
-                              borderRadius: 9999,
-                              maxWidth: 72,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              ...stageInfo.style,
-                            }}
-                          >
-                            {stageInfo.stage}
-                          </span>
-                        )}
-                        {conversation.unreadCount > 0 && (
-                          <span
-                            style={{
-                              background: "#22c55e",
-                              color: "#fff",
-                              ...DM,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              minWidth: 18,
-                              height: 18,
-                              borderRadius: 9999,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              padding: "0 5px",
-                            }}
-                          >
-                            {conversation.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span
-                        style={{
-                          ...DM,
-                          fontSize: 12,
-                          color: "#71717a",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          flex: 1,
-                          marginRight: 6,
-                        }}
-                      >
-                        {conversation.lastMessage ? conversation.lastMessage.replace(/\*/g, "") : ""}
-                      </span>
-                      <span
-                        style={{
-                          ...DM,
-                          fontSize: 11,
-                          color: "#a1a1aa",
-                          flexShrink: 0,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {formatLastMessageTime(conversation.lastMessageTime)}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        ...DM,
-                        fontSize: 11,
-                        color: "#d4d4d8",
-                        marginTop: 2,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {conversation.customerPhone}
-                    </div>
+
+                  {/* Bottom line: Customer phone */}
+                  <div className="text-[10px] text-[#A1A1AA] font-mono truncate mt-1">
+                    {conversation.customerPhone}
                   </div>
                 </div>
               </div>

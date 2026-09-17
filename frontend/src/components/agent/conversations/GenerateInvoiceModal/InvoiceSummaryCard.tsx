@@ -1,5 +1,4 @@
 import React from "react";
-import { SYNE, DM } from "./constants";
 
 interface InvoiceSummaryCardProps {
   subtotal: number;
@@ -19,53 +18,32 @@ export const InvoiceSummaryCard: React.FC<InvoiceSummaryCardProps> = ({
   balanceDue,
 }) => {
   return (
-    <div
-      style={{
-        background: "#f9f9fb",
-        border: "1px solid #ededf2",
-        borderRadius: 14,
-        padding: "14px 18px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", ...DM, fontSize: 12, color: "#71717a" }}>
+    <div className="bg-[#F4F7F4] border border-[#EAEAEA] rounded-2xl p-4 space-y-2 font-sans">
+      <div className="flex justify-between text-xs text-[#71717A]">
         <span>Subtotal:</span>
-        <span style={{ fontWeight: 600, color: "#3f3f46" }}>LKR {subtotal.toFixed(2)}</span>
+        <span className="font-mono font-semibold text-[#16281D]">LKR {subtotal.toFixed(2)}</span>
       </div>
       {discountPercentage > 0 && (
-        <div style={{ display: "flex", justifyContent: "space-between", ...DM, fontSize: 12, color: "#71717a" }}>
+        <div className="flex justify-between text-xs text-[#71717A]">
           <span>Discount ({discountPercentage}%):</span>
-          <span style={{ fontWeight: 600, color: "#f43f5e" }}>- LKR {discountAmount.toFixed(2)}</span>
+          <span className="font-mono font-semibold text-[#E11D48]">- LKR {discountAmount.toFixed(2)}</span>
         </div>
       )}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          ...SYNE,
-          fontSize: 14,
-          fontWeight: 700,
-          color: "#0c1a0e",
-          paddingTop: 4,
-          borderTop: "1px dashed #e4e4e7",
-        }}
-      >
+      <div className="flex justify-between items-center text-sm font-bold text-[#16281D] pt-2 border-t border-dashed border-[#EAEAEA]">
         <span>Total Amount:</span>
-        <span style={{ color: "#059669" }}>LKR {total.toFixed(2)}</span>
+        <span className="font-mono text-base text-[#15803D]">LKR {total.toFixed(2)}</span>
       </div>
       {advanceAmount > 0 && (
-        <>
-          <div style={{ display: "flex", justifyContent: "space-between", ...DM, fontSize: 12, color: "#059669" }}>
+        <div className="pt-1 border-t border-[#EAEAEA]/60 space-y-1.5">
+          <div className="flex justify-between text-xs text-[#15803D] font-medium">
             <span>Advance Due / Required:</span>
-            <span style={{ fontWeight: 600 }}>LKR {Number(advanceAmount).toFixed(2)}</span>
+            <span className="font-mono font-bold">LKR {Number(advanceAmount).toFixed(2)}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", ...DM, fontSize: 12, color: "#71717a" }}>
+          <div className="flex justify-between text-xs text-[#71717A]">
             <span>Balance Due on Delivery:</span>
-            <span style={{ fontWeight: 600 }}>LKR {balanceDue.toFixed(2)}</span>
+            <span className="font-mono font-semibold text-[#16281D]">LKR {balanceDue.toFixed(2)}</span>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

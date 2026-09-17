@@ -5,19 +5,16 @@ interface CustomerAnalyticsProps {
   totalCustomers: number;
 }
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
 const CustomerAnalytics: React.FC<CustomerAnalyticsProps> = ({ totalCustomers }) => {
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '20px 22px', display: 'inline-flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 11, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Users size={18} style={{ color: '#22c55e' }} />
+    <div className="mb-6">
+      <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] p-5 inline-flex items-center gap-4 transition-all duration-200 hover:shadow-md hover:border-[#16281D]/20">
+        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(159,232,112,0.3)' }} className="flex items-center justify-center shrink-0">
+          <Users size={20} style={{ color: '#16281D' }} />
         </div>
         <div>
-          <div style={{ ...DM, fontSize: 12, fontWeight: 500, color: '#71717a', marginBottom: 2 }}>Total Customers</div>
-          <div style={{ ...SYNE, fontSize: 26, fontWeight: 800, color: '#0c1a0e', lineHeight: 1 }}>{totalCustomers}</div>
+          <div className="font-sans text-xs font-semibold text-[#71717A] mb-1">Total Customers</div>
+          <div className="font-mono text-2xl font-bold text-[#16281D] leading-none">{totalCustomers}</div>
         </div>
       </div>
     </div>

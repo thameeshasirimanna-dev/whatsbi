@@ -1,7 +1,6 @@
 import React from "react";
-import { Calendar, X, ChevronDown } from "lucide-react";
-
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+import { Calendar, X } from "lucide-react";
+import { DatePicker } from "./DatePicker";
 
 export interface TimeRange {
   preset: "today" | "yesterday" | "week" | "month" | "last_month" | "last_3_months" | "custom" | null;
@@ -76,27 +75,18 @@ const PRESETS = [
   { value: "custom", label: "Custom Range" },
 ];
 
-const base: React.CSSProperties = {
-  ...DM,
-  fontSize: 13,
-  color: "#3f3f46",
-  background: "#f9f9f9",
-  border: "1px solid #ebebeb",
-  borderRadius: 9,
-  outline: "none",
-  transition: "border-color 0.15s, box-shadow 0.15s",
-};
-
-const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = "#22c55e";
-  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)";
-};
+import CustomDropdown, { DropdownOption } from "./CustomDropdown";
 
 const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ value, onChange, placeholder }) => {
   const isActive = value.preset !== null;
 
-  const handlePreset = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const preset = e.target.value as TimeRange["preset"];
+  const dropdownOptions: DropdownOption<string>[] = [
+    { value: "", label: placeholder || "Date Range..." },
+    ...PRESETS.map((p) => ({ value: p.value, label: p.label })),
+  ];
+
+  const handlePresetSelect = (presetVal: string) => {
+    const preset = (presetVal === "" ? null : presetVal) as TimeRange["preset"];
     if (!preset) {
       onChange(emptyTimeRange);
     } else if (preset === "custom") {
@@ -106,105 +96,57 @@ const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ value, onChange, plac
     }
   };
 
-  const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = isActive ? "rgba(34,197,94,0.35)" : "#ebebeb";
-    e.currentTarget.style.boxShadow = "none";
-  };
-
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <div style={{ position: "relative" }}>
-        <Calendar
-          size={13}
-          style={{
-            position: "absolute",
-            left: 9,
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: isActive ? "#059669" : "#a1a1aa",
-            pointerEvents: "none",
-          }}
-        />
-        <select
-          value={value.preset ?? ""}
-          onChange={handlePreset}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          style={{
-            ...base,
-            padding: "9px 30px 9px 28px",
-            appearance: "none",
-            cursor: "pointer",
-            minWidth: 148,
-            background: isActive ? "rgba(34,197,94,0.06)" : "#f9f9f9",
-            border: isActive ? "1px solid rgba(34,197,94,0.35)" : "1px solid #ebebeb",
-            color: isActive ? "#0c1a0e" : "#a1a1aa",
-          }}
-        >
-          <option value="">{placeholder || "Date Range..."}</option>
-          {PRESETS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          size={11}
-          style={{
-            position: "absolute",
-            right: 8,
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "#a1a1aa",
-            pointerEvents: "none",
-          }}
-        />
-      </div>
+    <div className="flex items-center gap-2 flex-wrap">
+      <CustomDropdown
+        value={value.preset ?? ""}
+        onChange={handlePresetSelect}
+        options={dropdownOptions}
+        placeholder={placeholder || "Date Range..."}
+        icon={
+          <Calendar
+            size={13}
+            className={`transition-colors ${isActive ? "text-[#15803D]" : "text-[#71717A]"}`}
+          />
+        }
+        variant="mint"
+        triggerClassName={
+          isActive
+            ? "!bg-[#22C55E]/10 !border-[#22C55E]/30 !text-[#16281D] !font-bold"
+            : ""
+        }
+        minWidth={150}
+      />
 
       {value.preset === "custom" && (
-        <>
-          <input
-            type="date"
-            value={value.from ?? ""}
-            onChange={(e) => onChange({ ...value, from: e.target.value || null })}
-            onFocus={onFocus}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#ebebeb"; e.currentTarget.style.boxShadow = "none"; }}
-            style={{ ...base, padding: "9px 10px", minWidth: 136, cursor: "pointer" }}
+        <div className="flex items-center gap-1.5">
+          <DatePicker
+            value={value.from ?? null}
+            onChange={(d) => onChange({ ...value, from: d || null })}
+            placeholder="From..."
+            size="sm"
+            variant="mint"
+            maxDate={value.to ?? undefined}
           />
-          <span style={{ ...DM, fontSize: 12, color: "#a1a1aa", flexShrink: 0 }}>to</span>
-          <input
-            type="date"
-            value={value.to ?? ""}
-            min={value.from ?? undefined}
-            onChange={(e) => onChange({ ...value, to: e.target.value || null })}
-            onFocus={onFocus}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#ebebeb"; e.currentTarget.style.boxShadow = "none"; }}
-            style={{ ...base, padding: "9px 10px", minWidth: 136, cursor: "pointer" }}
+          <span className="text-xs text-[#71717A]">to</span>
+          <DatePicker
+            value={value.to ?? null}
+            onChange={(d) => onChange({ ...value, to: d || null })}
+            placeholder="To..."
+            size="sm"
+            variant="mint"
+            minDate={value.from ?? undefined}
           />
-        </>
+        </div>
       )}
 
       {isActive && (
         <button
           onClick={() => onChange(emptyTimeRange)}
           title="Clear date filter"
-          style={{
-            width: 32,
-            height: 32,
-            border: "none",
-            background: "rgba(244,63,94,0.08)",
-            borderRadius: 8,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(244,63,94,0.14)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(244,63,94,0.08)")}
+          className="w-7 h-7 rounded-full bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] flex items-center justify-center transition-colors"
         >
-          <X size={12} style={{ color: "#f43f5e" }} />
+          <X size={12} />
         </button>
       )}
     </div>

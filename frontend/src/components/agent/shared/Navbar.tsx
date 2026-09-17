@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Menu, Coins, Sparkles } from 'lucide-react';
-
-interface Notification {
-  id: number;
-  customerName: string;
-  customerPhone: string;
-  customerId: number;
-  preview: string;
-  timestamp: string;
-}
+import {
+  Menu,
+  Coins,
+  Sparkles,
+  ChevronRight,
+  Search,
+} from 'lucide-react';
+import HeaderCommandPalette from './HeaderCommandPalette';
+import HeaderNotificationPopover, { NotificationItem } from './HeaderNotificationPopover';
+import HeaderProfilePopover from './HeaderProfilePopover';
 
 interface NavbarProps {
   agent: {
@@ -20,43 +20,33 @@ interface NavbarProps {
     ai_balance?: number;
   } & {
     unreadCount: number;
-    recentNotifications: Notification[];
-    onNotificationClick: (notification: Notification) => void;
+    recentNotifications: NotificationItem[];
+    onNotificationClick: (notification: NotificationItem) => void;
   };
   onMenuClick: () => void;
   collapsed?: boolean;
+  onLogout?: () => void;
 }
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
-const formatNotificationTime = (timeStr: string) => {
-  if (!timeStr) return "";
-  const date = new Date(timeStr);
-  if (isNaN(date.getTime())) return timeStr;
-
-  const now = new Date();
-  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const targetMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  if (targetMidnight.getTime() === todayMidnight.getTime()) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } else {
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
-};
-
-const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
+const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const toggleNotifications = () => setIsNotificationOpen(v => !v);
-  const closeNotifications = () => setIsNotificationOpen(false);
-
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-  };
+  // Global keyboard shortcut for Command Palette (⌘K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -78,28 +68,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
     return 'Dashboard';
   };
 
-  const getPageSubtitle = () => {
-    const path = location.pathname;
-    const segments = path.split('/').filter(Boolean);
-    if (segments.length < 2) return 'Overview of your business';
-    const s = segments[1];
-    if (s === 'dashboard') return 'Overview of your business';
-    if (s === 'conversations') return 'Manage your conversations';
-    if (s === 'customers') return 'Manage your customer base and insights';
-    if (s === 'orders') return segments.length > 2 ? 'Order details' : 'Manage your orders';
-    if (s === 'appointments') return 'Schedule and manage appointments';
-    if (s === 'services') return 'Manage your services';
-    if (s === 'inventory') return 'Manage your inventory';
-    if (s === 'invoices') return 'Create and send invoices';
-    if (s === 'templates') return 'Manage message templates';
-    if (s === 'broadcasts') return 'Reach out to your customer segments via WhatsApp broadcasts';
-    if (s === 'analytics') return 'View your analytics';
-    if (s === 'settings') return 'Configure your settings';
-    return 'Overview of your business';
-  };
-
   const pageTitle = getPageTitle();
-  const pageSubtitle = getPageSubtitle();
 
   const aiBalance =
     typeof agent.ai_balance === 'number'
@@ -112,289 +81,143 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
       : parseFloat(String(agent.credits ?? '0.00')) || 0;
 
   return (
-    <nav
-      className="px-4 md:px-6 layout-header"
-      style={{
-        background: '#fff',
-        borderBottom: '1px solid #ebebeb',
-        height: 60,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexShrink: 0,
-        zIndex: 30,
-        position: 'relative',
-        transition: 'filter 0.25s cubic-bezier(0.25, 1, 0.5, 1)',
-      }}
-    >
-      {/* Left */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          onClick={onMenuClick}
-          className="md:hidden flex items-center"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 6,
-            color: '#71717a',
-            borderRadius: 8,
-          }}
-        >
-          <Menu size={20} />
-        </button>
-
-        <div>
-          <div style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', lineHeight: 1.2 }}>
-            {pageTitle}
-          </div>
-          <div className="hidden md:block" style={{ ...DM, fontSize: 12, color: '#71717a', lineHeight: 1.2, marginTop: 1 }}>
-            {pageSubtitle}
-          </div>
-        </div>
-      </div>
-
-      {/* Right */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {/* AI Balance */}
-        <div
-          className="px-2.5 py-1 md:px-3 md:py-1.5"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            borderRadius: 9999,
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-          }}
-          title="AI Balance (USD)"
-        >
-          <Sparkles size={13} style={{ color: '#16a34a' }} />
-          <span style={{ ...DM, fontSize: 13, fontWeight: 700, color: '#15803d' }}>
-            ${aiBalance.toFixed(2)}
-          </span>
-          <span
-            className="hidden sm:inline"
-            style={{
-              ...DM,
-              fontSize: 10,
-              fontWeight: 700,
-              color: '#166534',
-              letterSpacing: '0.04em',
-            }}
-          >
-            AI
-          </span>
-        </div>
-
-        {/* WhatsApp Template Credits */}
-        <div
-          className="px-2.5 py-1 md:px-3 md:py-1.5"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            borderRadius: 9999,
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-          }}
-          title="WhatsApp Template Message Credits"
-        >
-          <Coins size={13} style={{ color: '#0f766e' }} />
-          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0f766e' }}>
-            {templateCredits.toFixed(2)}
-          </span>
-          <span
-            className="hidden sm:inline"
-            style={{
-              ...DM,
-              fontSize: 10,
-              fontWeight: 600,
-              color: '#64748b',
-            }}
-          >
-            Templates
-          </span>
-        </div>
-
-        {/* Bell */}
-        <div style={{ position: 'relative' }}>
+    <>
+      <header className="sticky top-0 z-30 h-16 bg-white border-b border-[#EAEAEA] shadow-[0_1px_4px_rgba(20,40,24,0.03)] px-2.5 sm:px-3.5 md:px-4 lg:px-5 flex items-center justify-between shrink-0 layout-header select-none">
+        {/* Left: Mobile hamburger toggle & Micro Breadcrumbs */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <button
-            onClick={toggleNotifications}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 8,
-              color: '#71717a',
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: 8,
-              position: 'relative',
-              transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.05)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            type="button"
+            onClick={onMenuClick}
+            className="md:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] flex items-center justify-center transition-all border-0 cursor-pointer shrink-0"
+            aria-label="Open navigation menu"
           >
-            <Bell size={18} />
-            {agent.unreadCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                minWidth: 16,
-                height: 16,
-                background: '#22c55e',
-                color: '#fff',
-                fontSize: 9,
-                fontWeight: 700,
-                borderRadius: 9999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 3px',
-                border: '1.5px solid #fff',
-              }}>
-                {agent.unreadCount > 99 ? '99+' : agent.unreadCount}
-              </span>
-            )}
+            <Menu size={17} strokeWidth={2.4} />
           </button>
 
-          {isNotificationOpen && (
-            <>
-              <div
-                className="animate-dropdown"
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 'calc(100% + 8px)',
-                  width: 320,
-                  background: '#fff',
-                  borderRadius: 12,
-                  border: '1px solid #ebebeb',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                  zIndex: 50,
-                  maxHeight: 380,
-                  overflowY: 'auto',
-                  transformOrigin: 'top right',
-                }}
-              >
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid #ebebeb' }}>
-                  <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>Notifications</div>
-                  <div style={{ ...DM, fontSize: 12, color: '#71717a', marginTop: 2 }}>
-                    {agent.unreadCount} unread
-                  </div>
-                </div>
-
-                {agent.recentNotifications.length > 0 ? (
-                  agent.recentNotifications.map(notification => (
-                    <button
-                      key={notification.id}
-                      onClick={() => { agent.onNotificationClick(notification); closeNotifications(); }}
-                      style={{
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: '12px 16px',
-                        background: 'none',
-                        border: 'none',
-                        borderBottom: '1px solid #f4f4f5',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 10,
-                        transition: 'background 0.12s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                    >
-                      <div style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: '50%',
-                        background: '#f0fdf4',
-                        border: '1.5px solid #bbf7d0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <span style={{ ...SYNE, fontSize: 11, fontWeight: 700, color: '#059669' }}>
-                          {notification.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-                        </span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {notification.customerName}
-                        </div>
-                        <div style={{ ...DM, fontSize: 12, color: '#71717a', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {notification.preview}
-                        </div>
-                        <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 2 }}>
-                          {formatNotificationTime(notification.timestamp)}
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div style={{ padding: '28px 16px', textAlign: 'center' }}>
-                    <Bell size={24} style={{ color: '#d4d4d8', margin: '0 auto 8px', display: 'block' }} />
-                    <div style={{ ...DM, fontSize: 13, color: '#a1a1aa' }}>No new notifications</div>
-                  </div>
-                )}
-
-                <div style={{ padding: '10px 16px', borderTop: '1px solid #ebebeb' }}>
-                  <button
-                    onClick={() => { navigate('/agent/conversations'); closeNotifications(); }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      ...DM,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: '#059669',
-                      padding: 0,
-                    }}
-                  >
-                    View all conversations →
-                  </button>
-                </div>
+          <div className="min-w-0 flex flex-col justify-center">
+            {/* Breadcrumb line with Live Routing Pill */}
+            <div className="hidden sm:flex items-center gap-2 text-[10px] sm:text-[11px] font-semibold text-[#8FA89B] leading-none mb-1">
+              <span>Workspace</span>
+              <ChevronRight size={10} className="text-[#A1A1AA]" />
+              <span className="text-[#059669] font-bold truncate max-w-[120px] sm:max-w-none">
+                {pageTitle}
+              </span>
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] text-[9px] font-bold text-[#15803D] ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+                <span>Live</span>
               </div>
-              <div className="fixed inset-0 z-40" onClick={closeNotifications} />
-            </>
-          )}
+            </div>
+
+            {/* Main Header Heading */}
+            <h1 className="text-sm sm:text-[15px] md:text-base font-extrabold text-[#16281D] tracking-tight leading-none truncate m-0 font-sans">
+              {pageTitle}
+            </h1>
+          </div>
         </div>
 
-        {/* Avatar + name */}
-        <div className="flex items-center" style={{ gap: 10 }}>
-          <div className="hidden md:block" style={{ textAlign: 'right' }}>
-            <div style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#0c1a0e', lineHeight: 1.2 }}>
-              {agent.name}
+        {/* Center: Quick Search Trigger Pill (Large Viewports: lg+) */}
+        <div className="hidden lg:flex items-center justify-center flex-1 max-w-sm mx-4 xl:mx-6">
+          <button
+            type="button"
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] border border-[#EAEAEA] hover:border-[#D4D4D8] text-[#71717A] hover:text-[#16281D] transition-all cursor-pointer text-xs group"
+            title="Search workspace, customer chats, actions (⌘K / Ctrl+K)"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Search size={13} className="text-[#8FA89B] group-hover:text-[#16281D] transition-colors shrink-0" strokeWidth={2.2} />
+              <span className="text-[12px] font-medium truncate">Search workspace, chats, actions...</span>
             </div>
-            <div style={{ ...DM, fontSize: 11, color: '#71717a', lineHeight: 1.2 }}>
-              {agent.email}
-            </div>
-          </div>
-          <div style={{
-            width: 34,
-            height: 34,
-            borderRadius: '50%',
-            background: '#f0fdf4',
-            border: '1.5px solid #bbf7d0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <span style={{ ...SYNE, fontSize: 12, fontWeight: 700, color: '#059669' }}>
-              {getInitials(agent.name)}
+            <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#EAEAEA] text-[10px] font-mono text-[#71717A] shadow-2xs shrink-0">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
+
+        {/* Right: Search trigger (mobile), Balances, Notifications & Agent Profile */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Mobile & Tablet Compact Search Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#52525B] hover:text-[#16281D] flex items-center justify-center transition-all border-0 cursor-pointer"
+            aria-label="Open quick search"
+            title="Quick search (⌘K)"
+          >
+            <Search size={15} strokeWidth={2.2} />
+          </button>
+
+          {/* Interactive AI Query Liquidity Pill */}
+          <button
+            type="button"
+            onClick={() => navigate('/agent/settings')}
+            className="px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-[#F0FDF4] hover:bg-[#DCFCE7] active:scale-95 border border-[#BBF7D0] hover:border-[#86EFAC] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all group"
+            title="AI Assistant Liquidity — Click to manage in Settings"
+          >
+            <Sparkles size={13} className="text-[#15803D] shrink-0 group-hover:scale-110 transition-transform" strokeWidth={2.4} />
+            <span className="text-xs sm:text-[13px] font-bold text-[#15803D] font-mono tracking-tight leading-none">
+              ${aiBalance.toFixed(2)}
             </span>
-          </div>
+            <span className="hidden sm:inline text-[9px] font-bold text-[#166534] tracking-wider uppercase">
+              AI
+            </span>
+          </button>
+
+          {/* Interactive WhatsApp Template Credits Pill */}
+          <button
+            type="button"
+            onClick={() => navigate('/agent/templates')}
+            className="px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 border border-[#EAEAEA] hover:border-[#D4D4D8] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all group"
+            title="WhatsApp Template Credits — Click to view Templates"
+          >
+            <Coins size={13} className="text-[#16281D] shrink-0 group-hover:scale-110 transition-transform" strokeWidth={2.2} />
+            <span className="text-xs sm:text-[13px] font-bold text-[#16281D] font-mono tracking-tight leading-none">
+              {templateCredits.toFixed(2)}
+            </span>
+            <span className="hidden sm:inline text-[9px] font-bold text-[#71717A] tracking-wider uppercase">
+              Credits
+            </span>
+          </button>
+
+          {/* Notification Bell Dropdown Component */}
+          <HeaderNotificationPopover
+            unreadCount={agent.unreadCount}
+            recentNotifications={agent.recentNotifications}
+            onNotificationClick={agent.onNotificationClick}
+            isOpen={isNotificationOpen}
+            onToggle={() => {
+              setIsNotificationOpen(prev => !prev);
+              setIsProfileOpen(false);
+            }}
+            onClose={() => setIsNotificationOpen(false)}
+          />
+
+          {/* Separator Divider */}
+          <div className="w-px h-6 bg-[#EAEAEA] mx-0.5 hidden sm:block" />
+
+          {/* Agent Profile Dropdown Component */}
+          <HeaderProfilePopover
+            agent={{
+              name: agent.name,
+              email: agent.email,
+              agent_prefix: agent.agent_prefix,
+            }}
+            isOpen={isProfileOpen}
+            onToggle={() => {
+              setIsProfileOpen(prev => !prev);
+              setIsNotificationOpen(false);
+            }}
+            onClose={() => setIsProfileOpen(false)}
+            onLogout={onLogout}
+          />
         </div>
+      </header>
 
-
-      </div>
-    </nav>
+      {/* Global Command Palette Modal */}
+      <HeaderCommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+      />
+    </>
   );
 };
 

@@ -1,7 +1,6 @@
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { LineItem } from "./types";
-import { DM, inputStyle, onFocusGreen, onBlurGreen } from "./constants";
 
 interface LineItemsEditorProps {
   items: LineItem[];
@@ -18,58 +17,34 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
 }) => {
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46" }}>
+      <div className="flex items-center justify-between mb-2">
+        <label className="font-sans text-xs font-bold text-[#16281D]">
           Line Items
         </label>
         <button
           type="button"
           onClick={onAddItem}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "4px 10px",
-            background: "rgba(34,197,94,0.08)",
-            color: "#059669",
-            border: "1px solid rgba(34,197,94,0.2)",
-            borderRadius: 7,
-            cursor: "pointer",
-            ...DM,
-            fontSize: 12,
-            fontWeight: 600,
-          }}
+          className="h-7 px-3 rounded-full bg-[#F0FDF4] hover:bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0] font-sans text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
         >
-          <Plus size={12} />
+          <Plus size={12} strokeWidth={2.4} />
           <span>Add Item</span>
         </button>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="space-y-2">
         {items.map((it, idx) => {
           const lineTotal = (Number(it.quantity) || 0) * (Number(it.price) || 0);
           return (
             <div
               key={idx}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 80px 110px 90px 32px",
-                gap: 8,
-                alignItems: "center",
-                background: "#fafafa",
-                padding: "8px 10px",
-                borderRadius: 10,
-                border: "1px solid #ededed",
-              }}
+              className="grid grid-cols-[1fr_75px_110px_90px_32px] gap-2 items-center bg-white p-2.5 rounded-xl border border-[#EAEAEA]"
             >
               <input
                 type="text"
                 placeholder="Item name or service..."
                 value={it.name}
                 onChange={(e) => onItemChange(idx, "name", e.target.value)}
-                style={{ ...inputStyle, background: "#fff", fontSize: 12 }}
-                onFocus={onFocusGreen}
-                onBlur={onBlurGreen}
+                className="w-full px-2.5 py-1.5 text-xs font-sans text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-lg focus:border-[#16281D] focus:ring-1 focus:ring-[#9FE870]/30 outline-none transition-all placeholder:text-[#A1A1AA]"
               />
               <input
                 type="number"
@@ -79,9 +54,7 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
                 onChange={(e) =>
                   onItemChange(idx, "quantity", Math.max(1, parseInt(e.target.value) || 1))
                 }
-                style={{ ...inputStyle, background: "#fff", fontSize: 12 }}
-                onFocus={onFocusGreen}
-                onBlur={onBlurGreen}
+                className="w-full px-2.5 py-1.5 text-xs font-mono text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-lg focus:border-[#16281D] focus:ring-1 focus:ring-[#9FE870]/30 outline-none transition-all"
               />
               <input
                 type="number"
@@ -90,31 +63,19 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
                 placeholder="Price"
                 value={it.price}
                 onChange={(e) => onItemChange(idx, "price", parseFloat(e.target.value) || 0)}
-                style={{ ...inputStyle, background: "#fff", fontSize: 12 }}
-                onFocus={onFocusGreen}
-                onBlur={onBlurGreen}
+                className="w-full px-2.5 py-1.5 text-xs font-mono text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-lg focus:border-[#16281D] focus:ring-1 focus:ring-[#9FE870]/30 outline-none transition-all"
               />
-              <div style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#0c1a0e", textAlign: "right" }}>
+              <div className="font-mono text-xs font-bold text-[#16281D] text-right truncate">
                 LKR {lineTotal.toFixed(2)}
               </div>
               <button
                 type="button"
                 onClick={() => onRemoveItem(idx)}
                 disabled={items.length <= 1}
-                style={{
-                  width: 28,
-                  height: 28,
-                  background: items.length <= 1 ? "transparent" : "rgba(244,63,94,0.08)",
-                  border: "none",
-                  borderRadius: 6,
-                  color: items.length <= 1 ? "#d4d4d8" : "#f43f5e",
-                  cursor: items.length <= 1 ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                className="w-7 h-7 rounded-full bg-[#FFF1F2] hover:bg-[#FFE4E6] text-[#E11D48] border border-[#FECDD3] flex items-center justify-center transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                title="Remove item"
               >
-                <Trash2 size={13} />
+                <Trash2 size={13} strokeWidth={2.2} />
               </button>
             </div>
           );

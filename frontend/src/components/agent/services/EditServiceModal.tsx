@@ -1,47 +1,43 @@
 import React, { useState } from "react";
 import type { Package, ServiceWithPackages, Agent } from "../../../types";
-import { X, Plus, Trash2, Pencil } from "lucide-react";
+import { X, Plus, Trash2, Pencil, Image as ImageIcon } from "lucide-react";
 import Portal from "../shared/Portal";
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '9px 12px',
-  fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
-  background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9,
-  outline: 'none', boxSizing: 'border-box',
-  transition: 'border-color 0.15s, box-shadow 0.15s',
-};
-
-const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  e.currentTarget.style.borderColor = '#22c55e';
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
-};
-const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  e.currentTarget.style.borderColor = '#ebebeb';
-  e.currentTarget.style.boxShadow = 'none';
-};
 
 const resizeImage = (file: File, maxWidth: number = 2000, maxHeight: number = 2000): Promise<File> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
-    reader.onload = e => { img.src = e.target?.result as string; };
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
     img.onload = () => {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d")!;
       let { width, height } = img;
-      if (width > height) { if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth; } }
-      else { if (height > maxHeight) { width = Math.round(width * maxHeight / height); height = maxHeight; } }
-      canvas.width = width; canvas.height = height;
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(blob => {
-        if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" }));
-        else reject(new Error("Failed to resize image"));
-      }, "image/jpeg", 0.8);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" }));
+          else reject(new Error("Failed to resize image"));
+        },
+        "image/jpeg",
+        0.8
+      );
     };
     img.onerror = reject;
   });
@@ -56,15 +52,24 @@ interface EditServiceModalProps {
 }
 
 const EditServiceModal: React.FC<EditServiceModalProps> = ({
-  editingService, agent, onClose, onSuccess, setError,
+  editingService,
+  agent,
+  onClose,
+  onSuccess,
+  setError,
 }) => {
   if (!editingService || !agent) return null;
 
-  const [formData, setFormData] = useState({ service_name: editingService.service_name, description: editingService.description || "" });
+  const [formData, setFormData] = useState({
+    service_name: editingService.service_name,
+    description: editingService.description || "",
+  });
   const [currentPackages, setCurrentPackages] = useState([...editingService.packages]);
-  const [originalPackageIds] = useState(new Set(editingService.packages.map(p => p.id)));
+  const [originalPackageIds] = useState(new Set(editingService.packages.map((p) => p.id)));
   const [removedPackageIds, setRemovedPackageIds] = useState(new Set<string>());
-  const [selectedImages, setSelectedImages] = useState<Array<{ fileName: string; fileBase64: string; fileType: string; preview?: string; }>>([]);
+  const [selectedImages, setSelectedImages] = useState<
+    Array<{ fileName: string; fileBase64: string; fileType: string; preview?: string }>
+  >([]);
   const [removedImageUrls, setRemovedImageUrls] = useState<string[]>([]);
   const [serviceLinks, setServiceLinks] = useState<string[]>(editingService.service_links || []);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -92,21 +97,34 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
       if (selectedImages.length > 0) {
         const token = localStorage.getItem("auth_token");
-        if (!token) { setError("Not authenticated"); setSubmitting(false); return; }
+        if (!token) {
+          setError("Not authenticated");
+          setSubmitting(false);
+          return;
+        }
         const uploadResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload-service-images`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ agentId: agent!.id, serviceId: editingService.id, images: selectedImages }),
         });
         const uploadResult = await uploadResponse.json();
-        if (!uploadResponse.ok || !uploadResult.success) { setError(uploadResult.message || "Failed to upload images"); setSubmitting(false); return; }
+        if (!uploadResponse.ok || !uploadResult.success) {
+          setError(uploadResult.message || "Failed to upload images");
+          setSubmitting(false);
+          return;
+        }
         newImageUrls = uploadResult.urls || [];
       }
 
-      const serviceUpdates: { service_name: string; description: string | null; image_urls?: { add?: string[]; remove?: string[]; }; service_links?: string[]; } = {
+      const serviceUpdates: {
+        service_name: string;
+        description: string | null;
+        image_urls?: { add?: string[]; remove?: string[] };
+        service_links?: string[];
+      } = {
         service_name: formData.service_name.trim(),
         description: formData.description || null,
-        service_links: serviceLinks.map(l => l.trim()).filter(Boolean),
+        service_links: serviceLinks.map((l) => l.trim()).filter(Boolean),
       };
       if (newImageUrls.length > 0 || removedImageUrls.length > 0) {
         serviceUpdates.image_urls = {};
@@ -115,7 +133,11 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
       }
 
       const token = localStorage.getItem("auth_token");
-      if (!token) { setError("Not authenticated"); setSubmitting(false); return; }
+      if (!token) {
+        setError("Not authenticated");
+        setSubmitting(false);
+        return;
+      }
 
       const serviceResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-services`, {
         method: "POST",
@@ -125,156 +147,182 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
           type: "service",
           id: editingService.id,
           updates: serviceUpdates,
-          packages: currentPackages.map(p => ({
+          packages: currentPackages.map((p) => ({
             id: p.id,
             package_name: p.package_name.trim(),
             price: p.price,
             currency: p.currency,
             discount: p.discount,
-            description: p.description
+            description: p.description,
           })),
           removed_package_ids: Array.from(removedPackageIds),
         }),
       });
       const serviceResult = await serviceResponse.json();
-      if (!serviceResponse.ok) { setError(serviceResult.message || "Failed to update service"); setSubmitting(false); return; }
+      if (!serviceResponse.ok) {
+        setError(serviceResult.message || "Failed to update service");
+        setSubmitting(false);
+        return;
+      }
 
       onSuccess();
-    } catch { setError("Failed to update service"); }
-    finally { setSubmitting(false); }
+    } catch {
+      setError("Failed to update service");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const addPackage = () => setCurrentPackages([...currentPackages, { id: "", service_id: editingService.id, package_name: "", price: 0, currency: "USD", discount: undefined, description: "", is_active: true, created_at: "", updated_at: "" }]);
+  const addPackage = () =>
+    setCurrentPackages([
+      ...currentPackages,
+      {
+        id: "",
+        service_id: editingService.id,
+        package_name: "",
+        price: 0,
+        currency: "USD",
+        discount: undefined,
+        description: "",
+        is_active: true,
+        created_at: "",
+        updated_at: "",
+      },
+    ]);
 
   const removePackage = (i: number) => {
     const pkg = currentPackages[i];
-    if (pkg.id && originalPackageIds.has(pkg.id as string)) setRemovedPackageIds(prev => new Set([...prev, pkg.id as string]));
+    if (pkg.id && originalPackageIds.has(pkg.id as string)) {
+      setRemovedPackageIds((prev) => new Set([...prev, pkg.id as string]));
+    }
     setCurrentPackages(currentPackages.filter((_, idx) => idx !== i));
   };
 
   const updatePackage = (i: number, field: keyof Package, value: any) => {
-    const p = [...currentPackages]; p[i] = { ...p[i], [field]: value }; setCurrentPackages(p);
+    const p = [...currentPackages];
+    p[i] = { ...p[i], [field]: value };
+    setCurrentPackages(p);
   };
 
-  const updateServiceData = (field: "service_name" | "description", value: string) => setFormData(prev => ({ ...prev, [field]: value }));
+  const updateServiceData = (field: "service_name" | "description", value: string) =>
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <style>{`@keyframes esm-spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 580, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#16281D]/65 animate-modal-backdrop">
+        <div className="w-full max-w-xl bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_20px_50px_rgba(22,40,29,0.15)] overflow-hidden flex flex-col max-h-[90vh] animate-modal-card">
           {/* Header */}
-          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Pencil size={14} style={{ color: '#22c55e' }} />
+          <div className="px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between shrink-0 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#16281D]/5 flex items-center justify-center text-[#16281D]">
+                <Pencil size={18} />
               </div>
               <div>
-                <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>Edit Service</span>
-                <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>{editingService.service_name}</span>
+                <h3 className="font-sans text-base font-bold text-[#16281D]">Edit Service</h3>
+                <span className="text-xs text-[#71717A]">{editingService.service_name}</span>
               </div>
             </div>
-            <button onClick={onClose} style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={14} style={{ color: '#71717a' }} />
+            <button
+              onClick={onClose}
+              disabled={submitting}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X size={16} />
             </button>
           </div>
 
           {/* Form */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <form id="edit-service-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Service Name *</label>
-                <input type="text" value={formData.service_name} onChange={e => updateServiceData("service_name", e.target.value)} required style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-                {errors.service_name && <div style={{ ...DM, fontSize: 11, color: '#f43f5e', marginTop: 4 }}>{errors.service_name}</div>}
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">Service Name *</label>
+                <input
+                  type="text"
+                  value={formData.service_name}
+                  onChange={(e) => updateServiceData("service_name", e.target.value)}
+                  required
+                  className="w-full h-10 px-3.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all"
+                />
+                {errors.service_name && (
+                  <div className="text-[11px] text-[#EF4444] mt-1 font-medium">{errors.service_name}</div>
+                )}
               </div>
 
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Description</label>
-                <textarea value={formData.description} onChange={e => updateServiceData("description", e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocus} onBlur={onBlur} />
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => updateServiceData("description", e.target.value)}
+                  rows={3}
+                  className="w-full p-3 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all resize-none"
+                />
               </div>
 
               {/* Service Links */}
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Service Links <span style={{ color: '#a1a1aa', fontWeight: 400 }}>(optional)</span></label>
-                {serviceLinks.map((link, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input
-                      type="url"
-                      value={link}
-                      onChange={e => {
-                        const newLinks = [...serviceLinks];
-                        newLinks[idx] = e.target.value;
-                        setServiceLinks(newLinks);
-                      }}
-                      placeholder="https://example.com"
-                      style={inputStyle}
-                      onFocus={onFocus}
-                      onBlur={onBlur}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setServiceLinks(serviceLinks.filter((_, i) => i !== idx));
-                      }}
-                      style={{
-                        padding: '8px 12px',
-                        background: 'rgba(244,63,94,0.06)',
-                        border: 'none',
-                        borderRadius: 9,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#f43f5e'
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                  Service Links <span className="text-[#71717A] font-normal">(optional)</span>
+                </label>
+                <div className="space-y-2 mb-2">
+                  {serviceLinks.map((link, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        type="url"
+                        value={link}
+                        onChange={(e) => {
+                          const newLinks = [...serviceLinks];
+                          newLinks[idx] = e.target.value;
+                          setServiceLinks(newLinks);
+                        }}
+                        placeholder="https://example.com"
+                        className="flex-1 h-9 px-3.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setServiceLinks(serviceLinks.filter((_, i) => i !== idx))}
+                        className="w-9 h-9 rounded-xl bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
                 <button
                   type="button"
                   onClick={() => setServiceLinks([...serviceLinks, ""])}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    background: 'rgba(34,197,94,0.08)',
-                    color: '#059669',
-                    border: '1px solid rgba(34,197,94,0.2)',
-                    borderRadius: 9,
-                    padding: '6px 12px',
-                    ...DM,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  className="px-3.5 py-1.5 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#16281D] transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus size={13} /> Add Link
+                  <Plus size={13} />
+                  <span>Add Link</span>
                 </button>
               </div>
 
-              {/* Image management */}
-              <div style={{ background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 12, padding: '14px 16px' }}>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 8 }}>Service Images <span style={{ color: '#a1a1aa', fontWeight: 400 }}>(optional, max 10 total)</span></label>
+              {/* Image Management */}
+              <div>
+                <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
+                  Service Images <span className="text-[#71717A] font-normal">(optional, max 10 total)</span>
+                </label>
 
                 {(() => {
-                  const currentImgs = editingService.image_urls?.filter(url => !removedImageUrls.includes(url)) || [];
+                  const currentImgs =
+                    editingService.image_urls?.filter((url) => !removedImageUrls.includes(url)) || [];
                   return currentImgs.length > 0 ? (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ ...DM, fontSize: 11, color: '#71717a', marginBottom: 6 }}>Current Images:</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <div className="mb-3">
+                      <div className="text-[11px] text-[#71717A] font-medium mb-2">Current Images:</div>
+                      <div className="flex flex-wrap gap-2.5">
                         {currentImgs.map((url, idx) => (
-                          <div key={url} style={{ position: 'relative' }}
-                            onMouseEnter={e => (e.currentTarget.querySelector('button') as HTMLButtonElement).style.opacity = '1'}
-                            onMouseLeave={e => (e.currentTarget.querySelector('button') as HTMLButtonElement).style.opacity = '0'}
-                          >
-                            <img src={url.startsWith('https://') ? url : `https://${url}`} alt={`Image ${idx + 1}`} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 9, border: '1px solid #ebebeb' }} />
-                            <button type="button" onClick={() => setRemovedImageUrls(prev => [...prev, url])}
-                              style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, background: '#f43f5e', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s' }}>
-                              <X size={10} style={{ color: '#fff' }} />
+                          <div key={url} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#EAEAEA]">
+                            <img
+                              src={url.startsWith("https://") ? url : `https://${url}`}
+                              alt={`Image ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setRemovedImageUrls((prev) => [...prev, url])}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#EF4444] text-white flex items-center justify-center text-xs opacity-90 hover:opacity-100 transition-opacity cursor-pointer border-0 shadow-sm"
+                            >
+                              <X size={12} />
                             </button>
                           </div>
                         ))}
@@ -283,103 +331,199 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                   ) : null;
                 })()}
 
-                <input type="file" multiple accept="image/*" style={{ ...DM, fontSize: 12, color: '#71717a', width: '100%', marginBottom: 8 }}
-                  onChange={async e => {
-                    const files = Array.from(e.target.files || []);
-                    const currentCount = (editingService.image_urls?.length || 0) - removedImageUrls.length + selectedImages.length;
-                    if (files.length + currentCount > 10) { setError("Maximum 10 images total allowed"); return; }
-                    const newImages: Array<{ fileName: string; fileBase64: string; fileType: string; preview?: string; }> = [];
-                    for (const file of files) {
-                      if (!file.type.startsWith("image/")) { setError("Only image files are allowed"); continue; }
-                      try {
-                        const resized = await resizeImage(file, 2000, 2000);
-                        const reader = new FileReader();
-                        reader.onload = ev => {
-                          const base64 = ev.target?.result as string;
-                          const m = base64.match(/^data:(.*);base64,(.*)$/);
-                          if (m) {
-                            newImages.push({ fileName: resized.name, fileBase64: m[2], fileType: m[1], preview: base64 });
-                            if (newImages.length === files.length) { setSelectedImages(prev => [...prev, ...newImages]); setError(null); }
-                          }
-                        };
-                        reader.readAsDataURL(resized);
-                      } catch { setError("Failed to compress image"); }
-                    }
-                  }}
-                />
+                <label className="flex items-center gap-2 px-3.5 py-2.5 border border-dashed border-[#EAEAEA] hover:border-[#16281D]/30 rounded-xl cursor-pointer bg-[#F4F7F4] text-xs text-[#71717A] hover:text-[#16281D] transition-colors">
+                  <ImageIcon size={16} />
+                  <span>
+                    {selectedImages.length > 0
+                      ? `${selectedImages.length} new image(s) selected`
+                      : "Click to upload more images…"}
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      const currentCount =
+                        (editingService.image_urls?.length || 0) -
+                        removedImageUrls.length +
+                        selectedImages.length;
+                      if (files.length + currentCount > 10) {
+                        setError("Maximum 10 images total allowed");
+                        return;
+                      }
+                      const newImages: Array<{ fileName: string; fileBase64: string; fileType: string; preview?: string }> = [];
+                      for (const file of files) {
+                        if (!file.type.startsWith("image/")) {
+                          setError("Only image files are allowed");
+                          continue;
+                        }
+                        try {
+                          const resized = await resizeImage(file, 2000, 2000);
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const base64 = ev.target?.result as string;
+                            const m = base64.match(/^data:(.*);base64,(.*)$/);
+                            if (m) {
+                              newImages.push({ fileName: resized.name, fileBase64: m[2], fileType: m[1], preview: base64 });
+                              if (newImages.length === files.length) {
+                                setSelectedImages((prev) => [...prev, ...newImages]);
+                                setError(null);
+                              }
+                            }
+                          };
+                          reader.readAsDataURL(resized);
+                        } catch {
+                          setError("Failed to compress image");
+                        }
+                      }
+                    }}
+                  />
+                </label>
 
                 {selectedImages.length > 0 && (
-                  <div>
-                    <div style={{ ...DM, fontSize: 11, color: '#71717a', marginBottom: 6 }}>New Images:</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {selectedImages.map((img, i) => (
-                        <div key={i} style={{ position: 'relative' }}>
-                          <img src={img.preview} alt={img.fileName} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 9, border: '1px solid #ebebeb' }} />
-                          <button type="button" onClick={() => setSelectedImages(prev => prev.filter((_, idx) => idx !== i))}
-                            style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, background: '#f43f5e', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <X size={10} style={{ color: '#fff' }} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="flex flex-wrap gap-2.5 mt-2.5">
+                    {selectedImages.map((img, i) => (
+                      <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#EAEAEA]">
+                        <img src={img.preview} alt={img.fileName} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#EF4444] text-white flex items-center justify-center text-xs opacity-90 hover:opacity-100 transition-opacity cursor-pointer border-0 shadow-sm"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
 
               {/* Packages */}
               <div>
-                <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 10 }}>Packages *</label>
-                {currentPackages.map((pkg, i) => (
-                  <div key={pkg.id || i} style={{ background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#71717a' }}>Package {i + 1}</span>
-                      <button type="button" onClick={() => removePackage(i)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(244,63,94,0.06)', border: 'none', borderRadius: 7, padding: '4px 8px', cursor: 'pointer', ...DM, fontSize: 11, fontWeight: 600, color: '#f43f5e' }}>
-                        <Trash2 size={11} /> Remove
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <input type="text" placeholder="Package name *" value={pkg.package_name} onChange={e => updatePackage(i, "package_name", e.target.value)} required style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-                        {errors[`package_name_${i}`] && <div style={{ ...DM, fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{errors[`package_name_${i}`]}</div>}
+                <label className="block text-xs font-semibold text-[#16281D] mb-2">Packages *</label>
+                <div className="space-y-3 mb-2.5">
+                  {currentPackages.map((pkg, i) => (
+                    <div key={pkg.id || i} className="bg-[#F4F7F4] border border-[#EAEAEA] rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#16281D]">Package {i + 1}</span>
+                        {currentPackages.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removePackage(i)}
+                            className="px-2.5 py-1 rounded-full bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer border-0"
+                          >
+                            <Trash2 size={12} />
+                            <span>Remove</span>
+                          </button>
+                        )}
                       </div>
-                      <div>
-                        <input type="number" placeholder="Price *" value={pkg.price} onChange={e => updatePackage(i, "price", parseFloat(e.target.value) || 0)} min="0" step="0.01" required style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-                        {errors[`price_${i}`] && <div style={{ ...DM, fontSize: 11, color: '#f43f5e', marginTop: 3 }}>{errors[`price_${i}`]}</div>}
-                      </div>
-                      <div className="md:col-span-2">
-                        <input type="text" placeholder="Currency (e.g. USD)" value={pkg.currency} onChange={e => updatePackage(i, "currency", e.target.value.toUpperCase())} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-                      </div>
-                      <div>
-                        <input type="number" placeholder="Discount % (0–100)" value={pkg.discount || ""} onChange={e => updatePackage(i, "discount", parseFloat(e.target.value) || undefined)} min="0" max="100" step="0.01" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-                      </div>
-                      <div className="md:col-span-2">
-                        <textarea placeholder="Package description" value={pkg.description || ""} onChange={e => updatePackage(i, "description", e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} onFocus={onFocus} onBlur={onBlur} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {errors.packages && <div style={{ ...DM, fontSize: 11, color: '#f43f5e', marginBottom: 8 }}>{errors.packages}</div>}
-                <button type="button" onClick={addPackage}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(34,197,94,0.08)', color: '#059669', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 9, padding: '8px 14px', ...DM, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  <Plus size={13} /> Add Package
-                </button>
-              </div>
 
-              {/* Footer */}
-              <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                <button type="button" onClick={onClose} disabled={submitting}
-                  style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1 }}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitting}
-                  style={{ flex: 1, background: submitting ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', boxShadow: submitting ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  {submitting ? (
-                    <><div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'esm-spin 0.7s linear infinite' }} />Updating…</>
-                  ) : 'Update Service'}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Package name *"
+                            value={pkg.package_name}
+                            onChange={(e) => updatePackage(i, "package_name", e.target.value)}
+                            required
+                            className="w-full h-9 px-3 bg-white border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all"
+                          />
+                          {errors[`package_name_${i}`] && (
+                            <div className="text-[11px] text-[#EF4444] mt-1 font-medium">
+                              {errors[`package_name_${i}`]}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <input
+                            type="number"
+                            placeholder="Price *"
+                            value={pkg.price || ""}
+                            onChange={(e) => updatePackage(i, "price", parseFloat(e.target.value) || 0)}
+                            min="0"
+                            step="0.01"
+                            required
+                            className="w-full h-9 px-3 bg-white border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all font-mono"
+                          />
+                          {errors[`price_${i}`] && (
+                            <div className="text-[11px] text-[#EF4444] mt-1 font-medium">{errors[`price_${i}`]}</div>
+                          )}
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Currency (e.g. LKR, USD)"
+                            value={pkg.currency}
+                            onChange={(e) => updatePackage(i, "currency", e.target.value.toUpperCase())}
+                            className="w-full h-9 px-3 bg-white border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all font-mono uppercase"
+                          />
+                        </div>
+
+                        <div>
+                          <input
+                            type="number"
+                            placeholder="Discount % (optional)"
+                            value={pkg.discount || ""}
+                            onChange={(e) => updatePackage(i, "discount", parseFloat(e.target.value) || undefined)}
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            className="w-full h-9 px-3 bg-white border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all font-mono"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <textarea
+                            placeholder="Package description & inclusions…"
+                            value={pkg.description || ""}
+                            onChange={(e) => updatePackage(i, "description", e.target.value)}
+                            rows={2}
+                            className="w-full p-2.5 bg-white border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {errors.packages && (
+                  <div className="text-[11px] text-[#EF4444] mb-2 font-medium">{errors.packages}</div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={addPackage}
+                  className="px-4 py-2 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#16281D] transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus size={13} />
+                  <span>Add Package</span>
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-[#EAEAEA] flex items-center justify-end gap-3 shrink-0 bg-white">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-service-form"
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none cursor-pointer border-0"
+            >
+              {submitting ? "Updating…" : "Update Service"}
+            </button>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { Search, ChevronDown, Check, Phone, X, Loader2 } from "lucide-react";
 import { CustomerOption } from "./types";
-import { SYNE, DM, inputStyle, onFocusGreen, onBlurGreen } from "./constants";
+import { inputStyle, onFocusGreen, onBlurGreen } from "./constants";
 
 interface CustomerSelectorProps {
   localCustomerId: number | null;
@@ -38,69 +38,26 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
 }) => {
   return (
     <div>
-      <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+      <label className="block text-xs font-semibold text-[#16281D] mb-1.5 font-sans">
         Customer
       </label>
       {localCustomerId ? (
-        <div
-          style={{
-            ...inputStyle,
-            padding: "7px 12px",
-            background: "rgba(34,197,94,0.06)",
-            border: "1px solid rgba(34,197,94,0.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ ...SYNE, fontSize: 11, fontWeight: 700, color: "#fff" }}>
-                {(localCustomerName || "C").charAt(0).toUpperCase()}
-              </span>
+        <div className="w-full px-3 py-2 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-7 h-7 rounded-full bg-[#16281D] text-[#9FE870] flex items-center justify-center font-sans font-bold text-xs shrink-0">
+              {(localCustomerName || "C").charAt(0).toUpperCase()}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-              <span
-                style={{
-                  ...DM,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#059669",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
+            <div className="flex flex-col min-w-0">
+              <span className="font-sans text-xs font-bold text-[#16281D] truncate">
                 {localCustomerName}
               </span>
               {localCustomerPhone ? (
-                <span
-                  style={{
-                    ...DM,
-                    fontSize: 11,
-                    color: "#71717a",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <Phone size={10} style={{ color: "#059669", flexShrink: 0 }} />
+                <span className="font-mono text-[11px] text-[#71717A] flex items-center gap-1">
+                  <Phone size={10} className="text-[#15803D] shrink-0" />
                   {localCustomerPhone}
                 </span>
               ) : (
-                <span style={{ ...DM, fontSize: 11, color: "#a1a1aa" }}>No contact number</span>
+                <span className="font-sans text-[11px] text-[#A1A1AA]">No contact number</span>
               )}
             </div>
           </div>
@@ -108,20 +65,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
             <button
               type="button"
               onClick={onClearCustomer}
-              style={{
-                background: "rgba(0,0,0,0.05)",
-                border: "none",
-                borderRadius: 6,
-                padding: "4px 8px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                ...DM,
-                fontSize: 11,
-                color: "#71717a",
-                flexShrink: 0,
-              }}
+              className="px-3 py-1 rounded-full bg-white/80 hover:bg-white text-[#71717A] hover:text-[#16281D] border border-[#EAEAEA] font-sans text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
               title="Change customer"
             >
               <X size={11} /> Change
@@ -131,22 +75,13 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
       ) : (
         <div
           ref={customerDropdownRef}
-          style={{
-            position: "relative",
-            zIndex: isCustomerDropdownOpen ? 30 : 1,
-          }}
+          className="relative"
+          style={{ zIndex: isCustomerDropdownOpen ? 30 : 1 }}
         >
-          <div style={{ position: "relative" }}>
+          <div className="relative">
             <Search
-              size={13}
-              style={{
-                position: "absolute",
-                left: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#a1a1aa",
-                pointerEvents: "none",
-              }}
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A] pointer-events-none"
             />
             <input
               ref={customerInputRef}
@@ -157,67 +92,31 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                 setCustomerSearchQuery(e.target.value);
                 setIsCustomerDropdownOpen(true);
               }}
-              onFocus={() => {
-                setIsCustomerDropdownOpen(true);
-              }}
-              onClick={() => {
-                setIsCustomerDropdownOpen(true);
-              }}
+              onFocus={() => setIsCustomerDropdownOpen(true)}
+              onClick={() => setIsCustomerDropdownOpen(true)}
               onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setIsCustomerDropdownOpen(false);
-                }
+                if (e.key === "Escape") setIsCustomerDropdownOpen(false);
               }}
-              style={{ ...inputStyle, paddingLeft: 30, paddingRight: 28 }}
-              onFocusCapture={onFocusGreen as any}
-              onBlurCapture={onBlurGreen as any}
+              className="w-full h-10 pl-9 pr-8 text-xs font-medium font-sans text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-full focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 outline-none transition-all placeholder:text-[#A1A1AA]"
             />
             {isSearchingCustomers ? (
               <Loader2
-                size={13}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#059669",
-                  animation: "spin 1s linear infinite",
-                }}
+                size={14}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#16281D] animate-spin"
               />
             ) : (
               <ChevronDown
-                size={13}
+                size={14}
                 onClick={() => setIsCustomerDropdownOpen((prev) => !prev)}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#a1a1aa",
-                  cursor: "pointer",
-                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#71717A] cursor-pointer"
               />
             )}
           </div>
 
           {isCustomerDropdownOpen && (
-            <div
-              style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                right: 0,
-                zIndex: 50,
-                background: "#fff",
-                border: "1px solid #ebebeb",
-                borderRadius: 12,
-                boxShadow: "0 10px 28px rgba(0,0,0,0.12)",
-                maxHeight: 220,
-                overflowY: "auto",
-              }}
-            >
+            <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border border-[#EAEAEA] rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-[#F4F7F4]">
               {filteredCustomers.length === 0 ? (
-                <div style={{ padding: "14px", textAlign: "center", ...DM, fontSize: 12, color: "#a1a1aa" }}>
+                <div className="p-4 text-center font-sans text-xs text-[#71717A]">
                   {isSearchingCustomers
                     ? "Searching customers..."
                     : customerSearchQuery
@@ -233,76 +132,24 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                       e.preventDefault();
                       onSelectCustomer(c);
                     }}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      padding: "9px 12px",
-                      border: "none",
-                      borderBottom: "1px solid #f4f4f5",
-                      background: "transparent",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "background 0.1s",
-                    }}
-                    onMouseEnter={(e) =>
-                      ((e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.05)")
-                    }
-                    onMouseLeave={(e) =>
-                      ((e.currentTarget as HTMLElement).style.background = "transparent")
-                    }
+                    className="w-full flex items-center justify-between gap-2.5 p-2.5 bg-transparent hover:bg-[#F0FDF4] transition-colors cursor-pointer border-0 text-left"
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: "50%",
-                          background: "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <span style={{ ...SYNE, fontSize: 11, fontWeight: 700, color: "#fff" }}>
-                          {(c.name || "C").charAt(0).toUpperCase()}
-                        </span>
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-7 h-7 rounded-full bg-[#16281D] text-[#9FE870] flex items-center justify-center font-sans font-bold text-xs shrink-0">
+                        {(c.name || "C").charAt(0).toUpperCase()}
                       </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div
-                          style={{
-                            ...DM,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "#0c1a0e",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-sans text-xs font-bold text-[#16281D] truncate">
                           {c.name}
                         </div>
-                        <div
-                          style={{
-                            ...DM,
-                            fontSize: 11,
-                            color: "#059669",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 3,
-                            marginTop: 1,
-                          }}
-                        >
-                          <Phone size={10} style={{ color: "#059669", flexShrink: 0 }} />
+                        <div className="font-mono text-[11px] text-[#71717A] flex items-center gap-1 mt-0.5">
+                          <Phone size={10} className="text-[#15803D] shrink-0" />
                           <span>{c.phone || "No contact number"}</span>
                         </div>
                       </div>
                     </div>
                     {c.id === localCustomerId && (
-                      <Check size={14} style={{ color: "#059669", flexShrink: 0 }} />
+                      <Check size={14} className="text-[#15803D] shrink-0" />
                     )}
                   </button>
                 ))

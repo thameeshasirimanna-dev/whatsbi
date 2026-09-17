@@ -82,8 +82,8 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs font-sans animate-in fade-in duration-200">
-      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.18)] max-w-md w-full p-6 md:p-7 overflow-hidden flex flex-col gap-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#16281D]/65 font-sans animate-modal-backdrop">
+      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.18)] max-w-md w-full p-6 md:p-7 overflow-hidden flex flex-col gap-5 animate-modal-card">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#F4F4F5] pb-4">
           <div className="flex items-center gap-3">

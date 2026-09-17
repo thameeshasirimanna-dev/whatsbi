@@ -1,53 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { getCurrentAgent } from "../../../lib/agent";
 import { getToken } from "../../../lib/auth";
-import { Plus, RefreshCw, Eye, Pencil, Trash2, FileText } from "lucide-react";
+import { Plus, RefreshCw, Eye, Pencil, Trash2, FileText, CheckCircle2, Clock, Layers } from "lucide-react";
 import ViewTemplateModal from "./ViewTemplateModal";
 import CreateTemplateModal from "./CreateTemplateModal";
 import { useDialog } from "../shared/DialogProvider";
 import { SkeletonPage } from "../shared/Skeleton";
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
 const getUser = async () => {
   try {
     const token = getToken();
     if (!token) return { data: { user: null }, error: null };
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-current-user`, { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-current-user`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
     const data = await response.json();
     if (response.ok && data.success) return { data: { user: data.user }, error: null };
     return { data: { user: null }, error: data.message || "Failed to get user" };
-  } catch (error) { return { data: { user: null }, error }; }
+  } catch (error) {
+    return { data: { user: null }, error };
+  }
 };
 
-interface WhatsAppConfig { business_account_id: string; phone_number_id: string; api_key: string; }
-interface WhatsAppTemplate {
-  id: string; name: string; language: string; category: string;
-  components: Array<{ type: string; format?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "LOCATION"; text?: string; example?: any; buttons?: Array<{ type: "PHONE_NUMBER" | "URL" | "QUICK_REPLY"; text: string; phone_number?: string; url?: string; payload?: string; }>; }>;
-  body?: any; mediaUrls?: { [key: string]: { handle: string; url: string } }; status: string; created_time?: string;
+interface WhatsAppConfig {
+  business_account_id: string;
+  phone_number_id: string;
+  api_key: string;
 }
 
-const getStatusStyle = (status: string): React.CSSProperties => {
-  const s = status.toUpperCase();
-  if (s === 'APPROVED') return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
-  if (s === 'PENDING') return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
-  if (s === 'REJECTED' || s === 'PAUSED' || s === 'DISABLED') return { background: 'rgba(244,63,94,0.08)', color: '#f43f5e' };
-  return { background: '#f4f4f5', color: '#71717a' };
-};
-
-const getCategoryStyle = (category: string): React.CSSProperties => {
-  const c = category.toUpperCase();
-  if (c === 'MARKETING') return { background: 'rgba(124,58,237,0.1)', color: '#7c3aed' };
-  if (c === 'AUTHENTICATION') return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
-  return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
-};
-
-const thCell: React.CSSProperties = {
-  padding: '10px 16px', ...DM, fontSize: 11, fontWeight: 600, color: '#71717a',
-  textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'left',
-  background: '#fafafa', borderBottom: '1px solid #ebebeb',
-};
+interface WhatsAppTemplate {
+  id: string;
+  name: string;
+  language: string;
+  category: string;
+  components: Array<{
+    type: string;
+    format?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "LOCATION";
+    text?: string;
+    example?: any;
+    buttons?: Array<{
+      type: "PHONE_NUMBER" | "URL" | "QUICK_REPLY";
+      text: string;
+      phone_number?: string;
+      url?: string;
+      payload?: string;
+    }>;
+  }>;
+  body?: any;
+  mediaUrls?: { [key: string]: { handle: string; url: string } };
+  status: string;
+  created_time?: string;
+}
 
 const TemplatesPage: React.FC = () => {
   const { confirm: dlgConfirm } = useDialog();
@@ -66,60 +70,122 @@ const TemplatesPage: React.FC = () => {
   useEffect(() => {
     const loadTemplates = async () => {
       const agent = await getCurrentAgent();
-      if (agent) { setAgentPrefix(agent.agent_prefix); if (agent.id) setAgentId(String(agent.id)); }
-      else { setError("Agent not found. Please contact admin or log in as an agent."); setLoading(false); }
+      if (agent) {
+        setAgentPrefix(agent.agent_prefix);
+        if (agent.id) setAgentId(String(agent.id));
+      } else {
+        setError("Agent not found. Please contact admin or log in as an agent.");
+        setLoading(false);
+      }
     };
     loadTemplates();
   }, []);
 
-  useEffect(() => { if (agentPrefix) fetchTemplates(); }, [agentPrefix]);
+  useEffect(() => {
+    if (agentPrefix) fetchTemplates();
+  }, [agentPrefix]);
 
-  const fetchTemplates = async (forceRefetch = false) => {
-    if (!agentPrefix) { setError("Agent not found"); setLoading(false); return; }
+  const fetchTemplates = async (_forceRefetch = false) => {
+    if (!agentPrefix) {
+      setError("Agent not found");
+      setLoading(false);
+      return;
+    }
     try {
-      setLoading(true); setError(null);
+      setLoading(true);
+      setError(null);
       const userResult = await getUser();
-      if (userResult.error || !userResult.data.user) { setError("User not authenticated"); setLoading(false); return; }
+      if (userResult.error || !userResult.data.user) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
       const user = userResult.data.user;
       const token = getToken();
-      if (!token) { setError("User not authenticated"); setLoading(false); return; }
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${user.id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
-      if (!response.ok) { setError("No WhatsApp configuration found. Please set up WhatsApp first."); setLoading(false); return; }
+      if (!token) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${user.id}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        setError("No WhatsApp configuration found. Please set up WhatsApp first.");
+        setLoading(false);
+        return;
+      }
       const configData = await response.json();
-      if (!configData.success || !configData.whatsapp_config) { setError("No WhatsApp configuration found. Please set up WhatsApp first."); setLoading(false); return; }
+      if (!configData.success || !configData.whatsapp_config) {
+        setError("No WhatsApp configuration found. Please set up WhatsApp first.");
+        setLoading(false);
+        return;
+      }
       const whatsappConfig = configData.whatsapp_config[0] || configData.whatsapp_config;
       setConfig(whatsappConfig as WhatsAppConfig);
       const { business_account_id, api_key } = whatsappConfig;
-      const metaResponse = await fetch(`https://graph.facebook.com/v20.0/${business_account_id}/message_templates`, { method: "GET", headers: { Authorization: `Bearer ${api_key}` } });
-      if (!metaResponse.ok) { const errorData = await metaResponse.json(); throw new Error(`Meta API error: ${errorData.error?.message || metaResponse.statusText}`); }
+      const metaResponse = await fetch(`https://graph.facebook.com/v20.0/${business_account_id}/message_templates`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${api_key}` },
+      });
+      if (!metaResponse.ok) {
+        const errorData = await metaResponse.json();
+        throw new Error(`Meta API error: ${errorData.error?.message || metaResponse.statusText}`);
+      }
       const metaData = await metaResponse.json();
-      const fetchedTemplates = metaData.data.map((t: any) => ({ ...t, id: t.name, body: { name: t.name, language: { code: t.language }, components: t.components } })) as WhatsAppTemplate[];
+      const fetchedTemplates = metaData.data.map((t: any) => ({
+        ...t,
+        id: t.name,
+        body: { name: t.name, language: { code: t.language }, components: t.components },
+      })) as WhatsAppTemplate[];
       setTemplates(fetchedTemplates);
       setLoading(false);
-    } catch (err: any) { setError(err.message || "Failed to fetch templates"); setLoading(false); console.error("Templates fetch error:", err); }
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch templates");
+      setLoading(false);
+    }
   };
 
   const handleDeleteTemplate = async (templateId: string) => {
     if (!await dlgConfirm("Are you sure you want to delete this template? This action is permanent.", { danger: true })) return;
-    if (!config || !agentPrefix || !agentId) { setError("No WhatsApp configuration or agent found"); return; }
+    if (!config || !agentPrefix || !agentId) {
+      setError("No WhatsApp configuration or agent found");
+      return;
+    }
     try {
       const { business_account_id, api_key } = config;
-      const response = await fetch(`https://graph.facebook.com/v20.0/${business_account_id}/message_templates?name=${templateId}`, { method: "DELETE", headers: { Authorization: `Bearer ${api_key}` } });
-      if (!response.ok) { const errorData = await response.json(); throw new Error(`Meta API error: ${errorData.error?.message || response.statusText}`); }
+      const response = await fetch(`https://graph.facebook.com/v20.0/${business_account_id}/message_templates?name=${templateId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${api_key}` },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Meta API error: ${errorData.error?.message || response.statusText}`);
+      }
       setTemplates(prev => prev.filter(t => t.id !== templateId));
-    } catch (err: any) { setError(err.message || "Failed to delete template"); console.error("Delete template error:", err); }
+    } catch (err: any) {
+      setError(err.message || "Failed to delete template");
+    }
   };
 
-  const handleViewTemplate = (template: WhatsAppTemplate) => { setSelectedTemplate(template); setShowViewModal(true); };
+  const handleViewTemplate = (template: WhatsAppTemplate) => {
+    setSelectedTemplate(template);
+    setShowViewModal(true);
+  };
+
   const handleEditTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
-    setEditingTemplate(template); setShowCreateModal(true);
+    setEditingTemplate(template);
+    setShowCreateModal(true);
   };
+
   const handleSuccess = (newTemplate: WhatsAppTemplate, isUpdate: boolean) => {
     if (isUpdate) setTemplates(prev => prev.map(t => t.id === editingTemplate?.id ? newTemplate : t));
     else setTemplates(prev => [...prev, newTemplate]);
-    setEditingTemplate(null); setShowCreateModal(false);
+    setEditingTemplate(null);
+    setShowCreateModal(false);
   };
 
   const getMediaPreviewUrl = async (handle: string): Promise<string> => {
@@ -133,10 +199,12 @@ const TemplatesPage: React.FC = () => {
       if (!response.ok) return "";
       const data = await response.json();
       return data.url || "";
-    } catch { return ""; }
+    } catch {
+      return "";
+    }
   };
 
-  const loadMediaPreview = async (templateId: string, handle: string, mediaType?: string) => {
+  const loadMediaPreview = async (templateId: string, handle: string, _mediaType?: string) => {
     if (mediaPreviews[templateId]) return;
     const url = await getMediaPreviewUrl(handle);
     if (url) setMediaPreviews(prev => ({ ...prev, [templateId]: url }));
@@ -157,199 +225,283 @@ const TemplatesPage: React.FC = () => {
     }
   }, [templates, config]);
 
-  const getBodyPreview = (template: WhatsAppTemplate): string => {
-    const bodyComp = template.components.find(c => c.type.toLowerCase() === "body");
-    if (!bodyComp?.text) return "—";
-    const text = bodyComp.text.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*|\d+)\}\}/g, "[…]");
-    return text.length > 80 ? text.substring(0, 80) + "…" : text;
-  };
+  const approvedCount = templates.filter(t => t.status?.toUpperCase() === 'APPROVED').length;
+  const pendingCount = templates.filter(t => t.status?.toUpperCase() === 'PENDING').length;
 
   if (loading) {
     return <SkeletonPage type="list" />;
   }
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <style>{`@keyframes tp-spin { to { transform: rotate(360deg); } }`}</style>
+    <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        {[
+          {
+            label: "Total Templates",
+            value: templates.length,
+            icon: Layers,
+            iconColor: "text-[#16281D]",
+            bgColor: "bg-[#9FE870]/25",
+          },
+          {
+            label: "Approved & Ready",
+            value: approvedCount,
+            icon: CheckCircle2,
+            iconColor: "text-[#15803D]",
+            bgColor: "bg-[#22C55E]/10",
+          },
+          {
+            label: "Pending Review",
+            value: pendingCount,
+            icon: Clock,
+            iconColor: "text-[#D97706]",
+            bgColor: "bg-[#F59E0B]/10",
+          },
+        ].map((card, idx) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className="bg-white rounded-[20px] p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between"
+            >
+              <div>
+                <p className="text-xs font-medium text-[#71717A]">{card.label}</p>
+                <h3 className="font-mono text-2xl font-extrabold text-[#16281D] mt-1 tracking-tight">
+                  {card.value}
+                </h3>
+              </div>
+              <div className={`w-11 h-11 rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
+                <Icon size={20} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-        <button onClick={() => fetchTemplates(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 9, padding: '9px 14px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          <RefreshCw size={13} /> Refresh
-        </button>
-        <button onClick={() => { setEditingTemplate(null); setShowCreateModal(true); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 14px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34,197,94,0.25)' }}>
-          <Plus size={13} /> Create New
-        </button>
+      {/* Toolbar */}
+      <div className="bg-white rounded-[20px] p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[#16281D]">
+          <FileText size={16} className="text-[#16281D]" />
+          <span>Meta WhatsApp Message Templates</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fetchTemplates(true)}
+            className="px-3.5 py-2 h-9 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <RefreshCw size={13} /> Refresh
+          </button>
+          <button
+            onClick={() => { setEditingTemplate(null); setShowCreateModal(true); }}
+            className="px-4 py-2 h-9 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5"
+          >
+            <Plus size={14} /> Create Template
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e' }}>
+        <div className="p-3 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-xs text-[#EF4444] font-medium">
           {error}
         </div>
       )}
 
-      {/* Table */}
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      {/* Table Container */}
+      <div
+        className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] overflow-hidden"
+      >
         {!config ? (
-          <div style={{ padding: '56px 24px', textAlign: 'center' }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <FileText size={22} style={{ color: '#d4d4d8' }} />
+          <div className="py-14 px-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#F4F7F4] flex items-center justify-center mx-auto mb-3.5 text-[#71717A]">
+              <FileText size={22} />
             </div>
-            <div style={{ ...SYNE, fontSize: 15, fontWeight: 600, color: '#0c1a0e', marginBottom: 6 }}>No WhatsApp configuration</div>
-            <div style={{ ...DM, fontSize: 13, color: '#71717a' }}>Please set up WhatsApp in settings first.</div>
+            <h4 className="text-sm font-bold text-[#16281D] mb-1">No WhatsApp Configuration Found</h4>
+            <p className="text-xs text-[#71717A] max-w-sm mx-auto">
+              Please connect your Meta WhatsApp Business API credentials in Agent Settings first.
+            </p>
           </div>
         ) : templates.length === 0 ? (
-          <div style={{ padding: '56px 24px', textAlign: 'center' }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <FileText size={22} style={{ color: '#d4d4d8' }} />
+          <div className="py-14 px-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#F4F7F4] flex items-center justify-center mx-auto mb-3.5 text-[#71717A]">
+              <FileText size={22} />
             </div>
-            <div style={{ ...SYNE, fontSize: 15, fontWeight: 600, color: '#0c1a0e', marginBottom: 6 }}>No templates found</div>
-            <div style={{ ...DM, fontSize: 13, color: '#71717a', marginBottom: 20 }}>Create some in your Meta WhatsApp Manager or create one here.</div>
-            <button onClick={() => { setEditingTemplate(null); setShowCreateModal(true); }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34,197,94,0.25)' }}>
+            <h4 className="text-sm font-bold text-[#16281D] mb-1">No Templates Found</h4>
+            <p className="text-xs text-[#71717A] max-w-sm mx-auto mb-4">
+              Create message templates for automated alerts, notifications, and broadcast marketing.
+            </p>
+            <button
+              onClick={() => { setEditingTemplate(null); setShowCreateModal(true); }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0"
+            >
               <Plus size={14} /> Create Template
             </button>
           </div>
         ) : (
           <>
-            {/* Mobile/Tablet Card Layout */}
-            <div className="block lg:hidden">
-              <div className="flex flex-col divide-y divide-[#f4f4f5]">
-                {templates.map((template) => (
-                  <div key={template.id} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, flex: 1 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <FileText size={14} style={{ color: '#22c55e' }} />
+            {/* Mobile Cards */}
+            <div className="block lg:hidden divide-y divide-[#F4F7F4]">
+              {templates.map((template) => {
+                const s = template.status?.toUpperCase();
+                const isApproved = s === 'APPROVED';
+                const isPending = s === 'PENDING';
+
+                return (
+                  <div key={template.id} className="p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-[#9FE870]/20 text-[#16281D] flex items-center justify-center shrink-0">
+                          <FileText size={14} />
                         </div>
-                        <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.name}</span>
+                        <span className="text-xs font-bold text-[#16281D] font-mono truncate">{template.name}</span>
                       </div>
-                      <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(template.status), flexShrink: 0 }}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0 ${
+                        isApproved
+                          ? "bg-[#22C55E]/10 text-[#15803D]"
+                          : isPending
+                          ? "bg-[#F59E0B]/10 text-[#D97706]"
+                          : "bg-[#EF4444]/10 text-[#EF4444]"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          isApproved ? "bg-[#22C55E]" : isPending ? "bg-[#F59E0B]" : "bg-[#EF4444]"
+                        }`} />
                         {template.status}
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', padding: '8px 12px', borderRadius: 8 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Category</span>
-                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, ...getCategoryStyle(template.category), display: 'inline-block', marginTop: 2 }}>
-                          {template.category}
-                        </span>
+                    <div className="flex items-center justify-between bg-[#F4F7F4] p-2.5 rounded-xl text-xs">
+                      <div>
+                        <span className="text-[#71717A] text-[11px] block">Category</span>
+                        <span className="font-semibold text-[#16281D]">{template.category}</span>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>Language</span>
-                        <span style={{ ...DM, fontSize: 12, color: '#0c1a0e', fontWeight: 500, marginTop: 2 }}>{template.language}</span>
+                      <div className="text-right">
+                        <span className="text-[#71717A] text-[11px] block">Language</span>
+                        <span className="font-mono text-[#16281D]">{template.language}</span>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, paddingTop: 4 }}>
-                      <button onClick={() => handleViewTemplate(template)} title="View"
-                        style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#F4F7F4]">
+                      <button
+                        onClick={() => handleViewTemplate(template)}
+                        className="px-3 py-1.5 rounded-full bg-[#0891B2]/10 text-[#0891B2] hover:bg-[#0891B2]/20 text-xs font-semibold flex items-center gap-1"
                       >
-                        <Eye size={13} style={{ color: '#22c55e' }} />
+                        <Eye size={12} /> View
                       </button>
-                      <button onClick={() => handleEditTemplate(template.id)} title="Edit"
-                        style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(217,119,6,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.15)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.08)'}
+                      <button
+                        onClick={() => handleEditTemplate(template.id)}
+                        className="px-3 py-1.5 rounded-full bg-[#22C55E]/10 text-[#15803D] hover:bg-[#22C55E]/20 text-xs font-semibold flex items-center gap-1"
                       >
-                        <Pencil size={13} style={{ color: '#d97706' }} />
+                        <Pencil size={12} /> Edit
                       </button>
                       {template.name !== "hello_world" && (
-                        <button onClick={() => handleDeleteTemplate(template.id)} title="Delete"
-                          style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(244,63,94,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.12)'}
-                          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.06)'}
+                        <button
+                          onClick={() => handleDeleteTemplate(template.id)}
+                          className="px-3 py-1.5 rounded-full bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 text-xs font-semibold flex items-center gap-1"
                         >
-                          <Trash2 size={13} style={{ color: '#f43f5e' }} />
+                          <Trash2 size={12} /> Delete
                         </button>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            {/* Desktop Table Layout */}
+            {/* Desktop Table */}
             <div className="hidden lg:block overflow-x-auto">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr>
-                    {['Name', 'Category', 'Language', 'Status', 'Actions'].map((h, i) => (
-                      <th key={h} style={{ ...thCell, textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
-                    ))}
+                  <tr className="border-b border-[#EAEAEA] bg-[#FAFAFA]">
+                    <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                      Template Name
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                      Category
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                      Language
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                      Status
+                    </th>
+                    <th className="py-3 px-4 text-right text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {templates.map((template, index) => (
-                    <tr key={template.id}
-                      style={{ borderBottom: '1px solid #f4f4f5', transition: 'background 0.1s' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.02)'}
-                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
-                    >
-                      {/* Name */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <FileText size={14} style={{ color: '#22c55e' }} />
+                <tbody className="divide-y divide-[#F4F7F4]">
+                  {templates.map((template) => {
+                    const s = template.status?.toUpperCase();
+                    const isApproved = s === 'APPROVED';
+                    const isPending = s === 'PENDING';
+
+                    return (
+                      <tr key={template.id} className="hover:bg-[#F4F7F4]/40 transition-colors">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-[#9FE870]/20 text-[#16281D] flex items-center justify-center shrink-0">
+                              <FileText size={15} />
+                            </div>
+                            <span className="font-mono text-xs font-bold text-[#16281D]">{template.name}</span>
                           </div>
-                          <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e' }}>{template.name}</span>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Category */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getCategoryStyle(template.category) }}>
-                          {template.category}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#F4F7F4] border border-[#EAEAEA] text-[11px] font-medium text-[#71717A]">
+                            {template.category}
+                          </span>
+                        </td>
 
-                      {/* Language */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>{template.language}</span>
-                      </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="font-mono text-xs text-[#71717A]">{template.language}</span>
+                        </td>
 
-                      {/* Status */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ ...DM, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, ...getStatusStyle(template.status) }}>
-                          {template.status}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                            isApproved
+                              ? "bg-[#22C55E]/10 text-[#15803D]"
+                              : isPending
+                              ? "bg-[#F59E0B]/10 text-[#D97706]"
+                              : "bg-[#EF4444]/10 text-[#EF4444]"
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              isApproved ? "bg-[#22C55E]" : isPending ? "bg-[#F59E0B]" : "bg-[#EF4444]"
+                            }`} />
+                            {template.status}
+                          </span>
+                        </td>
 
-                      {/* Actions */}
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
-                          <button onClick={() => handleViewTemplate(template)} title="View"
-                            style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'}
-                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.08)'}
-                          >
-                            <Eye size={13} style={{ color: '#22c55e' }} />
-                          </button>
-                          <button onClick={() => handleEditTemplate(template.id)} title="Edit"
-                            style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(217,119,6,0.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.15)'}
-                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(217,119,6,0.08)'}
-                          >
-                            <Pencil size={13} style={{ color: '#d97706' }} />
-                          </button>
-                          {template.name !== "hello_world" && (
-                            <button onClick={() => handleDeleteTemplate(template.id)} title="Delete"
-                              style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(244,63,94,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.12)'}
-                              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(244,63,94,0.06)'}
+                        <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleViewTemplate(template)}
+                              title="View"
+                              className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#0891B2]/15 text-[#71717A] hover:text-[#0891B2] flex items-center justify-center transition-colors"
                             >
-                              <Trash2 size={13} style={{ color: '#f43f5e' }} />
+                              <Eye size={13} />
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            <button
+                              onClick={() => handleEditTemplate(template.id)}
+                              title="Edit"
+                              className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#22C55E]/15 text-[#71717A] hover:text-[#15803D] flex items-center justify-center transition-colors"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            {template.name !== "hello_world" && (
+                              <button
+                                onClick={() => handleDeleteTemplate(template.id)}
+                                title="Delete"
+                                className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#EF4444]/15 text-[#71717A] hover:text-[#EF4444] flex items-center justify-center transition-colors"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -382,3 +534,4 @@ const TemplatesPage: React.FC = () => {
 };
 
 export default TemplatesPage;
+

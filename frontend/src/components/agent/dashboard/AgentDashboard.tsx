@@ -6,25 +6,25 @@ import { AlertTriangle } from 'lucide-react';
 import {
   DashboardAgent,
   DashboardMetrics,
+  DashboardTelemetry,
   RecentActivity,
 } from './dashboard.types';
 import { DashboardWelcomeBanner } from './DashboardWelcomeBanner';
 import { DashboardMetricsGrid } from './DashboardMetricsGrid';
+import { DashboardTelemetryGrid } from './DashboardTelemetryGrid';
 import { DashboardRecentActivity } from './DashboardRecentActivity';
 import { DashboardQuickActions } from './DashboardQuickActions';
 import { DashboardPerformance } from './DashboardPerformance';
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 const AgentDashboard: React.FC = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     activeConversations: 0,
     totalCustomers: 0,
     ordersToday: 0,
-    avgResponseTime: '2.3 min',
+    avgResponseTime: '1.8 min',
     balance: 4.0,
   });
+  const [telemetry, setTelemetry] = useState<DashboardTelemetry | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [agent, setAgent] = useState<DashboardAgent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,14 +74,18 @@ const AgentDashboard: React.FC = () => {
         const data = dashboardResponse.data;
         setAgent(data.agent);
         setRecentActivity(data.recentActivity || []);
+        if (data.telemetry) {
+          setTelemetry(data.telemetry);
+        }
         setMetrics({
           activeConversations: data.metrics?.activeConversations ?? 0,
           totalCustomers: data.metrics?.totalCustomers ?? 0,
           ordersToday: data.metrics?.ordersToday ?? 0,
-          avgResponseTime: data.metrics?.avgResponseTime || '2.3 min',
+          avgResponseTime: data.metrics?.avgResponseTime || '1.8 min',
           balance: data.metrics?.ai_balance ?? data.metrics?.balance ?? data.agent?.ai_balance ?? 4.0,
           ai_balance: data.metrics?.ai_balance ?? data.agent?.ai_balance ?? 4.0,
           template_credits: data.metrics?.template_credits ?? data.agent?.credits ?? 0,
+          telemetry: data.telemetry,
         });
 
         setError(null);
@@ -154,52 +158,23 @@ const AgentDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div
-        style={{
-          minHeight: '100%',
-          background: '#f8faf8',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 24,
-        }}
-      >
-        <div style={{ textAlign: 'center', maxWidth: 360 }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              background: 'rgba(244,63,94,0.08)',
-              border: '1px solid rgba(244,63,94,0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-            }}
-          >
-            <AlertTriangle size={24} style={{ color: '#f43f5e' }} />
+      <div className="min-h-[70vh] flex items-center justify-center p-6 font-sans">
+        <div className="bg-white rounded-3xl border border-[#EAEAEA] p-8 max-w-sm w-full text-center shadow-md">
+          <div className="w-14 h-14 rounded-full bg-[#FFF1F2] border border-[#FECDD3] flex items-center justify-center mx-auto mb-4 text-[#E11D48]">
+            <AlertTriangle size={24} strokeWidth={2.4} />
           </div>
-          <div style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#0c1a0e', marginBottom: 8 }}>
+          <h2 className="text-lg font-bold text-[#16281D] m-0 mb-1.5">
             Error Loading Dashboard
-          </div>
-          <div style={{ ...DM, fontSize: 14, color: '#71717a', marginBottom: 24 }}>{error}</div>
+          </h2>
+          <p className="text-xs text-[#71717A] leading-relaxed m-0 mb-6">
+            {error}
+          </p>
           <button
+            type="button"
             onClick={() => window.location.reload()}
-            style={{
-              background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 9999,
-              padding: '10px 24px',
-              ...SYNE,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
-            }}
+            className="w-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs py-2.5 px-4 rounded-full shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all flex items-center justify-center"
           >
-            Retry
+            Retry Connection
           </button>
         </div>
       </div>
@@ -209,23 +184,34 @@ const AgentDashboard: React.FC = () => {
   const currentBalance = agent?.ai_balance ?? agent?.balance ?? metrics.ai_balance ?? metrics.balance ?? 4.0;
 
   return (
-    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Welcome Banner with Live Balance Indicator */}
+    <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
+      {/* 1. Welcome Banner with Live Balance Indicator & Organic Glow */}
       <DashboardWelcomeBanner agent={agent} currentTime={currentTime} />
 
-      {/* 2. Metrics Grid featuring AI Balance Card */}
-      <DashboardMetricsGrid metrics={metrics} balance={currentBalance} />
+      {/* 2. Top Level KPI Metrics Grid */}
+      <DashboardMetricsGrid
+        metrics={metrics}
+        balance={currentBalance}
+        templateCredits={agent?.template_credits ?? agent?.credits ?? metrics.template_credits}
+      />
 
-      {/* 3. Activity Feed + Quick Action Shortcuts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {/* 3. Live Telemetry & Throughput (Signature 2x2 Grid from /style-guide) */}
+      <DashboardTelemetryGrid metrics={metrics} telemetry={telemetry} />
+
+      {/* 4. Activity Feed + Quick Action Shortcuts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-4">
         <DashboardRecentActivity recentActivity={recentActivity} />
         <DashboardQuickActions />
       </div>
 
-      {/* 4. Delivery & AI Performance Overview */}
-      <DashboardPerformance metrics={metrics} />
+      {/* 5. Delivery & AI Performance Overview */}
+      <DashboardPerformance
+        metrics={metrics}
+        telemetryPerformance={telemetry?.performance}
+      />
     </div>
   );
 };
 
 export default AgentDashboard;
+

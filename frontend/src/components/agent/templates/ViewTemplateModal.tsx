@@ -3,9 +3,6 @@ import { X, FileText } from 'lucide-react';
 import TemplatePreview from './TemplatePreview';
 import Portal from '../shared/Portal';
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
 interface WhatsAppTemplate {
   id: string;
   name: string;
@@ -36,35 +33,57 @@ interface ViewTemplateModalProps {
   template: WhatsAppTemplate | null;
   mediaPreviews: Record<string, string>;
   loadMediaPreview: (templateId: string, handle: string, mediaType: string) => Promise<void>;
+  zIndex?: string;
 }
 
 const ViewTemplateModal: React.FC<ViewTemplateModalProps> = ({
-  isOpen, onClose, template, mediaPreviews, loadMediaPreview,
+  isOpen,
+  onClose,
+  template,
+  mediaPreviews,
+  loadMediaPreview,
+  zIndex = "z-[110]",
 }) => {
   if (!isOpen || !template) return null;
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-          <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FileText size={15} style={{ color: '#22c55e' }} />
+      <div 
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+        className={`fixed inset-0 ${zIndex} bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop`}
+      >
+        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_24px_64px_rgba(22,40,29,0.15)] w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-modal-card">
+          {/* Header */}
+          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#9FE870]/20 text-[#16281D] flex items-center justify-center shrink-0">
+                <FileText size={16} />
               </div>
               <div>
-                <span style={{ ...SYNE, fontSize: 15, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>{template.name}</span>
-                <span style={{ ...DM, fontSize: 11, color: '#71717a' }}>{template.category} · {template.language}</span>
+                <h3 className="text-sm font-bold text-[#16281D] font-mono leading-tight">{template.name}</h3>
+                <span className="text-xs text-[#71717A] mt-0.5 inline-block">
+                  {template.category} · <span className="font-mono">{template.language}</span>
+                </span>
               </div>
             </div>
-            <button onClick={onClose} style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={14} style={{ color: '#71717a' }} />
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer border-0"
+              title="Close preview"
+            >
+              <X size={15} />
             </button>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-            <TemplatePreview template={template} mediaPreviews={mediaPreviews} loadMediaPreview={loadMediaPreview} />
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-5">
+            <TemplatePreview
+              template={template}
+              mediaPreviews={mediaPreviews}
+              loadMediaPreview={loadMediaPreview}
+            />
           </div>
         </div>
       </div>
@@ -73,3 +92,4 @@ const ViewTemplateModal: React.FC<ViewTemplateModalProps> = ({
 };
 
 export default ViewTemplateModal;
+

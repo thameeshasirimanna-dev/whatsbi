@@ -7,14 +7,16 @@ import {
   Sliders,
   Maximize2,
   Sparkles,
+  CalendarClock,
 } from 'lucide-react';
 import { ButtonsBadgesPanel } from './ButtonsBadgesPanel';
 import { FormsFeedbackPanel } from './FormsFeedbackPanel';
+import { DateTimePickerPanel } from './DateTimePickerPanel';
 import { ModalDrawerPreview } from './ModalDrawerPreview';
 import { MotionAnimationPanel } from './MotionAnimationPanel';
 
 export const TokenSystemView: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<'foundations' | 'buttons' | 'forms' | 'modals' | 'motion'>('foundations');
+  const [activeSubTab, setActiveSubTab] = useState<'foundations' | 'buttons' | 'forms' | 'pickers' | 'modals' | 'motion'>('foundations');
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
 
   const copyToClipboard = (hex: string) => {
@@ -117,6 +119,16 @@ export const TokenSystemView: React.FC = () => {
             <Sliders size={13} strokeWidth={2.4} /> Forms & Tables
           </button>
           <button
+            onClick={() => setActiveSubTab('pickers')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-0 ${
+              activeSubTab === 'pickers'
+                ? 'bg-[#16281D] text-white shadow-xs'
+                : 'text-[#52525B] hover:text-[#16281D] bg-transparent'
+            }`}
+          >
+            <CalendarClock size={13} strokeWidth={2.4} /> Date & Time Pickers
+          </button>
+          <button
             onClick={() => setActiveSubTab('modals')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-0 ${
               activeSubTab === 'modals'
@@ -143,6 +155,8 @@ export const TokenSystemView: React.FC = () => {
         <ButtonsBadgesPanel />
       ) : activeSubTab === 'forms' ? (
         <FormsFeedbackPanel />
+      ) : activeSubTab === 'pickers' ? (
+        <DateTimePickerPanel />
       ) : activeSubTab === 'modals' ? (
         <ModalDrawerPreview />
       ) : activeSubTab === 'motion' ? (

@@ -9,6 +9,40 @@ export interface DashboardAgent {
   balance?: number;
 }
 
+export interface TelemetryPoint {
+  label: string;
+  value: number;
+}
+
+export interface DashboardTelemetry {
+  throughput?: {
+    hourly: TelemetryPoint[];
+    daily: TelemetryPoint[];
+    currentRate: number;
+    unit: string;
+  };
+  tokenUsage?: {
+    monthly: TelemetryPoint[];
+    weekly: TelemetryPoint[];
+    totalFormatted: string;
+  };
+  activeConversations?: {
+    hourly: TelemetryPoint[];
+    daily: TelemetryPoint[];
+    total: number;
+  };
+  quota?: {
+    percentage: number;
+    usedAmount: number;
+    totalBudget: number;
+  };
+  performance?: {
+    satisfaction: string;
+    avgResponseTime: string;
+    deliveryRate: string;
+  };
+}
+
 export interface DashboardMetrics {
   activeConversations: number;
   totalCustomers: number;
@@ -17,6 +51,7 @@ export interface DashboardMetrics {
   balance?: number;
   ai_balance?: number;
   template_credits?: number;
+  telemetry?: DashboardTelemetry;
 }
 
 export interface RecentActivity {
@@ -25,7 +60,7 @@ export interface RecentActivity {
   title: string;
   description: string;
   time: string;
-  status: 'new' | 'active' | 'completed';
+  status: 'new' | 'active' | 'completed' | 'pending';
 }
 
 export interface MetricItem {

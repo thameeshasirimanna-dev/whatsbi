@@ -1,10 +1,6 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Clock, MessageSquare, ShoppingBag, Users, Search } from 'lucide-react';
 import { RecentActivity } from './dashboard.types';
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 const formatRelativeTime = (timeStr: string) => {
   if (!timeStr) return '';
@@ -35,27 +31,42 @@ const formatRelativeTime = (timeStr: string) => {
   }
 };
 
-const getStatusColor = (status: RecentActivity['status']): React.CSSProperties => {
+const getStatusBadge = (status: RecentActivity['status']) => {
   switch (status) {
-    case 'new':
-      return { background: 'rgba(8,145,178,0.1)', color: '#0891b2' };
-    case 'active':
-      return { background: 'rgba(217,119,6,0.1)', color: '#d97706' };
     case 'completed':
-      return { background: 'rgba(34,197,94,0.1)', color: '#059669' };
+    case 'active':
+      return {
+        className: 'bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]',
+        dotColor: 'bg-[#22C55E]',
+      };
+    case 'new':
+      return {
+        className: 'bg-[#F0F9FF] text-[#0284C7] border border-[#BAE6FD]',
+        dotColor: 'bg-[#38BDF8]',
+      };
+    case 'pending':
+      return {
+        className: 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]',
+        dotColor: 'bg-[#F59E0B]',
+      };
     default:
-      return { background: 'rgba(113,113,122,0.1)', color: '#71717a' };
+      return {
+        className: 'bg-[#F4F4F5] text-[#52525B] border border-[#E4E4E7]',
+        dotColor: 'bg-[#71717A]',
+      };
   }
 };
 
-const getActivityIconColor = (type: RecentActivity['type']): { bg: string; color: string } => {
+const getActivityVisuals = (type: RecentActivity['type']): { bg: string; color: string; Icon: typeof MessageSquare } => {
   switch (type) {
     case 'conversation':
-      return { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' };
+      return { bg: 'bg-[#ECFDF5] border border-[#A7F3D0]', color: 'text-[#059669]', Icon: MessageSquare };
     case 'order':
-      return { bg: 'rgba(8,145,178,0.1)', color: '#0891b2' };
+      return { bg: 'bg-[#F0F9FF] border border-[#BAE6FD]', color: 'text-[#0284C7]', Icon: ShoppingBag };
     case 'customer':
-      return { bg: 'rgba(5,150,105,0.1)', color: '#059669' };
+      return { bg: 'bg-[#F0FDF4] border border-[#BBF7D0]', color: 'text-[#16A34A]', Icon: Users };
+    default:
+      return { bg: 'bg-[#F4F7F4] border border-[#EAEAEA]', color: 'text-[#52525B]', Icon: MessageSquare };
   }
 };
 
@@ -67,171 +78,85 @@ export const DashboardRecentActivity: React.FC<DashboardRecentActivityProps> = (
   recentActivity,
 }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.25, duration: 0.4 }}
-      className="lg:col-span-2"
-      style={{
-        background: '#fff',
-        borderRadius: 14,
-        border: '1px solid #ebebeb',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        overflow: 'hidden',
-      }}
+    <div
+      className="lg:col-span-2 bg-white rounded-[24px] border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col font-sans select-none"
     >
-      <div
-        style={{
-          padding: '18px 22px',
-          borderBottom: '1px solid #f4f4f5',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 8,
-            background: 'rgba(34,197,94,0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Clock size={15} style={{ color: '#22c55e' }} />
-        </div>
-        <div>
-          <div style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: '#0c1a0e' }}>
-            Recent Activity
+      {/* Card Header */}
+      <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-[#EAEAEA] bg-[#F8FAF8] flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0">
+            <Clock size={16} strokeWidth={2.4} />
           </div>
-          <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>
-            {recentActivity.length} events
+          <div>
+            <div className="text-sm font-bold text-[#16281D] leading-tight">
+              Recent Activity
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-[#71717A] leading-tight mt-0.5 font-medium">
+              Live customer events & interaction history
+            </div>
           </div>
         </div>
+
+        <span className="text-[10px] sm:text-[11px] font-bold px-3 py-1 rounded-full bg-[#F4F4F5] text-[#52525B] border border-black/5">
+          {recentActivity.length} events
+        </span>
       </div>
 
-      <div>
+      {/* Activity List */}
+      <div className="divide-y divide-[#F4F4F5]">
         {recentActivity.map((activity, index) => {
-          const actColor = getActivityIconColor(activity.type);
-          const statusStyle = getStatusColor(activity.status);
+          const { bg, color, Icon } = getActivityVisuals(activity.type);
+          const badge = getStatusBadge(activity.status);
+
           return (
-            <motion.div
+            <div
               key={activity.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + index * 0.07 }}
-              style={{
-                padding: '14px 22px',
-                borderBottom: '1px solid #f9f9f9',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 12,
-                transition: 'background 0.12s',
-                cursor: 'default',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              className="p-3.5 sm:p-4 sm:px-5 hover:bg-[#F4F7F4]/60 transition-colors flex items-start gap-3.5 group cursor-default"
             >
               <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  flexShrink: 0,
-                  background: actColor.bg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl ${bg} ${color} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}
               >
-                {activity.type === 'conversation' && (
-                  <MessageSquare size={16} style={{ color: actColor.color }} />
-                )}
-                {activity.type === 'order' && (
-                  <ShoppingBag size={16} style={{ color: actColor.color }} />
-                )}
-                {activity.type === 'customer' && (
-                  <Users size={16} style={{ color: actColor.color }} />
-                )}
+                <Icon size={16} strokeWidth={2.2} />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 3,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <span
-                    style={{
-                      ...DM,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#0c1a0e',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-[13px] font-bold text-[#16281D] truncate group-hover:text-[#059669] transition-colors">
                     {activity.title}
                   </span>
                   <span
-                    style={{
-                      ...DM,
-                      fontSize: 10,
-                      fontWeight: 600,
-                      padding: '2px 7px',
-                      borderRadius: 9999,
-                      ...statusStyle,
-                      textTransform: 'capitalize',
-                      flexShrink: 0,
-                    }}
+                    className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${badge.className}`}
                   >
+                    <span className={`w-1.5 h-1.5 rounded-full ${badge.dotColor}`} />
                     {activity.status}
                   </span>
                 </div>
-                <div style={{ ...DM, fontSize: 12, color: '#71717a', marginBottom: 2 }}>
+
+                <div className="text-xs text-[#52525B] truncate mt-0.5">
                   {activity.description}
                 </div>
-                <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>
+
+                <div className="text-[10px] text-[#A1A1AA] mt-1 font-medium">
                   {formatRelativeTime(activity.time)}
                 </div>
               </div>
-            </motion.div>
+            </div>
           );
         })}
 
         {recentActivity.length === 0 && (
-          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: '50%',
-                background: '#f4f4f5',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 12px',
-              }}
-            >
-              <Search size={20} style={{ color: '#d4d4d8' }} />
+          <div className="py-12 px-4 text-center">
+            <div className="w-11 h-11 rounded-full bg-[#F4F7F4] flex items-center justify-center mx-auto mb-2 text-[#A1A1AA]">
+              <Search size={20} strokeWidth={2} />
             </div>
-            <div
-              style={{ ...DM, fontSize: 14, fontWeight: 500, color: '#3f3f46', marginBottom: 4 }}
-            >
-              No recent activity
-            </div>
-            <div style={{ ...DM, fontSize: 12, color: '#a1a1aa' }}>
-              Your activity will appear here as you interact with customers
+            <div className="text-sm font-bold text-[#16281D]">No recent activity</div>
+            <div className="text-xs text-[#71717A] mt-1 max-w-xs mx-auto">
+              Real-time events will automatically log here as customers message and interact
             </div>
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
+

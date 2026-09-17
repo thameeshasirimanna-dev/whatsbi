@@ -33,21 +33,19 @@ interface TemplatePreviewProps {
   loadMediaPreview: LoadMediaPreview;
 }
 
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
 const TemplatePreview: React.FC<TemplatePreviewProps> = ({ template, mediaPreviews, loadMediaPreview }) => {
   const hasButtons = template.components.some(c => c.type.toLowerCase() === "buttons" && c.buttons && c.buttons.length > 0);
 
   return (
-    <div style={{ background: '#e9ebee', borderRadius: 14, padding: 14, width: '100%' }}>
+    <div className="bg-[#E5DDD5] rounded-2xl p-3.5 w-full shadow-inner">
       {/* Label row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#6b7280' }}>Your template</span>
-        <span style={{ ...DM, fontSize: 10, color: '#9ca3af' }}>Template</span>
+      <div className="flex justify-between items-center mb-2.5">
+        <span className="text-[11px] font-semibold text-[#54656F]">WhatsApp Preview</span>
+        <span className="text-[10px] text-[#8696A0] font-mono">{template.language}</span>
       </div>
 
-      {/* White bubble */}
-      <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      {/* Bubble */}
+      <div className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#EAEAEA]">
         {/* Media header */}
         {(() => {
           const headerComp = template.components.find(c => c.type.toLowerCase() === "header");
@@ -64,50 +62,53 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ template, mediaPrevie
               mediaUrl = mediaPreviews[template.id] || "";
             }
             if (mediaUrl) {
-              if (headerComp.format === "IMAGE") return <img key="header-img" src={mediaUrl} alt="Header" style={{ width: '100%', display: 'block' }} onError={e => { e.currentTarget.style.display = "none"; }} />;
-              if (headerComp.format === "VIDEO") return <video key="header-video" src={mediaUrl} style={{ width: '100%', display: 'block' }} muted />;
-              return <div key="header-doc" style={{ background: '#f3f4f6', padding: '20px 0', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}><span style={{ ...DM, fontSize: 12, color: '#6b7280' }}>📄 Document Header</span></div>;
+              if (headerComp.format === "IMAGE") return <img key="header-img" src={mediaUrl} alt="Header" className="w-full max-h-56 object-cover" onError={e => { e.currentTarget.style.display = "none"; }} />;
+              if (headerComp.format === "VIDEO") return <video key="header-video" src={mediaUrl} className="w-full max-h-56 object-cover" muted />;
+              return <div key="header-doc" className="bg-[#F4F7F4] py-5 text-center border-b border-[#EAEAEA]"><span className="text-xs text-[#71717A]">📄 Document Header</span></div>;
             } else if (handle) {
-              return <div key="header-loading" style={{ background: '#f3f4f6', padding: '20px 0', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}><span style={{ ...DM, fontSize: 12, color: '#6b7280' }}>{headerComp.format} Header (loading…)</span></div>;
+              return <div key="header-loading" className="bg-[#F4F7F4] py-5 text-center border-b border-[#EAEAEA]"><span className="text-xs text-[#71717A]">{headerComp.format} Header (loading…)</span></div>;
             } else {
-              return <div key="header-empty" style={{ background: '#f3f4f6', padding: '20px 0', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}><span style={{ ...DM, fontSize: 12, color: '#6b7280' }}>{headerComp.format} Header (no media)</span></div>;
+              return <div key="header-empty" className="bg-[#F4F7F4] py-5 text-center border-b border-[#EAEAEA]"><span className="text-xs text-[#71717A]">{headerComp.format} Header (no media)</span></div>;
             }
           } else if (headerComp?.format === "LOCATION") {
-            return <div key="header-loc" style={{ background: '#dbeafe', padding: '20px 0', textAlign: 'center', borderBottom: '1px solid #bfdbfe' }}><span style={{ ...DM, fontSize: 12, color: '#2563eb' }}>📍 Location</span></div>;
+            return <div key="header-loc" className="bg-[#DBEAFE] py-5 text-center border-b border-[#BFDBFE]"><span className="text-xs text-[#2563EB] font-medium">📍 Location</span></div>;
           }
           return null;
         })()}
 
         {/* Text content */}
-        <div style={{ padding: '12px 14px', paddingBottom: hasButtons ? 6 : 12 }}>
+        <div className={`p-3.5 ${hasButtons ? 'pb-1.5' : 'pb-3.5'}`}>
           {template.components.some(c => c.type.toLowerCase() === "header" && c.format === "TEXT" && c.text) && (
-            <p style={{ ...DM, fontSize: 13, color: '#111827', fontWeight: 700, marginBottom: 6, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+            <p className="text-xs text-[#16281D] font-bold mb-1.5 whitespace-pre-wrap leading-snug">
               {template.components.filter(c => c.type.toLowerCase() === "header" && c.format === "TEXT").map(c => c.text?.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*|\d+)\}\}/g, "[Variable]") || "").join("\n")}
             </p>
           )}
 
-          <p style={{ ...DM, fontSize: 13, color: '#1f2937', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: 4 }}>
+          <p className="text-xs text-[#16281D] leading-relaxed whitespace-pre-wrap mb-1">
             {template.components.filter(c => c.type.toLowerCase() === "body").map(c => c.text?.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*|\d+)\}\}/g, "[Variable]") || "Enter body text...").join("\n")}
           </p>
 
           {template.components.some(c => c.type.toLowerCase() === "footer") && (
-            <p style={{ ...DM, fontSize: 11, color: '#9ca3af', fontStyle: 'italic', marginBottom: 4, whiteSpace: 'pre-wrap' }}>
+            <p className="text-[11px] text-[#71717A] italic mb-1 whitespace-pre-wrap">
               {template.components.filter(c => c.type.toLowerCase() === "footer").map(c => c.text?.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*|\d+)\}\}/g, "[Variable]") || "").join("\n")}
             </p>
           )}
 
-          <p style={{ ...DM, fontSize: 10, color: '#9ca3af', textAlign: 'right' }}>13:40 ✓✓</p>
+          <div className="flex items-center justify-end gap-1 text-[10px] text-[#8696A0] mt-1">
+            <span>12:00</span>
+            <span className="text-[#3B82F6]">✓✓</span>
+          </div>
         </div>
 
         {/* Buttons */}
         {hasButtons && (
-          <div style={{ borderTop: '1px solid #e5e7eb' }}>
+          <div className="border-t border-[#EAEAEA] divide-y divide-[#EAEAEA]">
             {template.components.filter(c => c.type.toLowerCase() === "buttons").flatMap(c =>
               (c.buttons || []).map((btn, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 14px', color: '#0ea5e9', ...DM, fontSize: 13, fontWeight: 500, borderTop: i > 0 ? '1px solid #e5e7eb' : 'none' }}>
-                  {btn.type === "PHONE_NUMBER" && <Phone size={13} />}
-                  {btn.type === "URL" && <ExternalLink size={13} />}
-                  {btn.type === "QUICK_REPLY" && <MessageCircle size={13} />}
+                <div key={i} className="flex items-center justify-center gap-1.5 py-2.5 px-3.5 text-xs font-semibold text-[#0284C7] hover:bg-[#F4F7F4] transition-colors cursor-pointer">
+                  {btn.type === "PHONE_NUMBER" && <Phone size={12} />}
+                  {btn.type === "URL" && <ExternalLink size={12} />}
+                  {btn.type === "QUICK_REPLY" && <MessageCircle size={12} />}
                   <span>{btn.text?.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*|\d+)\}\}/g, "[Variable]") || btn.text || `Button ${i + 1}`}</span>
                 </div>
               ))
@@ -120,3 +121,4 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ template, mediaPrevie
 };
 
 export default TemplatePreview;
+

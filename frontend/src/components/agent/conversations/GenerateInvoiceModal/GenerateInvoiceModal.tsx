@@ -1,8 +1,8 @@
 import React from "react";
 import { X, FileText, AlertCircle } from "lucide-react";
 import { GenerateInvoiceModalProps } from "./types";
-import { SYNE, DM, inputStyle, onFocusGreen, onBlurGreen } from "./constants";
 import { useDialog } from "../../shared/DialogProvider";
+import Portal from "../../shared/Portal";
 import { useInvoiceModal } from "./useInvoiceModal";
 import { CustomerSelector } from "./CustomerSelector";
 import { CatalogQuickAdd } from "./CatalogQuickAdd";
@@ -59,110 +59,44 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
   if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 60,
-        background: "rgba(0,0,0,0.5)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 20,
-          border: "1px solid #ebebeb",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
-          width: "100%",
-          maxWidth: "min(680px, 90vw)",
-          maxHeight: "90vh",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
+    <Portal>
+      <div className="fixed inset-0 z-[110] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-modal-card">
         {/* Header */}
-        <div
-          style={{
-            flexShrink: 0,
-            padding: "18px 24px 14px",
-            borderBottom: "1px solid #ebebeb",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
-                  background: "rgba(34,197,94,0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FileText size={15} style={{ color: "#059669" }} />
-              </div>
-              <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: "#0c1a0e" }}>
-                Generate Invoice
-              </span>
+        <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center">
+              <FileText size={18} strokeWidth={2.2} />
             </div>
-            <span style={{ ...DM, fontSize: 12, color: "#71717a", marginTop: 4, display: "block" }}>
-              Create and dispatch an invoice first. Order will be automatically created once paid.
-            </span>
+            <div>
+              <h3 className="font-sans text-base font-bold text-[#16281D]">
+                Generate Invoice
+              </h3>
+              <p className="font-sans text-xs text-[#71717A] mt-0.5">
+                Create and dispatch an invoice. An order will auto-create upon payment.
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            style={{
-              width: 30,
-              height: 30,
-              background: "rgba(0,0,0,0.06)",
-              border: "none",
-              borderRadius: 8,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#71717a",
-            }}
+            className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+            aria-label="Close modal"
           >
             <X size={15} />
           </button>
         </div>
 
         {/* Scrollable Form Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 font-sans">
           {error && (
-            <div
-              style={{
-                padding: "10px 14px",
-                background: "rgba(244,63,94,0.08)",
-                border: "1px solid rgba(244,63,94,0.15)",
-                borderRadius: 9,
-                ...DM,
-                fontSize: 13,
-                color: "#f43f5e",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            <div className="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FEE2E2] text-xs font-sans text-[#EF4444] flex items-center gap-2">
               <AlertCircle size={15} />
               <span>{error}</span>
             </div>
           )}
 
           {/* Customer info & Invoice title */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <CustomerSelector
               localCustomerId={localCustomerId}
               localCustomerName={localCustomerName}
@@ -181,7 +115,7 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
             />
 
             <div>
-              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+              <label className="block text-xs font-semibold text-[#16281D] mb-1.5 font-sans">
                 Invoice Title
               </label>
               <input
@@ -189,9 +123,7 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
                 value={invoiceName}
                 onChange={(e) => setInvoiceName(e.target.value)}
                 placeholder="Invoice name"
-                style={inputStyle}
-                onFocus={onFocusGreen}
-                onBlur={onBlurGreen}
+                className="w-full px-3.5 py-2 text-sm font-sans text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#16281D] focus:ring-2 focus:ring-[#9FE870]/30 outline-none transition-all placeholder:text-[#A1A1AA]"
               />
             </div>
           </div>
@@ -212,9 +144,9 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
           />
 
           {/* Financial Adjustments (Discount & Advance) */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+              <label className="block text-xs font-semibold text-[#16281D] mb-1.5 font-sans">
                 Discount Percentage (%)
               </label>
               <input
@@ -225,14 +157,12 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
                 value={discountPercentage}
                 onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
                 placeholder="0"
-                style={inputStyle}
-                onFocus={onFocusGreen}
-                onBlur={onBlurGreen}
+                className="w-full px-3.5 py-2 text-sm font-mono text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#16281D] focus:ring-2 focus:ring-[#9FE870]/30 outline-none transition-all placeholder:text-[#A1A1AA]"
               />
             </div>
 
             <div>
-              <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+              <label className="block text-xs font-semibold text-[#16281D] mb-1.5 font-sans">
                 Advance Amount Required (LKR)
               </label>
               <input
@@ -245,16 +175,14 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
                   setAdvanceAmount(parseFloat(e.target.value) || 0);
                 }}
                 placeholder="Deposit / advance amount"
-                style={inputStyle}
-                onFocus={onFocusGreen}
-                onBlur={onBlurGreen}
+                className="w-full px-3.5 py-2 text-sm font-mono text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#16281D] focus:ring-2 focus:ring-[#9FE870]/30 outline-none transition-all placeholder:text-[#A1A1AA]"
               />
             </div>
           </div>
 
           {/* Notes */}
           <div>
-            <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: "#3f3f46", display: "block", marginBottom: 5 }}>
+            <label className="block text-xs font-semibold text-[#16281D] mb-1.5 font-sans">
               Notes & Terms
             </label>
             <textarea
@@ -262,9 +190,7 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
               onChange={(e) => setInvoiceNotes(e.target.value)}
               placeholder="Payment instructions, bank accounts, delivery expectations..."
               rows={2}
-              style={{ ...inputStyle, resize: "vertical" }}
-              onFocus={onFocusGreen as any}
-              onBlur={onBlurGreen as any}
+              className="w-full px-3.5 py-2 text-sm font-sans text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl focus:border-[#16281D] focus:ring-2 focus:ring-[#9FE870]/30 outline-none transition-all resize-y placeholder:text-[#A1A1AA]"
             />
           </div>
 
@@ -279,33 +205,13 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
           />
         </div>
 
-        {/* Footer Actions */}
-        <div
-          style={{
-            flexShrink: 0,
-            padding: "14px 24px",
-            borderTop: "1px solid #ebebeb",
-            display: "flex",
-            gap: 12,
-            background: "#fff",
-          }}
-        >
+        {/* Footer Actions following Style Guide Section 6 */}
+        <div className="shrink-0 p-4 border-t border-[#EAEAEA] bg-white flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={generating}
-            style={{
-              flex: 1,
-              padding: "10px 16px",
-              background: "rgba(0,0,0,0.06)",
-              color: "#3f3f46",
-              border: "none",
-              borderRadius: 10,
-              cursor: generating ? "not-allowed" : "pointer",
-              ...DM,
-              fontSize: 13,
-              fontWeight: 600,
-            }}
+            className="h-10 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] font-sans text-xs font-bold text-[#52525B] transition-all cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -313,34 +219,16 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
             type="button"
             onClick={handleGenerateInvoice}
             disabled={generating || !invoiceName.trim()}
-            style={{
-              flex: 2,
-              padding: "10px 20px",
-              background:
-                generating || !invoiceName.trim()
-                  ? "rgba(34,197,94,0.3)"
-                  : "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 10,
-              cursor: generating || !invoiceName.trim() ? "not-allowed" : "pointer",
-              ...DM,
-              fontSize: 13,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              boxShadow: generating || !invoiceName.trim() ? "none" : "0 4px 14px rgba(34,197,94,0.25)",
-            }}
+            className="h-10 px-5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
           >
-            <FileText size={15} />
-            {generating ? "Generating & Saving..." : "Generate & Save Invoice"}
+            <FileText size={15} strokeWidth={2.4} />
+            <span>{generating ? "Generating & Saving..." : "Generate & Save Invoice"}</span>
           </button>
         </div>
       </div>
     </div>
-  );
+  </Portal>
+);
 };
 
 export default GenerateInvoiceModal;

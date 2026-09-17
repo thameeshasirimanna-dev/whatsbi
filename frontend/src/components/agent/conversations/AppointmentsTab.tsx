@@ -1,10 +1,7 @@
 import React from "react";
 import { Appointment } from "../../../types/index";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Calendar, Eye, Pencil, Trash2 } from "lucide-react";
 import { useDialog } from "../shared/DialogProvider";
-
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 
 interface AppointmentsTabProps {
   appointments: Appointment[];
@@ -24,31 +21,29 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
   const { confirm: dlgConfirm } = useDialog();
 
   const handleDelete = async (appointmentId: number) => {
-    if (!await dlgConfirm('Are you sure you want to delete this appointment? This action cannot be undone.', { danger: true })) return;
+    if (
+      !(await dlgConfirm(
+        "Are you sure you want to delete this appointment? This action cannot be undone.",
+        { danger: true }
+      ))
+    )
+      return;
     onDeleteAppointment(appointmentId);
   };
 
-  const getStatusStyle = (status: string): React.CSSProperties => {
-    if (status === "completed") return { background: "rgba(34,197,94,0.1)", color: "#059669" };
-    if (status === "pending") return { background: "rgba(217,119,6,0.1)", color: "#d97706" };
-    if (status === "confirmed") return { background: "rgba(8,145,178,0.1)", color: "#0891b2" };
-    if (status === "cancelled") return { background: "rgba(244,63,94,0.08)", color: "#f43f5e" };
-    return { background: "#f4f4f5", color: "#71717a" };
+  const getStatusBadge = (status: string) => {
+    const s = status?.toLowerCase();
+    if (s === "completed") return "bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]";
+    if (s === "confirmed") return "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]";
+    if (s === "pending") return "bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]";
+    if (s === "cancelled") return "bg-[#FFF1F2] text-[#E11D48] border-[#FECDD3]";
+    return "bg-[#F4F4F5] text-[#71717A] border-[#E4E4E7]";
   };
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "48px 0" }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            border: "3px solid rgba(34,197,94,0.2)",
-            borderTopColor: "#22c55e",
-            animation: "com-spin 0.8s linear infinite",
-          }}
-        />
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 rounded-full border-2 border-[#16281D]/20 border-t-[#16281D] animate-spin" />
       </div>
     );
   }
@@ -56,162 +51,86 @@ const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
   return (
     <>
       {appointments.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "48px 0",
-            ...DM,
-            fontSize: 14,
-            color: "#71717a",
-          }}
-        >
-          No appointments found for this customer.
+        <div className="text-center py-14 px-4 bg-white rounded-2xl border border-dashed border-[#EAEAEA] flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full bg-[#F4F7F4] flex items-center justify-center text-[#71717A] mb-3">
+            <Calendar size={20} />
+          </div>
+          <p className="font-sans text-sm font-bold text-[#16281D] mb-1">No appointments found</p>
+          <p className="font-sans text-xs text-[#71717A]">No appointments scheduled for this customer yet.</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="flex flex-col gap-3.5">
           {appointments.map((appointment) => (
             <div
               key={appointment.id}
-              style={{
-                background: "#fff",
-                borderRadius: 14,
-                border: "1px solid #ebebeb",
-                padding: "16px 18px",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                transition: "box-shadow 0.15s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)")
-              }
+              className="bg-white rounded-2xl border border-[#EAEAEA] p-5 shadow-xs hover:border-[#16281D]/20 transition-all flex flex-col gap-3.5"
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: 8,
-                }}
-              >
-                <span style={{ ...SYNE, fontSize: 14, fontWeight: 700, color: "#0c1a0e" }}>
-                  {appointment.title}
-                </span>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="font-sans text-sm font-bold text-[#16281D] block">
+                    {appointment.title}
+                  </span>
+                  <span className="font-mono text-xs text-[#71717A] mt-0.5 block">
+                    #APT-{appointment.id.toString().padStart(4, "0")}
+                  </span>
+                </div>
                 <span
-                  style={{
-                    ...DM,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: "3px 9px",
-                    borderRadius: 9999,
-                    ...getStatusStyle(appointment.status),
-                  }}
+                  className={`text-[11px] font-semibold font-sans px-2.5 py-0.5 rounded-full border shrink-0 ${getStatusBadge(
+                    appointment.status
+                  )}`}
                 >
-                  {appointment.status}
+                  {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                 </span>
               </div>
 
-              <p style={{ ...DM, fontSize: 13, color: "#3f3f46", marginBottom: 4 }}>
-                Date:{" "}
-                <span style={{ fontWeight: 600, color: "#0c1a0e" }}>
-                  {new Date(appointment.appointment_date).toLocaleDateString()}
-                </span>
-              </p>
-              <p style={{ ...DM, fontSize: 13, color: "#3f3f46", marginBottom: 4 }}>
-                Duration:{" "}
-                <span style={{ fontWeight: 600, color: "#0c1a0e" }}>
-                  {appointment.duration_minutes} minutes
-                </span>
-              </p>
-              {appointment.notes && (
-                <p style={{ ...DM, fontSize: 12, color: "#71717a", marginBottom: 4 }}>
-                  Notes: {appointment.notes}
-                </p>
-              )}
-              <p style={{ ...DM, fontSize: 12, color: "#a1a1aa", marginBottom: 12 }}>
-                Created on: {new Date(appointment.created_at).toLocaleDateString()}
-              </p>
+              {/* Telemetry Strip */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 py-2.5 px-3.5 bg-[#F4F7F4] rounded-xl border border-[#EAEAEA]/80">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-sans text-xs text-[#71717A] font-medium">Date & Time:</span>
+                  <span className="font-mono text-xs font-semibold text-[#16281D]">
+                    {new Date(appointment.appointment_date).toLocaleDateString()}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-white text-[#16281D] border border-[#EAEAEA]">
+                    {appointment.duration_minutes} min
+                  </span>
+                </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  paddingTop: 12,
-                  borderTop: "1px solid #f4f4f5",
-                }}
-              >
+                <span className="font-sans text-[11px] text-[#71717A]">
+                  Created on <span className="font-mono font-medium text-[#16281D]">{new Date(appointment.created_at).toLocaleDateString()}</span>
+                </span>
+              </div>
+
+              {appointment.notes && (
+                <div className="text-xs font-sans text-[#71717A] bg-[#FAFAF9] px-3.5 py-2.5 rounded-xl border border-[#EAEAEA]/70">
+                  <span className="font-semibold text-[#16281D]">Notes: </span>
+                  {appointment.notes}
+                </div>
+              )}
+
+              {/* Action Buttons following Style Guide Section 6 */}
+              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#F4F7F4]">
                 <button
                   onClick={() => onViewAppointment(appointment)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "5px 12px",
-                    background: "rgba(8,145,178,0.08)",
-                    color: "#0891b2",
-                    border: "1px solid rgba(8,145,178,0.15)",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    ...DM,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: "background 0.15s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(8,145,178,0.14)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(8,145,178,0.08)")}
+                  className="h-8 px-3 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] font-sans text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer border-0"
                 >
-                  <Eye size={13} />
-                  View
+                  <Eye size={13} strokeWidth={2.2} />
+                  <span>View</span>
                 </button>
 
                 <button
                   onClick={() => onEditAppointment(appointment)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "5px 12px",
-                    background: "rgba(34,197,94,0.08)",
-                    color: "#059669",
-                    border: "1px solid rgba(34,197,94,0.15)",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    ...DM,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: "background 0.15s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.14)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.08)")}
+                  className="h-8 px-3 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] font-sans text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer border-0"
                 >
-                  <Pencil size={13} />
-                  Edit
+                  <Pencil size={13} strokeWidth={2.2} />
+                  <span>Edit</span>
                 </button>
 
                 <button
                   onClick={() => handleDelete(appointment.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "5px 12px",
-                    background: "rgba(244,63,94,0.06)",
-                    color: "#f43f5e",
-                    border: "1px solid rgba(244,63,94,0.15)",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    ...DM,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: "background 0.15s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(244,63,94,0.12)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(244,63,94,0.06)")}
+                  className="h-8 px-3 rounded-full bg-[#FFF1F2] hover:bg-[#FFE4E6] text-[#E11D48] border border-[#FECDD3] font-sans text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  <Trash2 size={13} />
-                  Delete
+                  <Trash2 size={13} strokeWidth={2.2} />
+                  <span>Delete</span>
                 </button>
               </div>
             </div>

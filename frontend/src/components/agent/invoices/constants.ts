@@ -1,17 +1,17 @@
 import React from "react";
 
-export const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-export const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+export const SYNE: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
+export const DM: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
 
 export const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "9px 12px",
-  fontFamily: "'DM Sans', sans-serif",
+  padding: "10px 14px",
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
   fontSize: 13,
-  color: "#3f3f46",
-  background: "#f9f9f9",
-  border: "1px solid #ebebeb",
-  borderRadius: 9,
+  color: "#16281D",
+  background: "#FAFAFA",
+  border: "1px solid #E4E4E7",
+  borderRadius: 12,
   outline: "none",
   boxSizing: "border-box",
   transition: "border-color 0.15s, box-shadow 0.15s",
@@ -19,49 +19,77 @@ export const inputStyle: React.CSSProperties = {
 
 export const selectStyle: React.CSSProperties = {
   ...inputStyle,
+  borderRadius: 9999,
+  padding: "8px 16px",
   appearance: "none",
   cursor: "pointer",
 };
 
 export const onFocusG = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-  e.currentTarget.style.borderColor = "#22c55e";
-  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)";
+  e.currentTarget.style.borderColor = "#9FE870";
+  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(159,232,112,0.25)";
+  e.currentTarget.style.background = "#fff";
 };
 
 export const onBlurG = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-  e.currentTarget.style.borderColor = "#ebebeb";
+  e.currentTarget.style.borderColor = "#E4E4E7";
   e.currentTarget.style.boxShadow = "none";
+  e.currentTarget.style.background = "#FAFAFA";
 };
 
 export const getStatusStyle = (
   status: "generated" | "sent" | "paid" | "partially_paid" | string
 ): React.CSSProperties => {
-  if (status === "paid") {
+  const s = (status || "").toLowerCase();
+  if (s === "paid") {
     return {
-      background: "rgba(34,197,94,0.1)",
-      color: "#059669",
-      border: "1px solid rgba(34,197,94,0.2)",
+      background: "#F0FDF4",
+      color: "#15803D",
+      border: "1px solid #BBF7D0",
+      borderRadius: 9999,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "4px 10px",
+      fontSize: 11,
+      fontWeight: 700,
     };
   }
-  if (status === "partially_paid") {
+  if (s === "partially_paid" || s === "sent") {
     return {
-      background: "rgba(245,158,11,0.1)",
-      color: "#d97706",
-      border: "1px solid rgba(245,158,11,0.2)",
-    };
-  }
-  if (status === "sent") {
-    return {
-      background: "rgba(217,119,6,0.1)",
-      color: "#d97706",
-      border: "1px solid rgba(217,119,6,0.2)",
+      background: "#FFFBEB",
+      color: "#92400E",
+      border: "1px solid #FDE68A",
+      borderRadius: 9999,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "4px 10px",
+      fontSize: 11,
+      fontWeight: 700,
     };
   }
   return {
-    background: "rgba(8,145,178,0.1)",
-    color: "#0891b2",
-    border: "1px solid rgba(8,145,178,0.2)",
+    background: "#F4F4F5",
+    color: "#52525B",
+    border: "1px solid #E4E4E7",
+    borderRadius: 9999,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "4px 10px",
+    fontSize: 11,
+    fontWeight: 700,
   };
+};
+
+export const getStatusDotColor = (
+  status: "generated" | "sent" | "paid" | "partially_paid" | string
+): string => {
+  const s = (status || "").toLowerCase();
+  if (s === "paid") return "#22C55E";
+  if (s === "partially_paid" || s === "sent") return "#F59E0B";
+  return "#71717A";
 };
 
 export const capitalizeFirst = (str: string): string =>

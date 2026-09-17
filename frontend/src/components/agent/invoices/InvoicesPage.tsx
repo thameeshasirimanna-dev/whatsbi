@@ -81,17 +81,7 @@ const InvoicesPage: React.FC = () => {
   const isPageIndeterminate = selection.isIndeterminate(pageIds);
 
   return (
-    <div
-      style={{
-        padding: "24px 20px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        width: "100%",
-        maxWidth: "100%",
-        boxSizing: "border-box",
-      }}
-    >
+    <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
       <style>{`@keyframes ip-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Generate Invoice Modal */}
@@ -132,17 +122,7 @@ const InvoicesPage: React.FC = () => {
       />
 
       {error && (
-        <div
-          style={{
-            padding: "10px 14px",
-            background: "rgba(244,63,94,0.08)",
-            border: "1px solid rgba(244,63,94,0.15)",
-            borderRadius: 9,
-            ...DM,
-            fontSize: 13,
-            color: "#f43f5e",
-          }}
-        >
+        <div className="p-3 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-xs text-[#EF4444] font-medium font-sans">
           {error}
         </div>
       )}

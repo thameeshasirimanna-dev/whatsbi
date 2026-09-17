@@ -1,6 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { getToken } from "../../../lib/auth";
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  MessageSquare,
+  Send,
+  Mic,
+  Paperclip,
+  ShoppingBag,
+  Layers,
+  Package,
+  FileText,
+  Info,
+  Sparkles,
+} from "lucide-react";
 import { Conversation, Message, GroupedMessage } from "./ConversationsPage";
 import ProductSelectorModal from "./ProductSelectorModal";
 import ServiceSelectorModal from "./ServiceSelectorModal";
@@ -175,8 +187,8 @@ function renderTemplateHeader(
               </svg>
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0c1a0e', margin: 0 }}>Template Header Document</p>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#71717a', margin: 0 }}>View attached</p>
+              <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#0c1a0e', margin: 0 }}>Template Header Document</p>
+              <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: '#71717a', margin: 0 }}>View attached</p>
             </div>
           </div>
         )}
@@ -204,7 +216,7 @@ function renderTemplateHeader(
     }
     return (
       <div style={{ marginBottom: 8 }}>
-        <h4 style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#0c1a0e', margin: 0 }}>{headerText}</h4>
+        <h4 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, color: '#0c1a0e', margin: 0 }}>{headerText}</h4>
       </div>
     );
   }
@@ -232,7 +244,7 @@ function renderTemplateFooter(template: TemplateData) {
   // Footers typically don't have params, but handle if they do
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#a1a1aa', fontStyle: 'italic', margin: 0 }}>{footerText}</p>
+      <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: '#a1a1aa', fontStyle: 'italic', margin: 0 }}>{footerText}</p>
     </div>
   );
 }
@@ -253,7 +265,7 @@ function renderTemplateButtons(template: TemplateData) {
             key={index}
             disabled={true}
             title="Template button (historical)"
-            style={{ width: '100%', padding: '8px 16px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#059669', cursor: 'default', opacity: 0.7 }}
+            style={{ width: '100%', padding: '8px 16px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#059669', cursor: 'default', opacity: 0.7 }}
           >
             {buttonText}
           </button>
@@ -437,7 +449,7 @@ const AudioPlayer: React.FC<{ src: string; isAgent: boolean }> = ({ src, isAgent
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ 
-            fontFamily: "'DM Sans', sans-serif", 
+            fontFamily: "'Plus Jakarta Sans', sans-serif", 
             fontSize: '13px', 
             fontWeight: 600, 
             color: titleColor,
@@ -448,7 +460,7 @@ const AudioPlayer: React.FC<{ src: string; isAgent: boolean }> = ({ src, isAgent
             Voice message
           </span>
           <span style={{ 
-            fontFamily: "'DM Sans', sans-serif", 
+            fontFamily: "'Plus Jakarta Sans', sans-serif", 
             fontSize: '11px', 
             color: textColor 
           }}>
@@ -675,10 +687,6 @@ const MessageView: React.FC<MessageViewProps> = ({
       })()
     : null;
 
-  const leadStageButtonClasses = currentStageInfo
-    ? `p-2 bg-${currentStageInfo.color}-100 text-${currentStageInfo.color}-700 hover:bg-${currentStageInfo.color}-200 hover:text-${currentStageInfo.color}-900 rounded-lg transition-all duration-200 flex items-center shadow-sm hover:shadow-md`
-    : "p-2 bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-900 rounded-lg transition-all duration-200 flex items-center shadow-sm hover:shadow-md";
-
   const handleStageUpdate = (newStages: {
     lead_stage: string;
     interest_stage: string | null;
@@ -899,17 +907,27 @@ const MessageView: React.FC<MessageViewProps> = ({
     if (!container || !onLoadMoreMessages) return;
 
     const handleScroll = () => {
-      // Trigger when user scrolls within 100px of the top
-      if (container.scrollTop <= 100 && !loadingMoreMessages) {
+      // Trigger when user scrolls within 100px of the top and content is scrollable
+      if (
+        container.scrollHeight > container.clientHeight &&
+        container.scrollTop <= 100 &&
+        !loadingMoreMessages &&
+        (selectedConversation?.messages?.length || 0) > 0
+      ) {
         onLoadMoreMessages();
       }
     };
 
-    container.addEventListener("scroll", handleScroll);
+    container.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       container.removeEventListener("scroll", handleScroll);
     };
-  }, [messagesContainerRef, onLoadMoreMessages, loadingMoreMessages]);
+  }, [
+    messagesContainerRef,
+    onLoadMoreMessages,
+    loadingMoreMessages,
+    selectedConversation?.messages?.length,
+  ]);
 
   // Scroll to bottom instantly when switching conversations or when a new message is appended
   useEffect(() => {
@@ -1107,28 +1125,26 @@ const MessageView: React.FC<MessageViewProps> = ({
   };
   return (
     <div
-      className={`flex-1 flex flex-col overflow-hidden relative ${
+      className={`flex-1 flex flex-col overflow-hidden relative bg-[#F4F7F4] ${
         selectedConversation ? "flex" : "hidden md:flex"
       }`}
-      style={{ background: '#f8faf8' }}
     >
       {/* No conversation selected */}
       {!selectedConversation && (
-        <div className="flex flex-col justify-start h-full pt-12" style={{ background: '#f8faf8' }}>
-          <div className="text-center p-12 max-w-lg mx-auto">
-            <div style={{ width: 80, height: 80, background: '#f4f4f5', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-              <svg style={{ width: 40, height: 40, color: '#d4d4d8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+        <div className="flex flex-col justify-center items-center h-full p-8 bg-[#F4F7F4] font-sans select-none">
+          <div className="text-center p-8 sm:p-12 max-w-md mx-auto bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_12px_36px_rgba(20,40,24,0.06)] flex flex-col items-center">
+            <div className="w-16 h-16 rounded-2xl bg-[#16281D] text-[#9FE870] flex items-center justify-center mb-5 shadow-xs border border-[#9FE870]/30">
+              <MessageSquare size={28} strokeWidth={2.2} />
             </div>
-            <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: '#0c1a0e', marginBottom: 10 }}>
+            <h3 className="text-lg sm:text-xl font-extrabold text-[#16281D] tracking-tight mb-2 m-0 font-sans">
               No conversation selected
             </h3>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#71717a', lineHeight: 1.6, marginBottom: 8 }}>
-              Choose a conversation from the left to start chatting with your customers
+            <p className="text-xs sm:text-[13px] text-[#71717A] leading-relaxed mb-4 m-0 font-sans">
+              Choose a customer conversation from the list to start messaging or manage orders.
             </p>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#a1a1aa' }}>
-              💬 Messages will appear here once you select a conversation
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4F7F4] border border-[#EAEAEA] text-[11px] font-semibold text-[#8FA89B]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+              Live WhatsApp incoming stream active
             </div>
           </div>
         </div>
@@ -1137,51 +1153,46 @@ const MessageView: React.FC<MessageViewProps> = ({
       {/* Chat Header - only show when conversation is selected */}
       {selectedConversation && (
         <div
-          className="px-3 py-2 md:px-5 md:py-3.5 gap-2 md:gap-3"
-          style={{ background: '#fff', borderBottom: '1px solid #ebebeb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          className="px-3.5 py-2.5 sm:px-5 sm:py-3 bg-white border-b border-[#EAEAEA] flex items-center justify-between shrink-0 shadow-[0_1px_3px_rgba(20,40,24,0.02)] gap-2 font-sans select-none"
         >
           {onBack && (
             <button
               onClick={onBack}
-              className="md:hidden p-1 mr-1 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center border-none bg-transparent cursor-pointer"
+              className="md:hidden w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] flex items-center justify-center transition-all border-0 cursor-pointer shrink-0"
+              aria-label="Back to conversations"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={16} strokeWidth={2.4} />
             </button>
           )}
           <div
-            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1, borderRadius: 10, padding: '4px 8px', margin: '-4px -8px', transition: 'background 0.12s', minWidth: 0 }}
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer flex-1 min-w-0 p-1 rounded-xl hover:bg-[#F4F7F4] transition-colors"
             onClick={onOpenContactDetails}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.04)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            title="View customer contact details"
           >
             <div 
-              className="w-9 h-9 md:w-[42px] md:h-[42px]"
-              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(34,197,94,0.25)', flexShrink: 0 }}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#16281D] text-[#9FE870] font-bold text-xs sm:text-sm flex items-center justify-center border border-[#9FE870]/30 shadow-xs shrink-0"
             >
-              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, color: '#fff' }}>
-                {selectedConversation.customerName.charAt(0).toUpperCase()}
-              </span>
+              {selectedConversation.customerName ? selectedConversation.customerName.charAt(0).toUpperCase() : "C"}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, minWidth: 0 }}>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <h3 
-                  className="text-sm md:text-[15px]"
-                  style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, color: '#0c1a0e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}
+                  className="text-xs sm:text-sm font-extrabold text-[#16281D] tracking-tight truncate leading-tight m-0 font-sans"
                 >
                   {selectedConversation.customerName}
                 </h3>
               </div>
               <p 
-                className="text-[11px] md:text-xs"
-                style={{ fontFamily: "'DM Sans', sans-serif", color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                className="text-[10px] sm:text-xs text-[#71717A] font-mono truncate m-0 leading-tight mt-0.5"
               >
                 {selectedConversation.customerPhone}
               </p>
             </div>
           </div>
-          <div className="gap-1.5 md:gap-2" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {!selectedConversation.lastUserMessageTime ? (
-              <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: 'rgba(217,119,6,0.1)', color: '#d97706', flexShrink: 0 }}>
+              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] shrink-0 font-sans">
                 Out of window
               </span>
             ) : (
@@ -1190,40 +1201,44 @@ const MessageView: React.FC<MessageViewProps> = ({
                 const hoursSince = (Date.now() - lastTime.getTime()) / (1000 * 60 * 60);
                 const isExpired = hoursSince > 24;
                 return (
-                  <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: isExpired ? 'rgba(217,119,6,0.1)' : 'rgba(34,197,94,0.1)', color: isExpired ? '#d97706' : '#059669', flexShrink: 0 }}>
+                  <span className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 font-sans ${
+                    isExpired
+                      ? "bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]"
+                      : "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]"
+                  }`}>
                     {isExpired ? "Template Required" : "Free Messaging"}
                   </span>
                 );
               })()
             )}
             {currentStageInfo && (
-              <span className="hidden sm:inline-block" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 9999, background: 'rgba(34,197,94,0.1)', color: '#059669' }}>
+              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F4F7F4] text-[#16281D] border border-[#EAEAEA] shrink-0 font-sans">
                 {currentStageInfo.stage}
               </span>
             )}
             <button
+              type="button"
               onClick={() => setShowLeadStageModal(true)}
-              className="w-8 h-8 md:w-[34px] md:h-[34px]"
-              style={{ background: 'rgba(34,197,94,0.08)', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', transition: 'background 0.15s', flexShrink: 0 }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.15)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.08)')}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] border border-[#EAEAEA] flex items-center justify-center transition-all cursor-pointer shrink-0"
               title="View Lead Stage"
             >
-              <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
+              <Layers size={14} strokeWidth={2.2} />
             </button>
             <button
+              type="button"
               onClick={() => setShowOrdersModal(true)}
-              className="w-8 h-8 md:w-[34px] md:h-[34px]"
-              style={{ background: 'rgba(8,145,178,0.08)', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0891b2', transition: 'background 0.15s', flexShrink: 0 }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(8,145,178,0.15)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(8,145,178,0.08)')}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] border border-[#EAEAEA] flex items-center justify-center transition-all cursor-pointer shrink-0"
               title="View Orders"
             >
-              <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
+              <ShoppingBag size={14} strokeWidth={2.2} />
+            </button>
+            <button
+              type="button"
+              onClick={onOpenContactDetails}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] border border-[#EAEAEA] flex items-center justify-center transition-all cursor-pointer shrink-0"
+              title="Customer Information"
+            >
+              <Info size={14} strokeWidth={2.2} />
             </button>
           </div>
         </div>
@@ -1231,36 +1246,38 @@ const MessageView: React.FC<MessageViewProps> = ({
 
       {/* Messages - only show when conversation is selected */}
       {selectedConversation && (
-        <div className="flex-1 flex flex-col overflow-hidden pt-4" style={{ background: '#f8faf8' }}>
+        <div
+          className="flex-1 overflow-y-auto pb-4 pl-4 custom-scrollbar bg-[#F4F7F4] flex flex-col"
+          style={{ willChange: 'scroll-position', contain: 'layout paint' }}
+          ref={messagesContainerRef}
+        >
           {loadingMessages ? (
-            <SkeletonMessages count={5} />
+            <div className="pt-4">
+              <SkeletonMessages count={5} />
+            </div>
           ) : selectedConversation.messages.length === 0 ? (
-            <div className="flex items-center justify-center flex-1">
-              <div className="text-center">
-                <div style={{ width: 52, height: 52, background: '#f4f4f5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                  <svg style={{ width: 26, height: 26, color: '#d4d4d8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
+            <div className="flex items-center justify-center flex-1 my-auto">
+              <div className="text-center p-6 max-w-sm mx-auto">
+                <div className="w-12 h-12 bg-white rounded-2xl border border-[#EAEAEA] shadow-xs flex items-center justify-center mx-auto mb-3 text-[#71717A]">
+                  <MessageSquare size={22} />
                 </div>
-                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#0c1a0e', marginBottom: 4 }}>
+                <h3 className="font-sans text-sm font-bold text-[#16281D] mb-1">
                   No messages yet
                 </h3>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#71717a' }}>
-                  Start the conversation by sending a message
+                <p className="font-sans text-xs text-[#71717A]">
+                  Start the conversation by sending a message below
                 </p>
               </div>
             </div>
           ) : (
             <div
-              className="flex-1 overflow-y-auto pb-4 pl-4 custom-scrollbar"
               style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-              ref={messagesContainerRef}
             >
               {loadingMoreMessages && (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'spin 0.8s linear infinite' }} />
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#71717a' }}>Loading more messages...</span>
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 12, color: '#71717a' }}>Loading more messages...</span>
                   </div>
                 </div>
               )}
@@ -1279,13 +1296,13 @@ const MessageView: React.FC<MessageViewProps> = ({
                       style={{
                         maxWidth: '78%',
                         padding: '10px 14px',
-                        borderRadius: isAgent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                        boxShadow: isAgent ? '0 2px 8px rgba(34,197,94,0.2)' : '0 1px 4px rgba(0,0,0,0.06)',
+                        borderRadius: isAgent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                        boxShadow: isAgent ? '0 2px 8px rgba(22,40,29,0.18)' : '0 1px 3px rgba(20,40,24,0.03)',
                         marginLeft: isAgent ? 0 : 8,
                         marginRight: isAgent ? 8 : 0,
-                        background: isAgent ? 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' : '#fff',
-                        border: isAgent ? 'none' : '1px solid #ebebeb',
-                        color: isAgent ? '#fff' : '#0c1a0e',
+                        background: isAgent ? '#16281D' : '#FFFFFF',
+                        border: isAgent ? '1px solid rgba(255,255,255,0.08)' : '1px solid #EAEAEA',
+                        color: isAgent ? '#FFFFFF' : '#16281D',
                       }}
                     >
                       <div className="space-y-3 flex-1">
@@ -1340,7 +1357,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                                   ))}
                                 </div>
                                 {msg.caption && (msg.caption || "").trim() && (
-                                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: isAgent ? 'rgba(255,255,255,0.7)' : '#a1a1aa', fontStyle: 'italic', marginTop: 4, marginBottom: 0 }}>
+                                  <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: isAgent ? 'rgba(255,255,255,0.7)' : '#a1a1aa', fontStyle: 'italic', marginTop: 4, marginBottom: 0 }}>
                                     {msg.caption}
                                   </p>
                                 )}
@@ -1395,8 +1412,8 @@ const MessageView: React.FC<MessageViewProps> = ({
                                           </svg>
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: isAgent ? '#fff' : '#0c1a0e', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Document</p>
-                                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: isAgent ? 'rgba(255,255,255,0.7)' : '#71717a', margin: 0 }}>Click to view</p>
+                                          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 600, color: isAgent ? '#fff' : '#0c1a0e', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Document</p>
+                                          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: isAgent ? 'rgba(255,255,255,0.7)' : '#71717a', margin: 0 }}>Click to view</p>
                                         </div>
                                         <button
                                           onClick={() => msg.media_url && window.open(msg.media_url, "_blank")}
@@ -1439,7 +1456,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                                 (msg.text || "").trim() &&
                                 !msg.text.startsWith("[") &&
                                 !msg.text.startsWith("Media file") && (
-                                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.55, wordBreak: 'break-word', whiteSpace: 'pre-wrap', margin: 0, color: isAgent ? '#fff' : '#0c1a0e' }}>
+                                  <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, lineHeight: 1.55, wordBreak: 'break-word', whiteSpace: 'pre-wrap', margin: 0, color: isAgent ? '#FFFFFF' : '#16281D' }}>
                                     {renderWhatsAppFormattedText(msg.text)}
                                   </p>
                                 )}
@@ -1448,7 +1465,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                         })()}
                       </div>
                       <div style={{ marginTop: 6, display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start' }}>
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: isAgent ? 'rgba(255,255,255,0.6)' : '#a1a1aa', userSelect: 'none' }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: isAgent ? '#8FA89B' : '#A1A1AA', userSelect: 'none' }}>
                           {formatMessageTime(msg.timestamp)}
                         </span>
                       </div>
@@ -1468,7 +1485,7 @@ const MessageView: React.FC<MessageViewProps> = ({
           {pendingMedia.length > 0 && (
             <div style={{ marginBottom: 12, padding: '12px 14px', border: '1px solid #ebebeb', borderRadius: 12, background: '#f9f9f9' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#3f3f46' }}>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 12, fontWeight: 600, color: '#3f3f46' }}>
                   Media Preview ({pendingMedia.length} items)
                 </span>
                 <button
@@ -1511,8 +1528,8 @@ const MessageView: React.FC<MessageViewProps> = ({
                   </div>
                 ))}
               </div>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#71717a' }}>
-                💡 Add a caption below - it will apply to all media
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: '#71717A' }}>
+                Add a caption below — it will apply to all selected media items
               </div>
             </div>
           )}
@@ -1521,66 +1538,34 @@ const MessageView: React.FC<MessageViewProps> = ({
             {/* Product Button - only if business type is product */}
             {isProductBusiness && (
               <button
+                type="button"
                 onClick={() => setShowProductModal(true)}
                 disabled={sending || uploading || isTemplateRequired}
-                style={{
-                  width: 40, height: 40, borderRadius: 10, border: 'none', cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
-                  background: isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
-                  color: isTemplateRequired ? '#d4d4d8' : '#22c55e',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'background 0.15s',
-                  opacity: (sending || uploading) ? 0.5 : 1,
-                }}
-                onMouseEnter={e => { if (!isTemplateRequired) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)'; }}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                  isTemplateRequired
+                    ? "bg-black/5 text-[#A1A1AA] border-transparent cursor-not-allowed"
+                    : "bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] border-[#EAEAEA]"
+                }`}
                 title={isTemplateRequired ? "Template required" : "Select Product"}
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
+                <Package size={16} strokeWidth={2.2} />
               </button>
             )}
 
             {/* Service Button - only if business type is service */}
             {isServiceBusiness && (
               <button
+                type="button"
                 onClick={() => { setServiceMessage(""); setShowServiceModal(true); }}
                 disabled={sending || uploading || isTemplateRequired}
-                style={{
-                  width: 40, height: 40, borderRadius: 10, border: 'none', cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
-                  background: isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
-                  color: isTemplateRequired ? '#d4d4d8' : '#22c55e',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'background 0.15s',
-                  opacity: (sending || uploading) ? 0.5 : 1,
-                }}
-                onMouseEnter={e => { if (!isTemplateRequired) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,197,94,0.15)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)'; }}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                  isTemplateRequired
+                    ? "bg-black/5 text-[#A1A1AA] border-transparent cursor-not-allowed"
+                    : "bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] border-[#EAEAEA]"
+                }`}
                 title={isTemplateRequired ? "Template required" : "Select Service"}
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2zm-4 6v4m0 0V15m4 4h-4m4-4H9"
-                  />
-                </svg>
+                <Layers size={16} strokeWidth={2.2} />
               </button>
             )}
 
@@ -1588,69 +1573,29 @@ const MessageView: React.FC<MessageViewProps> = ({
             <div style={{ position: 'relative' }}>
               <button
                 ref={attachButtonRef}
+                type="button"
                 onClick={() => setShowAttachMenu((prev) => !prev)}
                 disabled={sending || uploading || isTemplateRequired}
-                style={{
-                  width: 40, height: 40, borderRadius: 10, border: 'none', cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
-                  background: hasPendingMedia ? 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' : isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
-                  color: hasPendingMedia ? '#fff' : isTemplateRequired ? '#d4d4d8' : '#22c55e',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'background 0.15s',
-                  opacity: (sending || uploading) ? 0.7 : 1,
-                  boxShadow: hasPendingMedia ? '0 2px 8px rgba(34,197,94,0.3)' : 'none',
-                }}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                  hasPendingMedia
+                    ? "bg-[#16281D] text-[#9FE870] border-[#9FE870]/30 shadow-xs"
+                    : isTemplateRequired
+                    ? "bg-black/5 text-[#A1A1AA] border-transparent cursor-not-allowed"
+                    : "bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] border-[#EAEAEA]"
+                }`}
                 title={hasPendingMedia ? "Media attached - click to add more" : isTemplateRequired ? "Template required" : "Attach media"}
               >
                 {uploading ? (
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(34,197,94,0.2)', borderTopColor: '#22c55e', animation: 'spin 0.8s linear infinite' }} />
-                ) : hasPendingMedia ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
+                  <div className="w-4 h-4 rounded-full border-2 border-[#16281D]/20 border-t-[#16281D] animate-spin" />
                 ) : (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                    />
-                  </svg>
+                  <Paperclip size={16} strokeWidth={2.2} />
                 )}
               </button>
 
               {showAttachMenu && (
                 <div
                   ref={menuRef}
-                  className="animate-dropdown"
-                  style={{
-                    position: 'absolute',
-                    bottom: 'calc(100% + 8px)',
-                    left: 0,
-                    zIndex: 50,
-                    background: '#fff',
-                    borderRadius: 12,
-                    border: '1px solid #ebebeb',
-                    boxShadow: '0 8px 28px rgba(0,0,0,0.1)',
-                    width: 168,
-                    overflow: 'hidden',
-                    transformOrigin: 'bottom left',
-                  }}
+                  className="absolute bottom-[calc(100%+8px)] left-0 z-50 w-44 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 origin-bottom-left"
                 >
                   {[
                     { label: 'Images', ref: imageInputRef, icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
@@ -1661,14 +1606,12 @@ const MessageView: React.FC<MessageViewProps> = ({
                     <button
                       key={item.label}
                       onClick={() => { item.ref.current?.click(); }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'background 0.12s' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,197,94,0.05)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-full text-xs font-bold text-[#16281D] hover:bg-[#F4F7F4] active:scale-[0.98] transition-all cursor-pointer border-0 bg-transparent text-left"
                     >
-                      <svg style={{ width: 15, height: 15, flexShrink: 0, color: '#71717a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 shrink-0 text-[#71717A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
                       </svg>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46' }}>{item.label}</span>
+                      <span className="font-sans text-xs font-bold text-[#16281D]">{item.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1760,7 +1703,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                       animation: 'pulse 1.2s infinite' 
                     }} 
                   />
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#f43f5e' }}>
+                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#f43f5e' }}>
                     Recording... {(() => {
                       const minutes = Math.floor(recordingDuration / 60);
                       const seconds = recordingDuration % 60;
@@ -1775,7 +1718,7 @@ const MessageView: React.FC<MessageViewProps> = ({
                       background: 'none', 
                       border: 'none', 
                       cursor: 'pointer', 
-                      color: '#f43f5e', 
+                      color: '#E11D48', 
                       display: 'flex', 
                       padding: 6, 
                       borderRadius: '50%', 
@@ -1792,17 +1735,17 @@ const MessageView: React.FC<MessageViewProps> = ({
                   <button
                     onClick={stopAndSendRecording}
                     style={{ 
-                      background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', 
+                      background: '#9FE870', 
                       border: 'none', 
                       cursor: 'pointer', 
-                      color: '#fff', 
+                      color: '#16281D', 
                       display: 'flex', 
                       width: 32, 
                       height: 32, 
                       borderRadius: '50%', 
                       alignItems: 'center', 
                       justifyContent: 'center', 
-                      boxShadow: '0 2px 8px rgba(34,197,94,0.35)', 
+                      boxShadow: '0 2px 8px rgba(159,232,112,0.35)', 
                       transition: 'all 0.12s' 
                     }}
                     title="Send voice note"
@@ -1822,62 +1765,41 @@ const MessageView: React.FC<MessageViewProps> = ({
                   onChange={onMessageChange}
                   onKeyDown={onKeyPress}
                   onPaste={handlePaste}
-                  placeholder={isTemplateRequired ? "Template required to message" : "Type your message..."}
-                  style={{
-                    flex: 1, padding: '10px 14px',
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
-                    background: isTemplateRequired ? 'rgba(0,0,0,0.03)' : '#f9f9f9',
-                    border: '1px solid #ebebeb', borderRadius: 12,
-                    outline: 'none', resize: 'none',
-                    minHeight: 44, maxHeight: 128,
-                    overflowY: 'auto', whiteSpace: 'pre-wrap',
-                    cursor: isTemplateRequired ? 'not-allowed' : 'text',
-                    transition: 'border-color 0.15s, box-shadow 0.15s',
-                  }}
-                  onFocus={e => { if (!isTemplateRequired) { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)'; }}}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#ebebeb'; e.currentTarget.style.boxShadow = 'none'; }}
+                  placeholder={isTemplateRequired ? "Template required to message..." : "Type your message..."}
+                  className={`flex-1 px-3.5 py-2.5 font-sans text-xs sm:text-sm rounded-2xl border outline-none resize-none min-h-[44px] max-h-32 transition-all ${
+                    isTemplateRequired
+                      ? "bg-black/5 text-[#A1A1AA] border-transparent cursor-not-allowed"
+                      : "bg-[#F4F7F4] hover:bg-[#EAEAEA] focus:bg-white text-[#16281D] placeholder-[#A1A1AA] border-[#EAEAEA] focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20"
+                  }`}
                   disabled={sending || uploading || isTemplateRequired}
                 />
                 
                 {!newMessage.trim() && !hasPendingMedia ? (
                   <button
+                    type="button"
                     onClick={startRecording}
                     disabled={sending || uploading || isTemplateRequired}
-                    style={{
-                      width: 42, height: 42, borderRadius: 12, border: 'none', flexShrink: 0,
-                      background: isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)',
-                      color: isTemplateRequired ? '#d4d4d8' : '#22c55e',
-                      cursor: (sending || uploading || isTemplateRequired) ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { if (!isTemplateRequired) e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isTemplateRequired ? 'rgba(0,0,0,0.04)' : 'rgba(34,197,94,0.08)'; }}
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                      isTemplateRequired
+                        ? "bg-black/5 text-[#A1A1AA] border-transparent cursor-not-allowed"
+                        : "bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 text-[#16281D] border-[#EAEAEA]"
+                    }`}
                     title="Record voice message"
                   >
-                    <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
+                    <Mic size={16} strokeWidth={2.2} />
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={onSendMessage}
                     disabled={sending || uploading}
-                    style={{
-                      width: 42, height: 42, borderRadius: 12, border: 'none', flexShrink: 0,
-                      background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-                      color: '#fff', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 4px 12px rgba(34,197,94,0.35)',
-                      transition: 'all 0.15s',
-                    }}
+                    className="w-10 h-10 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-95 text-[#16281D] flex items-center justify-center transition-all shadow-[0_2px_8px_rgba(159,232,112,0.35)] cursor-pointer border-0 shrink-0"
+                    title="Send message"
                   >
                     {sending ? (
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} />
+                      <div className="w-4 h-4 rounded-full border-2 border-[#16281D]/30 border-t-[#16281D] animate-spin" />
                     ) : (
-                      <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
+                      <Send size={15} strokeWidth={2.4} />
                     )}
                   </button>
                 )}
@@ -1886,10 +1808,9 @@ const MessageView: React.FC<MessageViewProps> = ({
           </div>
           {isTemplateRequired && onOpenTemplateModal && (
             <button
+              type="button"
               onClick={onOpenTemplateModal}
-              style={{ marginTop: 8, width: '100%', padding: '9px 0', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 9, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: '#d97706', transition: 'background 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(217,119,6,0.16)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(217,119,6,0.1)')}
+              className="mt-2 w-full h-10 bg-[#F0FDF4] hover:bg-[#DCFCE7] active:scale-[0.98] border border-[#BBF7D0] rounded-full font-sans text-xs font-bold text-[#15803D] shadow-xs cursor-pointer transition-all flex items-center justify-center"
             >
               Send Template Message
             </button>
@@ -1934,10 +1855,10 @@ const MessageView: React.FC<MessageViewProps> = ({
           />
 
           {serviceMessage && (
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#059669', marginTop: 8, paddingLeft: 4 }}>{serviceMessage}</p>
+            <p className="font-sans text-xs text-[#15803D] mt-2 pl-1 font-medium">{serviceMessage}</p>
           )}
           {sendError && (
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#f43f5e', marginTop: 8, paddingLeft: 4 }}>{sendError}</p>
+            <p className="font-sans text-xs text-[#EF4444] mt-2 pl-1 font-medium">{sendError}</p>
           )}
         </div>
       )}

@@ -8,10 +8,7 @@ import { getCurrentAgent } from '../../../lib/agent';
 import { logout, getToken } from '../../../lib/auth';
 import { useDialog } from './DialogProvider';
 
-const FONT_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap');
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
+
 
 interface AgentLayoutProps {
   children?: React.ReactNode;
@@ -68,6 +65,13 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
     setRecentNotifications(prev => prev.filter(n => n.id !== notification.id));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }, [navigate]);
+
+  const handleLogout = useCallback(async () => {
+    if (await dlgConfirm('Are you sure you want to logout?')) {
+      logout();
+      window.location.href = '/login';
+    }
+  }, [dlgConfirm]);
 
   const navbarProps = {
     ...displayAgent,
@@ -173,15 +177,13 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <>
-        <style>{FONT_CSS}</style>
-        <div style={{
+      <div style={{
           minHeight: '100dvh',
-          background: '#0c1a0e',
+          background: '#16281D',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
             <div style={{
@@ -189,68 +191,62 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
               height: 36,
               borderRadius: '50%',
               border: '3px solid rgba(255,255,255,0.1)',
-              borderTopColor: '#4ade80',
+              borderTopColor: '#9FE870',
               animation: 'spin 0.9s linear infinite',
             }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>
               Loading...
             </span>
           </div>
-        </div>
-      </>
+      </div>
     );
   }
 
   if (!agent) {
     return (
-      <>
-        <style>{FONT_CSS}</style>
-        <div style={{
+      <div style={{
           minHeight: '100dvh',
-          background: '#0c1a0e',
+          background: '#16281D',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}>
           <div style={{ textAlign: 'center', padding: 32 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
               Agent Not Found
             </div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 24 }}>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 24 }}>
               Please log in as an agent or contact administrator.
             </div>
             <button
               onClick={() => window.location.href = '/login'}
               style={{
-                background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-                color: '#fff',
+                background: '#9FE870',
+                color: '#16281D',
                 border: 'none',
                 borderRadius: 9999,
                 padding: '10px 24px',
-                fontFamily: "'Syne', sans-serif",
-                fontSize: 14,
-                fontWeight: 600,
+                fontSize: 13,
+                fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
+                boxShadow: '0 4px 14px rgba(159,232,112,0.3)',
               }}
             >
               Go to Login
             </button>
           </div>
-        </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <style>{FONT_CSS}</style>
-      <div style={{
+    <div style={{
         display: 'flex',
         height: '100dvh',
         overflow: 'hidden',
-        background: '#f8faf8',
-        fontFamily: "'DM Sans', sans-serif",
+        background: '#F4F7F4',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}>
         <Sidebar
           agent={displayAgent}
@@ -259,12 +255,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
           collapsed={sidebarCollapsed}
           onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onClose={() => setSidebarOpen(false)}
-          onLogout={async () => {
-            if (await dlgConfirm('Are you sure you want to logout?')) {
-              logout();
-              window.location.href = '/login';
-            }
-          }}
+          onLogout={handleLogout}
         />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
@@ -272,26 +263,21 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
             agent={navbarProps}
             collapsed={sidebarCollapsed}
             onMenuClick={() => setSidebarOpen(true)}
+            onLogout={handleLogout}
           />
           <main
             key={location.pathname}
-            className="animate-fade-in"
+            className="animate-fade-in flex-1 flex flex-col min-h-0 bg-[#F4F7F4]"
             style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: 0,
               overflowY: location.pathname.includes('/conversations') ? 'hidden' : 'auto',
               overflowX: 'hidden',
-              background: '#f8faf8',
             }}
           >
             <Outlet />
             {children}
           </main>
         </div>
-      </div>
-    </>
+    </div>
   );
 };
 

@@ -1,8 +1,8 @@
 import React from "react";
 import { X, CheckCircle2 } from "lucide-react";
 import Portal from "../shared/Portal";
+import { DatePicker } from "../shared/DatePicker";
 import { InvoiceWithDetails } from "./types";
-import { SYNE, DM } from "./constants";
 
 interface InvoicePaymentModalProps {
   payingInvoice: InvoiceWithDetails | null;
@@ -47,9 +47,9 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
         style={{
           position: "fixed",
           inset: 0,
-          zIndex: 70,
-          background: "rgba(0,0,0,0.5)",
-          backdropFilter: "blur(4px)",
+          zIndex: 100,
+          background: "rgba(22, 40, 29, 0.45)",
+          backdropFilter: "blur(6px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -59,48 +59,48 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
         <div
           style={{
             background: "#fff",
-            borderRadius: 20,
-            border: "1px solid #ebebeb",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+            borderRadius: 24,
+            border: "1px solid #EAEAEA",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.14)",
             width: "100%",
             maxWidth: "min(480px, 90vw)",
             maxHeight: "90vh",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
         >
           {/* Modal Header */}
           <div
             style={{
-              padding: "18px 22px 14px",
-              borderBottom: "1px solid #ebebeb",
+              padding: "18px 24px",
+              borderBottom: "1px solid #EAEAEA",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
-                  background: "rgba(34,197,94,0.1)",
+                  width: 32,
+                  height: 32,
+                  borderRadius: 9999,
+                  background: "rgba(159,232,112,0.25)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <CheckCircle2 size={15} style={{ color: "#059669" }} />
+                <CheckCircle2 size={16} style={{ color: "#16281D" }} />
               </div>
               <div>
                 <span
                   style={{
-                    ...SYNE,
                     fontSize: 16,
                     fontWeight: 700,
-                    color: "#0c1a0e",
+                    color: "#16281D",
                     display: "block",
                   }}
                 >
@@ -112,16 +112,17 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
               onClick={onClose}
               disabled={creatingOrderFromInv}
               style={{
-                width: 28,
-                height: 28,
-                background: "rgba(0,0,0,0.06)",
-                border: "none",
-                borderRadius: 7,
+                width: 32,
+                height: 32,
+                background: "#F4F7F4",
+                border: "1px solid #EAEAEA",
+                borderRadius: 9999,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "#71717a",
+                transition: "all 0.15s",
               }}
             >
               <X size={14} />
@@ -131,37 +132,36 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
           {/* Modal Form Body */}
           <div
             style={{
-              padding: 22,
+              padding: 24,
               overflowY: "auto",
               display: "flex",
               flexDirection: "column",
-              gap: 14,
+              gap: 16,
             }}
           >
             <div
               style={{
-                background: "#f9f9fb",
-                border: "1px solid #ebebeb",
-                borderRadius: 12,
-                padding: "12px 16px",
+                background: "#F4F7F4",
+                border: "1px solid #EAEAEA",
+                borderRadius: 16,
+                padding: "14px 18px",
               }}
             >
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  marginBottom: 4,
+                  marginBottom: 6,
                 }}
               >
-                <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>
+                <span style={{ fontSize: 12, color: "#71717a" }}>
                   Customer:
                 </span>
                 <span
                   style={{
-                    ...DM,
                     fontSize: 12,
                     fontWeight: 600,
-                    color: "#0c1a0e",
+                    color: "#16281D",
                   }}
                 >
                   {payingInvoice.customer_name || "Valued Customer"}
@@ -171,34 +171,34 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  marginBottom: 4,
+                  marginBottom: 6,
                 }}
               >
-                <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>
+                <span style={{ fontSize: 12, color: "#71717a" }}>
                   Invoice:
                 </span>
                 <span
                   style={{
-                    ...DM,
                     fontSize: 12,
                     fontWeight: 600,
-                    color: "#0c1a0e",
+                    color: "#16281D",
+                    fontFamily: "'JetBrains Mono', monospace",
                   }}
                 >
                   #{payingInvoice.id.toString().padStart(4, "0")} —{" "}
                   {payingInvoice.name}
                 </span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ ...DM, fontSize: 12, color: "#71717a" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#71717a" }}>
                   Invoice Total:
                 </span>
                 <span
                   style={{
-                    ...SYNE,
-                    fontSize: 13,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 14,
                     fontWeight: 700,
-                    color: "#059669",
+                    color: "#16281D",
                   }}
                 >
                   LKR {invoiceTotal.toFixed(2)}
@@ -209,12 +209,11 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
             <div>
               <label
                 style={{
-                  ...DM,
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#3f3f46",
+                  color: "#16281D",
                   display: "block",
-                  marginBottom: 5,
+                  marginBottom: 6,
                 }}
               >
                 Confirmed Paid / Advance Amount (LKR)
@@ -229,21 +228,20 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                 }
                 style={{
                   width: "100%",
-                  padding: "8px 12px",
-                  ...DM,
+                  padding: "9px 14px",
                   fontSize: 13,
-                  border: "1px solid #ebebeb",
-                  borderRadius: 8,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  border: "1px solid #EAEAEA",
+                  borderRadius: 12,
                   outline: "none",
-                  background: "#f9f9f9",
+                  background: "#fff",
                 }}
               />
               <span
                 style={{
-                  ...DM,
                   fontSize: 11,
                   color: "#71717a",
-                  marginTop: 3,
+                  marginTop: 4,
                   display: "block",
                 }}
               >
@@ -258,12 +256,11 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
             <div>
               <label
                 style={{
-                  ...DM,
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#3f3f46",
+                  color: "#16281D",
                   display: "block",
-                  marginBottom: 5,
+                  marginBottom: 6,
                 }}
               >
                 Shipping / Delivery Address (Optional)
@@ -275,13 +272,12 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                 onChange={(e) => setOrderShippingAddress(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "8px 12px",
-                  ...DM,
+                  padding: "9px 14px",
                   fontSize: 13,
-                  border: "1px solid #ebebeb",
-                  borderRadius: 8,
+                  border: "1px solid #EAEAEA",
+                  borderRadius: 12,
                   outline: "none",
-                  background: "#f9f9f9",
+                  background: "#fff",
                 }}
               />
             </div>
@@ -289,42 +285,32 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
             <div>
               <label
                 style={{
-                  ...DM,
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#3f3f46",
+                  color: "#16281D",
                   display: "block",
-                  marginBottom: 5,
+                  marginBottom: 6,
                 }}
               >
                 Estimated Delivery Date (Optional)
               </label>
-              <input
-                type="date"
-                value={orderEstimatedDelivery}
-                onChange={(e) => setOrderEstimatedDelivery(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  ...DM,
-                  fontSize: 13,
-                  border: "1px solid #ebebeb",
-                  borderRadius: 8,
-                  outline: "none",
-                  background: "#f9f9f9",
-                }}
+              <DatePicker
+                value={orderEstimatedDelivery || null}
+                onChange={(val) => setOrderEstimatedDelivery(val || "")}
+                placeholder="Select estimated delivery date..."
+                className="w-full"
+                variant="white"
               />
             </div>
 
             <div>
               <label
                 style={{
-                  ...DM,
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#3f3f46",
+                  color: "#16281D",
                   display: "block",
-                  marginBottom: 5,
+                  marginBottom: 6,
                 }}
               >
                 Order Notes (Optional)
@@ -336,13 +322,12 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                 onChange={(e) => setOrderNotes(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "8px 12px",
-                  ...DM,
+                  padding: "9px 14px",
                   fontSize: 13,
-                  border: "1px solid #ebebeb",
-                  borderRadius: 8,
+                  border: "1px solid #EAEAEA",
+                  borderRadius: 12,
                   outline: "none",
-                  background: "#f9f9f9",
+                  background: "#fff",
                   resize: "vertical",
                 }}
               />
@@ -352,12 +337,12 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
           {/* Modal Footer */}
           <div
             style={{
-              padding: "14px 22px",
-              borderTop: "1px solid #ebebeb",
+              padding: "16px 24px",
+              borderTop: "1px solid #EAEAEA",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: 10,
+              gap: 12,
               background: "#fff",
             }}
           >
@@ -369,7 +354,6 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                 background: "none",
                 border: "none",
                 color: "#71717a",
-                ...DM,
                 fontSize: 12,
                 textDecoration: "underline",
                 cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
@@ -378,21 +362,21 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
               Quick Confirm (Auto-create Order)
             </button>
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="button"
                 onClick={onClose}
                 disabled={creatingOrderFromInv}
                 style={{
-                  padding: "8px 14px",
-                  background: "rgba(0,0,0,0.06)",
-                  color: "#3f3f46",
-                  border: "none",
-                  borderRadius: 8,
+                  padding: "9px 20px",
+                  background: "#F4F7F4",
+                  color: "#16281D",
+                  border: "1px solid #EAEAEA",
+                  borderRadius: 9999,
                   cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-                  ...DM,
                   fontSize: 13,
                   fontWeight: 600,
+                  transition: "all 0.15s",
                 }}
               >
                 Cancel
@@ -402,24 +386,24 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                 onClick={onConfirmAndCreateOrder}
                 disabled={creatingOrderFromInv}
                 style={{
-                  padding: "8px 18px",
+                  padding: "9px 22px",
                   background: creatingOrderFromInv
-                    ? "rgba(34,197,94,0.3)"
-                    : "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
-                  color: "#fff",
+                    ? "rgba(159,232,112,0.5)"
+                    : "#9FE870",
+                  color: "#16281D",
                   border: "none",
-                  borderRadius: 8,
+                  borderRadius: 9999,
                   cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-                  ...DM,
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  boxShadow: "0 2px 10px rgba(34,197,94,0.25)",
+                  boxShadow: "0 2px 10px rgba(159,232,112,0.3)",
+                  transition: "all 0.15s",
                 }}
               >
-                <CheckCircle2 size={14} />
+                <CheckCircle2 size={15} />
                 {creatingOrderFromInv ? "Creating Order…" : "Confirm & Create Order"}
               </button>
             </div>

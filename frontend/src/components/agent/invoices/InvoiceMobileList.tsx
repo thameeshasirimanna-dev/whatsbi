@@ -1,7 +1,7 @@
 import React from "react";
 import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package } from "lucide-react";
 import { InvoiceWithDetails } from "./types";
-import { DM, getStatusStyle, capitalizeFirst } from "./constants";
+import { getStatusStyle, getStatusDotColor, capitalizeFirst } from "./constants";
 
 interface InvoiceMobileListProps {
   invoices: InvoiceWithDetails[];
@@ -29,8 +29,8 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
   updatingId,
 }) => {
   return (
-    <div className="block lg:hidden">
-      <div className="flex flex-col divide-y divide-[#f4f4f5]">
+    <div className="block lg:hidden" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <div className="flex flex-col divide-y divide-[#EAEAEA]">
         {invoices.map((invoice) => {
           const isSelected = selectedIds.includes(invoice.id);
           return (
@@ -41,7 +41,7 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                 display: "flex",
                 flexDirection: "column",
                 gap: 12,
-                background: isSelected ? "#f0fdf4" : "transparent",
+                background: isSelected ? "rgba(159,232,112,0.08)" : "transparent",
                 transition: "background 0.15s",
               }}
             >
@@ -61,7 +61,7 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                     onChange={() => onToggleSelect(invoice.id)}
                     style={{
                       cursor: "pointer",
-                      accentColor: "#22c55e",
+                      accentColor: "#16281D",
                       width: 16,
                       height: 16,
                       flexShrink: 0,
@@ -71,13 +71,14 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <span
                         style={{
-                          ...DM,
                           fontSize: 11,
-                          fontWeight: 700,
-                          color: "#0891b2",
-                          background: "rgba(8,145,178,0.08)",
-                          padding: "2px 7px",
-                          borderRadius: 5,
+                          fontWeight: 600,
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: "#16281D",
+                          background: "#F4F7F4",
+                          border: "1px solid #EAEAEA",
+                          padding: "2px 8px",
+                          borderRadius: 9999,
                           flexShrink: 0,
                         }}
                       >
@@ -86,10 +87,9 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                       </span>
                       <span
                         style={{
-                          ...DM,
                           fontSize: 13,
                           fontWeight: 600,
-                          color: "#0c1a0e",
+                          color: "#16281D",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -99,14 +99,14 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                         {invoice.name}
                       </span>
                     </div>
-                    <div style={{ ...DM, fontSize: 11, color: "#71717a", marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: "#71717a", marginTop: 3 }}>
                       {invoice.order_id || invoice.linked_order_id ? (
                         <span
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: 3,
-                            color: "#059669",
+                            gap: 4,
+                            color: "#16281D",
                             fontWeight: 600,
                           }}
                         >
@@ -121,15 +121,25 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                 </div>
                 <span
                   style={{
-                    ...DM,
                     fontSize: 11,
                     fontWeight: 600,
-                    padding: "3px 9px",
-                    borderRadius: 20,
+                    padding: "3px 10px",
+                    borderRadius: 9999,
                     ...getStatusStyle(invoice.status),
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
                     flexShrink: 0,
                   }}
                 >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      backgroundColor: getStatusDotColor(invoice.status),
+                    }}
+                  />
                   {invoice.status === "partially_paid"
                     ? "Partially Paid"
                     : capitalizeFirst(invoice.status)}
@@ -142,19 +152,19 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  background: isSelected ? "rgba(255,255,255,0.7)" : "#fafafa",
-                  padding: "8px 12px",
-                  borderRadius: 8,
+                  background: isSelected ? "rgba(255,255,255,0.7)" : "#F4F7F4",
+                  border: "1px solid #EAEAEA",
+                  padding: "10px 14px",
+                  borderRadius: 12,
                 }}
               >
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-                  <span style={{ ...DM, fontSize: 11, color: "#71717a" }}>Customer</span>
+                  <span style={{ fontSize: 11, color: "#71717a" }}>Customer</span>
                   <span
                     style={{
-                      ...DM,
                       fontSize: 12,
-                      color: "#0c1a0e",
-                      fontWeight: 500,
+                      color: "#16281D",
+                      fontWeight: 600,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -171,8 +181,15 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                     flexShrink: 0,
                   }}
                 >
-                  <span style={{ ...DM, fontSize: 11, color: "#71717a" }}>Total</span>
-                  <span style={{ ...DM, fontSize: 13, color: "#3f3f46", fontWeight: 600 }}>
+                  <span style={{ fontSize: 11, color: "#71717a" }}>Total</span>
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 13,
+                      color: "#16281D",
+                      fontWeight: 700,
+                    }}
+                  >
                     LKR {invoice.total.toFixed(2)}
                   </span>
                 </div>
@@ -180,7 +197,7 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
 
               {/* Date & Actions */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
-                <span style={{ ...DM, fontSize: 11, color: "#71717a" }}>
+                <span style={{ fontSize: 11, color: "#71717a" }}>
                   Generated:{" "}
                   {new Date(invoice.generated_at).toLocaleDateString("en-US", {
                     year: "numeric",
@@ -197,16 +214,16 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                       display: "flex",
                       alignItems: "center",
                       gap: 4,
-                      padding: "5px 9px",
-                      borderRadius: 7,
-                      border: "none",
+                      padding: "6px 12px",
+                      borderRadius: 9999,
+                      border: "1px solid #EAEAEA",
                       cursor: "pointer",
-                      ...DM,
                       fontSize: 11,
                       fontWeight: 600,
-                      background: "rgba(8,145,178,0.08)",
-                      color: "#0891b2",
+                      background: "#F4F7F4",
+                      color: "#16281D",
                       whiteSpace: "nowrap",
+                      transition: "all 0.15s",
                     }}
                   >
                     <Eye size={12} /> View
@@ -220,16 +237,16 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                       display: "flex",
                       alignItems: "center",
                       gap: 4,
-                      padding: "5px 9px",
-                      borderRadius: 7,
-                      border: "none",
+                      padding: "6px 12px",
+                      borderRadius: 9999,
+                      border: "1px solid #EAEAEA",
                       cursor: "pointer",
-                      ...DM,
                       fontSize: 11,
                       fontWeight: 600,
-                      background: "rgba(34,197,94,0.08)",
-                      color: "#22c55e",
+                      background: "#F4F7F4",
+                      color: "#16281D",
                       whiteSpace: "nowrap",
+                      transition: "all 0.15s",
                     }}
                   >
                     <Download size={12} /> Download
@@ -245,21 +262,21 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                         display: "flex",
                         alignItems: "center",
                         gap: 4,
-                        padding: "5px 9px",
-                        borderRadius: 7,
-                        border: "none",
+                        padding: "6px 12px",
+                        borderRadius: 9999,
+                        border: "1px solid #EAEAEA",
                         cursor:
                           updatingId === invoice.id ? "not-allowed" : "pointer",
-                        ...DM,
                         fontSize: 11,
                         fontWeight: 600,
                         background:
                           updatingId === invoice.id
-                            ? "#f4f4f5"
-                            : "rgba(217,119,6,0.08)",
+                            ? "#F4F7F4"
+                            : "rgba(245,158,11,0.1)",
                         color:
-                          updatingId === invoice.id ? "#a1a1aa" : "#d97706",
+                          updatingId === invoice.id ? "#a1a1aa" : "#B45309",
                         whiteSpace: "nowrap",
+                        transition: "all 0.15s",
                       }}
                     >
                       <Send size={12} />{" "}
@@ -281,24 +298,25 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                         display: "flex",
                         alignItems: "center",
                         gap: 4,
-                        padding: "5px 9px",
-                        borderRadius: 7,
+                        padding: "6px 12px",
+                        borderRadius: 9999,
                         border: "none",
                         cursor:
                           updatingId === invoice.id ? "not-allowed" : "pointer",
-                        ...DM,
                         fontSize: 11,
-                        fontWeight: 600,
+                        fontWeight: 700,
                         background:
                           updatingId === invoice.id
-                            ? "#f4f4f5"
-                            : "rgba(34,197,94,0.08)",
+                            ? "#F4F7F4"
+                            : "#9FE870",
                         color:
-                          updatingId === invoice.id ? "#a1a1aa" : "#059669",
+                          updatingId === invoice.id ? "#a1a1aa" : "#16281D",
                         whiteSpace: "nowrap",
+                        boxShadow: "0 2px 6px rgba(159,232,112,0.25)",
+                        transition: "all 0.15s",
                       }}
                     >
-                      <CheckCircle2 size={12} /> Mark Paid & Create Order
+                      <CheckCircle2 size={12} /> Mark Paid & Order
                     </button>
                   )}
 
@@ -316,21 +334,22 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                         display: "flex",
                         alignItems: "center",
                         gap: 4,
-                        padding: "5px 9px",
-                        borderRadius: 7,
+                        padding: "6px 12px",
+                        borderRadius: 9999,
                         border: "none",
                         cursor:
                           updatingId === invoice.id ? "not-allowed" : "pointer",
-                        ...DM,
                         fontSize: 11,
-                        fontWeight: 600,
+                        fontWeight: 700,
                         background:
                           updatingId === invoice.id
-                            ? "#f4f4f5"
-                            : "rgba(34,197,94,0.08)",
+                            ? "#F4F7F4"
+                            : "#9FE870",
                         color:
-                          updatingId === invoice.id ? "#a1a1aa" : "#059669",
+                          updatingId === invoice.id ? "#a1a1aa" : "#16281D",
                         whiteSpace: "nowrap",
+                        boxShadow: "0 2px 6px rgba(159,232,112,0.25)",
+                        transition: "all 0.15s",
                       }}
                     >
                       <CheckCircle size={12} /> Mark as Paid Full
@@ -346,21 +365,21 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                       display: "flex",
                       alignItems: "center",
                       gap: 4,
-                      padding: "5px 9px",
-                      borderRadius: 7,
-                      border: "none",
+                      padding: "6px 12px",
+                      borderRadius: 9999,
+                      border: "1px solid #fee2e2",
                       cursor:
                         updatingId === invoice.id ? "not-allowed" : "pointer",
-                        ...DM,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        background:
-                          updatingId === invoice.id
-                            ? "#f4f4f5"
-                            : "rgba(244,63,94,0.06)",
-                        color:
-                          updatingId === invoice.id ? "#a1a1aa" : "#f43f5e",
-                        whiteSpace: "nowrap",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      background:
+                        updatingId === invoice.id
+                          ? "#F4F7F4"
+                          : "rgba(239,68,68,0.06)",
+                      color:
+                        updatingId === invoice.id ? "#a1a1aa" : "#EF4444",
+                      whiteSpace: "nowrap",
+                      transition: "all 0.15s",
                     }}
                   >
                     <Trash2 size={12} />{" "}

@@ -1,6 +1,6 @@
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DM, getPageNumbers } from "./constants";
+import { getPageNumbers } from "./constants";
 
 interface InvoicePaginationProps {
   startIndex: number;
@@ -24,29 +24,30 @@ export const InvoicePagination: React.FC<InvoicePaginationProps> = ({
   return (
     <div
       style={{
-        padding: "12px 18px",
-        borderTop: "1px solid #ebebeb",
+        padding: "14px 20px",
+        borderTop: "1px solid #EAEAEA",
         background: "#fff",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: 12,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
       {/* Entries Status */}
-      <div style={{ ...DM, fontSize: 12, color: "#71717a" }}>
+      <div style={{ fontSize: 12, color: "#71717a" }}>
         Showing{" "}
-        <strong style={{ color: "#0c1a0e" }}>
+        <strong style={{ color: "#16281D" }}>
           {totalInvoicesCount === 0 ? 0 : startIndex + 1}
         </strong>{" "}
-        to <strong style={{ color: "#0c1a0e" }}>{endIndex}</strong> of{" "}
-        <strong style={{ color: "#0c1a0e" }}>{totalInvoicesCount}</strong>{" "}
+        to <strong style={{ color: "#16281D" }}>{endIndex}</strong> of{" "}
+        <strong style={{ color: "#16281D" }}>{totalInvoicesCount}</strong>{" "}
         invoices
       </div>
 
       {/* Page Navigation */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {/* Previous Button */}
         <button
           onClick={() => onPageChange(Math.max(1, effectiveCurrentPage - 1), true)}
@@ -56,22 +57,26 @@ export const InvoicePagination: React.FC<InvoicePaginationProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 30,
-            height: 30,
-            borderRadius: 7,
-            border: "1px solid #ebebeb",
-            background: effectiveCurrentPage <= 1 ? "#f9f9f9" : "#fff",
-            color: effectiveCurrentPage <= 1 ? "#d4d4d8" : "#3f3f46",
+            width: 32,
+            height: 32,
+            borderRadius: 9999,
+            border: "1px solid #EAEAEA",
+            background: effectiveCurrentPage <= 1 ? "#F4F7F4" : "#fff",
+            color: effectiveCurrentPage <= 1 ? "#d4d4d8" : "#16281D",
             cursor: effectiveCurrentPage <= 1 ? "not-allowed" : "pointer",
             transition: "all 0.15s",
           }}
           onMouseEnter={(e) => {
-            if (effectiveCurrentPage > 1)
-              e.currentTarget.style.borderColor = "#22c55e";
+            if (effectiveCurrentPage > 1) {
+              e.currentTarget.style.borderColor = "#9FE870";
+              e.currentTarget.style.background = "#F4F7F4";
+            }
           }}
           onMouseLeave={(e) => {
-            if (effectiveCurrentPage > 1)
-              e.currentTarget.style.borderColor = "#ebebeb";
+            if (effectiveCurrentPage > 1) {
+              e.currentTarget.style.borderColor = "#EAEAEA";
+              e.currentTarget.style.background = "#fff";
+            }
           }}
         >
           <ChevronLeft size={14} />
@@ -84,7 +89,6 @@ export const InvoicePagination: React.FC<InvoicePaginationProps> = ({
               <span
                 key={`dots-${idx}`}
                 style={{
-                  ...DM,
                   fontSize: 12,
                   color: "#a1a1aa",
                   padding: "0 4px",
@@ -100,27 +104,30 @@ export const InvoicePagination: React.FC<InvoicePaginationProps> = ({
               key={p}
               onClick={() => onPageChange(p as number, true)}
               style={{
-                minWidth: 30,
-                height: 30,
-                padding: "0 6px",
-                borderRadius: 7,
-                border: isCurrent ? "none" : "1px solid #ebebeb",
-                background: isCurrent
-                  ? "linear-gradient(135deg, #22c55e 0%, #059669 100%)"
-                  : "#fff",
-                color: isCurrent ? "#fff" : "#3f3f46",
-                ...DM,
+                minWidth: 32,
+                height: 32,
+                padding: "0 10px",
+                borderRadius: 9999,
+                border: isCurrent ? "1px solid #9FE870" : "1px solid #EAEAEA",
+                background: isCurrent ? "#9FE870" : "#fff",
+                color: "#16281D",
                 fontSize: 12,
                 fontWeight: isCurrent ? 700 : 500,
                 cursor: "pointer",
-                boxShadow: isCurrent ? "0 2px 6px rgba(34,197,94,0.3)" : "none",
+                boxShadow: isCurrent ? "0 2px 8px rgba(159,232,112,0.3)" : "none",
                 transition: "all 0.15s",
               }}
               onMouseEnter={(e) => {
-                if (!isCurrent) e.currentTarget.style.borderColor = "#22c55e";
+                if (!isCurrent) {
+                  e.currentTarget.style.borderColor = "#9FE870";
+                  e.currentTarget.style.background = "#F4F7F4";
+                }
               }}
               onMouseLeave={(e) => {
-                if (!isCurrent) e.currentTarget.style.borderColor = "#ebebeb";
+                if (!isCurrent) {
+                  e.currentTarget.style.borderColor = "#EAEAEA";
+                  e.currentTarget.style.background = "#fff";
+                }
               }}
             >
               {p}
@@ -139,22 +146,26 @@ export const InvoicePagination: React.FC<InvoicePaginationProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 30,
-            height: 30,
-            borderRadius: 7,
-            border: "1px solid #ebebeb",
-            background: effectiveCurrentPage >= totalPages ? "#f9f9f9" : "#fff",
-            color: effectiveCurrentPage >= totalPages ? "#d4d4d8" : "#3f3f46",
+            width: 32,
+            height: 32,
+            borderRadius: 9999,
+            border: "1px solid #EAEAEA",
+            background: effectiveCurrentPage >= totalPages ? "#F4F7F4" : "#fff",
+            color: effectiveCurrentPage >= totalPages ? "#d4d4d8" : "#16281D",
             cursor: effectiveCurrentPage >= totalPages ? "not-allowed" : "pointer",
             transition: "all 0.15s",
           }}
           onMouseEnter={(e) => {
-            if (effectiveCurrentPage < totalPages)
-              e.currentTarget.style.borderColor = "#22c55e";
+            if (effectiveCurrentPage < totalPages) {
+              e.currentTarget.style.borderColor = "#9FE870";
+              e.currentTarget.style.background = "#F4F7F4";
+            }
           }}
           onMouseLeave={(e) => {
-            if (effectiveCurrentPage < totalPages)
-              e.currentTarget.style.borderColor = "#ebebeb";
+            if (effectiveCurrentPage < totalPages) {
+              e.currentTarget.style.borderColor = "#EAEAEA";
+              e.currentTarget.style.background = "#fff";
+            }
           }}
         >
           <ChevronRight size={14} />

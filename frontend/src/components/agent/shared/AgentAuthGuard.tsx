@@ -76,8 +76,8 @@ const AgentAuthGuard: React.FC<AgentAuthGuardProps> = ({ children }) => {
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf8' }}>
         <style>{`@keyframes aag-spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 44, height: 44, border: '3px solid #ebebeb', borderTopColor: '#22c55e', borderRadius: '50%', animation: 'aag-spin 0.8s linear infinite', margin: '0 auto 14px' }} />
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: '#71717a', margin: 0 }}>Checking authentication...</p>
+          <div className="w-10 h-10 border-3 border-[#16281D]/10 border-t-[#16281D] rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs font-semibold text-[#71717A] tracking-wider uppercase m-0">Checking authentication...</p>
         </div>
       </div>
     );
