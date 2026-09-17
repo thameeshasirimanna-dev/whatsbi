@@ -200,7 +200,8 @@ export async function processIncomingMessage(
   phoneNumberId: string,
   contactName: string,
   emitNewMessage?: (agentId: number, messageData: any) => void,
-  cacheService?: any
+  cacheService?: any,
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void
 ) {
   try {
     const { rows: whatsappConfigRows } = await pgClient.query(
@@ -467,6 +468,7 @@ export async function processIncomingMessage(
               pgClient,
               cacheService,
               emitNewMessage,
+              emitAgentStatusUpdate,
             });
           } catch (aiError) {
             console.error("Error running DeepSeek AI chatbot:", aiError);

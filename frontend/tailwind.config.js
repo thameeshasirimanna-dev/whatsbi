@@ -32,7 +32,14 @@ export default {
     "hover:shadow-emerald-500/10",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'Outfit', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', 'Syne', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+    },
   },
   plugins: [],
 };

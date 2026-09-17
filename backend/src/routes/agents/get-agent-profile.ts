@@ -8,23 +8,46 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
       const authenticatedUser = await verifyJWT(request, pgClient);
 
       // Get agent data with user details (support both owner and sub-users)
-      const agentQuery = `
-        SELECT
-          id,
-          user_id,
-          agent_prefix,
-          business_type,
-          address,
-          business_email,
-          contact_number,
-          website,
-          invoice_template_path,
-          company_overview_path,
-          credits
-        FROM agents
-        WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
-      `;
-      const agentResult = await pgClient.query(agentQuery, [authenticatedUser.id]);
+      let agentResult;
+      try {
+        const agentQuery = `
+          SELECT
+            id,
+            user_id,
+            agent_prefix,
+            business_type,
+            address,
+            business_email,
+            contact_number,
+            website,
+            invoice_template_path,
+            company_overview_path,
+            credits,
+            ai_balance
+          FROM agents
+          WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
+        `;
+        agentResult = await pgClient.query(agentQuery, [authenticatedUser.id]);
+      } catch (colErr: any) {
+        // Graceful fallback if ai_balance column has not been added to the database yet
+        const fallbackQuery = `
+          SELECT
+            id,
+            user_id,
+            agent_prefix,
+            business_type,
+            address,
+            business_email,
+            contact_number,
+            website,
+            invoice_template_path,
+            company_overview_path,
+            credits
+          FROM agents
+          WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
+        `;
+        agentResult = await pgClient.query(fallbackQuery, [authenticatedUser.id]);
+      }
  
       if (agentResult.rows.length === 0) {
         return reply
@@ -71,6 +94,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
           invoice_template_path: agentData.invoice_template_path,
           company_overview_path: agentData.company_overview_path,
           credits: agentData.credits || 0,
+          ai_balance: parseFloat(agentData.ai_balance ?? '4.0'),
         },
       });
     } catch (error) {

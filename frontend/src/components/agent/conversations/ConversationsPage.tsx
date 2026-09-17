@@ -251,7 +251,7 @@ const ConversationsPage: React.FC = () => {
       // Refresh conversation
       await fetchSelectedConversation();
 
-      // Trigger native DeepSeek AI assistant to generate and dispatch product overview
+      // Trigger native AI assistant to generate and dispatch product overview
       try {
         await fetch(`${import.meta.env.VITE_BACKEND_URL}/trigger-ai-response`, {
           method: "POST",

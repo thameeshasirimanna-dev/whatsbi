@@ -169,7 +169,8 @@ export default async function whatsappWebhookRoutes(
                 value.metadata?.phone_number_id,
                 value.contacts?.[0]?.profile?.name,
                 emitNewMessage,
-                cacheService
+                cacheService,
+                emitAgentStatusUpdate
               );
             }
           }

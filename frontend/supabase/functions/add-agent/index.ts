@@ -232,13 +232,15 @@ serve(async (req) => {
       });
     }
 
-    // 3️⃣ Insert into agents table
+    // 3️⃣ Insert into agents table with USD 4.00 starting balance
     const agentPrefix = "agt_" + authUserId.slice(0, 4);
     const { data: agentData, error: agentError } = await supabase.from("agents").insert({
       user_id: authUserId,
       agent_prefix: agentPrefix,
       business_type: body.business_type,
-      created_by: body.createdBy  // UUID users table ID from admin
+      created_by: body.createdBy,  // UUID users table ID from admin
+      credits: 1.00,
+      ai_balance: 4.00,
     }).select().single();
 
     if (agentError || !agentData) {

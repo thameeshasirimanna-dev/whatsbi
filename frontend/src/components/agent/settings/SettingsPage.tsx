@@ -119,6 +119,7 @@ const SettingsContent: React.FC = () => {
     id: number; name: string; whatsapp_number: string;
     address?: string; business_email?: string; contact_number?: string;
     website?: string; invoice_template_path?: string; credits?: number;
+    ai_balance?: number;
     user_id?: string; logged_in_user_id?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -646,46 +647,46 @@ const SettingsContent: React.FC = () => {
                 readOnly={!isOwner}
               />
 
-              {/* Credits */}
+              {/* AI Balance */}
               <div style={{ padding: '14px 0', borderBottom: '1px solid #f4f4f5' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                  <Coins size={12} style={{ color: '#71717a' }} />
-                  <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>Credits Balance</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Coins size={12} style={{ color: '#16a34a' }} />
+                    <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>AI Balance</span>
+                  </div>
+                  <span style={{ ...DM, fontSize: 10, color: '#71717a', background: '#f4f4f5', padding: '2px 8px', borderRadius: 4 }}>
+                    Admin Managed
+                  </span>
                 </div>
-                {editingCredits ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <input
-                      type="number" step="0.01" min="0.01" value={newAmount}
-                      onChange={e => setNewAmount(e.target.value)}
-                      style={inputStyle} onFocus={onFocusG} onBlur={onBlurG}
-                      placeholder="Enter amount to add (e.g., 10.00)" required
-                    />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        type="button" onClick={handleAddCredits}
-                        disabled={!newAmount || parseFloat(newAmount) <= 0}
-                        style={{ ...saveBtn, opacity: (!newAmount || parseFloat(newAmount) <= 0) ? 0.5 : 1 }}
-                      >
-                        Add Credits
-                      </button>
-                      <button type="button" onClick={() => { setEditingCredits(false); setNewAmount(""); setCreditsMessage(""); }} style={cancelBtn}>
-                        Cancel
-                      </button>
-                    </div>
-                    <StatusMessage msg={creditsMessage} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#0c1a0e' }}>
+                    ${agent?.ai_balance ? Number(agent.ai_balance).toFixed(2) : "4.00"} USD
+                  </span>
+                  <span style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>
+                    Dedicated AI query quota
+                  </span>
+                </div>
+              </div>
+
+              {/* WhatsApp Template Credits */}
+              <div style={{ padding: '14px 0', borderBottom: '1px solid #f4f4f5' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Coins size={12} style={{ color: '#0891b2' }} />
+                    <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>Template Message Credits</span>
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#0c1a0e' }}>
-                      {agent?.credits ? `${agent.credits.toFixed(2)} credits` : "0.00 credits"}
-                    </span>
-                    {isOwner && (
-                      <button onClick={() => { setEditingCredits(true); setCreditsMessage(""); }} style={editBtn}>
-                        Add Credits
-                      </button>
-                    )}
-                  </div>
-                )}
+                  <span style={{ ...DM, fontSize: 10, color: '#71717a', background: '#f4f4f5', padding: '2px 8px', borderRadius: 4 }}>
+                    Admin Managed
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ ...DM, fontSize: 14, fontWeight: 600, color: '#0c1a0e' }}>
+                    {agent?.credits ? `${Number(agent.credits).toFixed(2)} credits` : "0.00 credits"}
+                  </span>
+                  <span style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>
+                    WhatsApp template broadcast quota
+                  </span>
+                </div>
               </div>
 
               {/* Invoice Template */}

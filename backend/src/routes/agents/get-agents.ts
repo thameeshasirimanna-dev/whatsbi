@@ -29,16 +29,51 @@ export default async function getAgentsRoutes(
           a.*,
           u.id as user_id,
           u.name as user_name,
-          u.email as user_email
+          u.email as user_email,
+          u.last_login_at
         FROM agents a
         JOIN users u ON a.user_id = u.id
         ORDER BY a.created_at DESC
       `);
 
       if (agentsData && agentsData.length > 0) {
-        // Transform data and fetch WhatsApp config for each agent
+        // Transform data and fetch WhatsApp config and metrics for each agent
         const agentsWithConfig = await Promise.all(
           agentsData.map(async (agent: any) => {
+            let totalCustomers = 0;
+            let totalConversations = 0;
+            let totalMessages = 0;
+            let totalOrders = 0;
+            let lastActivity = agent.last_login_at || null;
+
+            if (agent.agent_prefix) {
+              const prefix = agent.agent_prefix;
+              try {
+                const { rows: custRows } = await pgClient.query(
+                  `SELECT COUNT(*)::integer as count FROM ${prefix}_customers`
+                );
+                totalCustomers = custRows[0]?.count || 0;
+              } catch {}
+
+              try {
+                const { rows: msgRows } = await pgClient.query(
+                  `SELECT COUNT(DISTINCT customer_id)::integer as conv_count, COUNT(*)::integer as msg_count, MAX(timestamp) as last_msg FROM ${prefix}_messages`
+                );
+                totalConversations = msgRows[0]?.conv_count || 0;
+                totalMessages = msgRows[0]?.msg_count || 0;
+                if (!lastActivity && msgRows[0]?.last_msg) {
+                  lastActivity = msgRows[0].last_msg;
+                }
+              } catch {}
+
+              try {
+                const { rows: orderRows } = await pgClient.query(
+                  `SELECT COUNT(*)::integer as count FROM ${prefix}_orders`
+                );
+                totalOrders = orderRows[0]?.count || 0;
+              } catch {}
+            }
+
             const safeAgent = {
               id: agent.id.toString(),
               user_id: agent.user_id,
@@ -48,6 +83,13 @@ export default async function getAgentsRoutes(
               created_at: agent.created_at || new Date().toISOString(),
               user_name: agent.user_name || "Unnamed Agent",
               user_email: agent.user_email || "",
+              credits: parseFloat(agent.credits || '0'),
+              ai_balance: parseFloat(agent.ai_balance ?? '4.0'),
+              last_login_at: lastActivity,
+              total_customers: totalCustomers,
+              total_conversations: totalConversations,
+              total_messages: totalMessages,
+              total_orders: totalOrders,
             };
 
             // Fetch WhatsApp config separately

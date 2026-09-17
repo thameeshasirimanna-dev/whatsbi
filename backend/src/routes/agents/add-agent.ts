@@ -83,12 +83,25 @@ export default async function addAgentRoutes(fastify: FastifyInstance, pgClient:
 
       const user = userRows[0];
 
-      // 3️⃣ Insert into agents table
+      // 3️⃣ Insert into agents table with template credits (1.00) and DeepSeek ai_balance (4.00)
       const agentPrefix = "agt_" + authUserId.slice(0, 4);
-      const { rows: agentRows, rowCount: agentInserted } = await pgClient.query(
-        'INSERT INTO agents (user_id, agent_prefix, business_type, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
-        [authUserId, agentPrefix, business_type, createdBy || authenticatedUser.id]
-      );
+      let agentRows: any[] = [];
+      let agentInserted = 0;
+      try {
+        const res = await pgClient.query(
+          'INSERT INTO agents (user_id, agent_prefix, business_type, created_by, credits, ai_balance) VALUES ($1, $2, $3, $4, 1.00, 4.00) RETURNING *',
+          [authUserId, agentPrefix, business_type, createdBy || authenticatedUser.id]
+        );
+        agentRows = res.rows;
+        agentInserted = res.rowCount || 0;
+      } catch (colErr: any) {
+        const res = await pgClient.query(
+          'INSERT INTO agents (user_id, agent_prefix, business_type, created_by, credits) VALUES ($1, $2, $3, $4, 1.00) RETURNING *',
+          [authUserId, agentPrefix, business_type, createdBy || authenticatedUser.id]
+        );
+        agentRows = res.rows;
+        agentInserted = res.rowCount || 0;
+      }
 
       if (agentInserted === 0) {
         // Rollback user

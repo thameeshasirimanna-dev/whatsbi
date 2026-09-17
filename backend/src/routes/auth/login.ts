@@ -57,6 +57,16 @@ export default async function loginRoutes(fastify: FastifyInstance, pgClient: an
       // Generate JWT token
       const token = generateJWT(user.id);
 
+      // Record last_login_at timestamp
+      try {
+        await pgClient.query(
+          'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
+          [user.id]
+        );
+      } catch (trackErr: any) {
+        console.warn('Notice: could not update last_login_at:', trackErr.message);
+      }
+
       return reply.code(200).send({
         success: true,
         user: {

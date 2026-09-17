@@ -11,13 +11,26 @@ export default async function getDashboardDataRoutes(
       const authenticatedUser = await verifyJWT(request, pgClient);
 
       // Get agent
-      const agentQuery = `
-        SELECT a.id, a.agent_prefix, u.name
-        FROM agents a
-        JOIN users u ON u.id = $1
-        WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)
-      `;
-      const { rows: agentRows } = await pgClient.query(agentQuery, [authenticatedUser.id]);
+      let agentRows;
+      try {
+        const agentQuery = `
+          SELECT a.id, a.agent_prefix, a.credits, a.ai_balance, u.name
+          FROM agents a
+          JOIN users u ON u.id = $1
+          WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)
+        `;
+        const res = await pgClient.query(agentQuery, [authenticatedUser.id]);
+        agentRows = res.rows;
+      } catch (colErr: any) {
+        const fallbackQuery = `
+          SELECT a.id, a.agent_prefix, a.credits, u.name
+          FROM agents a
+          JOIN users u ON u.id = $1
+          WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)
+        `;
+        const res = await pgClient.query(fallbackQuery, [authenticatedUser.id]);
+        agentRows = res.rows;
+      }
 
       if (agentRows.length === 0) {
         return reply.code(403).send({
@@ -80,15 +93,25 @@ export default async function getDashboardDataRoutes(
         status: msg.is_read ? 'completed' : 'new'
       }));
 
+      const currentAiBalance = parseFloat(agent.ai_balance ?? '4.0');
+      const currentTemplateCredits = parseFloat(agent.credits ?? '0');
       const dashboardData = {
         agent: {
-          name: agent.name || "Agent"
+          id: agent.id,
+          name: agent.name || "Agent",
+          credits: currentTemplateCredits,
+          template_credits: currentTemplateCredits,
+          ai_balance: currentAiBalance,
+          balance: currentAiBalance,
         },
         metrics: {
           activeConversations,
           totalCustomers,
           ordersToday,
-          avgResponseTime: "2.3 min" // This could be calculated from data
+          avgResponseTime: "2.3 min",
+          balance: currentAiBalance,
+          ai_balance: currentAiBalance,
+          template_credits: currentTemplateCredits,
         },
         recentActivity
       };

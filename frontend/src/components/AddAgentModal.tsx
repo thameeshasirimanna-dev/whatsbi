@@ -1,5 +1,18 @@
-import React, { useState } from "react";
-import { X, UserPlus, CheckCircle, Key } from "lucide-react";
+import React, { useState } from 'react';
+import {
+  X,
+  UserPlus,
+  CheckCircle2,
+  AlertCircle,
+  Key,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Sparkles,
+  Loader2,
+} from 'lucide-react';
+import { BusinessTypeDropdown } from './admin/BusinessTypeDropdown';
 
 interface AddAgentModalProps {
   isOpen: boolean;
@@ -22,82 +35,62 @@ interface AgentFormData {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_STRENGTH_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '9px 12px',
-  fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#3f3f46',
-  background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 9,
-  outline: 'none', boxSizing: 'border-box',
-  transition: 'border-color 0.15s, box-shadow 0.15s',
-};
-
-const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#22c55e';
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
-};
-const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = '#ebebeb';
-  e.currentTarget.style.boxShadow = 'none';
-};
-
-const AddAgentModal: React.FC<AddAgentModalProps> = ({
+export const AddAgentModal: React.FC<AddAgentModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
   isEdit = false,
   agentId,
   initialData = {},
-  apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000",
+  apiUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000',
   createdByUserId,
 }) => {
   const [formData, setFormData] = useState<AgentFormData>({
-    agent_name: initialData.agent_name || "",
-    email: initialData.email || "",
-    business_type: (initialData as any).business_type || "product",
-    temp_password: initialData.temp_password || "",
+    agent_name: initialData.agent_name || '',
+    email: initialData.email || '',
+    business_type: (initialData as any).business_type || 'product',
+    temp_password: initialData.temp_password || '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [successMessage, setSuccessMessage] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [copied, setCopied] = useState(false);
+
+
 
   const generateTempPassword = (): string => {
     const length = Math.floor(Math.random() * 5) + 8;
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&";
-    return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join("");
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&';
+    return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) setError('');
   };
 
   const validateForm = (data: AgentFormData, editing: boolean): string[] => {
     const fieldErrors: string[] = [];
-    if (!data.agent_name.trim()) fieldErrors.push("Agent Name is required");
-    if (!data.email.trim()) fieldErrors.push("Email is required");
-    else if (!EMAIL_REGEX.test(data.email)) fieldErrors.push("Invalid email format");
-    if (!data.business_type) fieldErrors.push("Business type is required");
+    if (!data.agent_name.trim()) fieldErrors.push('Agent Name is required');
+    if (!data.email.trim()) fieldErrors.push('Email is required');
+    else if (!EMAIL_REGEX.test(data.email)) fieldErrors.push('Invalid email format');
+    if (!data.business_type) fieldErrors.push('Business type is required');
     if (!editing && !data.temp_password) {
-      fieldErrors.push("Password is required for new agents");
+      fieldErrors.push('Password is required for new agents');
     } else if (data.temp_password && !PASSWORD_STRENGTH_REGEX.test(data.temp_password)) {
-      fieldErrors.push("Password must be at least 8 chars, with uppercase, lowercase, and number");
+      fieldErrors.push('Password must be at least 8 chars with uppercase, lowercase, and number');
     }
     return fieldErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setShowSuccess(false);
-
-    if (!createdByUserId) {
-      setError("Admin user ID not available. Please refresh and try again.");
-      return;
-    }
 
     const submitData: any = {
       agent_name: formData.agent_name,
@@ -110,7 +103,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({
       if (agentId) submitData.agent_id = agentId;
       if (!submitData.temp_password.trim()) delete submitData.temp_password;
     } else {
-      submitData.createdBy = createdByUserId;
+      if (createdByUserId) submitData.createdBy = createdByUserId;
       if (!submitData.temp_password.trim()) {
         const generated = generateTempPassword();
         submitData.temp_password = generated;
@@ -120,37 +113,42 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({
 
     const validationErrors = validateForm(submitData, isEdit);
     if (validationErrors.length > 0) {
-      setError(validationErrors.join(", "));
+      setError(validationErrors.join(', '));
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem("auth_token");
+      const token = localStorage.getItem('auth_token');
       if (!token) {
-        setError("Please log in to continue");
+        setError('Please log in to continue');
         setIsLoading(false);
         return;
       }
 
-      const endpoint = isEdit ? "update-agent" : "add-agent";
-      const method = isEdit ? "PATCH" : "POST";
+      const endpoint = isEdit ? 'update-agent' : 'add-agent';
+      const method = isEdit ? 'PATCH' : 'POST';
 
       const res = await fetch(`${apiUrl}/${endpoint}`, {
         method,
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setSuccessMessage(isEdit ? "Agent updated successfully!" : "Agent added successfully!");
+        setSuccessMessage(isEdit ? 'Agent updated successfully!' : 'Agent registered successfully!');
 
         if (isEdit) {
-          setFormData({ agent_name: initialData?.agent_name || "", email: initialData?.email || "", business_type: (initialData as any)?.business_type || "product", temp_password: "" });
+          setFormData({
+            agent_name: initialData?.agent_name || '',
+            email: initialData?.email || '',
+            business_type: (initialData as any)?.business_type || 'product',
+            temp_password: '',
+          });
         } else {
-          setFormData({ agent_name: "", email: "", business_type: "product", temp_password: "" });
+          setFormData({ agent_name: '', email: '', business_type: 'product', temp_password: '' });
         }
 
         setShowSuccess(true);
@@ -161,26 +159,38 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({
           onClose();
         }, 3000);
       } else {
-        setError(data.message || `Failed to ${isEdit ? "update" : "add"} agent`);
-        console.error("Edge function failed:", data);
+        setError(data.message || `Failed to ${isEdit ? 'update' : 'register'} agent`);
+        console.error('Edge function failed:', data);
       }
     } catch (err: any) {
-      console.error(`${isEdit ? "Update" : "Add"} agent error:`, err);
-      setError("Network error. Please try again.");
+      console.error(`${isEdit ? 'Update' : 'Register'} agent error:`, err);
+      setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleCopyPassword = () => {
+    if (!generatedPassword) return;
+    navigator.clipboard.writeText(generatedPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleClose = () => {
     if (!isLoading && !showSuccess) {
-      setError("");
+      setError('');
       if (isEdit) {
-        setFormData({ agent_name: initialData?.agent_name || "", email: initialData?.email || "", business_type: (initialData as any)?.business_type || "product", temp_password: "" });
+        setFormData({
+          agent_name: initialData?.agent_name || '',
+          email: initialData?.email || '',
+          business_type: (initialData as any)?.business_type || 'product',
+          temp_password: '',
+        });
       } else {
-        setFormData({ agent_name: "", email: "", business_type: "product", temp_password: "" });
+        setFormData({ agent_name: '', email: '', business_type: 'product', temp_password: '' });
       }
-      setGeneratedPassword("");
+      setGeneratedPassword('');
       setShowSuccess(false);
       onClose();
     }
@@ -189,133 +199,228 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <>
-      <style>{`@keyframes aam-spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ebebeb', boxShadow: '0 24px 64px rgba(0,0,0,0.15)', width: '100%', maxWidth: 460, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm font-sans animate-in fade-in duration-200">
+      <div className="bg-white rounded-[28px] border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.18)] max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {showSuccess ? (
+          <div className="p-8 sm:p-10 text-center flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-[#E8F8EE] text-[#059669] flex items-center justify-center mb-4 shadow-xs">
+              <CheckCircle2 size={32} strokeWidth={2.4} />
+            </div>
+            <h3 className="text-xl font-bold text-[#16281D] tracking-tight mb-1">
+              {successMessage}
+            </h3>
+            <p className="text-xs text-[#71717A] font-medium mb-5">
+              The agent account has been provisioned and is ready for WhatsApp routing.
+            </p>
 
-          {showSuccess ? (
-            <div style={{ padding: '48px 32px', textAlign: 'center' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                <CheckCircle size={28} style={{ color: '#22c55e' }} />
-              </div>
-              <div style={{ ...SYNE, fontSize: 18, fontWeight: 700, color: '#0c1a0e', marginBottom: 8 }}>{successMessage}</div>
-
-              {generatedPassword && (
-                <div style={{ background: '#f9f9f9', border: '1px solid #ebebeb', borderRadius: 12, padding: '14px 16px', margin: '16px 0', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <Key size={14} style={{ color: '#22c55e' }} />
-                    <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Generated Password</span>
+            {generatedPassword && (
+              <div className="w-full bg-[#F4F7F4] border border-[#EAEAEA] rounded-2xl p-4 mb-4 text-left">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#059669] uppercase tracking-wider">
+                    <Key size={13} strokeWidth={2.4} />
+                    <span>Auto-Generated Password</span>
                   </div>
-                  <code style={{ ...DM, fontSize: 15, fontWeight: 600, color: '#0c1a0e', background: '#fff', border: '1px solid #ebebeb', padding: '6px 10px', borderRadius: 7, display: 'block', wordBreak: 'break-all' }}>
-                    {generatedPassword}
-                  </code>
-                  <div style={{ ...DM, fontSize: 11, color: '#71717a', marginTop: 8 }}>Share this with the agent securely</div>
+                  <button
+                    onClick={handleCopyPassword}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#16281D] hover:text-[#059669] bg-white border border-[#EAEAEA] hover:border-[#9FE870] px-2.5 py-1 rounded-full cursor-pointer transition-all shadow-2xs"
+                  >
+                    {copied ? <Check size={12} className="text-[#059669]" /> : <Copy size={12} />}
+                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                  </button>
                 </div>
-              )}
-
-              {!isEdit && (
-                <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, ...DM, fontSize: 12, color: '#059669', textAlign: 'left' }}>
-                  WhatsApp configuration can be set up separately from the agent dashboard.
+                <div className="bg-white border border-[#EAEAEA] rounded-xl px-3 py-2 font-mono text-sm font-bold text-[#16281D] select-all break-all shadow-2xs">
+                  {generatedPassword}
                 </div>
-              )}
+                <p className="text-[11px] text-[#71717A] font-medium mt-2 m-0">
+                  Please securely share this temporary password with the tenant agent.
+                </p>
+              </div>
+            )}
 
-              <div style={{ ...DM, fontSize: 12, color: '#a1a1aa', marginBottom: 20 }}>Redirecting to agents list shortly…</div>
-              <button onClick={handleClose} style={{ background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '10px 24px', ...DM, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                Close
+            {!isEdit && (
+              <div className="w-full p-3 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl text-xs text-[#15803D] font-medium mb-5 text-left flex items-start gap-2">
+                <Sparkles size={15} className="shrink-0 mt-0.5" />
+                <span>
+                  WhatsApp Cloud API credentials can be configured now or later from the WhatsApp Fleet tab.
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={handleClose}
+              className="w-full py-2.5 rounded-full text-xs font-bold text-[#16281D] bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all"
+            >
+              Done & Return to Fleet
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#E8F8EE] text-[#059669] flex items-center justify-center shrink-0">
+                  <UserPlus size={20} strokeWidth={2.4} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-[#16281D] m-0 tracking-tight leading-snug">
+                    {isEdit ? 'Edit Agent Account' : 'Register New Agent'}
+                  </h3>
+                  <p className="text-xs text-[#71717A] m-0 mt-0.5 font-medium">
+                    {isEdit
+                      ? 'Update agent name, email, and security credentials'
+                      : 'Provision a new multi-tenant instance and allocate system prefixes'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleClose}
+                className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] transition-colors flex items-center justify-center border-0 cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X size={16} />
               </button>
             </div>
-          ) : (
-            <>
-              <div style={{ flexShrink: 0, padding: '20px 24px 16px', borderBottom: '1px solid #ebebeb', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <UserPlus size={16} style={{ color: '#22c55e' }} />
-                  </div>
-                  <div>
-                    <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e', display: 'block' }}>{isEdit ? "Edit Agent" : "Add New Agent"}</span>
-                    {!isEdit && <span style={{ ...DM, fontSize: 12, color: '#71717a' }}>WhatsApp config can be set up separately</span>}
-                  </div>
+
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+              {error && (
+                <div className="p-3 bg-[#FFF1F2] border border-[#FECDD3] rounded-xl text-xs font-medium text-[#E11D48] flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>{error}</span>
                 </div>
-                <button onClick={handleClose} style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
-                  <X size={15} style={{ color: '#71717a' }} />
-                </button>
-              </div>
+              )}
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-                {error && (
-                  <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', borderRadius: 9, ...DM, fontSize: 13, color: '#f43f5e', marginBottom: 16 }}>
-                    {error}
-                  </div>
-                )}
+              <form id="agent-modal-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+                {/* Agent Name */}
+                <div>
+                  <label className="block text-xs font-bold text-[#16281D] uppercase tracking-wider mb-1.5">
+                    Agent Name <span className="text-[#E11D48]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="agent_name"
+                    value={formData.agent_name}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Acme Support Team"
+                    disabled={isLoading}
+                    required
+                    className="w-full px-3.5 py-2.5 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-sm font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 disabled:opacity-50"
+                  />
+                </div>
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Agent Name *</label>
-                    <input type="text" name="agent_name" value={formData.agent_name} onChange={handleInputChange} placeholder="Enter agent full name" disabled={isLoading} required style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9' }} onFocus={onFocus} onBlur={onBlur} />
-                  </div>
+                {/* Email Address */}
+                <div>
+                  <label className="block text-xs font-bold text-[#16281D] uppercase tracking-wider mb-1.5">
+                    Email Address <span className="text-[#E11D48]">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="agent@company.com"
+                    disabled={isLoading}
+                    required
+                    className="w-full px-3.5 py-2.5 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-sm font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 disabled:opacity-50"
+                  />
+                  <p className="text-[11px] text-[#8FA89B] font-medium mt-1 m-0">
+                    Used for login credentials, authentication, and platform alerts.
+                  </p>
+                </div>
 
-                  <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Email Address *</label>
-                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="agent@example.com" disabled={isLoading} required style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9' }} onFocus={onFocus} onBlur={onBlur} />
-                  </div>
+                {/* Business Type Custom Dropdown */}
+                <div>
+                  <label className="block text-xs font-bold text-[#16281D] uppercase tracking-wider mb-1.5">
+                    Business Type <span className="text-[#E11D48]">*</span>
+                  </label>
+                  <BusinessTypeDropdown
+                    value={formData.business_type}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, business_type: val }))}
+                    disabled={isLoading}
+                  />
+                  <p className="text-[11px] text-[#8FA89B] font-medium mt-1.5 m-0">
+                    Determines automated invoice templates, WhatsApp catalogs, and AI recommendation logic.
+                  </p>
+                </div>
 
-                  <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>Business Type *</label>
-                    <select name="business_type" value={formData.business_type} onChange={handleInputChange} disabled={isLoading} required style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9', appearance: 'none', cursor: isLoading ? 'not-allowed' : 'pointer' }} onFocus={onFocus} onBlur={onBlur}>
-                      <option value="service">Service</option>
-                      <option value="product">Product</option>
-                    </select>
-                    <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>Select the type of business this agent will manage</div>
-                  </div>
-
-                  <div>
-                    <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
-                      {isEdit ? "New Password (Optional)" : "Temporary Password *"}
+                {/* Temporary / New Password */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-[#16281D] uppercase tracking-wider">
+                      {isEdit ? 'New Password (Optional)' : 'Temporary Password'}
                     </label>
+                    {!isEdit && (
+                      <span className="text-[11px] text-[#059669] font-bold">
+                        Leave blank to auto-generate
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       name="temp_password"
                       value={formData.temp_password}
                       onChange={handleInputChange}
-                      placeholder={isEdit ? "Leave empty to keep current password" : "Leave empty to auto-generate secure password"}
+                      placeholder={
+                        isEdit
+                          ? 'Leave empty to keep current password'
+                          : 'Auto-generated if left empty'
+                      }
                       disabled={isLoading}
-                      required={!isEdit}
-                      style={{ ...inputStyle, background: isLoading ? '#f4f4f5' : '#f9f9f9' }}
-                      onFocus={onFocus}
-                      onBlur={onBlur}
+                      required={false}
+                      className="w-full px-3.5 py-2.5 pr-10 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-sm font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 font-mono disabled:opacity-50"
                     />
-                    {!isEdit && <div style={{ ...DM, fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>Leave empty to automatically generate a secure password</div>}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 10, paddingTop: 6 }}>
-                    <button type="button" onClick={handleClose} disabled={isLoading} style={{ flex: 1, background: 'rgba(0,0,0,0.06)', color: '#3f3f46', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.5 : 1 }}>
-                      Cancel
-                    </button>
-                    <button type="submit" disabled={isLoading} style={{ flex: 1, background: isLoading ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg, #22c55e 0%, #059669 100%)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', ...DM, fontSize: 14, fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', boxShadow: isLoading ? 'none' : '0 4px 14px rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      {isLoading ? (
-                        <>
-                          <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'aam-spin 0.7s linear infinite' }} />
-                          {isEdit ? "Updating…" : "Creating…"}
-                        </>
-                      ) : (isEdit ? "Update Agent" : "Create Agent")}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8FA89B] hover:text-[#16281D] border-0 bg-transparent cursor-pointer p-0.5"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  <p className="text-[11px] text-[#8FA89B] font-medium mt-1 m-0">
+                    Min 8 characters, with uppercase, lowercase, and numeric digits.
+                  </p>
+                </div>
+              </form>
+            </div>
 
-                  {!isEdit && (
-                    <div style={{ borderTop: '1px solid #f4f4f5', paddingTop: 12, textAlign: 'center', ...DM, fontSize: 11, color: '#a1a1aa' }}>
-                      WhatsApp configuration can be set up separately after agent creation.
-                    </div>
-                  )}
-                </form>
-              </div>
-            </>
-          )}
-        </div>
+            {/* Pinned Footer */}
+            <div className="px-6 py-4 bg-[#FAFCFA] border-t border-[#EAEAEA] flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isLoading}
+                className="px-4 py-2 rounded-full text-xs font-bold text-[#52525B] bg-[#F4F7F4] hover:bg-[#EAEAEA] border border-[#EAEAEA] transition-all cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="agent-modal-form"
+                disabled={isLoading}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold text-[#16281D] bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] shadow-[0_4px_14px_rgba(159,232,112,0.35)] transition-all cursor-pointer border-0 disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>{isEdit ? 'Updating Agent…' : 'Registering Agent…'}</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={14} strokeWidth={2.4} />
+                    <span>{isEdit ? 'Save Changes' : 'Register Agent'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
-    </>
+    </div>
   );
 };
 
-export { AddAgentModal };
 export default AddAgentModal;
+

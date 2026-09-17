@@ -109,7 +109,8 @@ CREATE TABLE agents (
     email TEXT NOT NULL,
     role TEXT DEFAULT 'agent',
     business_type TEXT DEFAULT 'product',
-    credits INTEGER DEFAULT 50,
+    credits NUMERIC(10, 2) DEFAULT 1.00,
+    ai_balance NUMERIC(14, 6) DEFAULT 4.000000,
     invoice_template_path TEXT,
     company_overview_path TEXT,
     webhook_url TEXT,
@@ -128,7 +129,8 @@ CREATE TABLE agents (
 | `email` | TEXT | NOT NULL | Contact email address |
 | `role` | TEXT | DEFAULT 'agent' | Authorization role |
 | `business_type` | TEXT | DEFAULT 'product' | 'product' (SKU-based) or 'service' (packages) |
-| `credits` | INTEGER | DEFAULT 50 | Remaining AI automation message balance |
+| `credits` | NUMERIC(10, 2) | DEFAULT 1.00 | Available credits strictly for WhatsApp template messages ($0.01 per template broadcast). Admin-managed. |
+| `ai_balance` | NUMERIC(14, 6) | DEFAULT 4.000000 | Available balance in USD for DeepSeek AI engine. Initial $4.00 USD for new agents. Backend silently deducts 2.0x raw DeepSeek API cost. Admin-managed. |
 | `invoice_template_path`| TEXT | NULLABLE | Cloudflare R2 object key for invoice layout |
 | `company_overview_path`| TEXT | NULLABLE | Cloudflare R2 key for company context doc |
 | `webhook_url` | TEXT | NULLABLE | Optional external webhook endpoint (native AI handled via built-in DeepSeek model) |
@@ -596,3 +598,4 @@ All database transformations are tracked in `frontend/database/migrations/`:
 | `038` | `038_add_broadcasts_tables.sql` | Provisioned dynamic broadcasts and recipient logs |
 | `039` | `039_change_default_language_to_sinhala.sql` | Set default customer language to Sinhala |
 | `040` | `040_invoices_first_flow.sql` | Invert sales lifecycle: invoice-first flow, customer_id/advance/total/notes on invoices, optional order_id, invoice_id on items and orders |
+| `041` | `041_add_ai_balance_to_agents.sql` | Added `ai_balance` (NUMERIC(14, 6) DEFAULT 4.000000) for DeepSeek AI, separating it from WhatsApp template `credits` |

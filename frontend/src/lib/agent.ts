@@ -11,6 +11,7 @@ export interface Agent {
   business_type: "product" | "service";
   webhook_url?: string;
   credits: number;
+  ai_balance?: number;
   created_at: string;
   updated_at?: string;
   created_by?: string;
@@ -50,6 +51,7 @@ export const getCurrentAgent = async (): Promise<Agent | null> => {
       business_type: data.agent.business_type,
       webhook_url: data.agent.webhook_url,
       credits: data.agent.credits,
+      ai_balance: parseFloat(data.agent.ai_balance ?? '4.0'),
       created_at: data.agent.created_at,
       updated_at: data.agent.updated_at,
       created_by: data.agent.created_by,

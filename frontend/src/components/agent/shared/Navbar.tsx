@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Menu, Coins } from 'lucide-react';
+import { Bell, Menu, Coins, Sparkles } from 'lucide-react';
 
 interface Notification {
   id: number;
@@ -17,6 +17,7 @@ interface NavbarProps {
     email: string;
     agent_prefix: string;
     credits: number;
+    ai_balance?: number;
   } & {
     unreadCount: number;
     recentNotifications: Notification[];
@@ -100,6 +101,16 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
   const pageTitle = getPageTitle();
   const pageSubtitle = getPageSubtitle();
 
+  const aiBalance =
+    typeof agent.ai_balance === 'number'
+      ? agent.ai_balance
+      : parseFloat(String(agent.ai_balance ?? '4.00')) || 0;
+
+  const templateCredits =
+    typeof agent.credits === 'number'
+      ? agent.credits
+      : parseFloat(String(agent.credits ?? '0.00')) || 0;
+
   return (
     <nav
       className="px-4 md:px-6 layout-header"
@@ -144,22 +155,65 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick }) => {
       </div>
 
       {/* Right */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Credits */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* AI Balance */}
         <div
           className="px-2.5 py-1 md:px-3 md:py-1.5"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 5,
             borderRadius: 9999,
             background: '#f0fdf4',
             border: '1px solid #bbf7d0',
           }}
+          title="AI Balance (USD)"
         >
-          <Coins size={13} style={{ color: '#059669' }} />
-          <span style={{ ...DM, fontSize: 13, fontWeight: 500, color: '#15803d' }}>
-            {agent.credits}
+          <Sparkles size={13} style={{ color: '#16a34a' }} />
+          <span style={{ ...DM, fontSize: 13, fontWeight: 700, color: '#15803d' }}>
+            ${aiBalance.toFixed(2)}
+          </span>
+          <span
+            className="hidden sm:inline"
+            style={{
+              ...DM,
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#166534',
+              letterSpacing: '0.04em',
+            }}
+          >
+            AI
+          </span>
+        </div>
+
+        {/* WhatsApp Template Credits */}
+        <div
+          className="px-2.5 py-1 md:px-3 md:py-1.5"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            borderRadius: 9999,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+          }}
+          title="WhatsApp Template Message Credits"
+        >
+          <Coins size={13} style={{ color: '#0f766e' }} />
+          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#0f766e' }}>
+            {templateCredits.toFixed(2)}
+          </span>
+          <span
+            className="hidden sm:inline"
+            style={{
+              ...DM,
+              fontSize: 10,
+              fontWeight: 600,
+              color: '#64748b',
+            }}
+          >
+            Templates
           </span>
         </div>
 

@@ -8,6 +8,7 @@ export interface Agent {
   business_type: 'product' | 'service';
   webhook_url?: string;
   credits: number;
+  ai_balance?: number;
   created_at: string;
   updated_at?: string;
   created_by?: string;

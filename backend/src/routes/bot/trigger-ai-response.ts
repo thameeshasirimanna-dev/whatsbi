@@ -15,7 +15,8 @@ export default async function triggerAiResponseRoutes(
   fastify: FastifyInstance,
   pgClient: any,
   cacheService: CacheService,
-  emitNewMessage?: (agentId: number, messageData: any) => void
+  emitNewMessage?: (agentId: number, messageData: any) => void,
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void
 ) {
   fastify.post('/trigger-ai-response', async (request, reply) => {
     try {
@@ -38,13 +39,26 @@ export default async function triggerAiResponseRoutes(
       }
 
       // Fetch agent associated with user
-      const { rows: agentRows } = await pgClient.query(
-        `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
-         FROM agents a
-         LEFT JOIN users u ON a.user_id = u.id
-         WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
-        [user.id]
-      );
+      let agentRows;
+      try {
+        const res = await pgClient.query(
+          `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.ai_balance, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
+           FROM agents a
+           LEFT JOIN users u ON a.user_id = u.id
+           WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
+          [user.id]
+        );
+        agentRows = res.rows;
+      } catch (colErr: any) {
+        const res = await pgClient.query(
+          `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
+           FROM agents a
+           LEFT JOIN users u ON a.user_id = u.id
+           WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
+          [user.id]
+        );
+        agentRows = res.rows;
+      }
 
       if (agentRows.length === 0) {
         return reply.code(404).send({
@@ -55,12 +69,12 @@ export default async function triggerAiResponseRoutes(
 
       const agent = agentRows[0];
 
-      // Check agent credits
-      const currentCredits = parseFloat(agent.credits || '0');
-      if (currentCredits < 0.01) {
+      // Check agent DeepSeek AI balance
+      const currentAiBalance = parseFloat(agent.ai_balance ?? '4.0');
+      if (currentAiBalance <= 0) {
         return reply.code(400).send({
           success: false,
-          error: `Insufficient credits (${currentCredits.toFixed(2)} available). Please add credits to use AI assistance.`,
+          error: `Insufficient AI balance ($${currentAiBalance.toFixed(4)} available). Please contact an administrator to top up your balance.`,
         });
       }
 
@@ -161,7 +175,7 @@ export default async function triggerAiResponseRoutes(
       }
 
       // Generate response using DeepSeek
-      const replyText = await generateCustomerReply({
+      const aiResult = await generateCustomerReply({
         agent,
         customer,
         customPrompt,
@@ -169,6 +183,7 @@ export default async function triggerAiResponseRoutes(
         deepseekApiKey: whatsappConfig.deepseek_api_key,
       });
 
+      const replyText = aiResult.reply;
       if (!replyText) {
         return reply.code(500).send({
           success: false,
@@ -215,11 +230,27 @@ export default async function triggerAiResponseRoutes(
         [customer.id, cleanReply]
       );
 
-      // Deduct 0.01 credit
-      await pgClient.query(
-        'UPDATE agents SET credits = credits - 0.01 WHERE id = $1',
-        [agent.id]
-      );
+      // Deduct 2.0x actual DeepSeek API cost from ai_balance
+      const chargedCost = aiResult.cost?.chargedCost || 0.001;
+      let newBalance = 4.0;
+      try {
+        const { rows: updatedRows } = await pgClient.query(
+          'UPDATE agents SET ai_balance = GREATEST(0, ai_balance - $1) WHERE id = $2 RETURNING ai_balance',
+          [chargedCost, agent.id]
+        );
+        newBalance = updatedRows.length > 0 ? parseFloat(updatedRows[0].ai_balance) : 0;
+      } catch (updateErr: any) {
+        console.warn('[DeepSeek AI] ai_balance column not yet present for update:', updateErr.message);
+      }
+      console.log(`[DeepSeek AI] Manual CRM action by Agent ${agent.id}: actual cost $${aiResult.cost?.actualCost?.toFixed(6)}, charged 2x $${chargedCost.toFixed(6)}. New AI balance: $${newBalance.toFixed(4)}`);
+
+      if (emitAgentStatusUpdate) {
+        emitAgentStatusUpdate(agent.id, {
+          type: 'ai_balance_updated',
+          ai_balance: newBalance,
+          balance: newBalance,
+        });
+      }
 
       // Emit real-time Socket.IO event
       if (emitNewMessage && insertedRows.length > 0) {
@@ -304,6 +335,8 @@ export default async function triggerAiResponseRoutes(
         message: cleanReply,
         message_id: sendResult.messageId,
         actions: actionsExecuted,
+        ai_balance: newBalance,
+        cost: aiResult.cost,
       });
     } catch (err: any) {
       console.error('Trigger AI response error:', err);

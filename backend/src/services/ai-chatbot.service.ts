@@ -21,6 +21,11 @@ import {
   dispatchCustomerInvoicePdf,
 } from './whatsapp-outbound.service.js';
 import { parseAndExecuteAgentActions } from './ai-agent-actions.service.js';
+import {
+  calculateDeepSeekCost,
+  estimateFallbackCost,
+  DeepSeekCostResult,
+} from './ai-cost.service.js';
 
 export {
   stripEmojis,
@@ -39,25 +44,31 @@ export {
   parseAndExecuteAgentActions,
 };
 
-
-
+export interface DeepSeekChatResult {
+  reply: string | null;
+  usage?: any;
+  cost: DeepSeekCostResult;
+}
 
 /**
- * Calls DeepSeek Chat Completions API with provided message payload
+ * Calls DeepSeek Chat Completions API with provided message payload and calculates token costs
  */
 export async function callDeepSeekChat(
   messages: Array<{ role: string; content: string }>,
   customApiKey?: string
-): Promise<string | null> {
+): Promise<DeepSeekChatResult> {
+  const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
   const apiKey = (customApiKey && customApiKey.trim()) || process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.warn('[DeepSeek AI] No DeepSeek API key found (neither agent configuration nor DEEPSEEK_API_KEY in .env). Skipping AI response.');
-    return null;
+    return {
+      reply: null,
+      cost: estimateFallbackCost('', '', model),
+    };
   }
 
   const rawBaseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
   const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-  const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 
   const endpoint = `${baseUrl}/chat/completions`;
   const controller = new AbortController();
@@ -83,18 +94,33 @@ export async function callDeepSeekChat(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[DeepSeek AI] API error: HTTP ${response.status} - ${errorText}`);
-      return null;
+      return {
+        reply: null,
+        cost: estimateFallbackCost(JSON.stringify(messages), '', model),
+      };
     }
 
     const data: any = await response.json();
     const choice = data.choices?.[0];
     const content = choice?.message?.content;
-    if (!content) return null;
+    const usage = data.usage;
+    const cost = usage
+      ? calculateDeepSeekCost(usage, model)
+      : estimateFallbackCost(JSON.stringify(messages), content || '', model);
+
+    if (!content) {
+      return { reply: null, usage, cost };
+    }
+
     let reply = stripEmojis(content.trim());
     if (isBankDetailsMessage(reply)) {
       reply = formatBankDetails(reply);
     }
-    return sanitizeWhatsAppFormatting(reply);
+    return {
+      reply: sanitizeWhatsAppFormatting(reply),
+      usage,
+      cost,
+    };
 
   } catch (err: any) {
     if (err.name === 'AbortError') {
@@ -102,9 +128,11 @@ export async function callDeepSeekChat(
     } else {
       console.error('[DeepSeek AI] Request failed:', err.message || err);
     }
-    return null;
+    return {
+      reply: null,
+      cost: estimateFallbackCost(JSON.stringify(messages), '', model),
+    };
   } finally {
-
     clearTimeout(timeoutId);
   }
 }
@@ -128,7 +156,11 @@ export async function generateCustomerReply({
   customPrompt?: string;
   pgClient: any;
   deepseekApiKey?: string;
-}): Promise<string | null> {
+}): Promise<{
+  reply: string | null;
+  cost: DeepSeekCostResult;
+  usage?: any;
+}> {
   // 1. Fetch catalog data according to business type (encapsulated module)
   const catalogContext = await fetchCatalogContext({ agent, pgClient });
 
@@ -249,15 +281,21 @@ Execute STAGE C (PAYMENT RECEIPT / CUSTOMER PAID STAGE):
     }
   }
 
-  const reply = await callDeepSeekChat(messages, activeApiKey);
-  if (!reply && isPaymentReceipt) {
+  const chatResult = await callDeepSeekChat(messages, activeApiKey);
+  let finalReply = chatResult.reply;
+  if (!finalReply && isPaymentReceipt) {
     const custLang = customer.language || 'sinhala';
     if (custLang === 'english') {
-      return "Thank you! Our team will verify your payment slip and update the status manually shortly.";
+      finalReply = "Thank you! Our team will verify your payment slip and update the status manually shortly.";
+    } else {
+      finalReply = "ස්තූතියි! අපගේ team එක payment slip එක verify කරලා බලලා, ඉක්මනින්ම manually update කරලා ඔයාට දන්වන්නම්.";
     }
-    return "ස්තූතියි! අපගේ team එක payment slip එක verify කරලා බලලා, ඉක්මනින්ම manually update කරලා ඔයාට දන්වන්නම්.";
   }
-  return reply;
+  return {
+    reply: finalReply,
+    cost: chatResult.cost,
+    usage: chatResult.usage,
+  };
 }
 
 /**
@@ -271,6 +309,7 @@ export async function handleInboundMessage({
   pgClient,
   cacheService,
   emitNewMessage,
+  emitAgentStatusUpdate,
 }: {
   agent: any;
   customer: any;
@@ -279,20 +318,27 @@ export async function handleInboundMessage({
   pgClient: any;
   cacheService?: CacheService;
   emitNewMessage?: (agentId: number, messageData: any) => void;
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void;
 }) {
   // 1. Verify customer has AI enabled
   if (!customer.ai_enabled) {
     return;
   }
 
-  // 2. Check agent credits
-  const { rows: creditRows } = await pgClient.query(
-    'SELECT credits FROM agents WHERE id = $1',
-    [agent.id]
-  );
-  const currentCredits = creditRows.length > 0 ? parseFloat(creditRows[0].credits) : 0;
-  if (currentCredits < 0.01) {
-    console.warn(`[DeepSeek AI] Agent ${agent.id} has insufficient credits (${currentCredits}) for AI reply.`);
+  // 2. Check agent DeepSeek AI balance
+  let currentAiBalance = 4.0;
+  try {
+    const { rows: creditRows } = await pgClient.query(
+      'SELECT ai_balance FROM agents WHERE id = $1',
+      [agent.id]
+    );
+    currentAiBalance = creditRows.length > 0 ? parseFloat(creditRows[0].ai_balance ?? '4.0') : 4.0;
+  } catch (colErr: any) {
+    // Column not migrated yet, default to starting balance
+    currentAiBalance = 4.0;
+  }
+  if (currentAiBalance <= 0) {
+    console.warn(`[DeepSeek AI] Agent ${agent.id} has depleted AI balance ($${currentAiBalance.toFixed(4)}) for AI reply.`);
     return;
   }
 
@@ -303,7 +349,7 @@ export async function handleInboundMessage({
   }
 
   // 4. Generate intelligent reply via DeepSeek
-  const rawReply = await generateCustomerReply({
+  const aiResult = await generateCustomerReply({
     agent,
     customer,
     incomingMessage: incomingMessage.message,
@@ -312,6 +358,7 @@ export async function handleInboundMessage({
     deepseekApiKey: whatsappConfig?.deepseek_api_key,
   });
 
+  const rawReply = aiResult.reply;
   if (!rawReply) {
     console.warn('[DeepSeek AI] DeepSeek generated empty or null reply.');
     return;
@@ -356,11 +403,27 @@ export async function handleInboundMessage({
     [customer.id, cleanReply]
   );
 
-  // 7. Deduct 0.01 credit from agents.credits
-  await pgClient.query(
-    'UPDATE agents SET credits = credits - 0.01 WHERE id = $1',
-    [agent.id]
-  );
+  // 8. Deduct 2.0x actual DeepSeek API cost from agents.ai_balance
+  const chargedCost = aiResult.cost?.chargedCost || 0.001;
+  let newBalance = 4.0;
+  try {
+    const { rows: updatedRows } = await pgClient.query(
+      'UPDATE agents SET ai_balance = GREATEST(0, ai_balance - $1) WHERE id = $2 RETURNING ai_balance',
+      [chargedCost, agent.id]
+    );
+    newBalance = updatedRows.length > 0 ? parseFloat(updatedRows[0].ai_balance) : 0;
+  } catch (updateErr: any) {
+    console.warn('[DeepSeek AI] ai_balance column not yet present for update:', updateErr.message);
+  }
+  console.log(`[DeepSeek AI] Agent ${agent.id}: actual cost $${aiResult.cost.actualCost.toFixed(6)}, charged 2x $${chargedCost.toFixed(6)}. New AI balance: $${newBalance.toFixed(4)}`);
+
+  if (emitAgentStatusUpdate) {
+    emitAgentStatusUpdate(agent.id, {
+      type: 'ai_balance_updated',
+      ai_balance: newBalance,
+      balance: newBalance,
+    });
+  }
 
   // 8. Emit Socket.IO event so agent UI updates in real time
   if (emitNewMessage && insertedRows.length > 0) {
@@ -419,10 +482,7 @@ export async function handleInboundMessage({
       emitNewMessage,
       cacheService,
     });
-  } else {
-    console.log(`[DeepSeek AI] No invoice action executed to dispatch for customer ${customer.id}`);
   }
-
 
   // 12. If customer requested samples and agent offers services, dispatch sample images directly
   await dispatchServiceSampleImages({
@@ -436,5 +496,3 @@ export async function handleInboundMessage({
     cacheService,
   });
 }
-
-

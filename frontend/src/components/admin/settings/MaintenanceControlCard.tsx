@@ -2,22 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Clock, Radio, Save, Sparkles, ShieldCheck } from 'lucide-react';
 import { useDialog } from '../../agent/shared/DialogProvider';
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const DM: React.CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 14px',
-  ...DM,
-  fontSize: 13,
-  color: '#0c1a0e',
-  background: '#fafafa',
-  border: '1px solid #ebebeb',
-  borderRadius: 10,
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
 interface MaintenanceControlCardProps {
   onStatusChange?: (isActive: boolean) => void;
 }
@@ -119,59 +103,92 @@ export const MaintenanceControlCard: React.FC<MaintenanceControlCardProps> = ({ 
 
   if (loading) {
     return (
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebeb', padding: '32px 24px', textAlign: 'center', ...DM, color: '#71717a', fontSize: 13 }}>
-        Loading maintenance settings...
+      <div className="bg-white rounded-[24px] border border-[#EAEAEA] p-8 text-center text-xs font-medium text-[#71717A] flex items-center justify-center gap-2 font-sans">
+        <span className="w-4 h-4 border-2 border-[#9FE870] border-t-transparent rounded-full animate-spin" />
+        <span>Loading maintenance settings…</span>
       </div>
     );
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #ebebeb', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+    <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden font-sans">
       {/* Header with Master Toggle */}
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, background: mode ? 'rgba(217,119,6,0.03)' : '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: mode ? 'rgba(217,119,6,0.1)' : 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {mode ? <AlertTriangle size={20} style={{ color: '#d97706' }} /> : <CheckCircle2 size={20} style={{ color: '#22c55e' }} />}
+      <div
+        className={`p-5 md:p-6 border-b border-[#EAEAEA] flex items-center justify-between flex-wrap gap-4 transition-colors ${
+          mode ? 'bg-[#FFFBEB]/50' : 'bg-white'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+              mode ? 'bg-[#FFFBEB] text-[#D97706]' : 'bg-[#E8F8EE] text-[#059669]'
+            }`}
+          >
+            {mode ? (
+              <AlertTriangle size={20} strokeWidth={2.4} />
+            ) : (
+              <CheckCircle2 size={20} strokeWidth={2.4} />
+            )}
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ ...SYNE, fontSize: 16, fontWeight: 700, color: '#0c1a0e' }}>Maintenance Mode</span>
-              <span style={{ ...DM, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: mode ? 'rgba(217,119,6,0.15)' : 'rgba(34,197,94,0.15)', color: mode ? '#b45309' : '#059669' }}>
+            <div className="flex items-center gap-2.5">
+              <span className="text-base font-bold text-[#16281D]">Maintenance Mode</span>
+              <span
+                className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                  mode
+                    ? 'bg-[#FFFBEB] text-[#D97706] border-[#FDE68A]'
+                    : 'bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]'
+                }`}
+              >
                 {mode ? 'ACTIVE' : 'INACTIVE'}
               </span>
             </div>
-            <p style={{ ...DM, fontSize: 12, color: '#71717a', margin: '2px 0 0' }}>
-              Control platform accessibility and webhook queuing during scheduled downtime
+            <p className="text-xs text-[#71717A] m-0 mt-0.5 font-medium">
+              Control platform accessibility and webhook queuing during scheduled downtime.
             </p>
           </div>
         </div>
 
         {/* Master Toggle Switch */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ ...DM, fontSize: 13, fontWeight: 600, color: '#3f3f46' }}>{mode ? 'Turn Off' : 'Turn On'}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-[#52525B]">
+            {mode ? 'Turn Off' : 'Turn On'}
+          </span>
           <button
             type="button"
             role="switch"
             aria-checked={mode}
             onClick={() => setMode(!mode)}
-            style={{ width: 50, height: 26, borderRadius: 14, border: 'none', background: mode ? '#d97706' : '#e4e4e7', cursor: 'pointer', position: 'relative', transition: 'background 0.2s ease', padding: 2 }}
+            className={`w-12 h-6.5 rounded-full border-0 cursor-pointer relative transition-colors duration-200 p-0.5 ${
+              mode ? 'bg-[#D97706]' : 'bg-[#E4E4E7]'
+            }`}
           >
-            <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: mode ? 26 : 2, transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+            <div
+              className={`w-5.5 h-5.5 rounded-full bg-white transition-transform duration-200 shadow-xs ${
+                mode ? 'translate-x-5.5' : 'translate-x-0'
+              }`}
+            />
           </button>
         </div>
       </div>
 
       {/* Form Body */}
-      <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="p-5 md:p-6 flex flex-col gap-5">
         <div>
-          <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
+          <label className="text-xs font-bold text-[#52525B] block mb-1.5">
             Maintenance Notice Title
           </label>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Scheduled Maintenance Underway" style={inputStyle} />
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Scheduled Maintenance Underway"
+            className="w-full px-4 py-2.5 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-2xl text-xs font-medium text-[#16281D] placeholder-[#A1A1AA] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20"
+          />
         </div>
 
         <div>
-          <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'block', marginBottom: 6 }}>
+          <label className="text-xs font-bold text-[#52525B] block mb-1.5">
             Maintenance Explanation Message
           </label>
           <textarea
@@ -179,30 +196,40 @@ export const MaintenanceControlCard: React.FC<MaintenanceControlCardProps> = ({ 
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Describe what is being updated and when services will resume..."
-            style={{ ...inputStyle, resize: 'vertical', minHeight: 75, lineHeight: 1.5 }}
+            className="w-full px-4 py-2.5 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-2xl text-xs font-medium text-[#16281D] placeholder-[#A1A1AA] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 resize-y min-h-[80px]"
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Clock size={13} style={{ color: '#71717a' }} />
+            <label className="text-xs font-bold text-[#52525B] flex items-center gap-1.5 mb-1.5">
+              <Clock size={13} className="text-[#71717A]" />
               Estimated Completion Time (Optional)
             </label>
-            <input type="text" value={estimatedEnd} onChange={(e) => setEstimatedEnd(e.target.value)} placeholder="e.g. 30 minutes, or 02:00 PM UTC" style={inputStyle} />
+            <input
+              type="text"
+              value={estimatedEnd}
+              onChange={(e) => setEstimatedEnd(e.target.value)}
+              placeholder="e.g. 30 minutes, or 02:00 PM UTC"
+              className="w-full px-4 py-2.5 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-2xl text-xs font-medium text-[#16281D] placeholder-[#A1A1AA] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20"
+            />
           </div>
 
           <div>
-            <label style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#3f3f46', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Radio size={13} style={{ color: '#71717a' }} />
+            <label className="text-xs font-bold text-[#52525B] flex items-center gap-1.5 mb-1.5">
+              <Radio size={13} className="text-[#71717A]" />
               WhatsApp Webhook Ingestion Policy
             </label>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#fafafa', border: '1px solid #ebebeb', cursor: 'pointer' }}>
-              <input type="checkbox" checked={webhookRetry} onChange={(e) => setWebhookRetry(e.target.checked)} style={{ marginTop: 2, accentColor: '#22c55e', cursor: 'pointer' }} />
-              <span style={{ ...DM, fontSize: 12, color: '#3f3f46', lineHeight: 1.4 }}>
-                <strong>Signal Meta to Hold & Retry (`HTTP 503`)</strong>
-                <br />
-                <span style={{ color: '#71717a', fontSize: 11 }}>
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#F4F7F4] border border-[#EAEAEA] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={webhookRetry}
+                onChange={(e) => setWebhookRetry(e.target.checked)}
+                className="mt-0.5 accent-[#059669] cursor-pointer"
+              />
+              <span className="text-xs text-[#52525B] leading-snug">
+                <strong className="text-[#16281D]">Signal Meta to Hold & Retry (HTTP 503)</strong>
+                <span className="text-[11px] text-[#71717A] block mt-0.5">
                   Instructs Meta to preserve all incoming customer messages in its queue and deliver them when maintenance ends.
                 </span>
               </span>
@@ -211,69 +238,54 @@ export const MaintenanceControlCard: React.FC<MaintenanceControlCardProps> = ({ 
         </div>
 
         {/* Live Preview Box */}
-        <div style={{ border: '1px dashed #d4d4d8', borderRadius: 14, padding: '16px 20px', background: '#fafafa' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, ...SYNE, fontSize: 12, fontWeight: 700, color: '#71717a', marginBottom: 12 }}>
-            <Sparkles size={13} style={{ color: '#d97706' }} />
+        <div className="border border-dashed border-[#D4D4D8] rounded-[20px] p-5 bg-[#FAFAFA]">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#71717A] mb-3">
+            <Sparkles size={13} className="text-[#D97706]" />
             LIVE USER-FACING PREVIEW
           </div>
-          <div style={{ background: '#fff', border: '1px solid #e4e7e4', borderRadius: 16, padding: '24px 20px', textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f4f6f4', border: '1px solid #e4e7e4', borderRadius: 20, padding: '3px 10px', marginBottom: 14 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706' }} />
-              <span style={{ ...SYNE, fontSize: 11, fontWeight: 700, color: '#0c1a0e' }}>WhatsBi</span>
-              <span style={{ color: '#a1a1aa', fontSize: 10 }}>|</span>
-              <span style={{ ...DM, fontSize: 10, fontWeight: 600, color: '#71717a' }}>Platform Maintenance</span>
+          <div className="bg-white border border-[#E4E7E4] rounded-2xl p-6 text-center shadow-xs">
+            <div className="inline-flex items-center gap-2 bg-[#F4F6F4] border border-[#E4E7E4] rounded-full px-3 py-1 mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
+              <span className="text-xs font-bold text-[#16281D]">WhatsBi</span>
+              <span className="text-[#A1A1AA] text-xs">|</span>
+              <span className="text-xs font-medium text-[#71717A]">Platform Maintenance</span>
             </div>
-            <div style={{ ...SYNE, fontSize: 16, fontWeight: 800, color: '#0c1a0e', marginBottom: 6, letterSpacing: '-0.01em' }}>
+            <div className="text-base font-bold text-[#16281D] mb-1.5 tracking-tight">
               {title || 'System Maintenance Underway'}
             </div>
-            <div style={{ ...DM, fontSize: 12, color: '#52525b', lineHeight: 1.5, maxWidth: 420, margin: '0 auto 14px' }}>
+            <div className="text-xs text-[#52525B] leading-relaxed max-w-md mx-auto mb-3.5">
               {message || 'We are currently performing scheduled maintenance to optimize system performance.'}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fafafa', border: '1px solid #ebebeb', borderRadius: 20, padding: '4px 10px' }}>
-                <Clock size={11} style={{ color: '#d97706' }} />
-                <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#3f3f46' }}>
-                  Return: <strong style={{ color: '#0c1a0e' }}>{estimatedEnd || 'Shortly'}</strong>
-                </span>
+            <div className="flex items-center justify-center gap-2.5 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-full px-3 py-1 text-xs font-semibold text-[#52525B]">
+                <Clock size={11} className="text-[#D97706]" />
+                <span>Return: <strong className="text-[#16281D]">{estimatedEnd || 'Shortly'}</strong></span>
               </div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0fdf4', border: '1px solid #dcfce7', borderRadius: 20, padding: '4px 10px' }}>
-                <ShieldCheck size={12} style={{ color: '#059669' }} />
-                <span style={{ ...DM, fontSize: 11, fontWeight: 600, color: '#059669' }}>
-                  Messages: Safe & Queued
-                </span>
+              <div className="inline-flex items-center gap-1.5 bg-[#F0FDF4] border border-[#DCFCE7] rounded-full px-3 py-1 text-xs font-semibold text-[#059669]">
+                <ShieldCheck size={12} strokeWidth={2.4} />
+                <span>Messages: Safe & Queued</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, borderTop: '1px solid #f4f4f5', paddingTop: 16 }}>
-          <div style={{ ...DM, fontSize: 11, color: '#a1a1aa' }}>
+        <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-[#F4F4F5]">
+          <span className="text-[11px] text-[#A1A1AA] font-medium">
             {lastUpdated ? `Last updated: ${new Date(lastUpdated).toLocaleString()}` : ''}
-          </div>
+          </span>
 
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 9,
-              padding: '10px 20px',
-              ...DM,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 12px rgba(34,197,94,0.25)',
-              transition: 'opacity 0.15s',
-            }}
+            className={`inline-flex items-center gap-2 py-2.5 px-5 rounded-full text-xs font-bold border-0 transition-all ${
+              saving
+                ? 'bg-[#E4E4E7] text-[#A1A1AA] cursor-not-allowed'
+                : 'bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer'
+            }`}
           >
-            <Save size={14} />
-            {saving ? 'Saving...' : 'Apply Maintenance Settings'}
+            <Save size={14} strokeWidth={2.4} />
+            <span>{saving ? 'Saving…' : 'Apply Maintenance Settings'}</span>
           </button>
         </div>
       </div>

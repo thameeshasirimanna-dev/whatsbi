@@ -64,6 +64,7 @@ import logoutRoutes from "./routes/auth/logout.js";
 import getCurrentUserRoutes from "./routes/auth/get-current-user.js";
 import manageBroadcastsRoutes from "./routes/conversations/manage-broadcasts.js";
 import maintenanceRoutes, { getCachedMaintenanceSettings } from "./routes/admin/maintenance.js";
+import systemAnalyticsRoutes from "./routes/admin/system-analytics.js";
 import fastifySocketIO from "fastify-socket.io";
 
 const server = fastify();
@@ -198,7 +199,7 @@ async function registerRoutes() {
   await markMessagesReadRoutes(server, pgClient, cacheService);
   await getBotContextRoutes(server, pgClient, cacheService);
   await chatbotReplyRoutes(server, pgClient, cacheService, emitNewMessage);
-  await triggerAiResponseRoutes(server, pgClient, cacheService, emitNewMessage);
+  await triggerAiResponseRoutes(server, pgClient, cacheService, emitNewMessage, emitAgentStatusUpdate);
   await manageServicesRoutes(server, pgClient);
   await manageInventoryRoutes(server, pgClient);
   await manageCustomersRoutes(server, pgClient, cacheService);
@@ -233,6 +234,7 @@ async function registerRoutes() {
   await getCurrentUserRoutes(server, pgClient);
   await manageBroadcastsRoutes(server, pgClient, cacheService, emitNewMessage);
   await maintenanceRoutes(server, pgClient, cacheService);
+  await systemAnalyticsRoutes(server, pgClient);
 }
 
 // Socket.IO connection handling will be set up after routes are registered
@@ -359,6 +361,27 @@ const start = async () => {
       console.log("✅ whatsapp_configuration schema verified (deepseek_api_key ready)");
     } catch (schemaErr: any) {
       console.warn("Notice: could not update whatsapp_configuration columns:", schemaErr.message);
+    }
+
+    // Ensure agents table has ai_balance column for DeepSeek AI
+    try {
+      await pgClient.query(`
+        ALTER TABLE agents ADD COLUMN IF NOT EXISTS ai_balance NUMERIC(14, 6) DEFAULT 4.000000;
+        UPDATE agents SET ai_balance = 4.000000 WHERE ai_balance IS NULL;
+      `);
+      console.log("✅ agents schema verified (ai_balance ready)");
+    } catch (agentSchemaErr: any) {
+      console.warn("Notice: could not update agents ai_balance column:", agentSchemaErr.message);
+    }
+
+    // Ensure users table has last_login_at column
+    try {
+      await pgClient.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
+      `);
+      console.log("✅ users schema verified (last_login_at ready)");
+    } catch (userSchemaErr: any) {
+      console.warn("Notice: could not update users last_login_at column:", userSchemaErr.message);
     }
 
     // Ensure system_settings table exists

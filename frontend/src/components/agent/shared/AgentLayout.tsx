@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { Agent } from '../../../types';
 import { getCurrentAgent } from '../../../lib/agent';
-import { logout } from '../../../lib/auth';
+import { logout, getToken } from '../../../lib/auth';
 import { useDialog } from './DialogProvider';
 
 const FONT_CSS = `
@@ -37,19 +38,27 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
         agent_prefix: 'WA',
         role: 'agent' as const,
         credits: 0,
+        ai_balance: 4.0,
         created_at: new Date().toISOString(),
       };
     }
-    return agent || {
-      id: '',
-      user_id: '',
-      name: 'Not logged in',
-      email: '',
-      agent_prefix: 'WA',
-      role: 'agent' as const,
-      credits: 0,
-      created_at: new Date().toISOString(),
-    };
+    return agent
+      ? {
+          ...agent,
+          credits: Number(agent.credits ?? 1.0),
+          ai_balance: Number(agent.ai_balance ?? 4.0),
+        }
+      : {
+          id: '',
+          user_id: '',
+          name: 'Not logged in',
+          email: '',
+          agent_prefix: 'WA',
+          role: 'agent' as const,
+          credits: 0,
+          ai_balance: 4.0,
+          created_at: new Date().toISOString(),
+        };
   }, [agent, loading]);
 
   const navigate = useNavigate();
@@ -115,6 +124,52 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
       window.removeEventListener('unread-message-received', handleUnreadReceived as EventListener);
     };
   }, []);
+
+  // Live real-time socket listener for header balance synchronization
+  useEffect(() => {
+    if (!agent?.id) return;
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+    let socketUrl = window.location.origin;
+    let socketPath = '/socket.io/';
+
+    if (backendUrl && (backendUrl.startsWith('http://') || backendUrl.startsWith('https://'))) {
+      try {
+        const parsed = new URL(backendUrl);
+        socketUrl = parsed.origin;
+        if (parsed.pathname && parsed.pathname !== '/') {
+          const clean = parsed.pathname.endsWith('/') ? parsed.pathname : `${parsed.pathname}/`;
+          socketPath = `${clean}socket.io/`;
+        }
+      } catch (e) {}
+    }
+
+    const s = io(socketUrl, {
+      transports: ['polling', 'websocket'],
+      path: socketPath,
+      reconnectionAttempts: 3,
+      timeout: 5000,
+    });
+
+    s.on('connect', () => {
+      const token = getToken();
+      s.emit('join-agent-room', { agentId: agent.id, token });
+    });
+
+    s.on('agent_status_update', (statusData: any) => {
+      if (statusData?.type === 'ai_balance_updated' && statusData?.ai_balance !== undefined) {
+        const updatedBalance = parseFloat(statusData.ai_balance);
+        setAgent((prev) => (prev ? { ...prev, ai_balance: updatedBalance } : prev));
+      } else if (statusData?.type === 'credits_updated' && statusData?.credits !== undefined) {
+        const updatedCredits = parseFloat(statusData.credits);
+        setAgent((prev) => (prev ? { ...prev, credits: updatedCredits } : prev));
+      }
+    });
+
+    return () => {
+      s.disconnect();
+    };
+  }, [agent?.id]);
 
   if (loading) {
     return (
