@@ -1,12 +1,12 @@
-# WhatsBi SEO Architecture & Technical Indexing Specification
+# Biz Agentz SEO Architecture & Technical Indexing Specification
 
-This document defines the search engine optimization (SEO) architecture, indexing strategies, metadata standards, structured data specifications, technical crawlability rules, and Core Web Vitals targets for WhatsBi.
+This document defines the search engine optimization (SEO) architecture, indexing strategies, metadata standards, structured data specifications, technical crawlability rules, and Core Web Vitals targets for Biz Agentz.
 
 ---
 
 ## 1. Indexing Strategy: Public vs Authenticated Surfaces
 
-WhatsBi divides its route hierarchy into two distinct indexing classifications:
+Biz Agentz divides its route hierarchy into two distinct indexing classifications:
 
 ### 1.1. Public Surface (Indexable)
 The public landing page (`/`) is the primary public entry point. It must be fully indexable by search engine crawlers (Googlebot, Bingbot), optimized for organic discovery, and equipped with comprehensive metadata and structured data.
@@ -35,12 +35,12 @@ The public landing page (`/`) must include the following standardized HTML head 
 
 ### 2.1. Standard HTML Meta Tags
 ```html
-<title>WhatsBi — Multi-Tenant WhatsApp Business CRM & Sales Automation</title>
-<meta name="description" content="Scale your business on WhatsApp with WhatsBi. Centralize chats, automate sales pipelines, generate instant PDF invoices, and integrate AI chatbots seamlessly." />
+<title>Biz Agentz — Multi-Tenant WhatsApp Business CRM & Sales Automation</title>
+<meta name="description" content="Scale your business on WhatsApp with Biz Agentz. Centralize chats, automate sales pipelines, generate instant PDF invoices, and integrate AI chatbots seamlessly." />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="charset" content="UTF-8" />
 <meta name="theme-color" content="#0c1a0e" />
-<link rel="canonical" href="https://whatsbi.com/" />
+<link rel="canonical" href="https://bizagentz.com/" />
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 ```
 
@@ -49,11 +49,11 @@ Enables rich cards when links are shared across WhatsApp, LinkedIn, Twitter, and
 
 ```html
 <meta property="og:type" content="website" />
-<meta property="og:site_name" content="WhatsBi" />
-<meta property="og:url" content="https://whatsbi.com/" />
-<meta property="og:title" content="WhatsBi — Multi-Tenant WhatsApp Business CRM" />
+<meta property="og:site_name" content="Biz Agentz" />
+<meta property="og:url" content="https://bizagentz.com/" />
+<meta property="og:title" content="Biz Agentz — Multi-Tenant WhatsApp Business CRM" />
 <meta property="og:description" content="The modern WhatsApp CRM for growing businesses. Manage customer conversations, track orders, generate invoices, and automate with AI." />
-<meta property="og:image" content="https://whatsbi.com/assets/og-cover.webp" />
+<meta property="og:image" content="https://bizagentz.com/assets/og-cover.webp" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:type" content="image/webp" />
@@ -63,9 +63,9 @@ Enables rich cards when links are shared across WhatsApp, LinkedIn, Twitter, and
 ### 2.3. Twitter Card Tags
 ```html
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="WhatsBi — Multi-Tenant WhatsApp Business CRM" />
+<meta name="twitter:title" content="Biz Agentz — Multi-Tenant WhatsApp Business CRM" />
 <meta name="twitter:description" content="Convert WhatsApp conversations into revenue with multi-agent inbox, live order tracking, and AI automation." />
-<meta name="twitter:image" content="https://whatsbi.com/assets/og-cover.webp" />
+<meta name="twitter:image" content="https://bizagentz.com/assets/og-cover.webp" />
 ```
 
 ---
@@ -80,10 +80,10 @@ To qualify for Google Rich Results and establish entity knowledge graphing, the 
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "WhatsBi",
+  "name": "Biz Agentz",
   "operatingSystem": "All",
   "applicationCategory": "BusinessApplication",
-  "url": "https://whatsbi.com",
+  "url": "https://bizagentz.com",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -107,9 +107,9 @@ To qualify for Google Rich Results and establish entity knowledge graphing, the 
 {
   "@context": "https://schema.org",
   "@type": "Organization",
-  "name": "WhatsBi",
-  "url": "https://whatsbi.com",
-  "logo": "https://whatsbi.com/assets/logo.webp",
+  "name": "Biz Agentz",
+  "url": "https://bizagentz.com",
+  "logo": "https://bizagentz.com/assets/logo.webp",
   "sameAs": []
 }
 </script>
@@ -124,18 +124,18 @@ To qualify for Google Rich Results and establish entity knowledge graphing, the 
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "What is WhatsBi?",
+      "name": "What is Biz Agentz?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "WhatsBi is a multi-tenant WhatsApp Business CRM that connects directly with the Meta WhatsApp Cloud API to manage conversations, track customer pipeline stages, process orders, and connect AI chatbots."
+        "text": "Biz Agentz is a multi-tenant WhatsApp Business CRM that connects directly with the Meta WhatsApp Cloud API to manage conversations, track customer pipeline stages, process orders, and connect AI chatbots."
       }
     },
     {
       "@type": "Question",
-      "name": "Does WhatsBi support multi-agent teams?",
+      "name": "Does Biz Agentz support multi-agent teams?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes, WhatsBi provides complete tenant isolation for each agent with dedicated PostgreSQL dynamic tables, analytics, and contact lists."
+        "text": "Yes, Biz Agentz provides complete tenant isolation for each agent with dedicated PostgreSQL dynamic tables, analytics, and contact lists."
       }
     }
   ]
@@ -160,7 +160,7 @@ Disallow: /login
 Disallow: /style-guide
 Disallow: /api/
 
-Sitemap: https://whatsbi.com/sitemap.xml
+Sitemap: https://bizagentz.com/sitemap.xml
 ```
 
 ### 4.2. `sitemap.xml` Specification
@@ -170,7 +170,7 @@ Located at the web root (`public/sitemap.xml`):
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://whatsbi.com/</loc>
+    <loc>https://bizagentz.com/</loc>
     <lastmod>2026-09-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -183,7 +183,7 @@ Located at the web root (`public/sitemap.xml`):
 ## 5. Technical SEO & Content Hierarchy
 
 ### 5.1. Semantic Heading Hierarchy
-- **Single `<h1>` Rule**: The landing page must have exactly one `<h1>` element representing the primary value proposition (e.g., `Scale Your Business with WhatsBi WhatsApp CRM`).
+- **Single `<h1>` Rule**: The landing page must have exactly one `<h1>` element representing the primary value proposition (e.g., `Scale Your Business with Biz Agentz WhatsApp CRM`).
 - **Logical Nesting**: Sections must follow strict semantic order (`<h1>` -> `<h2>` -> `<h3>`). Never skip levels for styling purposes.
 - **No Pill Tags on Headings**: Do not wrap section titles in rounded pill badges or chip containers. Keep typography clean and prominent.
 
@@ -204,7 +204,7 @@ Located at the web root (`public/sitemap.xml`):
 
 ## 6. Core Web Vitals Targets
 
-WhatsBi adheres to Google's Core Web Vitals thresholds:
+Biz Agentz adheres to Google's Core Web Vitals thresholds:
 
 | Metric | Target | Optimization Strategy |
 |---|---|---|

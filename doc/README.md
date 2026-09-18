@@ -1,4 +1,4 @@
-# WhatsBi Documentation
+# Biz Agentz Documentation
 
 All project documentation, specifications, style guides, database architecture, SEO architecture, and test cases are maintained in the canonical [`/docs`](../docs/README.md) directory.
 

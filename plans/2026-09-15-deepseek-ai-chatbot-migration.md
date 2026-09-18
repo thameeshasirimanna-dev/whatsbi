@@ -2,16 +2,16 @@
 
 - **Plan Date**: 2026-09-15
 - **Status**: [IMPLEMENTED]
-- **Authors**: WhatsBi Engineering Team
+- **Authors**: Biz Agentz Engineering Team
 - **Scope**: Migration from external n8n webhook AI assistant to internal DeepSeek-powered AI chatbot
 
 ---
 
 ## 1. Executive Summary
 
-Historically, WhatsBi outsourced customer conversation AI processing to an external n8n automation webhook. Whenever an incoming message arrived, or when an agent clicked product/service inquiry buttons in the CRM interface, WhatsBi made an outbound HTTP call to a configured n8n webhook URL. This architecture required users to supply an external webhook URL upon onboarding, created external dependencies, and fragmented conversational intelligence.
+Historically, Biz Agentz outsourced customer conversation AI processing to an external n8n automation webhook. Whenever an incoming message arrived, or when an agent clicked product/service inquiry buttons in the CRM interface, Biz Agentz made an outbound HTTP call to a configured n8n webhook URL. This architecture required users to supply an external webhook URL upon onboarding, created external dependencies, and fragmented conversational intelligence.
 
-This implementation replaces the external n8n webhook with an internal, native AI chatbot engine powered by the **DeepSeek Chat model** (`deepseek-chat`). Context generation, prompt engineering, conversation memory, credit accounting, and direct Meta WhatsApp Cloud API (v23.0) outbound dispatch now execute entirely within WhatsBi.
+This implementation replaces the external n8n webhook with an internal, native AI chatbot engine powered by the **DeepSeek Chat model** (`deepseek-chat`). Context generation, prompt engineering, conversation memory, credit accounting, and direct Meta WhatsApp Cloud API (v23.0) outbound dispatch now execute entirely within Biz Agentz.
 
 ---
 

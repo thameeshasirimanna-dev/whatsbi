@@ -125,7 +125,7 @@ export const ModalDrawerPreview: React.FC = () => {
               </p>
               <div className="bg-[#F4F7F4] p-3.5 rounded-xl border border-black/5 flex flex-col gap-1 font-mono text-[11px] text-[#16281D]">
                 <span className="text-[#8FA89B] font-sans font-medium text-[10px]">Callback URL:</span>
-                <span className="truncate">https://api.whatsbi.io/webhooks/v1/meta</span>
+                <span className="truncate">https://api.bizagentz.io/webhooks/v1/meta</span>
               </div>
             </div>
 

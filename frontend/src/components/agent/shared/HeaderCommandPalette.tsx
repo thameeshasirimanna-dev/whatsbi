@@ -223,7 +223,7 @@ export const HeaderCommandPalette: React.FC<HeaderCommandPaletteProps> = ({ isOp
               </span>
             </div>
             <span className="text-[10px] text-[#8FA89B] font-semibold">
-              WhatsBi Quick Search
+              Biz Agentz Quick Search
             </span>
           </div>
         </div>

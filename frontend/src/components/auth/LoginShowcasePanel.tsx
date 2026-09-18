@@ -30,7 +30,7 @@ export const LoginShowcasePanel: React.FC<LoginShowcasePanelProps> = ({ classNam
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs font-bold text-[#8FA89B] tracking-wider uppercase">
-            WhatsBi Assistant
+            Biz Agentz Assistant
           </span>
           <span className="px-2.5 py-0.5 rounded-full bg-[#203628] border border-white/10 text-[10px] font-semibold text-[#9FE870]">
             Smart Inbox
@@ -144,7 +144,7 @@ export const LoginShowcasePanel: React.FC<LoginShowcasePanelProps> = ({ classNam
       {/* Bottom Proof Metric */}
       <div className="border-t border-white/10 pt-4 flex items-center justify-between text-[11px] text-[#8FA89B] relative z-10">
         <span>Designed for modern business teams</span>
-        <span className="text-[#9FE870] font-semibold">WhatsBi Workspace</span>
+        <span className="text-[#9FE870] font-semibold">Biz Agentz Workspace</span>
       </div>
     </div>
   );

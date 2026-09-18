@@ -1,4 +1,4 @@
-# CLAUDE.md — WhatsBi Project Rules
+# CLAUDE.md — Biz Agentz Project Rules
 
 ## 1. Read Before You Work
 
@@ -80,6 +80,6 @@ Use the correct skill/plugin for every task. Do not do manually what a skill han
 
 ## 6. Project Context
 
-**WhatsBi** — multi-tenant WhatsApp Business CRM.
+**Biz Agentz** — multi-tenant WhatsApp Business CRM.
 Stack: React 18 / Fastify 5 / PostgreSQL 15 / Redis / Cloudflare R2 / Docker Compose.
 WhatsApp Cloud API v23.0 (Meta Graph API).

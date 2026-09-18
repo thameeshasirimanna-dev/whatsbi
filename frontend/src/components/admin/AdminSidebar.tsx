@@ -68,11 +68,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {/* Mobile Header: Always visible on mobile drawer */}
           <div className="flex md:hidden items-center gap-2.5 min-w-0 pl-1">
             <div className="w-8 h-8 rounded-full bg-[#203628] border border-white/10 flex items-center justify-center text-[#9FE870] font-bold text-xs shrink-0">
-              W
+              B
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[15px] font-bold text-white tracking-tight leading-none truncate">
-                WhatsBi
+                Biz Agentz
               </span>
               <span className="text-[10px] font-semibold text-[#8FA89B] tracking-wider uppercase mt-1 truncate">
                 Super Admin
@@ -95,7 +95,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <>
                 <div className="flex flex-col min-w-0 animate-in fade-in duration-200 pl-1">
                   <span className="text-[15px] font-bold text-white tracking-tight leading-none truncate">
-                    WhatsBi
+                    Biz Agentz
                   </span>
                   <span className="text-[10px] font-semibold text-[#8FA89B] tracking-wider uppercase mt-1 truncate">
                     Super Admin

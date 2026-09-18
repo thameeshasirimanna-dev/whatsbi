@@ -161,7 +161,7 @@ export const DashboardTelemetryGrid: React.FC<DashboardTelemetryGridProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `whatsbi-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `bizagentz-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     }

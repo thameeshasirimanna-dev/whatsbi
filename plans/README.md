@@ -1,6 +1,6 @@
-# WhatsBi Engineering Plans & RFCs
+# Biz Agentz Engineering Plans & RFCs
 
-This directory contains engineering plans, architectural Request for Comments (RFCs), migration strategies, and technical roadmaps for WhatsBi.
+This directory contains engineering plans, architectural Request for Comments (RFCs), migration strategies, and technical roadmaps for Biz Agentz.
 
 In accordance with project rules, all documents in `/plans` and `/docs` are reviewed at the start of any development task.
 

@@ -151,7 +151,7 @@ export const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
               }}
             />
             <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', letterSpacing: '0.02em' }}>
-              WhatsBi
+              Biz Agentz
             </span>
             <span style={{ color: '#d4d4d8', fontSize: 12 }}>|</span>
             <span style={{ ...DM, fontSize: 12, fontWeight: 600, color: '#71717a' }}>
@@ -367,7 +367,7 @@ export const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
           }}
         >
           <CheckCircle2 size={13} style={{ color: '#22c55e' }} />
-          <span>WhatsBi Cloud Reliability Engine • Zero Message Loss</span>
+          <span>Biz Agentz Cloud Reliability Engine • Zero Message Loss</span>
         </div>
       </div>
     </div>

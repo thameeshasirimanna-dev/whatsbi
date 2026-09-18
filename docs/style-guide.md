@@ -1,4 +1,4 @@
-# WhatsBi Design System & Visual Specification
+# Biz Agentz Design System & Visual Specification
 
 > **Live Interactive Component Reference**: [`/style-guide`](http://localhost:5173/style-guide)  
 > **Aesthetic Register**: Deep Forest Dark (`#16281D`) + Vibrant Lime (`#9FE870`) + Light Workspace (`#F4F7F4` to `#FFFFFF`)  
@@ -8,7 +8,7 @@
 
 ## 1. Architectural Philosophy & Principles
 
-The WhatsBi interface merges high-density operational telemetry with human-crafted ergonomics:
+The Biz Agentz interface merges high-density operational telemetry with human-crafted ergonomics:
 1. **Tri-Panel Ergonomics (Dock → Canvas → Inspector)**:
    - **Left Navigation Dock**: Ultra-compact vertical dock in deep forest dark (`#16281D`), housing the brand logo, circular active state shortcuts, and a tactile theme switcher.
    - **Central Telemetry Canvas**: Clean white/pale mint workspace (`#F4F7F4` to `#FFFFFF`) housing the top global search bar, greeting hero card, interactive telemetry charts (message throughput waves, AI token consumption curves, active chat sessions, and radial quota gauges), and automated workflow lists.
@@ -165,7 +165,7 @@ The WhatsBi interface merges high-density operational telemetry with human-craft
 4. **Disabled State**: `bg-[#E4E4E7] text-[#A1A1AA] font-bold text-xs h-10 px-4 rounded-full border-0 cursor-not-allowed opacity-60 pointer-events-none`.
 
 ### Button Dropdowns & Menu Triggers
-All dropdown menus and select controls in WhatsBi share the exact button token system and capsule geometry (`rounded-full`), accompanied by rotating vector chevrons:
+All dropdown menus and select controls in Biz Agentz share the exact button token system and capsule geometry (`rounded-full`), accompanied by rotating vector chevrons:
 - **Primary Lime Action Dropdown**: `bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs h-10 px-4 rounded-full shadow-[0_4px_14px_rgba(159,232,112,0.35)] flex items-center justify-between gap-2 border-0`
 - **Soft Mint Filter Dropdown**: `bg-[#F4F7F4] hover:bg-[#E8ECE8] active:scale-[0.98] text-[#16281D] font-bold text-xs h-10 px-4 rounded-full border border-black/5 hover:border-black/10 flex items-center justify-between gap-2 shadow-xs` (open: `border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white`)
 - **Secondary Forest Dark Dropdown**: `bg-[#16281D] hover:bg-[#203628] active:scale-[0.98] text-white font-bold text-xs h-10 px-4 rounded-full shadow-xs flex items-center justify-between gap-2 border-0` (open: `ring-3 ring-[#9FE870]/30`)
@@ -225,7 +225,7 @@ All dropdown menus and select controls in WhatsBi share the exact button token s
 - **Dark Surface Input**: `bg-[#203628] border border-white/10 text-xs text-white placeholder-[#8FA89B] outline-none`.
 
 ### Custom Select Menus & Button Dropdowns
-Dropdown triggers in WhatsBi are first-class interactive button triggers and strictly adopt capsule button ergonomics (`rounded-full` / `border-radius: 9999px`) with 180° rotating chevrons, never boxy rectangular input fields (`rounded-xl`).
+Dropdown triggers in Biz Agentz are first-class interactive button triggers and strictly adopt capsule button ergonomics (`rounded-full` / `border-radius: 9999px`) with 180° rotating chevrons, never boxy rectangular input fields (`rounded-xl`).
 
 - **Light Select / Filter Trigger (Soft Mint Button Style)**: `w-full h-10 px-4 rounded-full text-xs font-bold flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]` (open: `border-2 border-[#9FE870] ring-3 ring-[#9FE870]/25 bg-white text-[#16281D]`, closed: `border border-black/5 bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D]`). Chevron: `ChevronDown size={14} transition-transform duration-200` (`rotate-180 text-[#16281D]`).
 - **Primary Lime Action Dropdown Trigger**: `w-full h-10 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-bold text-xs shadow-[0_4px_14px_rgba(159,232,112,0.35)] cursor-pointer border-0 transition-all flex items-center justify-between gap-2` (open: `ring-3 ring-[#16281D]/20`).
@@ -417,7 +417,7 @@ All animation sequences MUST respect user system accessibility preferences:
 > **Component Primitives**: [`DatePicker.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/DatePicker.tsx), [`TimePicker.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/TimePicker.tsx), [`DateTimePicker.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/DateTimePicker.tsx)
 
 ### 1. Architectural Philosophy & Geometry Scale
-The WhatsBi Date and Time Pickers replace raw browser inputs (`<input type="date">` / `<input type="time">`) with human-crafted, tactile components that adhere strictly to the WhatsBi Design System:
+The Biz Agentz Date and Time Pickers replace raw browser inputs (`<input type="date">` / `<input type="time">`) with human-crafted, tactile components that adhere strictly to the Biz Agentz Design System:
 
 | Component Level | Geometry Token | Dimension Scale | Visual Styling |
 |---|---|---|---|
@@ -478,7 +478,7 @@ All legacy `<input type="date">` and `<input type="datetime-local">` controls ha
 > **Component Catalog**: [`SearchBarPanel.tsx`](file:///c:/Github/whatsbi/frontend/src/components/styleguide/tokens/SearchBarPanel.tsx)
 
 ### 1. Architectural Philosophy & Capsule Geometry
-Search bars across WhatsBi serve as the high-velocity operational entry point for filtering entity records, initiating actions, and querying customer datasets. They strictly adhere to the following principles:
+Search bars across Biz Agentz serve as the high-velocity operational entry point for filtering entity records, initiating actions, and querying customer datasets. They strictly adhere to the following principles:
 
 1. **Capsule Pill Geometry (`rounded-full`)**:
    - All search bars employ a full `border-radius: 9999px` (`rounded-full`), completely rejecting rigid boxy corners or semi-rounded rectangles.

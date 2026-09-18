@@ -1,12 +1,12 @@
-# WhatsBi Database Architecture & Schema Specification
+# Biz Agentz Database Architecture & Schema Specification
 
-This document provides the definitive architectural blueprint, schema specification, multi-tenancy model, stored procedure catalog, indexing strategy, and migration history for the WhatsBi PostgreSQL database.
+This document provides the definitive architectural blueprint, schema specification, multi-tenancy model, stored procedure catalog, indexing strategy, and migration history for the Biz Agentz PostgreSQL database.
 
 ---
 
 ## 1. Architectural Overview & Multi-Tenancy Strategy
 
-WhatsBi implements an **isolated dynamic table multi-tenancy pattern** within PostgreSQL 15. Instead of housing all tenant records in shared tables with single tenant-id columns, each agent (business tenant) is allocated an isolated set of dynamic tables identified by a unique alphanumeric prefix:
+Biz Agentz implements an **isolated dynamic table multi-tenancy pattern** within PostgreSQL 15. Instead of housing all tenant records in shared tables with single tenant-id columns, each agent (business tenant) is allocated an isolated set of dynamic tables identified by a unique alphanumeric prefix:
 
 $$\text{Table Name} = \{\text{agent\_prefix}\} \_ \{\text{entity\_name}\}$$
 

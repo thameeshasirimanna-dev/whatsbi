@@ -201,15 +201,15 @@ const LoginPage: React.FC = () => {
       <header className="w-full max-w-5xl mx-auto flex items-center justify-between py-2 relative z-10">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-[#16281D] text-[#9FE870] font-extrabold text-sm flex items-center justify-center shadow-sm">
-            W
+            B
           </div>
           <span className="text-base font-extrabold tracking-tight text-[#16281D]">
-            WhatsBi
+            Biz Agentz
           </span>
         </div>
 
         <a
-          href="mailto:support@whatsbi.com"
+          href="mailto:support@bizagentz.com"
           className="text-xs font-semibold text-[#4B5563] hover:text-[#16281D] transition-colors"
         >
           Need assistance?
@@ -369,7 +369,7 @@ const LoginPage: React.FC = () => {
                 <span>Protected Workspace Session</span>
               </div>
               <span className="text-[10px] text-[#9CA3AF]">
-                © {new Date().getFullYear()} WhatsBi Technologies
+                © {new Date().getFullYear()} Biz Agentz Technologies
               </span>
             </div>
           </div>
@@ -378,10 +378,10 @@ const LoginPage: React.FC = () => {
 
       {/* Subtle Bottom Help Bar */}
       <footer className="w-full max-w-5xl mx-auto py-2 flex items-center justify-between text-xs text-[#6B7280] relative z-10">
-        <span>WhatsBi Business Messaging Platform</span>
+        <span>Biz Agentz Business Messaging Platform</span>
         <div className="flex items-center gap-4">
           <a
-            href="mailto:support@whatsbi.com"
+            href="mailto:support@bizagentz.com"
             className="hover:text-[#111827] transition-colors underline-offset-4 hover:underline"
           >
             Contact Support

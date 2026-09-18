@@ -121,7 +121,7 @@ function DashboardMockup() {
             <div className="w-3 h-3 rounded-full" style={{ background: '#febc2e' }} />
             <div className="w-3 h-3 rounded-full" style={{ background: '#28c840' }} />
             <div className="ml-3 flex-1 rounded px-3 py-1 text-[11px] border" style={{ background: '#1a3620', borderColor: 'rgba(255,255,255,0.08)', color: '#4ade80' }}>
-              app.whatsbi.com/inbox
+              app.bizagentz.com/inbox
             </div>
           </div>
 
@@ -305,7 +305,7 @@ const LandingPage: React.FC = () => {
                   className="text-[17px] font-bold tracking-tight"
                   style={{ ...SYNE, color: scrolled ? '#0f172a' : '#ffffff', transition: 'color 0.35s ease' }}
                 >
-                  WhatsBi
+                  Biz Agentz
                 </span>
               </div>
 
@@ -676,7 +676,7 @@ const LandingPage: React.FC = () => {
                     customer communication?
                   </h2>
                   <p className="text-lg mb-10 max-w-xl mx-auto leading-relaxed" style={{ color: 'rgba(187,247,208,0.75)' }}>
-                    Join hundreds of businesses already using WhatsBi to deliver faster,
+                    Join hundreds of businesses already using Biz Agentz to deliver faster,
                     smarter WhatsApp support at scale.
                   </p>
                   <Link to="/login" className="inline-flex items-center gap-2 bg-white font-bold px-9 py-4 rounded-full transition-all hover:bg-green-50 text-base" style={{ color: '#065f46', boxShadow: '0 8px 28px rgba(0,0,0,0.22)' }}>
@@ -698,10 +698,10 @@ const LandingPage: React.FC = () => {
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' }}>
                 <MessageSquare className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-sm font-bold" style={{ ...SYNE, color: 'rgba(255,255,255,0.9)' }}>WhatsBi</span>
+              <span className="text-sm font-bold" style={{ ...SYNE, color: 'rgba(255,255,255,0.9)' }}>Biz Agentz</span>
               <span className="text-sm" style={{ color: 'rgba(255,255,255,0.25)' }}>— WhatsApp Business CRM</span>
             </div>
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} WhatsBi. All rights reserved.</p>
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} Biz Agentz. All rights reserved.</p>
             <div className="flex items-center gap-6">
               <a href="#" className="text-sm transition-colors" style={{ color: 'rgba(255,255,255,0.25)' }} onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.25)')}>Privacy</a>
               <a href="#" className="text-sm transition-colors" style={{ color: 'rgba(255,255,255,0.25)' }} onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.25)')}>Terms</a>

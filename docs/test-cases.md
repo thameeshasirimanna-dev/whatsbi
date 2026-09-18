@@ -1,6 +1,6 @@
-# WhatsBi Test Cases & Quality Assurance Specification
+# Biz Agentz Test Cases & Quality Assurance Specification
 
-This document provides the complete test case catalog for WhatsBi. In accordance with project operational rules, **all test cases must be executed manually by engineers**; they are never executed automatically by the AI assistant.
+This document provides the complete test case catalog for Biz Agentz. In accordance with project operational rules, **all test cases must be executed manually by engineers**; they are never executed automatically by the AI assistant.
 
 ---
 
@@ -138,7 +138,7 @@ This document provides the complete test case catalog for WhatsBi. In accordance
               "id": "wamid.test1234",
               "from": "15551234567",
               "type": "text",
-              "text": {"body": "Hello WhatsBi test"},
+              "text": {"body": "Hello Biz Agentz test"},
               "timestamp": "1700000000"
             }]
           }

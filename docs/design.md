@@ -1,8 +1,8 @@
-# WhatsBi Design Foundations
+# Biz Agentz Design Foundations
 
 ## 1. Visual Theme & Philosophy
 
-WhatsBi employs a dual-surface visual architecture designed for high-focus operational workflows:
+Biz Agentz employs a dual-surface visual architecture designed for high-focus operational workflows:
 - **Dark Forest Environment**: Used for the primary navigation shell, agent status header, and control sidebar to provide visual grounding and reduce eye fatigue.
 - **Light Mint Workspace**: Used for high-density customer lists, message bubbles, order cards, and analytics panes to maximize text contrast and readability.
 

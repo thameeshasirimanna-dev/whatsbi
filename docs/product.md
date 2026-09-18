@@ -1,7 +1,7 @@
-# WhatsBi — Product Overview
+# Biz Agentz — Product Overview
 
 ## 1. Product Register
-- **Product Name**: WhatsBi
+- **Product Name**: Biz Agentz
 - **Product Type**: Multi-Tenant WhatsApp Business CRM & Automation Suite
 - **Target Audience**: Business owners, sales agents, customer support teams, and administrators managing customer communications over WhatsApp.
 
@@ -10,7 +10,7 @@
 ## 2. Target Users & Personas
 
 ### Business Agents
-Frontline sales and customer success operators using WhatsBi for high-volume, real-time customer conversations.
+Frontline sales and customer success operators using Biz Agentz for high-volume, real-time customer conversations.
 - **Key Workflows**:
   - Live conversation management and chat filtering.
   - Sending WhatsApp message templates and media assets.
@@ -30,7 +30,7 @@ Business managers overseeing team performance, agent allocations, and channel co
 
 ## 3. Product Purpose & Value Proposition
 
-WhatsBi transforms chaotic WhatsApp chat threads into a structured, revenue-generating CRM. It connects natively to the official WhatsApp Cloud API (Meta Graph API v23.0) and replaces manual inboxes with:
+Biz Agentz transforms chaotic WhatsApp chat threads into a structured, revenue-generating CRM. It connects natively to the official WhatsApp Cloud API (Meta Graph API v23.0) and replaces manual inboxes with:
 1. **Automated Message Ingestion**: Reliable webhook ingestion into tenant-isolated PostgreSQL tables with Redis caching.
 2. **End-to-End Sales Pipeline**: Order management, automated PDF invoice generation, and customer stage tracking directly embedded in conversation threads.
 3. **Dual Business Operating Modes**:

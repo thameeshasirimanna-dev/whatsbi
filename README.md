@@ -1,6 +1,6 @@
-# WhatsBi — Multi-Tenant WhatsApp Business CRM
+# Biz Agentz — Multi-Tenant WhatsApp Business CRM
 
-WhatsBi is a modern, high-performance WhatsApp CRM and sales automation platform built for growing businesses. It connects directly with the official Meta WhatsApp Cloud API (Graph API v23.0) and provides business agents with a centralized hub to handle high-volume conversations, track sales pipelines, create orders, generate instant PDF invoices, schedule appointments, manage product and service catalogs, and integrate with autonomous AI chatbots.
+Biz Agentz is a modern, high-performance WhatsApp CRM and sales automation platform built for growing businesses. It connects directly with the official Meta WhatsApp Cloud API (Graph API v23.0) and provides business agents with a centralized hub to handle high-volume conversations, track sales pipelines, create orders, generate instant PDF invoices, schedule appointments, manage product and service catalogs, and integrate with autonomous AI chatbots.
 
 ---
 

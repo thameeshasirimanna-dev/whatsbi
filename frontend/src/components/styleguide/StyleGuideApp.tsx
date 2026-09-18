@@ -30,7 +30,7 @@ export const StyleGuideApp: React.FC = () => {
               </div>
             </div>
             <span className="font-sans font-bold text-sm text-white">
-              WhatsBi Design System
+              Biz Agentz Design System
             </span>
           </div>
         </div>

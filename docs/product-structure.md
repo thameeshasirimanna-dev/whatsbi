@@ -1,8 +1,8 @@
-# WhatsBi — Product Architecture & System Structure
+# Biz Agentz — Product Architecture & System Structure
 
 ## 1. System Overview
 
-**WhatsBi** is a multi-tenant WhatsApp Business CRM and conversation automation platform. Built for direct integration with the Meta WhatsApp Cloud API (Graph API v23.0), WhatsBi enables businesses to centralize customer communications, manage orders, generate PDF invoices, track appointments, organize product inventory or service tiers, and route messages to autonomous AI agents.
+**Biz Agentz** is a multi-tenant WhatsApp Business CRM and conversation automation platform. Built for direct integration with the Meta WhatsApp Cloud API (Graph API v23.0), Biz Agentz enables businesses to centralize customer communications, manage orders, generate PDF invoices, track appointments, organize product inventory or service tiers, and route messages to autonomous AI agents.
 
 ### Core Architecture Highlights
 - **Tenant Isolation**: Dynamic per-agent PostgreSQL tables created on demand (`{prefix}_*`).

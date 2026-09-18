@@ -6,7 +6,7 @@ const port = process.env.PORT || '8080';
 const authtoken = process.env.NGROK_AUTHTOKEN || '';
 const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'aichatbot';
 
-console.log(`Starting ngrok tunnel for WhatsBi backend on port ${port}...`);
+console.log(`Starting ngrok tunnel for Biz Agentz backend on port ${port}...`);
 
 const args = ['ngrok', 'http', port];
 if (authtoken) {
@@ -33,7 +33,7 @@ async function checkTunnelUrl() {
         if (httpsTunnel?.public_url) {
           tunnelUrlFound = true;
           console.log('\n=============================================================');
-          console.log('  WHATSBI BACKEND NGROK TUNNEL LIVE');
+          console.log('  BIZ AGENTZ BACKEND NGROK TUNNEL LIVE');
           console.log('=============================================================');
           console.log(`  Public URL:           ${httpsTunnel.public_url}`);
           console.log(`  WhatsApp Webhook URL: ${httpsTunnel.public_url}/whatsapp-webhook`);

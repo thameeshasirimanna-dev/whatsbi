@@ -380,7 +380,7 @@ const AdminDashboard: React.FC = () => {
             </button>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-[#16281D] tracking-tight">
-                WhatsBi
+                Biz Agentz
               </span>
               <span className="text-[10px] font-bold text-[#059669] bg-[#E8F8EE] px-2 py-0.5 rounded-full">
                 Super Admin

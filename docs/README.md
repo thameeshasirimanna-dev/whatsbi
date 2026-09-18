@@ -1,6 +1,6 @@
-# WhatsBi Documentation Hub
+# Biz Agentz Documentation Hub
 
-Welcome to the central documentation hub for **WhatsBi**, a multi-tenant WhatsApp Business CRM.
+Welcome to the central documentation hub for **Biz Agentz**, a multi-tenant WhatsApp Business CRM.
 
 All project architecture, specifications, style guidelines, database structure, SEO architecture, and test cases are maintained within this directory.
 
