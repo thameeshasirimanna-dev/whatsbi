@@ -57,16 +57,16 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
-        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_24px_64px_rgba(22,40,29,0.15)] w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-modal-card">
+      <div className="fixed inset-0 z-50 bg-[#16281D]/65 flex items-center justify-center p-2.5 sm:p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-[0_24px_64px_rgba(22,40,29,0.15)] w-full max-w-[min(56rem,95vw)] sm:max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-modal-card">
           {/* Header */}
-          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
-            <h3 className="text-base font-bold text-[#16281D]">
+          <div className="shrink-0 px-4 py-3 sm:px-6 sm:py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <h3 className="text-sm sm:text-base font-bold text-[#16281D] truncate">
               {isEdit ? "Edit Template" : "Create New WhatsApp Template"}
             </h3>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors shrink-0 ml-2"
             >
               <X size={15} />
             </button>
@@ -75,7 +75,7 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
           {/* Form Content & Live Preview Split */}
           <div className="flex flex-1 overflow-hidden">
             {/* Left Form */}
-            <div className="w-full lg:w-[58%] overflow-y-auto p-6 border-r border-[#EAEAEA] space-y-4">
+            <div className="w-full lg:w-[58%] overflow-y-auto p-4 sm:p-6 border-r-0 lg:border-r border-[#EAEAEA] space-y-4">
               {modalError && (
                 <div className="p-3 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-xs text-[#EF4444] font-medium">
                   {modalError}
@@ -298,17 +298,17 @@ const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-3 pt-3">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 pt-3">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-2.5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] text-xs font-semibold transition-colors"
+                    className="w-full sm:flex-1 py-2.5 min-h-[38px] rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] text-xs font-semibold transition-colors flex items-center justify-center"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all flex items-center justify-center gap-1.5"
+                    className="w-full sm:flex-1 py-2.5 min-h-[38px] rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all flex items-center justify-center gap-1.5"
                   >
                     <Check size={14} /> {isEdit ? "Update Template" : "Submit to WhatsApp"}
                   </button>

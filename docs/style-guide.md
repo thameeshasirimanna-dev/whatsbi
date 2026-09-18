@@ -470,4 +470,105 @@ All legacy `<input type="date">` and `<input type="datetime-local">` controls ha
 - **Appointment Scheduling**: `CreateAppointmentModal.tsx`, `EditAppointmentModal.tsx` (`<DateTimePicker variant="mint" outputFormat="datetime-local" />`).
 - **Analytics & Time Range Filters**: `TimeRangeFilter.tsx`, `AnalyticsHeader.tsx` (`<DatePicker size="sm" />`).
 
+---
+
+## 23. Search Bar Architecture, Ergonomics & Specification
+
+> **Live Interactive Component Reference**: [`/style-guide`](http://localhost:5173/style-guide) → *Search Bars* tab  
+> **Component Catalog**: [`SearchBarPanel.tsx`](file:///c:/Github/whatsbi/frontend/src/components/styleguide/tokens/SearchBarPanel.tsx)
+
+### 1. Architectural Philosophy & Capsule Geometry
+Search bars across WhatsBi serve as the high-velocity operational entry point for filtering entity records, initiating actions, and querying customer datasets. They strictly adhere to the following principles:
+
+1. **Capsule Pill Geometry (`rounded-full`)**:
+   - All search bars employ a full `border-radius: 9999px` (`rounded-full`), completely rejecting rigid boxy corners or semi-rounded rectangles.
+   - Consistent `h-10` (40px) height providing an ergonomic touch target while conserving vertical density.
+2. **Rule 7 Two-Row Toolbar Architecture (Row 1 Primary Anchor)**:
+   - In all list views (Orders, Customers, Appointments, Invoices, Services, Broadcasts, Inventory), the search bar sits on **Row 1** alongside pagination and primary creation CTAs (`+ New Order`, `+ Add Customer`).
+   - Desktop (`sm:` / `lg:`): The search capsule expands to consume **100% of remaining row width** via `flex-1 min-w-0`, preventing trailing empty space.
+   - Mobile (`< sm`): Search spans `w-full` (100% width), with secondary action controls occupying their own 100% width row below it.
+3. **Signature Lime Focus Energy**:
+   - Focus state activates an instant border transition to `#9FE870` accompanied by a soft 20% alpha lime ring (`focus:ring-3 focus:ring-[#9FE870]/20` or `box-shadow: 0 0 0 3px rgba(159,232,112,0.2)`).
+4. **Single-Tap Inline Clear Ergonomics**:
+   - Whenever text is entered (`query.length > 0`), a right-aligned circular `[X]` clear button appears (`w-5 h-5 rounded-full bg-[#F4F7F4] text-[#71717A] hover:text-[#16281D]`).
+   - Clicking clears the filter in a single tap without requiring manual backspacing or causing page layout jump.
+
+---
+
+### 2. Search Bar Design Variants & Token Specifications
+
+| Variant | Surface Floor | Border & Focus Token | Metrics | Usage |
+|---|---|---|---|---|
+| **Primary Toolbar Search** | `#FFFFFF` (`bg-white`) | Border `#EAEAEA`, Focus `#9FE870` ring | `h-10 pl-9 pr-9 rounded-full text-xs` | Primary search on Orders, Customers, Invoices, Appointments |
+| **Global Command Palette** | `#F4F7F4` (`hover:bg-[#EAEAEA]`) | Border `#EAEAEA`, Keybadge `⌘K` | `h-10 pl-9 pr-18 rounded-full text-xs` | Top navigation trigger launching system command palette |
+| **Dark Inspector Search** | `#203628` (Forest Dark) | Border `white/10`, Focus `#9FE870` ring | `h-10 pl-9 pr-9 rounded-full text-xs text-white` | Campaign drawer, audience search, dark panel filters |
+| **In-Menu Dropdown Search** | `#FFFFFF` on `#F4F7F4` | Border `#EAEAEA`, Focus `#9FE870` | `h-8 pl-8 pr-7 rounded-lg text-xs` | Sticky search header inside `CustomDropdown.tsx` popovers |
+| **Modal / Entity Selector** | `#FAFAFA` (`hover:bg-white`) | Border `#EAEAEA`, Focus `#9FE870` | `h-10 pl-9 pr-9 rounded-full text-xs` | Selection modals (`CreateOrderModal`, `SelectCustomerModal`) |
+
+---
+
+### 3. Interactive States Matrix
+
+1. **Idle State**:
+   - Vector search icon (`Search size={14}`) left-aligned at `left-3.5` in muted `#A1A1AA`.
+   - Placeholder text in `#A1A1AA` with descriptive contextual hint (e.g. `"Search orders by customer, phone, status..."`).
+   - Background `#FFFFFF` with subtle border `1px solid #EAEAEA`.
+2. **Hover State**:
+   - Border transitions to `#D4D4D8` with subtle depth.
+3. **Focused State**:
+   - Border transitions to Brand Lime `#9FE870`.
+   - Subtle outer glow: `ring-3 ring-[#9FE870]/20` or `box-shadow: 0 0 0 3px rgba(159,232,112,0.2)`.
+   - Text color: Deep Forest `#16281D` (or `#FFFFFF` on dark surfaces).
+4. **Filled State (With Query)**:
+   - Trailing circular clear button `[X]` (`w-5 h-5 rounded-full`) renders dynamically on the right (`right-3`).
+   - Clicking immediately clears input, resets filtering, and retains keyboard focus.
+5. **Debounced / Loading State**:
+   - Circular clear icon transitions to `<Loader2 size={16} className="animate-spin text-[#9FE870]" />` while backend search requests are in flight.
+6. **Disabled State**:
+   - Background `#F4F4F5`, text `#A1A1AA`, cursor `cursor-not-allowed`, opacity `0.6`.
+
+---
+
+### 4. Implementation Code Snippet
+
+```tsx
+<div className="relative flex items-center w-full">
+  <Search
+    size={14}
+    className="absolute left-3.5 text-[#a1a1aa] pointer-events-none shrink-0"
+  />
+  <input
+    type="text"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    placeholder="Search by customer, phone, status..."
+    className="w-full h-10 pl-9 pr-9 rounded-full bg-white border border-[#EAEAEA] text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
+  />
+  {searchTerm && (
+    <button
+      type="button"
+      onClick={() => setSearchTerm('')}
+      className="absolute right-3 w-5 h-5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717a] hover:text-[#16281D] cursor-pointer border-0 transition-colors"
+      title="Clear search"
+    >
+      <X size={12} />
+    </button>
+  )}
+</div>
+```
+
+---
+
+### 5. System-Wide Deployment Reference
+- **Orders Page**: [`OrdersPage.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/orders/OrdersPage.tsx)
+- **Customers Page**: [`CustomersPage.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/customers/CustomersPage.tsx)
+- **Invoices Page**: [`InvoiceToolbar.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/invoices/InvoiceToolbar.tsx)
+- **Appointments Page**: [`AppointmentsPage.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/appointments/AppointmentsPage.tsx)
+- **Inventory Page**: [`InventoryPage.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/inventory/InventoryPage.tsx)
+- **Services Page**: [`ServicesPage.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/services/ServicesPage.tsx)
+- **Broadcasts Page**: [`BroadcastsPage.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/broadcasts/BroadcastsPage.tsx)
+- **Top Navigation Command Palette**: [`HeaderCommandPalette.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/HeaderCommandPalette.tsx)
+- **In-Menu Dropdowns**: [`CustomDropdown.tsx`](file:///c:/Github/whatsbi/frontend/src/components/agent/shared/CustomDropdown.tsx)
+
+
 

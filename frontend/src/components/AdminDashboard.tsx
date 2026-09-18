@@ -412,7 +412,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        <main key={activeTab} className="animate-fade-in flex-1 overflow-y-auto p-4 sm:p-6 lg:p-7">
+        <main key={activeTab} className="animate-fade-in flex-1 overflow-y-auto no-scrollbar p-4 sm:p-6 lg:p-7">
           <div className="w-full flex flex-col gap-6">
             {error && (
               <div className="px-4 py-3 bg-[#FFF1F2] border border-[#FECDD3] rounded-2xl text-xs md:text-sm font-medium text-[#E11D48] flex justify-between items-center shadow-xs">

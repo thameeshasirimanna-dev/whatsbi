@@ -475,23 +475,23 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   const invoiceActionDisabled = !customerId || loading;
 
   const primaryBtnClass =
-    "h-9 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shrink-0 border-0";
+    "h-9 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none cursor-pointer w-full sm:w-auto shrink-0 border-0";
 
   return (
     <>
       <Portal>
-        <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
+        <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-2.5 sm:p-4 animate-modal-backdrop">
           <style>{`@keyframes com-spin { to { transform: rotate(360deg); } }`}</style>
 
-        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-modal-card">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-[min(64rem,95vw)] sm:max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-modal-card">
           {/* Header */}
-          <div className="px-6 py-4 border-b border-[#EAEAEA] bg-white flex items-center justify-between shrink-0">
-            <h2 className="font-sans text-base md:text-lg font-bold text-[#16281D] truncate">
+          <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[#EAEAEA] bg-white flex items-center justify-between shrink-0">
+            <h2 className="font-sans text-sm sm:text-base md:text-lg font-bold text-[#16281D] truncate mr-2">
               {customerName ? `${customerName}'s Records` : "Customer Records"}
             </h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer border-0"
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer border-0 shrink-0"
               aria-label="Close modal"
             >
               <X size={15} />
@@ -499,16 +499,16 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
           </div>
 
           {/* Subheader / Tabs toolbar */}
-          <div className="px-6 py-3 border-b border-[#EAEAEA] bg-[#F4F7F4]/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+          <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-b border-[#EAEAEA] bg-[#F4F7F4]/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
             {/* Segmented Capsule Tabs */}
-            <div className="bg-[#F4F7F4] p-1 rounded-full flex items-center gap-1 border border-[#EAEAEA]">
+            <div className="bg-[#F4F7F4] p-1 rounded-full flex items-center gap-1 border border-[#EAEAEA] overflow-x-auto no-scrollbar max-w-full">
               {TAB_DEFS.map(({ key, label, count }) => {
                 const isActive = activeTab === key;
                 return (
                   <button
                     key={key}
                     onClick={() => setActiveTab(key)}
-                    className={`px-3.5 py-1.5 rounded-full font-sans text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border-0 ${
+                    className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3.5 py-1.5 rounded-full font-sans text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer border-0 shrink-0 ${
                       isActive
                         ? "bg-[#16281D] text-white shadow-xs"
                         : "text-[#71717A] hover:text-[#16281D] hover:bg-white/60 bg-transparent"
@@ -530,7 +530,7 @@ const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {activeTab === "orders" && (
                 <button
                   onClick={() => setShowCreateOrderModal(true)}

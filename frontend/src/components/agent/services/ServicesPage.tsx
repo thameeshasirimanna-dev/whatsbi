@@ -8,6 +8,7 @@ import DeleteServiceModal from "./DeleteServiceModal";
 import ViewServiceModal from "./ViewServiceModal";
 import { SkeletonPage } from "../shared/Skeleton";
 import CustomDropdown from "../shared/CustomDropdown";
+import { EmptyTableState } from "../shared/EmptyTableState";
 
 const ServicesPage: React.FC = () => {
   const [services, setServices] = useState<ServiceWithPackages[]>([]);
@@ -117,7 +118,8 @@ const ServicesPage: React.FC = () => {
   return (
     <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
         {[
           {
             label: "Total Services",
@@ -140,21 +142,21 @@ const ServicesPage: React.FC = () => {
             iconColor: "text-[#2563EB]",
             bgColor: "bg-[#3B82F6]/10",
           },
-        ].map((card, idx) => {
+        ].map((card) => {
           const Icon = card.icon;
           return (
             <div
               key={card.label}
-              className="bg-white rounded-[20px] p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between"
+              className="bg-white rounded-[18px] sm:rounded-[20px] p-3.5 sm:p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between col-span-1 last:col-span-2 sm:last:col-span-1 min-w-0"
             >
-              <div>
-                <p className="text-xs font-medium text-[#71717A]">{card.label}</p>
-                <h3 className="font-mono text-2xl font-extrabold text-[#16281D] mt-1 tracking-tight">
+              <div className="min-w-0 flex-1 mr-2">
+                <p className="text-[11px] sm:text-xs font-medium text-[#71717A] truncate">{card.label}</p>
+                <h3 className="font-mono text-xl sm:text-2xl font-extrabold text-[#16281D] mt-0.5 sm:mt-1 tracking-tight truncate">
                   {card.value}
                 </h3>
               </div>
-              <div className={`w-11 h-11 rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
-                <Icon size={20} />
+              <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
+                <Icon size={18} className="sm:w-5 sm:h-5" />
               </div>
             </div>
           );
@@ -169,11 +171,16 @@ const ServicesPage: React.FC = () => {
 
       {/* Toolbar */}
       <div
-        className="bg-white rounded-[20px] p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-wrap items-center justify-between gap-3"
+        className="bg-white rounded-[20px] p-3 sm:p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col gap-2.5 sm:gap-3"
       >
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A] pointer-events-none" />
+        {/* Row 1: Search & Primary Action (Full width) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0 flex items-center">
+            <Search
+              size={14}
+              className="absolute left-3.5 text-[#a1a1aa] pointer-events-none shrink-0"
+            />
             <input
               type="text"
               placeholder="Search services or packages…"
@@ -182,45 +189,57 @@ const ServicesPage: React.FC = () => {
                 const v = e.target.value;
                 setFilters({ ...filters, service_name: v, package_name: v });
               }}
-              className="w-full h-9 pl-9 pr-8 bg-[#F4F7F4] border border-[#EAEAEA] rounded-full text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all"
+              className="w-full h-10 pl-9 pr-9 rounded-full bg-white border border-[#EAEAEA] text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
             />
-            {filters.service_name && (
+            {Boolean(filters.service_name || filters.package_name) && (
               <button
+                type="button"
                 onClick={() => setFilters({ ...filters, service_name: "", package_name: "" })}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#71717A] hover:text-[#16281D] transition-colors"
+                className="absolute right-3 w-5 h-5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717a] hover:text-[#16281D] cursor-pointer border-0 transition-colors"
+                title="Clear search"
               >
-                <X size={13} />
+                <X size={12} />
               </button>
             )}
           </div>
 
-          <CustomDropdown
-            value={filters.sort_by}
-            onChange={(val) => setFilters({ ...filters, sort_by: val as "price" | "created_at" })}
-            options={[
-              { value: "created_at", label: "Sort by Date" },
-              { value: "price", label: "Sort by Price" },
-            ]}
-            minWidth={130}
-          />
-
-          <CustomDropdown
-            value={filters.sort_order}
-            onChange={(val) => setFilters({ ...filters, sort_order: val as "asc" | "desc" })}
-            options={[
-              { value: "desc", label: "Descending" },
-              { value: "asc", label: "Ascending" },
-            ]}
-            minWidth={120}
-          />
+          {/* Add Service Button */}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex-1 sm:flex-initial justify-center px-4 py-2 h-9 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center gap-1.5 shrink-0 cursor-pointer border-0"
+          >
+            <Plus size={14} /> Add Service
+          </button>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 h-9 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center gap-1.5 shrink-0"
-        >
-          <Plus size={14} /> Add Service
-        </button>
+        {/* Row 2: Filters Grid (Full fill 100% row width across all screen sizes) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full items-center">
+          {/* Sort By Dropdown */}
+          <div className="col-span-1 w-full min-w-0">
+            <CustomDropdown
+              value={filters.sort_by}
+              onChange={(val) => setFilters({ ...filters, sort_by: val as "price" | "created_at" })}
+              options={[
+                { value: "created_at", label: "Sort by Date" },
+                { value: "price", label: "Sort by Price" },
+              ]}
+              className="w-full"
+            />
+          </div>
+
+          {/* Sort Order Dropdown */}
+          <div className="col-span-1 w-full min-w-0">
+            <CustomDropdown
+              value={filters.sort_order}
+              onChange={(val) => setFilters({ ...filters, sort_order: val as "asc" | "desc" })}
+              options={[
+                { value: "desc", label: "Descending" },
+                { value: "asc", label: "Ascending" },
+              ]}
+              className="w-full"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Table Container */}
@@ -228,27 +247,20 @@ const ServicesPage: React.FC = () => {
         className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] overflow-hidden"
       >
         {filteredServices.length === 0 ? (
-          <div className="py-14 px-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#F4F7F4] flex items-center justify-center mx-auto mb-3.5 text-[#71717A]">
-              <Briefcase size={22} />
-            </div>
-            <h4 className="text-sm font-bold text-[#16281D] mb-1">
-              {filters.service_name || filters.package_name ? "No services found" : "No services yet"}
-            </h4>
-            <p className="text-xs text-[#71717A] max-w-sm mx-auto mb-4">
-              {filters.service_name || filters.package_name
+          <EmptyTableState
+            isFiltered={services.length > 0}
+            filteredTitle="No services found"
+            filteredMessage={
+              filters.service_name || filters.package_name
                 ? "No services match your search criteria. Try a different query."
-                : "Create service packages with transparent tier pricing for your clients."}
-            </p>
-            {!filters.service_name && !filters.package_name && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0"
-              >
-                <Plus size={14} /> Add Service
-              </button>
-            )}
-          </div>
+                : "No services match your current filter criteria."
+            }
+            icon={Briefcase}
+            title="No services yet"
+            description="Create service packages with transparent tier pricing for your clients."
+            actionLabel="Add Service"
+            onAction={() => setShowCreateModal(true)}
+          />
         ) : (
           <>
             {/* Mobile/Tablet Card Layout */}
@@ -257,7 +269,8 @@ const ServicesPage: React.FC = () => {
                 const prices = service.packages.map(p => p.price).filter(p => p > 0);
                 const minPrice = prices.length ? Math.min(...prices) : null;
                 const maxPrice = prices.length ? Math.max(...prices) : null;
-                const currency = service.packages[0]?.currency || 'LKR';
+                const rawCurr = service.packages[0]?.currency || 'Rs.';
+                const currency = (rawCurr === 'LKR' || rawCurr === 'USD') ? 'Rs.' : rawCurr;
                 const priceLabel = minPrice === null ? '—'
                   : minPrice === maxPrice ? `${currency} ${minPrice.toFixed(2)}`
                   : `${currency} ${minPrice.toFixed(2)} – ${maxPrice!.toFixed(2)}`;
@@ -296,24 +309,24 @@ const ServicesPage: React.FC = () => {
                       {service.description || "No description provided."}
                     </p>
 
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F4F7F4]">
+                    <div className="flex items-center gap-2 pt-2 border-t border-[#F4F7F4]">
                       <button
                         onClick={() => setViewingService(service)}
-                        className="px-3 py-1.5 rounded-full bg-[#0891B2]/10 text-[#0891B2] hover:bg-[#0891B2]/20 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        className="flex-1 py-1.5 min-h-[34px] rounded-full bg-[#0891B2]/10 text-[#0891B2] hover:bg-[#0891B2]/20 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
                       >
-                        <Eye size={12} /> View
+                        <Eye size={13} /> View
                       </button>
                       <button
                         onClick={() => setEditingService(service)}
-                        className="px-3 py-1.5 rounded-full bg-[#22C55E]/10 text-[#15803D] hover:bg-[#22C55E]/20 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        className="flex-1 py-1.5 min-h-[34px] rounded-full bg-[#22C55E]/10 text-[#15803D] hover:bg-[#22C55E]/20 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
                       >
-                        <Pencil size={12} /> Edit
+                        <Pencil size={13} /> Edit
                       </button>
                       <button
                         onClick={() => confirmDelete(service.id)}
-                        className="px-3 py-1.5 rounded-full bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        className="flex-1 py-1.5 min-h-[34px] rounded-full bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
                       >
-                        <Trash2 size={12} /> Delete
+                        <Trash2 size={13} /> Delete
                       </button>
                     </div>
                   </div>
@@ -348,7 +361,8 @@ const ServicesPage: React.FC = () => {
                     const prices = service.packages.map(p => p.price).filter(p => p > 0);
                     const minPrice = prices.length ? Math.min(...prices) : null;
                     const maxPrice = prices.length ? Math.max(...prices) : null;
-                    const currency = service.packages[0]?.currency || 'LKR';
+                    const rawCurr = service.packages[0]?.currency || 'Rs.';
+                    const currency = (rawCurr === 'LKR' || rawCurr === 'USD') ? 'Rs.' : rawCurr;
                     const priceLabel = minPrice === null ? '—'
                       : minPrice === maxPrice ? `${currency} ${minPrice.toFixed(2)}`
                       : `${currency} ${minPrice.toFixed(2)} – ${maxPrice!.toFixed(2)}`;

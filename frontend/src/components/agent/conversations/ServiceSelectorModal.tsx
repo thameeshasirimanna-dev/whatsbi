@@ -99,21 +99,21 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
-        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-modal-card">
+      <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-2.5 sm:p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-[min(28rem,95vw)] sm:max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-modal-card">
           {/* Header */}
-          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center">
+          <div className="shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0 mr-2">
+              <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center shrink-0">
                 <Briefcase size={16} />
               </div>
-              <h3 className="font-sans text-base font-bold text-[#16281D]">
+              <h3 className="font-sans text-sm sm:text-base font-bold text-[#16281D] truncate">
                 Select Service
               </h3>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer shrink-0"
               aria-label="Close modal"
             >
               <X size={15} />
@@ -121,7 +121,7 @@ const ServiceSelectorModal: React.FC<ServiceSelectorModalProps> = ({
           </div>
 
           {/* Search Input */}
-          <div className="shrink-0 p-4 border-b border-[#EAEAEA] bg-[#F4F7F4]/50">
+          <div className="shrink-0 p-3 sm:p-4 border-b border-[#EAEAEA] bg-[#F4F7F4]/50">
             <div className="relative">
               <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A]" />
               <input

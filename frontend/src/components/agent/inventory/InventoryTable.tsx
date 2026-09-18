@@ -10,10 +10,13 @@ interface InventoryTableProps {
   onEditItem: (item: InventoryItem) => void;
   onDeleteItem: (item: InventoryItem) => void;
   onAddCategory: () => void;
+  onAddItem?: () => void;
 }
 
+import { EmptyTableState } from '../shared/EmptyTableState';
+
 const formatPrice = (price: number) =>
-  new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(price);
+  `Rs. ${Number(price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const getStockBadge = (qty: number) => {
   if (qty > 10) {
@@ -48,32 +51,41 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
   onEditItem,
   onDeleteItem,
   onAddCategory,
+  onAddItem,
 }) => {
   if (items.length === 0) {
+    if (totalCount === 0) {
+      if (!hasCategories) {
+        return (
+          <EmptyTableState
+            icon={Package}
+            title="No inventory items yet"
+            description="You need at least one category before adding products to your catalogue."
+            actionLabel="Add Category"
+            onAction={onAddCategory}
+          />
+        );
+      }
+      return (
+        <EmptyTableState
+          icon={Package}
+          title="No inventory items yet"
+          description="Start adding products to your inventory catalogue."
+          actionLabel="Add Product"
+          onAction={onAddItem}
+        />
+      );
+    }
     return (
-      <div className="text-center py-16 px-4">
-        <div className="w-12 h-12 rounded-full bg-[#F4F7F4] text-[#71717A] flex items-center justify-center mx-auto mb-3">
-          <Package size={22} />
-        </div>
-        <h4 className="text-sm font-bold text-[#16281D] mb-1">
-          {searchTerm ? 'No items found' : 'No inventory items yet'}
-        </h4>
-        <p className="text-xs text-[#71717A] max-w-sm mx-auto mb-4">
-          {searchTerm
+      <EmptyTableState
+        isFiltered
+        filteredTitle="No items found"
+        filteredMessage={
+          searchTerm
             ? `No items match "${searchTerm}".`
-            : hasCategories
-            ? 'Start adding products to your inventory catalogue.'
-            : 'You need at least one category before adding products.'}
-        </p>
-        {!hasCategories && (
-          <button
-            onClick={onAddCategory}
-            className="px-5 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all inline-flex items-center gap-1.5 cursor-pointer border-0"
-          >
-            Add First Category
-          </button>
-        )}
-      </div>
+            : "No items match your current filter criteria."
+        }
+      />
     );
   }
 

@@ -190,7 +190,7 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                       fontWeight: 700,
                     }}
                   >
-                    LKR {invoice.total.toFixed(2)}
+                    Rs. {invoice.total.toFixed(2)}
                   </span>
                 </div>
               </div>

@@ -51,22 +51,22 @@ const BroadcastSummaryCards: React.FC<BroadcastSummaryCardsProps> = ({ broadcast
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
           <div
             key={card.label}
-            className="bg-white rounded-[20px] p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between"
+            className="bg-white rounded-[18px] sm:rounded-[20px] p-3.5 sm:p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between min-w-0"
           >
-            <div>
-              <p className="text-xs font-medium text-[#71717A]">{card.label}</p>
-              <h3 className="font-mono text-2xl font-extrabold text-[#16281D] mt-1 tracking-tight">
+            <div className="min-w-0 flex-1 mr-2">
+              <p className="text-[11px] sm:text-xs font-medium text-[#71717A] truncate">{card.label}</p>
+              <h3 className="font-mono text-xl sm:text-2xl font-extrabold text-[#16281D] mt-0.5 sm:mt-1 tracking-tight truncate">
                 {card.value}
               </h3>
             </div>
-            <div className={`w-11 h-11 rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
-              <Icon size={20} />
+            <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
+              <Icon size={18} className="sm:w-5 sm:h-5" />
             </div>
           </div>
         );

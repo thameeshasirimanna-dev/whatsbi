@@ -33,9 +33,9 @@ export const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
       {/* Left: Time Ranges Switcher + Custom Date Inputs */}
-      <div className="flex items-center gap-2.5 flex-wrap">
+      <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
         {/* Segmented Capsule Switch (Style Guide Section 9) */}
-        <div className="flex items-center bg-[#E8ECE8] p-1 rounded-full border border-black/5 overflow-x-auto max-w-full">
+        <div className="flex items-center bg-[#E8ECE8] p-1 rounded-full border border-black/5 overflow-x-auto w-full sm:w-auto justify-between">
           {TIMEFRAME_OPTIONS.map((opt) => {
             const isActive = timeframe === opt.id;
             return (
@@ -43,7 +43,7 @@ export const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({
                 key={opt.id}
                 type="button"
                 onClick={() => onTimeframeChange(opt.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-0 whitespace-nowrap ${
+                className={`flex-1 sm:flex-initial text-center px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-0 whitespace-nowrap ${
                   isActive
                     ? 'bg-[#16281D] text-white shadow-xs'
                     : 'bg-transparent text-[#52525B] hover:text-[#16281D]'

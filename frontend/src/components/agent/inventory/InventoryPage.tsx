@@ -11,7 +11,7 @@ import CategoriesSection from './CategoriesSection';
 import InventoryTable from './InventoryTable';
 
 const formatPrice = (price: number) =>
-  new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(price);
+  `Rs. ${Number(price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const InventoryPage: React.FC = () => {
   const { confirm: dlgConfirm, toast } = useDialog();
@@ -191,7 +191,7 @@ const InventoryPage: React.FC = () => {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
         {[
           {
             label: 'Total Products',
@@ -217,21 +217,21 @@ const InventoryPage: React.FC = () => {
             iconColor: 'text-[#D97706]',
             bgColor: 'bg-[#F59E0B]/10',
           },
-        ].map((card, idx) => {
+        ].map((card) => {
           const Icon = card.icon;
           return (
             <div
               key={card.label}
-              className="bg-white rounded-[20px] p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between"
+              className="col-span-1 last:col-span-2 sm:last:col-span-1 bg-white rounded-[16px] sm:rounded-[20px] p-3 sm:p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between gap-2 min-w-0"
             >
-              <div>
-                <p className="text-xs font-medium text-[#71717A]">{card.label}</p>
-                <h3 className="font-mono text-2xl font-extrabold text-[#16281D] mt-1 tracking-tight">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] sm:text-xs font-medium text-[#71717A] truncate">{card.label}</p>
+                <h3 className="font-mono text-base sm:text-2xl font-extrabold text-[#16281D] mt-0.5 sm:mt-1 tracking-tight truncate" title={String(card.value)}>
                   {card.value}
                 </h3>
               </div>
-              <div className={`w-11 h-11 rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
-                <Icon size={20} />
+              <div className={`w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
           );
@@ -245,37 +245,49 @@ const InventoryPage: React.FC = () => {
       )}
 
       {/* Toolbar */}
-      <div className="bg-white rounded-[20px] p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="bg-white rounded-[20px] p-3 sm:p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col gap-2.5 sm:gap-3">
+        {/* Row 1: Search & Primary Action (Full width) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+          {/* Search Bar Capsule */}
+          <div className="relative flex-1 min-w-0 flex items-center">
             <Search
               size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A] pointer-events-none"
+              className="absolute left-3.5 text-[#a1a1aa] pointer-events-none shrink-0"
             />
             <input
               type="text"
-              placeholder="Search products by name, SKU, category…"
+              placeholder="Search products by name, SKU, or category…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 pl-9 pr-4 bg-[#F4F7F4] border border-[#EAEAEA] rounded-full text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all"
+              className="w-full h-10 pl-9 pr-9 rounded-full bg-white border border-[#EAEAEA] text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 w-5 h-5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717a] hover:text-[#16281D] cursor-pointer border-0 transition-colors"
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              title="Clear search"
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            disabled={!hasCategories}
+            className="flex-1 sm:flex-initial justify-center px-4 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none shrink-0"
+          >
+            <Plus size={14} />
+            <span>Add Product</span>
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Row 2: Category Actions Grid (Full fill 100% row width across all screen sizes) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full items-center">
           <button
             onClick={() => setShowCategoriesSection(!showCategoriesSection)}
-            className="px-4 py-2 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="w-full justify-center px-4 py-2 h-9 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Tag size={13} />
             <span>{showCategoriesSection ? 'Hide' : 'Manage'} Categories</span>
@@ -286,19 +298,10 @@ const InventoryPage: React.FC = () => {
               setEditingCategory(null);
               setShowCategoryModal(true);
             }}
-            className="px-4 py-2 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#16281D] transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="w-full justify-center px-4 py-2 h-9 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#16281D] transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus size={13} />
             <span>New Category</span>
-          </button>
-
-          <button
-            onClick={() => setShowCreateModal(true)}
-            disabled={!hasCategories}
-            className="px-4 py-2 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none shrink-0"
-          >
-            <Plus size={14} />
-            <span>Add Product</span>
           </button>
         </div>
       </div>
@@ -329,6 +332,7 @@ const InventoryPage: React.FC = () => {
             setEditingCategory(null);
             setShowCategoryModal(true);
           }}
+          onAddItem={() => setShowCreateModal(true)}
         />
       </div>
     </div>

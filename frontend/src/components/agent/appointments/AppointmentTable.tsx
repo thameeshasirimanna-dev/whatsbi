@@ -3,6 +3,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { Calendar, ChevronDown, Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import { Appointment } from '../../../types';
 import { useDialog } from '../shared/DialogProvider';
+import { EmptyTableState } from '../shared/EmptyTableState';
 
 interface AppointmentTableProps {
   appointments: Appointment[];
@@ -61,29 +62,20 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
   const { confirm: dlgConfirm } = useDialog();
 
   if (appointments.length === 0) {
-    return (
-      <div className="p-12 text-center">
-        <div className="w-12 h-12 rounded-full bg-[#F4F7F4] text-[#71717A] flex items-center justify-center mx-auto mb-3">
-          <Calendar size={22} />
-        </div>
-        <h4 className="text-sm font-bold text-[#16281D] mb-1">
-          {totalCount === 0 ? 'No appointments yet' : 'No matching appointments'}
-        </h4>
-        <p className="text-xs text-[#71717A] max-w-sm mx-auto mb-4">
-          {totalCount === 0
-            ? 'Schedule your first appointment with any customer in your database.'
-            : 'Try adjusting your search criteria or clear your active filters.'}
-        </p>
-        {totalCount === 0 && (
-          <button
-            onClick={onScheduleFirst}
-            className="px-5 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all inline-flex items-center gap-1.5 cursor-pointer border-0"
-          >
-            <Plus size={14} />
-            <span>Schedule First Appointment</span>
-          </button>
-        )}
-      </div>
+    return totalCount === 0 ? (
+      <EmptyTableState
+        icon={Calendar}
+        title="No appointments yet"
+        description="Start by scheduling your first appointment with a customer."
+        actionLabel="Book Appointment"
+        onAction={onScheduleFirst}
+      />
+    ) : (
+      <EmptyTableState
+        isFiltered
+        filteredTitle="No appointments found"
+        filteredMessage="No appointments match your current filters."
+      />
     );
   }
 

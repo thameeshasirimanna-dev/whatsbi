@@ -10,8 +10,10 @@ import {
   PJS, MONO
 } from './CustomerTypes';
 import { TableSelection } from '../shared/useTableSelection';
+import { EmptyTableState } from '../shared/EmptyTableState';
 
 interface CustomersTableProps {
+  allCustomersCount?: number;
   tableRef: React.RefObject<HTMLDivElement | null>;
   paginatedCustomers: Customer[];
   totalCustomersCount: number;
@@ -38,6 +40,7 @@ interface CustomersTableProps {
 
 export const CustomersTable: React.FC<CustomersTableProps> = ({
   tableRef,
+  allCustomersCount,
   paginatedCustomers,
   totalCustomersCount,
   totalPages,
@@ -79,35 +82,24 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
         scrollMarginTop: 20,
       }}
     >
-      {totalCustomersCount === 0 ? (
-        <div style={{ padding: '56px 24px', textAlign: 'center' }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              background: '#F4F7F4',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 14px',
-            }}
-          >
-            <Users size={24} style={{ color: '#A1A1AA' }} />
-          </div>
-          <div style={{ ...PJS, fontSize: 16, fontWeight: 700, color: '#16281D', marginBottom: 6 }}>
-            {searchTerm ? "No customers found" : "No customers yet"}
-          </div>
-          <div style={{ ...PJS, fontSize: 13, color: '#71717A', marginBottom: 20 }}>
-            {searchTerm ? `No customers match "${searchTerm}"` : "Get started by adding your first customer."}
-          </div>
-          <button
-            onClick={onAddCustomerClick}
-            className="rounded-full px-5 py-2.5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] inline-flex items-center gap-2 cursor-pointer border-0"
-          >
-            <Plus size={14} /> Add your first customer
-          </button>
-        </div>
+      {(allCustomersCount !== undefined ? allCustomersCount === 0 : totalCustomersCount === 0 && !searchTerm) ? (
+        <EmptyTableState
+          icon={Users}
+          title="No customers yet"
+          description="Start by adding your first customer to your CRM."
+          actionLabel="Add Customer"
+          onAction={onAddCustomerClick}
+        />
+      ) : totalCustomersCount === 0 ? (
+        <EmptyTableState
+          isFiltered
+          filteredTitle="No customers found"
+          filteredMessage={
+            searchTerm
+              ? `No customers match "${searchTerm}".`
+              : "No customers match your current filters."
+          }
+        />
       ) : (
         <>
           {/* Mobile/Tablet Card Layout */}
@@ -185,11 +177,11 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                       <span style={{ ...PJS, fontSize: 11, color: '#71717A' }}>Joined: {new Date(customer.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                     </div>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-end gap-2 pt-1 w-full">
                       <button
                         title="Open conversation"
                         onClick={() => window.open(`${window.location.origin}/agent/conversations?customerId=${customer.id}`, "_blank")}
-                        className="rounded-full px-3.5 py-1.5 bg-[#9FE870]/20 hover:bg-[#9FE870] text-[#16281D] font-sans text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+                        className="rounded-full min-h-[36px] px-3 py-1.5 bg-[#9FE870]/20 hover:bg-[#9FE870] text-[#16281D] font-sans text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-0"
                       >
                         <MessageCircle size={13} /> Chat
                       </button>
@@ -197,7 +189,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                       <button
                         title="Edit customer"
                         onClick={() => onEditCustomerClick(customer)}
-                        className="rounded-full px-3.5 py-1.5 bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706] font-sans text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+                        className="rounded-full min-h-[36px] px-3 py-1.5 bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#D97706] font-sans text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-0"
                       >
                         <Pencil size={12} /> Edit
                       </button>
@@ -206,7 +198,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                         title="Create new order"
                         onClick={() => onSelectCustomerForOrder(customer)}
                         disabled={!agentPrefix || !agentId}
-                        className="rounded-full px-3.5 py-1.5 bg-[#E0F2FE] hover:bg-[#BAE6FD] text-[#0284C7] font-sans text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-0"
+                        className="rounded-full min-h-[36px] px-3 py-1.5 bg-[#E0F2FE] hover:bg-[#BAE6FD] text-[#0284C7] font-sans text-xs font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-0"
                       >
                         <ShoppingBag size={12} /> New Order
                       </button>
@@ -214,7 +206,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                       <button
                         title="Delete customer"
                         onClick={() => onDeleteCustomerClick(customer)}
-                        className="rounded-full px-3.5 py-1.5 bg-[#FEE2E2] hover:bg-[#FECACA] text-[#EF4444] font-sans text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+                        className="rounded-full min-h-[36px] px-3 py-1.5 bg-[#FEE2E2] hover:bg-[#FECACA] text-[#EF4444] font-sans text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-0"
                       >
                         <Trash2 size={12} /> Delete
                       </button>

@@ -1,5 +1,15 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useId } from 'react';
 import { Clock, X } from 'lucide-react';
+import Portal from './Portal';
+
+interface TimePickerCoords {
+  top?: number;
+  bottom?: number;
+  left: number;
+  maxWidth: number;
+  maxHeight: number;
+  openAbove: boolean;
+}
 
 export interface TimePickerProps {
   value?: string | null; // Format: "HH:mm" or "hh:mm AM/PM" (e.g. "14:30" or "02:30 PM")
@@ -61,6 +71,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const generatedId = useId();
   const timePickerId = id || generatedId;
 
@@ -68,6 +79,64 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   const [selectedHour, setSelectedHour] = useState(parsed.hour);
   const [selectedMinute, setSelectedMinute] = useState(parsed.minute);
   const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>(parsed.period);
+
+  const [coords, setCoords] = useState<TimePickerCoords | null>(null);
+
+  const calculatePosition = useCallback((): TimePickerCoords | null => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return null;
+
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setIsOpen(false);
+      return null;
+    }
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const popoverWidth = Math.min(280, vw - 24);
+    const spaceBelow = vh - rect.bottom;
+    const spaceAbove = rect.top;
+    const openAbove = spaceBelow < 350 && spaceAbove > spaceBelow;
+
+    const idealLeft = align === 'right' ? rect.right - popoverWidth : rect.left;
+    const left = Math.max(12, Math.min(idealLeft, vw - popoverWidth - 12));
+
+    if (openAbove) {
+      return {
+        bottom: vh - rect.top + 6,
+        left,
+        maxWidth: popoverWidth,
+        maxHeight: Math.max(200, Math.min(380, spaceAbove - 16)),
+        openAbove: true,
+      };
+    } else {
+      return {
+        top: rect.bottom + 6,
+        left,
+        maxWidth: popoverWidth,
+        maxHeight: Math.max(200, Math.min(380, spaceBelow - 16)),
+        openAbove: false,
+      };
+    }
+  }, [align]);
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      const newCoords = calculatePosition();
+      if (newCoords) setCoords(newCoords);
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const newCoords = calculatePosition();
+    if (newCoords) setCoords(newCoords);
+  }, [isOpen, calculatePosition]);
 
   useEffect(() => {
     if (value) {
@@ -79,8 +148,30 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   }, [value]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const handleUpdate = () => {
+      const newCoords = calculatePosition();
+      if (newCoords) setCoords(newCoords);
+    };
+
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('resize', handleUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [isOpen, calculatePosition]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -132,7 +223,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
         id={timePickerId}
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         className={`w-full rounded-full transition-all flex items-center justify-between cursor-pointer shadow-xs active:scale-[0.98] outline-none disabled:opacity-50 disabled:pointer-events-none ${sizeClasses} ${triggerVariantClasses} ${
@@ -164,19 +255,31 @@ export const TimePicker: React.FC<TimePickerProps> = ({
         )}
       </button>
 
-      {/* Popover Card */}
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-label="Time picker popover"
-          className={`absolute top-[calc(100%+8px)] ${
-            align === 'right' ? 'right-0' : 'left-0'
-          } z-50 w-[280px] p-4 rounded-3xl transition-all shadow-[0_16px_48px_rgba(20,40,24,0.16)] animate-in fade-in zoom-in-95 duration-150 ${
-            isDark
-              ? 'bg-[#16281D] border border-white/10 text-white'
-              : 'bg-white border border-[#EAEAEA] text-[#16281D]'
-          } ${popoverClassName}`}
-        >
+      {/* Popover Card (Rendered via Portal on document.body for zero modal scroll) */}
+      {isOpen && coords && (
+        <Portal>
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-label="Time picker popover"
+            style={{
+              position: 'fixed',
+              top: coords.top !== undefined ? `${coords.top}px` : undefined,
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
+              left: `${coords.left}px`,
+              width: `${coords.maxWidth}px`,
+              maxHeight: `${coords.maxHeight}px`,
+              zIndex: 99999,
+              transformOrigin: coords.openAbove ? 'bottom' : 'top',
+            }}
+            className={`p-4 rounded-3xl transition-all shadow-[0_16px_48px_rgba(20,40,24,0.18)] ${
+              coords.openAbove ? 'animate-dropdown-up' : 'animate-dropdown'
+            } overflow-y-auto ${
+              isDark
+                ? 'bg-[#16281D] border border-white/10 text-white shadow-[0_16px_48px_rgba(0,0,0,0.5)]'
+                : 'bg-white border border-[#EAEAEA] text-[#16281D]'
+            } ${popoverClassName}`}
+          >
           {/* Quick Presets */}
           {showPresets && (
             <div className="mb-3 pb-2.5 border-b border-[#EAEAEA]/80">
@@ -325,8 +428,9 @@ export const TimePicker: React.FC<TimePickerProps> = ({
             </button>
           </div>
         </div>
-      )}
-    </div>
+      </Portal>
+    )}
+  </div>
   );
 };
 

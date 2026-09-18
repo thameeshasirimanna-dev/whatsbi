@@ -82,7 +82,7 @@ const AccountInfoCard: React.FC<AccountInfoCardProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] p-6 md:p-8 flex flex-col justify-between">
+    <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] p-4 sm:p-6 md:p-8 flex flex-col justify-between">
       <div>
         {/* Header */}
         <div className="flex items-center justify-between pb-5 border-b border-[#EAEAEA] mb-6">

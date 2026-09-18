@@ -117,11 +117,11 @@ const InvoicesTab: React.FC<InvoicesTabProps> = ({
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="font-sans text-xs text-[#71717A] font-medium">Total:</span>
                     <span className="font-mono text-sm font-bold text-[#16281D]">
-                      LKR {finalTotal.toFixed(2)}
+                      Rs. {finalTotal.toFixed(2)}
                     </span>
                     {invoice.advance_amount !== undefined && Number(invoice.advance_amount) > 0 && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
-                        Advance: LKR {Number(invoice.advance_amount).toFixed(2)}
+                        Advance: Rs. {Number(invoice.advance_amount).toFixed(2)}
                       </span>
                     )}
                   </div>

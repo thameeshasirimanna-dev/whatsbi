@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Plus, Search } from "lucide-react";
 import GenerateInvoiceModal from "../conversations/GenerateInvoiceModal";
 import { SkeletonPage } from "../shared/Skeleton";
 import { SYNE, DM } from "./constants";
@@ -11,10 +11,13 @@ import { InvoiceTable } from "./InvoiceTable";
 import { InvoiceMobileList } from "./InvoiceMobileList";
 import { InvoicePagination } from "./InvoicePagination";
 import { InvoicePaymentModal } from "./InvoicePaymentModal";
+import { FloatingBulkProgress } from "../shared/BulkProgress";
+import { EmptyTableState } from "../shared/EmptyTableState";
 
 const InvoicesPage: React.FC = () => {
   const tableRef = useRef<HTMLDivElement>(null);
   const {
+    invoices,
     customers,
     loading,
     error,
@@ -34,6 +37,7 @@ const InvoicesPage: React.FC = () => {
     handleRowsPerPageChange,
     updating,
     isBulkProcessing,
+    bulkProgress,
     isModalOpen,
     setIsModalOpen,
     fetchData,
@@ -158,63 +162,45 @@ const InvoicesPage: React.FC = () => {
         onBulkDelete={handleBulkDelete}
         onClearSelection={selection.clearSelection}
         isProcessing={isBulkProcessing}
+        bulkProgress={bulkProgress}
       />
+
+      {/* Floating Viewport Progress Banner */}
+      <FloatingBulkProgress progress={bulkProgress} />
 
       {/* Table Container */}
       <div
         ref={tableRef}
         style={{
           background: "#fff",
-          borderRadius: 14,
-          border: "1px solid #ebebeb",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-          overflow: "hidden",
+          borderRadius: 20,
+          border: "1px solid #EAEAEA",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+          overflow: "visible",
           width: "100%",
           maxWidth: "100%",
           boxSizing: "border-box",
           scrollMarginTop: 20,
         }}
       >
-        {filteredInvoices.length === 0 ? (
-          <div style={{ padding: "56px 24px", textAlign: "center" }}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: "50%",
-                background: "#f4f4f5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 14px",
-              }}
-            >
-              <FileText size={22} style={{ color: "#d4d4d8" }} />
-            </div>
-            <div
-              style={{
-                ...SYNE,
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#0c1a0e",
-                marginBottom: 6,
-              }}
-            >
-              {searchTerm ? "No invoices found" : "No invoices yet"}
-            </div>
-            <div
-              style={{
-                ...DM,
-                fontSize: 13,
-                color: "#71717a",
-                marginBottom: 20,
-              }}
-            >
-              {searchTerm
-                ? `No invoices match "${searchTerm}"`
-                : "Create your first invoice using the button above"}
-            </div>
-          </div>
+        {invoices.length === 0 ? (
+          <EmptyTableState
+            icon={FileText}
+            title="No invoices yet"
+            description="Start by creating your first invoice for a customer."
+            actionLabel="Create Invoice"
+            onAction={() => setIsModalOpen(true)}
+          />
+        ) : filteredInvoices.length === 0 ? (
+          <EmptyTableState
+            isFiltered
+            filteredTitle="No invoices found"
+            filteredMessage={
+              searchTerm || selectedCustomerFilter !== null || Boolean(timeRange.preset)
+                ? "No invoices match your current filters."
+                : "No invoices available."
+            }
+          />
         ) : (
           <>
             {/* Mobile/Tablet Card Layout */}

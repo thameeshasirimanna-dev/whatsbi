@@ -257,8 +257,8 @@ export const generateAndUploadInvoice = async (params: GenerateInvoiceParams): P
     );
     const itemY = yPosition + ((maxDescLines - 1) * lineSpacing) / 2;
     doc.text(item.quantity.toString(), colPositions.qty + 5, itemY);
-    doc.text(`LKR ${item.price.toFixed(2)}`, colPositions.price, itemY);
-    doc.text(`LKR ${(item.quantity * item.price).toFixed(2)}`, 190, itemY, { align: "right" });
+    doc.text(`Rs. ${item.price.toFixed(2)}`, colPositions.price, itemY);
+    doc.text(`Rs. ${(item.quantity * item.price).toFixed(2)}`, 190, itemY, { align: "right" });
 
     yPosition += effectiveRowHeight + 2;
   });
@@ -275,14 +275,14 @@ export const generateAndUploadInvoice = async (params: GenerateInvoiceParams): P
     doc.setFont("Poppins", "normal");
     doc.setFontSize(9);
     doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
-    doc.text(`-LKR ${discountAmount.toFixed(2)}`, 190, totalsY, { align: "right" });
+    doc.text(`-Rs. ${discountAmount.toFixed(2)}`, 190, totalsY, { align: "right" });
     totalsY += 8;
   }
 
   doc.setFont("Poppins", "bold");
   doc.setFontSize(10);
   doc.text("Total Amount:", 120, totalsY);
-  doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
+  doc.text(`Rs. ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
   totalsY += 8;
 
   // Advance Paid / Amount
@@ -290,7 +290,7 @@ export const generateAndUploadInvoice = async (params: GenerateInvoiceParams): P
     doc.setFont("Poppins", "normal");
     doc.setFontSize(9);
     doc.text("Advance Amount:", 120, totalsY);
-    doc.text(`LKR ${Number(advanceAmount).toFixed(2)}`, 190, totalsY, { align: "right" });
+    doc.text(`Rs. ${Number(advanceAmount).toFixed(2)}`, 190, totalsY, { align: "right" });
     totalsY += 8;
   }
 
@@ -299,10 +299,10 @@ export const generateAndUploadInvoice = async (params: GenerateInvoiceParams): P
   doc.setFontSize(10);
   if (balanceDue > 0) {
     doc.text("Balance Due:", 120, totalsY);
-    doc.text(`LKR ${balanceDue.toFixed(2)}`, 190, totalsY, { align: "right" });
+    doc.text(`Rs. ${balanceDue.toFixed(2)}`, 190, totalsY, { align: "right" });
   } else {
     doc.text("Balance:", 120, totalsY);
-    doc.text("LKR 0.00", 190, totalsY, { align: "right" });
+    doc.text("Rs. 0.00", 190, totalsY, { align: "right" });
   }
   totalsY += 8;
 

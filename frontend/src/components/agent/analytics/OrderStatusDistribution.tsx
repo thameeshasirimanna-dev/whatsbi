@@ -13,6 +13,7 @@ interface OrderStatusDistributionProps {
 const statusColorMap: Record<string, { dot: string; bg: string; text: string }> = {
   pending: { dot: 'bg-[#F59E0B]', bg: 'bg-[#F59E0B]/10', text: 'text-[#D97706]' },
   completed: { dot: 'bg-[#22C55E]', bg: 'bg-[#22C55E]/10', text: 'text-[#15803D]' },
+  delivered: { dot: 'bg-[#22C55E]', bg: 'bg-[#22C55E]/10', text: 'text-[#15803D]' },
   processing: { dot: 'bg-[#3B82F6]', bg: 'bg-[#3B82F6]/10', text: 'text-[#2563EB]' },
   shipped: { dot: 'bg-[#16281D]', bg: 'bg-[#16281D]/10', text: 'text-[#16281D]' },
   cancelled: { dot: 'bg-[#EF4444]', bg: 'bg-[#EF4444]/10', text: 'text-[#EF4444]' },
@@ -20,17 +21,17 @@ const statusColorMap: Record<string, { dot: string; bg: string; text: string }> 
 };
 
 export const OrderStatusDistribution: React.FC<OrderStatusDistributionProps> = ({
-  orderStatuses,
-  gateways,
-  upcomingAppointments,
-  completedOrders,
-  pendingOrders,
+  orderStatuses = [],
+  gateways = [],
+  upcomingAppointments = 0,
+  completedOrders = 0,
+  pendingOrders = 0,
 }) => {
   const labels = orderStatuses.map((d) =>
     d.status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
   );
   const colors = orderStatuses.map((d) => {
-    if (d.status === 'completed') return '#22C55E';
+    if (d.status === 'completed' || d.status === 'delivered') return '#22C55E';
     if (d.status === 'pending') return '#F59E0B';
     if (d.status === 'processing') return '#3B82F6';
     if (d.status === 'shipped') return '#16281D';
@@ -147,7 +148,7 @@ export const OrderStatusDistribution: React.FC<OrderStatusDistributionProps> = (
                 <span className="text-xs font-bold text-[#16281D]">{gw.name}</span>
               </div>
               <span className="font-mono text-xs font-extrabold text-[#16281D]">
-                ${gw.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                Rs. {gw.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
             </div>
           ))}

@@ -165,26 +165,26 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
-        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-modal-card">
+      <div className="fixed inset-0 z-[100] bg-[#16281D]/65 flex items-center justify-center p-2.5 sm:p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-[min(28rem,95vw)] sm:max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-modal-card">
           {/* Header */}
-          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center">
+          <div className="shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0 mr-2">
+              <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center shrink-0">
                 <TrendingUp size={16} />
               </div>
-              <div>
-                <h3 className="font-sans text-base font-bold text-[#16281D]">
+              <div className="min-w-0">
+                <h3 className="font-sans text-sm sm:text-base font-bold text-[#16281D] truncate">
                   {customerName ? `${customerName}'s Stage` : 'Lead Stage'}
                 </h3>
-                <p className="font-sans text-xs text-[#71717A]">
+                <p className="font-sans text-[11px] sm:text-xs text-[#71717A] truncate">
                   Update customer progression & status
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer"
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer shrink-0"
               aria-label="Close modal"
             >
               <X size={15} />
@@ -192,7 +192,7 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center py-10">
                 <div className="w-7 h-7 rounded-full border-2 border-[#16281D]/20 border-t-[#16281D] animate-spin" />
@@ -281,18 +281,18 @@ const LeadStageModal: React.FC<LeadStageModalProps> = ({
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="flex gap-2.5 pt-2">
+                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 h-10 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] font-sans text-xs font-bold text-[#52525B] transition-all cursor-pointer"
+                    className="w-full sm:flex-1 h-10 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] font-sans text-xs font-bold text-[#52525B] transition-all cursor-pointer flex items-center justify-center"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleStageUpdate}
                     disabled={submitDisabled}
-                    className="flex-1 h-10 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
+                    className="w-full sm:flex-1 h-10 px-4 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
                   >
                     {updating ? (
                       <span className="inline-block w-4 h-4 border-2 border-[#16281D]/20 border-t-[#16281D] rounded-full animate-spin" />

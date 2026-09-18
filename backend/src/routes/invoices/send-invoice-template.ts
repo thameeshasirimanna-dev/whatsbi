@@ -115,8 +115,8 @@ export default async function sendInvoiceTemplateRoutes(
       }
 
       const totalVal = parseFloat(total_amount) || 0;
-      const formatLkr = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const caption = `*Invoice ${order_number}* - ${agent.business_name || agent.name || 'Invoice'}\nTotal Amount: LKR ${formatLkr(totalVal)}\nOnce you make the advance or full payment at once, we start the work immediately. Our project manager will contact you soon for gathering requirements.`;
+      const formatRs = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const caption = `*Invoice ${order_number}* - ${agent.business_name || agent.name || 'Invoice'}\nTotal Amount: Rs. ${formatRs(totalVal)}\nOnce you make the advance or full payment at once, we start the work immediately. Our project manager will contact you soon for gathering requirements.`;
 
       const dispatched = await dispatchCustomerInvoicePdf({
         agent,

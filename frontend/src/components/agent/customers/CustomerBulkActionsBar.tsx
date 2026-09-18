@@ -1,5 +1,6 @@
 import React from "react";
 import { Send, Trash2, X } from "lucide-react";
+import { BulkProgressTracker, BulkProgress } from "../shared/BulkProgress";
 
 interface CustomerBulkActionsBarProps {
   selectedCount: number;
@@ -7,6 +8,7 @@ interface CustomerBulkActionsBarProps {
   onBulkDelete: () => void;
   onClearSelection: () => void;
   isProcessing?: boolean;
+  bulkProgress?: BulkProgress | null;
 }
 
 export const CustomerBulkActionsBar: React.FC<CustomerBulkActionsBarProps> = ({
@@ -15,8 +17,9 @@ export const CustomerBulkActionsBar: React.FC<CustomerBulkActionsBarProps> = ({
   onBulkDelete,
   onClearSelection,
   isProcessing = false,
+  bulkProgress,
 }) => {
-  if (selectedCount === 0) return null;
+  if (selectedCount === 0 && !bulkProgress) return null;
 
   return (
     <div
@@ -36,7 +39,11 @@ export const CustomerBulkActionsBar: React.FC<CustomerBulkActionsBarProps> = ({
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      {/* Left: Selected count */}
+      {bulkProgress ? (
+        <BulkProgressTracker progress={bulkProgress} />
+      ) : (
+        <>
+          {/* Left: Selected count */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span
           style={{
@@ -167,6 +174,8 @@ export const CustomerBulkActionsBar: React.FC<CustomerBulkActionsBarProps> = ({
           <X size={14} />
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 };

@@ -141,16 +141,16 @@ const OrdersTab: React.FC<OrdersTabProps> = ({
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="font-sans text-xs text-[#71717A] font-medium">Total:</span>
                     <span className="font-mono text-sm font-bold text-[#16281D]">
-                      LKR {totalAmount.toFixed(2)}
+                      Rs. {totalAmount.toFixed(2)}
                     </span>
                     {advanceAmount > 0 && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
-                        Adv: LKR {advanceAmount.toFixed(2)}
+                        Adv: Rs. {advanceAmount.toFixed(2)}
                       </span>
                     )}
                     {balanceAmount > 0 && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-[#FFF1F2] text-[#E11D48] border border-[#FECDD3]">
-                        Bal: LKR {balanceAmount.toFixed(2)}
+                        Bal: Rs. {balanceAmount.toFixed(2)}
                       </span>
                     )}
                   </div>

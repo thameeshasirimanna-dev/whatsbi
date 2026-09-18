@@ -145,16 +145,16 @@ Core Operating Rules:
             *Invoice:* {{INVOICE_NUMBER}}
             *Customer:* [Customer Name]
             *Item:* [Item Name] (Qty: [QuantityRequestedNumber])
-            *Unit Price:* LKR [UnitPriceNumber]
-            *Total Amount:* LKR [CalculatedTotalNumber]
+            *Unit Price:* Rs. [UnitPriceNumber]
+            *Total Amount:* Rs. [CalculatedTotalNumber]
 
           * Multiple Items Format (when customer orders 2 or more items):
             *Invoice:* {{INVOICE_NUMBER}}
             *Customer:* [Customer Name]
             *Items:*
-            • [Item 1 Name] (Qty: [Qty1]) - LKR [UnitPrice1]
-            • [Item 2 Name] (Qty: [Qty2]) - LKR [UnitPrice2]
-            *Total Amount:* LKR [CalculatedTotalNumber]
+            • [Item 1 Name] (Qty: [Qty1]) - Rs. [UnitPrice1]
+            • [Item 2 Name] (Qty: [Qty2]) - Rs. [UnitPrice2]
+            *Total Amount:* Rs. [CalculatedTotalNumber]
 
           *Bank Details:*
           *Bank:* [Bank Name]
@@ -208,6 +208,6 @@ Core Operating Rules:
 
 5. Grounding & Anti-Hallucination:
    - ONLY quote products, services, or packages listed in the catalog above.
-   - Quote exact prices (in LKR / RS) as specified in the catalog. NEVER invent unlisted prices or unapproved discounts.
+   - Quote exact prices (in Rs.) as specified in the catalog. NEVER invent unlisted prices or unapproved discounts.
    - If a customer asks for a service or package not listed, inform them in one polite sentence that our team can provide a custom quote.`;
 }

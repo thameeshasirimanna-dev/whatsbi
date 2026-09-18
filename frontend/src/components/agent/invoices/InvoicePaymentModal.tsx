@@ -57,31 +57,14 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
         }}
       >
         <div
+          className="bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-[min(480px,95vw)] sm:max-w-[480px] max-h-[90vh] flex flex-col overflow-hidden"
           style={{
-            background: "#fff",
-            borderRadius: 24,
-            border: "1px solid #EAEAEA",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.14)",
-            width: "100%",
-            maxWidth: "min(480px, 90vw)",
-            maxHeight: "90vh",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
         >
           {/* Modal Header */}
-          <div
-            style={{
-              padding: "18px 24px",
-              borderBottom: "1px solid #EAEAEA",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div
                 style={{
                   width: 32,
@@ -95,15 +78,8 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
               >
                 <CheckCircle2 size={16} style={{ color: "#16281D" }} />
               </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: "#16281D",
-                    display: "block",
-                  }}
-                >
+              <div className="min-w-0">
+                <span className="text-sm sm:text-base font-bold text-[#16281D] block truncate">
                   Mark Paid & Create Order
                 </span>
               </div>
@@ -111,34 +87,14 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
             <button
               onClick={onClose}
               disabled={creatingOrderFromInv}
-              style={{
-                width: 32,
-                height: 32,
-                background: "#F4F7F4",
-                border: "1px solid #EAEAEA",
-                borderRadius: 9999,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#71717a",
-                transition: "all 0.15s",
-              }}
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] border border-[#EAEAEA] flex items-center justify-center text-gray-500 hover:text-gray-800 transition-all flex-shrink-0"
             >
               <X size={14} />
             </button>
           </div>
 
           {/* Modal Form Body */}
-          <div
-            style={{
-              padding: 24,
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
+          <div className="p-4 sm:p-6 overflow-y-auto flex flex-col gap-4">
             <div
               style={{
                 background: "#F4F7F4",
@@ -201,7 +157,7 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                     color: "#16281D",
                   }}
                 >
-                  LKR {invoiceTotal.toFixed(2)}
+                  Rs. {invoiceTotal.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -216,7 +172,7 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                   marginBottom: 6,
                 }}
               >
-                Confirmed Paid / Advance Amount (LKR)
+                Confirmed Paid / Advance Amount (Rs.)
               </label>
               <input
                 type="number"
@@ -335,49 +291,22 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
           </div>
 
           {/* Modal Footer */}
-          <div
-            style={{
-              padding: "16px 24px",
-              borderTop: "1px solid #EAEAEA",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              background: "#fff",
-            }}
-          >
+          <div className="p-3 sm:px-6 sm:py-4 border-t border-[#EAEAEA] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white">
             <button
               type="button"
               onClick={onQuickConfirm}
               disabled={creatingOrderFromInv}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#71717a",
-                fontSize: 12,
-                textDecoration: "underline",
-                cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-              }}
+              className="text-center sm:text-left text-xs text-gray-500 underline py-1 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Quick Confirm (Auto-create Order)
             </button>
 
-            <div style={{ display: "flex", gap: 10 }}>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-2.5">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={creatingOrderFromInv}
-                style={{
-                  padding: "9px 20px",
-                  background: "#F4F7F4",
-                  color: "#16281D",
-                  border: "1px solid #EAEAEA",
-                  borderRadius: 9999,
-                  cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  transition: "all 0.15s",
-                }}
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#F4F7F4] text-[#16281D] border border-[#EAEAEA] rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed min-h-[38px]"
               >
                 Cancel
               </button>
@@ -385,23 +314,7 @@ export const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({
                 type="button"
                 onClick={onConfirmAndCreateOrder}
                 disabled={creatingOrderFromInv}
-                style={{
-                  padding: "9px 22px",
-                  background: creatingOrderFromInv
-                    ? "rgba(159,232,112,0.5)"
-                    : "#9FE870",
-                  color: "#16281D",
-                  border: "none",
-                  borderRadius: 9999,
-                  cursor: creatingOrderFromInv ? "not-allowed" : "pointer",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  boxShadow: "0 2px 10px rgba(159,232,112,0.3)",
-                  transition: "all 0.15s",
-                }}
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#9FE870] hover:bg-[#8ee05b] text-[#16281D] rounded-full text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shadow-[0_2px_10px_rgba(159,232,112,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[38px]"
               >
                 <CheckCircle2 size={15} />
                 {creatingOrderFromInv ? "Creating Order…" : "Confirm & Create Order"}

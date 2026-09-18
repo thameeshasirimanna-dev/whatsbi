@@ -83,4 +83,6 @@ export function useTableSelection<T extends string | number = number>(
   };
 }
 
+export type TableSelection<T = number> = UseTableSelectionReturn<T>;
+
 export default useTableSelection;

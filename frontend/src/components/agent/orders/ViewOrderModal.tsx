@@ -196,10 +196,10 @@ Status: ${fullOrderDetails.status}
 
 Items:
 ${fullOrderDetails.parsed_order_details?.items?.map((item: OrderItem) =>
-  `${item.name} - Qty: ${item.quantity} x LKR ${item.price.toFixed(2)} = LKR ${item.total.toFixed(2)}`
+  `${item.name} - Qty: ${item.quantity} x Rs. ${item.price.toFixed(2)} = Rs. ${item.total.toFixed(2)}`
 ).join('\n') || 'No items'}
 
-Total: LKR ${fullOrderDetails.total_amount?.toFixed(2) || '0.00'}
+Total: Rs. ${fullOrderDetails.total_amount?.toFixed(2) || '0.00'}
 
 ${fullOrderDetails.notes ? `Notes: ${fullOrderDetails.notes}` : ''}
 
@@ -374,7 +374,7 @@ Thank you!`;
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16 }}>
+          <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
 
             {/* Left column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -397,7 +397,7 @@ Thank you!`;
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 11, color: '#71717a' }}>Date</span>
                     <span style={{ fontSize: 11, color: '#16281D' }}>
-                      {new Date(fullOrderDetails.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                       {new Date(fullOrderDetails.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                   </div>
                   {fullOrderDetails.estimated_delivery_date && (
@@ -440,17 +440,20 @@ Thank you!`;
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
               {/* Summary stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {[
-                  { label: 'Total Amount', value: `LKR ${Number(fullOrderDetails.total_amount || 0).toLocaleString()}` },
-                  { label: fullOrderDetails.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid', value: `LKR ${Number(fullOrderDetails.advance_amount || 0).toLocaleString()}` },
-                  { label: 'Balance Due', value: `LKR ${Math.max(0, Number(fullOrderDetails.total_amount || 0) - Number(fullOrderDetails.advance_amount || 0)).toLocaleString()}` },
+                  { label: 'Total Amount', value: `Rs. ${Number(fullOrderDetails.total_amount || 0).toLocaleString()}` },
+                  { label: fullOrderDetails.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid', value: `Rs. ${Number(fullOrderDetails.advance_amount || 0).toLocaleString()}` },
+                  { label: 'Balance Due', value: `Rs. ${Math.max(0, Number(fullOrderDetails.total_amount || 0) - Number(fullOrderDetails.advance_amount || 0)).toLocaleString()}` },
                   { label: 'Items', value: itemCount },
                   { label: 'Total Qty', value: totalQty },
                 ].map((stat) => (
-                  <div key={stat.label} style={{ background: '#fff', border: '1px solid #EAEAEA', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+                  <div
+                    key={stat.label}
+                    className="col-span-1 last:col-span-2 sm:last:col-span-1 bg-white border border-[#EAEAEA] rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-center min-w-0"
+                  >
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={stat.value.toString()}>{stat.value}</div>
-                    <div style={{ fontSize: 9, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
+                    <div style={{ fontSize: 9, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }} className="truncate">{stat.label}</div>
                   </div>
                 ))}
               </div>
@@ -472,14 +475,14 @@ Thank you!`;
                         >
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#16281D', marginBottom: 2 }}>{item.name}</div>
-                            <div style={{ fontSize: 11, color: '#71717a' }}>Qty: {item.quantity} × <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>LKR {item.price.toFixed(2)}</span></div>
+                            <div style={{ fontSize: 11, color: '#71717a' }}>Qty: {item.quantity} × <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Rs. {item.price.toFixed(2)}</span></div>
                           </div>
-                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D' }}>LKR {(item.quantity * item.price).toLocaleString()}</div>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D' }}>Rs. {(item.quantity * item.price).toLocaleString()}</div>
                         </div>
                       ))}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F4F7F4', borderTop: '1px solid #EAEAEA' }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: '#16281D' }}>Total</span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 800, color: '#16281D' }}>LKR {(fullOrderDetails.total_amount || 0).toLocaleString()}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 800, color: '#16281D' }}>Rs. {(fullOrderDetails.total_amount || 0).toLocaleString()}</span>
                       </div>
                     </>
                   )}
@@ -508,10 +511,10 @@ Thank you!`;
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-6 py-3.5 border-t border-[#EAEAEA] bg-white flex justify-end">
+        <div className="shrink-0 p-3 sm:px-6 sm:py-3.5 border-t border-[#EAEAEA] bg-white flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2 rounded-full bg-[#F4F7F4] border border-[#EAEAEA] hover:bg-[#EAEAEA] text-[#16281D] font-sans text-xs font-semibold transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-[#F4F7F4] border border-[#EAEAEA] hover:bg-[#EAEAEA] text-[#16281D] font-sans text-xs font-semibold transition-colors cursor-pointer text-center"
           >
             Close
           </button>

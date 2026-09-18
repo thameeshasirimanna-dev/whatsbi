@@ -33,7 +33,7 @@ export async function fetchCatalogContext({
           if (Array.isArray(s.packages) && s.packages.length > 0) {
             const pkgs = s.packages.map((p: any) => {
               const pkgDesc = p.description ? ` | Details: ${p.description.replace(/\n+/g, '; ')}` : '';
-              return `    * Package: ${p.package_name} | Price: ${p.currency || 'LKR'} ${p.price || 'N/A'}${pkgDesc}`;
+              return `    * Package: ${p.package_name} | Price: ${p.currency || 'Rs.'} ${p.price || 'N/A'}${pkgDesc}`;
             }).join('\n');
             text += '\n' + pkgs;
           }
@@ -57,7 +57,7 @@ export async function fetchCatalogContext({
 
         if (services.length > 0) {
           catalogContext = 'Services Offered:\n' + services.map((s: any) => {
-            const pkg = s.package_name ? ` (Tier: ${s.package_name}, Price: ${s.currency || 'LKR'} ${s.price || 'N/A'})` : '';
+            const pkg = s.package_name ? ` (Tier: ${s.package_name}, Price: ${s.currency || 'Rs.'} ${s.price || 'N/A'})` : '';
             let text = `- ${s.service_name}${pkg}: ${s.description || s.package_desc || 'Professional service'}`;
             const links = parseJsonUrls(s.service_links);
             if (links.length > 0) {
@@ -94,7 +94,7 @@ export async function fetchCatalogContext({
           const cat = p.category_name ? ` (Category: ${p.category_name})` : '';
           const stock = p.stock_status ? ` - Status: ${p.stock_status}` : '';
           const desc = p.description ? ` - ${p.description}` : '';
-          return `- ${p.name}${sku}${cat}: LKR ${p.price || '0.00'}${stock}${desc}`;
+          return `- ${p.name}${sku}${cat}: Rs. ${p.price || '0.00'}${stock}${desc}`;
         }).join('\n');
       }
     } catch (catalogErr) {

@@ -219,7 +219,7 @@ export function generateInvoicePdfBuffer(
   const lineSpacing = 6;
 
   const formatCurrency = (amt: number): string => {
-    return `LKR ${Number(amt || 0).toLocaleString('en-US', {
+    return `Rs. ${Number(amt || 0).toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
@@ -278,7 +278,7 @@ export function generateInvoicePdfBuffer(
     totalsY += 8;
 
     stream += leftText('Balance:', 120, totalsY, 10, true);
-    stream += rightText('LKR 0.00', 190, totalsY, 10, true, '0.05 0.60 0.25');
+    stream += rightText('Rs. 0.00', 190, totalsY, 10, true, '0.05 0.60 0.25');
     totalsY += 8;
   } else if (isPartial) {
     const paidAmount = advanceAmount > 0 ? advanceAmount : 0;

@@ -8,9 +8,9 @@ interface CRMActivitySectionProps {
 }
 
 export const CRMActivitySection: React.FC<CRMActivitySectionProps> = ({
-  leadStages,
-  monthlyMessages,
-  totalCustomers,
+  leadStages = [],
+  monthlyMessages = [],
+  totalCustomers = 0,
 }) => {
   // Funnel Chart
   const stageOrder = ['New Lead', 'Contacted', 'Follow-up Needed', 'Not Responding'];
@@ -49,13 +49,12 @@ export const CRMActivitySection: React.FC<CRMActivitySectionProps> = ({
   };
 
   // WhatsApp Inbound/Outbound Messages Chart
-  const recentMessages = monthlyMessages.slice(-12);
   const messageData = {
-    labels: recentMessages.map((d) => d.month),
+    labels: monthlyMessages.map((d) => d.month),
     datasets: [
       {
         label: 'Inbound',
-        data: recentMessages.map((d) => d.inbound),
+        data: monthlyMessages.map((d) => d.inbound),
         borderColor: '#16281D',
         backgroundColor: 'transparent',
         tension: 0.35,
@@ -66,7 +65,7 @@ export const CRMActivitySection: React.FC<CRMActivitySectionProps> = ({
       },
       {
         label: 'Outbound',
-        data: recentMessages.map((d) => d.outbound),
+        data: monthlyMessages.map((d) => d.outbound),
         borderColor: '#3B82F6',
         backgroundColor: 'transparent',
         tension: 0.35,

@@ -181,7 +181,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         service_id: editingService.id,
         package_name: "",
         price: 0,
-        currency: "USD",
+        currency: "Rs.",
         discount: undefined,
         description: "",
         is_active: true,
@@ -209,30 +209,30 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#16281D]/65 animate-modal-backdrop">
-        <div className="w-full max-w-xl bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_20px_50px_rgba(22,40,29,0.15)] overflow-hidden flex flex-col max-h-[90vh] animate-modal-card">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-[#16281D]/65 animate-modal-backdrop">
+        <div className="w-full max-w-[min(36rem,95vw)] sm:max-w-xl bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-[0_20px_50px_rgba(22,40,29,0.15)] overflow-hidden flex flex-col max-h-[90vh] animate-modal-card">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between shrink-0 bg-white">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#16281D]/5 flex items-center justify-center text-[#16281D]">
-                <Pencil size={18} />
+          <div className="px-4 py-3.5 sm:px-6 sm:py-5 border-b border-[#EAEAEA] flex items-center justify-between shrink-0 bg-white">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 mr-2">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#16281D]/5 flex items-center justify-center text-[#16281D] shrink-0">
+                <Pencil size={17} />
               </div>
-              <div>
-                <h3 className="font-sans text-base font-bold text-[#16281D]">Edit Service</h3>
-                <span className="text-xs text-[#71717A]">{editingService.service_name}</span>
+              <div className="min-w-0">
+                <h3 className="font-sans text-sm sm:text-base font-bold text-[#16281D] truncate">Edit Service</h3>
+                <span className="text-[11px] sm:text-xs text-[#71717A] truncate block">{editingService.service_name}</span>
               </div>
             </div>
             <button
               onClick={onClose}
               disabled={submitting}
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
               <X size={16} />
             </button>
           </div>
 
           {/* Form */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             <form id="edit-service-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#16281D] mb-1.5">Service Name *</label>
@@ -456,10 +456,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                         <div>
                           <input
                             type="text"
-                            placeholder="Currency (e.g. LKR, USD)"
+                            placeholder="Currency (e.g. Rs, LKR)"
                             value={pkg.currency}
-                            onChange={(e) => updatePackage(i, "currency", e.target.value.toUpperCase())}
-                            className="w-full h-9 px-3 bg-white border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all font-mono uppercase"
+                            onChange={(e) => updatePackage(i, "currency", e.target.value)}
+                            className="w-full h-9 px-3 bg-white border border-[#EAEAEA] rounded-xl text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all font-mono"
                           />
                         </div>
 
@@ -507,12 +507,12 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-[#EAEAEA] flex items-center justify-end gap-3 shrink-0 bg-white">
+          <div className="p-3 sm:px-6 sm:py-4 border-t border-[#EAEAEA] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 shrink-0 bg-white">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-5 py-2.5 rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full sm:w-auto px-5 py-2.5 min-h-[38px] rounded-full border border-[#EAEAEA] bg-white hover:bg-[#F4F7F4] text-xs font-semibold text-[#71717A] hover:text-[#16281D] transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
             >
               Cancel
             </button>
@@ -520,7 +520,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
               type="submit"
               form="edit-service-form"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none cursor-pointer border-0"
+              className="w-full sm:w-auto px-6 py-2.5 min-h-[38px] rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none cursor-pointer border-0"
             >
               {submitting ? "Updating…" : "Update Service"}
             </button>

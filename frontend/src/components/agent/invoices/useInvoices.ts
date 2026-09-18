@@ -5,6 +5,7 @@ import { createOrderFromInvoice } from "../../../lib/api";
 import { useDialog } from "../shared/DialogProvider";
 import { TimeRange, emptyTimeRange, matchesTimeRange } from "../shared/TimeRangeFilter";
 import { useTableSelection } from "../shared/useTableSelection";
+import { useBulkProgress } from "../shared/BulkProgress";
 import {
   InvoiceWithDetails,
   Customer,
@@ -75,7 +76,7 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
   });
 
   const [updating, setUpdating] = useState<number | null>(null);
-  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const { bulkProgress, isProcessing: isBulkProcessing, setBulkProgress } = useBulkProgress();
   const [invoiceTemplatePath, setInvoiceTemplatePath] = useState<string | null>(null);
   const [agentDetails, setAgentDetails] = useState<AgentDetails>({
     name: "",
@@ -558,13 +559,20 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
       return;
     }
 
-    setIsBulkProcessing(true);
+    const total = unpaid.length;
+    setBulkProgress({ actionLabel: "Marking invoices paid...", current: 0, total });
     try {
       const token = getToken();
       if (!token) throw new Error("User not authenticated");
 
       let successCount = 0;
-      for (const inv of unpaid) {
+      for (let i = 0; i < total; i++) {
+        const inv = unpaid[i];
+        setBulkProgress({
+          actionLabel: `Marking paid: #${inv.invoice_number || inv.id}...`,
+          current: i + 1,
+          total,
+        });
         const totalAmt = Number(inv.total_amount || inv.total || 0);
         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-invoices`, {
           method: "PUT",
@@ -588,7 +596,7 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
     } catch (err: any) {
       toast(err.message || "Failed to mark some invoices as paid", "error");
     } finally {
-      setIsBulkProcessing(false);
+      setBulkProgress(null);
     }
   };
 
@@ -605,13 +613,20 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
       return;
     }
 
-    setIsBulkProcessing(true);
+    const total = selection.selectedIds.length;
+    setBulkProgress({ actionLabel: "Deleting invoices...", current: 0, total });
     try {
       const token = getToken();
       if (!token) throw new Error("User not authenticated");
 
       let successCount = 0;
-      for (const id of selection.selectedIds) {
+      for (let i = 0; i < total; i++) {
+        const id = selection.selectedIds[i];
+        setBulkProgress({
+          actionLabel: `Deleting invoice #${id}...`,
+          current: i + 1,
+          total,
+        });
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/manage-invoices?id=${id}`,
           {
@@ -628,7 +643,7 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
     } catch (err: any) {
       toast(err.message || "Failed to delete some invoices", "error");
     } finally {
-      setIsBulkProcessing(false);
+      setBulkProgress(null);
     }
   };
 
@@ -636,19 +651,26 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
     const selected = invoices.filter((inv) => selection.selectedIds.includes(inv.id));
     if (selected.length === 0) return;
 
-    setIsBulkProcessing(true);
+    const total = selected.length;
+    setBulkProgress({ actionLabel: "Downloading invoice PDFs...", current: 0, total });
     try {
-      toast(`Downloading ${selected.length} invoice PDF${selected.length > 1 ? "s" : ""}…`, "info");
-      for (const inv of selected) {
+      toast(`Downloading ${total} invoice PDF${total > 1 ? "s" : ""}…`, "info");
+      for (let i = 0; i < total; i++) {
+        const inv = selected[i];
+        setBulkProgress({
+          actionLabel: `Downloading invoice #${inv.invoice_number || inv.id}...`,
+          current: i + 1,
+          total,
+        });
         await downloadPDF(inv);
         // Small delay between downloads to prevent browser throttle
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
-      toast(`Downloaded ${selected.length} invoices.`, "success");
+      toast(`Downloaded ${total} invoices.`, "success");
     } catch (err: any) {
       toast(err.message || "Error downloading PDFs", "error");
     } finally {
-      setIsBulkProcessing(false);
+      setBulkProgress(null);
     }
   };
 
@@ -681,6 +703,7 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
     handleRowsPerPageChange,
     updating,
     isBulkProcessing,
+    bulkProgress,
     isModalOpen,
     setIsModalOpen,
     fetchData,

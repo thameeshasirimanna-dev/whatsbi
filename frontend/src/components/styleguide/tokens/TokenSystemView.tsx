@@ -8,15 +8,17 @@ import {
   Maximize2,
   Sparkles,
   CalendarClock,
+  Search,
 } from 'lucide-react';
 import { ButtonsBadgesPanel } from './ButtonsBadgesPanel';
+import { SearchBarPanel } from './SearchBarPanel';
 import { FormsFeedbackPanel } from './FormsFeedbackPanel';
 import { DateTimePickerPanel } from './DateTimePickerPanel';
 import { ModalDrawerPreview } from './ModalDrawerPreview';
 import { MotionAnimationPanel } from './MotionAnimationPanel';
 
 export const TokenSystemView: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<'foundations' | 'buttons' | 'forms' | 'pickers' | 'modals' | 'motion'>('foundations');
+  const [activeSubTab, setActiveSubTab] = useState<'foundations' | 'buttons' | 'search' | 'forms' | 'pickers' | 'modals' | 'motion'>('foundations');
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
 
   const copyToClipboard = (hex: string) => {
@@ -109,6 +111,16 @@ export const TokenSystemView: React.FC = () => {
             <MousePointerClick size={13} strokeWidth={2.4} /> Buttons & Badges
           </button>
           <button
+            onClick={() => setActiveSubTab('search')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-0 ${
+              activeSubTab === 'search'
+                ? 'bg-[#16281D] text-white shadow-xs'
+                : 'text-[#52525B] hover:text-[#16281D] bg-transparent'
+            }`}
+          >
+            <Search size={13} strokeWidth={2.4} /> Search Bars
+          </button>
+          <button
             onClick={() => setActiveSubTab('forms')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-0 ${
               activeSubTab === 'forms'
@@ -153,6 +165,8 @@ export const TokenSystemView: React.FC = () => {
 
       {activeSubTab === 'buttons' ? (
         <ButtonsBadgesPanel />
+      ) : activeSubTab === 'search' ? (
+        <SearchBarPanel />
       ) : activeSubTab === 'forms' ? (
         <FormsFeedbackPanel />
       ) : activeSubTab === 'pickers' ? (

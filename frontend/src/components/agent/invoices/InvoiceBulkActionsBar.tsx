@@ -1,5 +1,6 @@
 import React from "react";
 import { CheckCircle2, Download, Trash2, X } from "lucide-react";
+import { BulkProgressTracker, BulkProgress } from "../shared/BulkProgress";
 
 interface InvoiceBulkActionsBarProps {
   selectedCount: number;
@@ -8,6 +9,7 @@ interface InvoiceBulkActionsBarProps {
   onBulkDelete: () => void;
   onClearSelection: () => void;
   isProcessing?: boolean;
+  bulkProgress?: BulkProgress | null;
 }
 
 export const InvoiceBulkActionsBar: React.FC<InvoiceBulkActionsBarProps> = ({
@@ -17,8 +19,9 @@ export const InvoiceBulkActionsBar: React.FC<InvoiceBulkActionsBarProps> = ({
   onBulkDelete,
   onClearSelection,
   isProcessing = false,
+  bulkProgress,
 }) => {
-  if (selectedCount === 0) return null;
+  if (selectedCount === 0 && !bulkProgress) return null;
 
   return (
     <div
@@ -38,7 +41,11 @@ export const InvoiceBulkActionsBar: React.FC<InvoiceBulkActionsBarProps> = ({
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      {/* Left: Selected count */}
+      {bulkProgress ? (
+        <BulkProgressTracker progress={bulkProgress} />
+      ) : (
+        <>
+          {/* Left: Selected count */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span
           style={{
@@ -153,6 +160,8 @@ export const InvoiceBulkActionsBar: React.FC<InvoiceBulkActionsBarProps> = ({
           <X size={14} />
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 };

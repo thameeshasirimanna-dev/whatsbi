@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Eye, RefreshCw, Trash2, Send, Search, Plus } from 'lucide-react';
 import type { Broadcast } from '../../../lib/api';
+import { EmptyTableState } from '../shared/EmptyTableState';
 
 interface BroadcastTableProps {
   broadcasts: Broadcast[];
@@ -49,33 +50,17 @@ const BroadcastTable: React.FC<BroadcastTableProps> = ({
 }) => {
   if (broadcasts.length === 0) {
     return (
-      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] py-14 px-6 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-[#F4F7F4] flex items-center justify-center mx-auto mb-3.5 text-[#71717A]">
-          {hasActiveFilters ? <Search size={22} /> : <Send size={22} />}
-        </div>
-        <h4 className="text-sm font-bold text-[#16281D] mb-1">
-          {hasActiveFilters ? "No broadcast campaigns found" : "No broadcasts sent yet"}
-        </h4>
-        <p className="text-xs text-[#71717A] max-w-sm mx-auto mb-4">
-          {hasActiveFilters
-            ? "Try adjusting your search query or filter selections to find matching campaigns."
-            : "Launch your first WhatsApp broadcast campaign to engage your customer base."}
-        </p>
-        {hasActiveFilters ? (
-          <button
-            onClick={onClearFilters}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] text-xs font-semibold transition-colors"
-          >
-            Clear Filters
-          </button>
-        ) : (
-          <button
-            onClick={onCreateClick}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0"
-          >
-            <Plus size={14} /> Create Broadcast
-          </button>
-        )}
+      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] overflow-hidden">
+        <EmptyTableState
+          isFiltered={hasActiveFilters}
+          filteredTitle="No broadcast campaigns found"
+          filteredMessage="Try adjusting your search query or filter selections to find matching campaigns."
+          icon={Send}
+          title="No broadcasts sent yet"
+          description="Launch your first WhatsApp broadcast campaign to engage your customer base."
+          actionLabel="Create Broadcast"
+          onAction={onCreateClick}
+        />
       </div>
     );
   }
@@ -131,25 +116,25 @@ const BroadcastTable: React.FC<BroadcastTableProps> = ({
                     <button
                       onClick={() => onResendFailed(b)}
                       title="Resend Failed Messages"
-                      className="w-7 h-7 rounded-full bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-full bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 flex items-center justify-center transition-colors"
                     >
-                      <RefreshCw size={12} />
+                      <RefreshCw size={13} />
                     </button>
                   )}
                   <button
                     onClick={() => onViewDetails(b)}
                     title="View Details"
-                    className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#0891B2]/15 text-[#71717A] hover:text-[#0891B2] flex items-center justify-center transition-colors"
+                    className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#0891B2]/15 text-[#71717A] hover:text-[#0891B2] flex items-center justify-center transition-colors"
                   >
-                    <Eye size={13} />
+                    <Eye size={14} />
                   </button>
                   {b.status !== 'processing' && (
                     <button
                       onClick={() => onDelete(b)}
                       title="Delete Campaign"
-                      className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#EF4444]/15 text-[#71717A] hover:text-[#EF4444] flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EF4444]/15 text-[#71717A] hover:text-[#EF4444] flex items-center justify-center transition-colors"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </div>

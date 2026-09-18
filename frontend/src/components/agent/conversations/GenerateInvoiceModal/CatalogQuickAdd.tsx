@@ -34,7 +34,7 @@ export const CatalogQuickAdd: React.FC<CatalogQuickAddProps> = ({
             <Plus size={11} strokeWidth={2.4} />
             <span className="truncate max-w-[140px]">{q.name}</span>
             <span className="font-mono text-[11px] font-bold text-[#15803D]">
-              LKR {q.price.toFixed(0)}
+              Rs. {q.price.toFixed(0)}
             </span>
           </button>
         ))}

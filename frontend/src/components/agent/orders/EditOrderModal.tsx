@@ -506,8 +506,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
                 {items.map((item, index) => (
-                  <div key={index} style={itemRowStyle}>
-                    <div style={{ flex: 1 }}>
+                  <div key={index} className="p-3 bg-[#F4F7F4] rounded-2xl border border-[#EAEAEA] flex flex-col sm:flex-row sm:items-center gap-2.5">
+                    <div className="w-full sm:flex-1">
                       <input
                         type="text"
                         value={item.name}
@@ -519,50 +519,54 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
                         onBlur={onBlurG}
                       />
                     </div>
-                    <div style={{ width: 68 }}>
-                      <input type="number" value={item.quantity} onChange={(e) => handleItemQuantityChange(index, parseInt(e.target.value) || 1)} min="1" placeholder="Qty" style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="flex-1 sm:w-[68px]">
+                        <input type="number" value={item.quantity} onChange={(e) => handleItemQuantityChange(index, parseInt(e.target.value) || 1)} min="1" placeholder="Qty" style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                      </div>
+                      <div className="flex-1 sm:w-[88px]">
+                        <input
+                          type="number"
+                          value={item.price}
+                          onChange={(e) => businessType === 'service' ? handleItemPriceChange(index, parseFloat(e.target.value) || 0) : undefined}
+                          min="0" step="0.01" placeholder="Price"
+                          readOnly={businessType === 'product'}
+                          style={{ ...inputStyle, textAlign: 'right', background: businessType === 'product' ? '#EAEAEA' : '#FFFFFF', cursor: businessType === 'product' ? 'not-allowed' : 'text', color: businessType === 'product' ? '#71717A' : '#16281D', ...MONO }}
+                          onFocus={onFocusG}
+                          onBlur={onBlurG}
+                        />
+                      </div>
+                      <div className="min-w-[70px] sm:w-[96px] font-mono text-xs sm:text-[13px] font-semibold text-[#16281D] text-right shrink-0">
+                        Rs. {(item.quantity * item.price).toFixed(2)}
+                      </div>
+                      <button onClick={() => removeItem(index)} className="w-8 h-8 rounded-full bg-[#FEE2E2] hover:bg-[#FECACA] flex items-center justify-center text-[#EF4444] shrink-0 border-0 cursor-pointer">
+                        <Trash2 size={13} />
+                      </button>
                     </div>
-                    <div style={{ width: 88 }}>
-                      <input
-                        type="number"
-                        value={item.price}
-                        onChange={(e) => businessType === 'service' ? handleItemPriceChange(index, parseFloat(e.target.value) || 0) : undefined}
-                        min="0" step="0.01" placeholder="Price"
-                        readOnly={businessType === 'product'}
-                        style={{ ...inputStyle, textAlign: 'right', background: businessType === 'product' ? '#EAEAEA' : '#FFFFFF', cursor: businessType === 'product' ? 'not-allowed' : 'text', color: businessType === 'product' ? '#71717A' : '#16281D', ...MONO }}
-                        onFocus={onFocusG}
-                        onBlur={onBlurG}
-                      />
-                    </div>
-                    <div style={{ width: 96, ...MONO, fontSize: 13, fontWeight: 600, color: '#16281D', textAlign: 'right', flexShrink: 0 }}>
-                      LKR {(item.quantity * item.price).toFixed(2)}
-                    </div>
-                    <button onClick={() => removeItem(index)} style={{ width: 28, height: 28, background: '#FEE2E2', border: 'none', borderRadius: 9999, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', flexShrink: 0 }}>
-                      <Trash2 size={13} />
-                    </button>
                   </div>
                 ))}
               </div>
 
               {/* Add item / Inventory picker */}
               {businessType === 'service' ? (
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '12px 14px', background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 14 }}>
-                  <div style={{ flex: 1 }}>
+                <div className="p-3 sm:p-3.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-2xl flex flex-col sm:flex-row sm:items-end gap-2.5">
+                  <div className="w-full sm:flex-1">
                     <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="New item name" style={{ ...inputStyle, background: '#FFFFFF' }} onFocus={onFocusG} onBlur={onBlurG} />
                   </div>
-                  <div style={{ width: 68 }}>
-                    <input type="number" value={newItemQuantity} onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)} min="1" placeholder="Qty" style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex-1 sm:w-[68px]">
+                      <input type="number" value={newItemQuantity} onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)} min="1" placeholder="Qty" style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                    </div>
+                    <div className="flex-1 sm:w-[88px]">
+                      <input type="number" value={newItemPrice} onChange={(e) => setNewItemPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" placeholder="Price" style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'right', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                    </div>
+                    <button
+                      onClick={addItem}
+                      disabled={!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0}
+                      className="px-4 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_2px_8px_rgba(159,232,112,0.35)] disabled:bg-[#EAEAEA] disabled:text-[#A1A1AA] disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shrink-0 border-0 cursor-pointer"
+                    >
+                      <Plus size={14} /> Add
+                    </button>
                   </div>
-                  <div style={{ width: 88 }}>
-                    <input type="number" value={newItemPrice} onChange={(e) => setNewItemPrice(parseFloat(e.target.value) || 0)} min="0" step="0.01" placeholder="Price" style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'right', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
-                  </div>
-                  <button
-                    onClick={addItem}
-                    disabled={!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0) ? '#EAEAEA' : '#9FE870', color: '#16281D', border: 'none', borderRadius: 9999, cursor: (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0) ? 'not-allowed' : 'pointer', ...PJS, fontSize: 13, fontWeight: 700, flexShrink: 0, boxShadow: (!newItemName.trim() || newItemQuantity <= 0 || newItemPrice <= 0) ? 'none' : '0 2px 8px rgba(159,232,112,0.35)' }}
-                  >
-                    <Plus size={14} /> Add
-                  </button>
                 </div>
               ) : businessType === 'product' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -585,7 +589,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
                             )}
                             <div style={{ minWidth: 0 }}>
                               <div style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#16281D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invItem.name}</div>
-                              <div style={{ ...MONO, fontSize: 11, color: '#71717A' }}>LKR {invItem.price.toFixed(2)}</div>
+                              <div style={{ ...MONO, fontSize: 11, color: '#71717A' }}>Rs. {invItem.price.toFixed(2)}</div>
                             </div>
                           </div>
                           <button type="button" onClick={() => addFromInventory(invItem, defaultAddQuantity)} style={{ flexShrink: 0, marginLeft: 8, padding: '4px 12px', background: 'rgba(159,232,112,0.2)', color: '#16281D', border: '1px solid #9FE870', borderRadius: 9999, cursor: 'pointer', ...PJS, fontSize: 12, fontWeight: 700 }}>
@@ -628,9 +632,9 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
             </div>
 
             {/* Advance Payment and Payment Status */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Advance Payment (LKR)</label>
+                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Advance Payment (Rs.)</label>
                 <input
                   type="number"
                   min="0"
@@ -680,11 +684,11 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#71717A' }}>Total Amount</span>
-                <span style={{ ...MONO, fontSize: 15, fontWeight: 700, color: '#16281D' }}>LKR {totalAmount.toFixed(2)}</span>
+                <span style={{ ...MONO, fontSize: 15, fontWeight: 700, color: '#16281D' }}>Rs. {totalAmount.toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #EAEAEA', paddingTop: 8 }}>
                 <span style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#71717A' }}>Balance Due</span>
-                <span style={{ ...MONO, fontSize: 18, fontWeight: 700, color: '#16281D' }}>LKR {Math.max(0, totalAmount - advanceAmount).toFixed(2)}</span>
+                <span style={{ ...MONO, fontSize: 18, fontWeight: 700, color: '#16281D' }}>Rs. {Math.max(0, totalAmount - advanceAmount).toFixed(2)}</span>
               </div>
             </div>
           </div>

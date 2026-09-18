@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getToken } from '../../../lib/auth';
 import { useDialog } from '../shared/DialogProvider';
 import { useTableSelection } from '../shared/useTableSelection';
+import { useBulkProgress } from '../shared/BulkProgress';
 import { TimeRange, emptyTimeRange, matchesTimeRange } from '../shared/TimeRangeFilter';
 import {
   Customer, ProfileImage, Metrics,
@@ -408,7 +409,7 @@ export function useCustomers() {
   const paginatedCustomers = sortedCustomers.slice(startIndex, endIndex);
 
   const selection = useTableSelection<number>([]);
-  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const { bulkProgress, isProcessing: isBulkProcessing, setBulkProgress } = useBulkProgress();
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
   const pageIds = paginatedCustomers.map((c) => c.id);
@@ -432,7 +433,8 @@ export function useCustomers() {
     )
       return;
 
-    setIsBulkProcessing(true);
+    const total = selection.selectedIds.length;
+    setBulkProgress({ actionLabel: "Deleting customers...", current: 0, total });
     try {
       const token = getToken();
       if (!token) {
@@ -440,7 +442,13 @@ export function useCustomers() {
         return;
       }
       let successCount = 0;
-      for (const id of selection.selectedIds) {
+      for (let i = 0; i < total; i++) {
+        const id = selection.selectedIds[i];
+        setBulkProgress({
+          actionLabel: `Deleting customer #${id}...`,
+          current: i + 1,
+          total,
+        });
         const res = await fetch(`${backendUrl}/manage-customers?id=${id}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -456,7 +464,7 @@ export function useCustomers() {
     } catch (err: any) {
       toast(`Bulk delete failed: ${err.message || "Unknown error"}`, "error");
     } finally {
-      setIsBulkProcessing(false);
+      setBulkProgress(null);
     }
   };
 
@@ -502,6 +510,7 @@ export function useCustomers() {
     metrics,
     selection,
     isBulkProcessing,
+    bulkProgress,
     selectAllCheckboxRef,
     isAllPageSelected,
     pageIds,

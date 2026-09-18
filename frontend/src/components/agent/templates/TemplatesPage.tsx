@@ -6,6 +6,7 @@ import ViewTemplateModal from "./ViewTemplateModal";
 import CreateTemplateModal from "./CreateTemplateModal";
 import { useDialog } from "../shared/DialogProvider";
 import { SkeletonPage } from "../shared/Skeleton";
+import { EmptyTableState } from "../shared/EmptyTableState";
 
 const getUser = async () => {
   try {
@@ -235,7 +236,7 @@ const TemplatesPage: React.FC = () => {
   return (
     <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
         {[
           {
             label: "Total Templates",
@@ -258,21 +259,21 @@ const TemplatesPage: React.FC = () => {
             iconColor: "text-[#D97706]",
             bgColor: "bg-[#F59E0B]/10",
           },
-        ].map((card, idx) => {
+        ].map((card) => {
           const Icon = card.icon;
           return (
             <div
               key={card.label}
-              className="bg-white rounded-[20px] p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between"
+              className="bg-white rounded-[18px] sm:rounded-[20px] p-3.5 sm:p-5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between col-span-1 last:col-span-2 sm:last:col-span-1 min-w-0"
             >
-              <div>
-                <p className="text-xs font-medium text-[#71717A]">{card.label}</p>
-                <h3 className="font-mono text-2xl font-extrabold text-[#16281D] mt-1 tracking-tight">
+              <div className="min-w-0 flex-1 mr-2">
+                <p className="text-[11px] sm:text-xs font-medium text-[#71717A] truncate">{card.label}</p>
+                <h3 className="font-mono text-xl sm:text-2xl font-extrabold text-[#16281D] mt-0.5 sm:mt-1 tracking-tight truncate">
                   {card.value}
                 </h3>
               </div>
-              <div className={`w-11 h-11 rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
-                <Icon size={20} />
+              <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
+                <Icon size={18} className="sm:w-5 sm:h-5" />
               </div>
             </div>
           );
@@ -280,22 +281,22 @@ const TemplatesPage: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-[20px] p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex items-center justify-between gap-3">
+      <div className="bg-white rounded-[20px] p-3 sm:p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#16281D]">
-          <FileText size={16} className="text-[#16281D]" />
-          <span>Meta WhatsApp Message Templates</span>
+          <FileText size={16} className="text-[#16281D] shrink-0" />
+          <span className="truncate">Meta WhatsApp Message Templates</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between">
           <button
             onClick={() => fetchTemplates(true)}
-            className="px-3.5 py-2 h-9 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="flex-1 sm:flex-initial justify-center px-3.5 py-2 h-9 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-[#EAEAEA]"
           >
             <RefreshCw size={13} /> Refresh
           </button>
           <button
             onClick={() => { setEditingTemplate(null); setShowCreateModal(true); }}
-            className="px-4 py-2 h-9 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5"
+            className="flex-1 sm:flex-initial justify-center px-4 py-2 h-9 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] transition-all hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center gap-1.5 cursor-pointer border-0"
           >
             <Plus size={14} /> Create Template
           </button>
@@ -313,31 +314,22 @@ const TemplatesPage: React.FC = () => {
         className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] overflow-hidden"
       >
         {!config ? (
-          <div className="py-14 px-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#F4F7F4] flex items-center justify-center mx-auto mb-3.5 text-[#71717A]">
-              <FileText size={22} />
-            </div>
-            <h4 className="text-sm font-bold text-[#16281D] mb-1">No WhatsApp Configuration Found</h4>
-            <p className="text-xs text-[#71717A] max-w-sm mx-auto">
-              Please connect your Meta WhatsApp Business API credentials in Agent Settings first.
-            </p>
-          </div>
+          <EmptyTableState
+            icon={FileText}
+            title="No WhatsApp Configuration Found"
+            description="Please connect your Meta WhatsApp Business API credentials in Agent Settings first."
+          />
         ) : templates.length === 0 ? (
-          <div className="py-14 px-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#F4F7F4] flex items-center justify-center mx-auto mb-3.5 text-[#71717A]">
-              <FileText size={22} />
-            </div>
-            <h4 className="text-sm font-bold text-[#16281D] mb-1">No Templates Found</h4>
-            <p className="text-xs text-[#71717A] max-w-sm mx-auto mb-4">
-              Create message templates for automated alerts, notifications, and broadcast marketing.
-            </p>
-            <button
-              onClick={() => { setEditingTemplate(null); setShowCreateModal(true); }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0"
-            >
-              <Plus size={14} /> Create Template
-            </button>
-          </div>
+          <EmptyTableState
+            icon={FileText}
+            title="No Templates Found"
+            description="Create message templates for automated alerts, notifications, and broadcast marketing."
+            actionLabel="Create Template"
+            onAction={() => {
+              setEditingTemplate(null);
+              setShowCreateModal(true);
+            }}
+          />
         ) : (
           <>
             {/* Mobile Cards */}
@@ -381,25 +373,25 @@ const TemplatesPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#F4F7F4]">
+                    <div className="flex items-center gap-2 pt-2 border-t border-[#F4F7F4]">
                       <button
                         onClick={() => handleViewTemplate(template)}
-                        className="px-3 py-1.5 rounded-full bg-[#0891B2]/10 text-[#0891B2] hover:bg-[#0891B2]/20 text-xs font-semibold flex items-center gap-1"
+                        className="flex-1 py-1.5 min-h-[34px] rounded-full bg-[#0891B2]/10 text-[#0891B2] hover:bg-[#0891B2]/20 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
                       >
-                        <Eye size={12} /> View
+                        <Eye size={13} /> View
                       </button>
                       <button
                         onClick={() => handleEditTemplate(template.id)}
-                        className="px-3 py-1.5 rounded-full bg-[#22C55E]/10 text-[#15803D] hover:bg-[#22C55E]/20 text-xs font-semibold flex items-center gap-1"
+                        className="flex-1 py-1.5 min-h-[34px] rounded-full bg-[#22C55E]/10 text-[#15803D] hover:bg-[#22C55E]/20 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
                       >
-                        <Pencil size={12} /> Edit
+                        <Pencil size={13} /> Edit
                       </button>
                       {template.name !== "hello_world" && (
                         <button
                           onClick={() => handleDeleteTemplate(template.id)}
-                          className="px-3 py-1.5 rounded-full bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 text-xs font-semibold flex items-center gap-1"
+                          className="flex-1 py-1.5 min-h-[34px] rounded-full bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
                         >
-                          <Trash2 size={12} /> Delete
+                          <Trash2 size={13} /> Delete
                         </button>
                       )}
                     </div>

@@ -163,7 +163,7 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
 
             <div>
               <label className="block text-xs font-semibold text-[#16281D] mb-1.5 font-sans">
-                Advance Amount Required (LKR)
+                Advance Amount Required (Rs.)
               </label>
               <input
                 type="number"

@@ -264,9 +264,9 @@ export const generateInvoicePDF = async (
     );
     const itemY = yPosition + ((maxDescLines - 1) * lineSpacing) / 2;
     doc.text(item.quantity.toString(), colPositions.qty + 5, itemY);
-    doc.text(`LKR ${item.price.toFixed(2)}`, colPositions.price, itemY);
+    doc.text(`Rs. ${item.price.toFixed(2)}`, colPositions.price, itemY);
     doc.text(
-      `LKR ${(item.total || item.quantity * item.price).toFixed(2)}`,
+      `Rs. ${(item.total || item.quantity * item.price).toFixed(2)}`,
       190,
       itemY,
       { align: "right" }
@@ -294,7 +294,7 @@ export const generateInvoicePDF = async (
   doc.setFont("Poppins", "normal");
   doc.setFontSize(9);
   doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
-  doc.text(`-LKR ${discountAmount.toFixed(2)}`, 190, totalsY, {
+  doc.text(`-Rs. ${discountAmount.toFixed(2)}`, 190, totalsY, {
     align: "right",
   });
   totalsY += 8;
@@ -302,7 +302,7 @@ export const generateInvoicePDF = async (
   doc.setFont("Poppins", "bold");
   doc.setFontSize(10);
   doc.text("Total Amount:", 120, totalsY);
-  doc.text(`LKR ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
+  doc.text(`Rs. ${total.toFixed(2)}`, 190, totalsY, { align: "right" });
   totalsY += 8;
 
   // Advance Amount/Paid
@@ -311,7 +311,7 @@ export const generateInvoicePDF = async (
   doc.setFontSize(9);
   const advanceLabel = orderData.payment_status === "unpaid" ? "Advance Amount:" : "Advance Paid:";
   doc.text(advanceLabel, 120, totalsY);
-  doc.text(`LKR ${advancePaid.toFixed(2)}`, 190, totalsY, { align: "right" });
+  doc.text(`Rs. ${advancePaid.toFixed(2)}`, 190, totalsY, { align: "right" });
   totalsY += 8;
 
   // Balance Due
@@ -319,7 +319,7 @@ export const generateInvoicePDF = async (
   doc.setFont("Poppins", "bold");
   doc.setFontSize(10);
   doc.text("Balance Due:", 120, totalsY);
-  doc.text(`LKR ${balanceDue.toFixed(2)}`, 190, totalsY, { align: "right" });
+  doc.text(`Rs. ${balanceDue.toFixed(2)}`, 190, totalsY, { align: "right" });
 
   yPosition = totalsY + 12;
 

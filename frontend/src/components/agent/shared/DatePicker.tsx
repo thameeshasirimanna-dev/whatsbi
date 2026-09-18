@@ -1,5 +1,15 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useId } from 'react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, ChevronDown } from 'lucide-react';
+import Portal from './Portal';
+
+interface DatePickerCoords {
+  top?: number;
+  bottom?: number;
+  left: number;
+  maxWidth: number;
+  maxHeight: number;
+  openAbove: boolean;
+}
 
 export interface DatePickerProps {
   value?: string | null; // ISO string 'YYYY-MM-DD' or null
@@ -76,6 +86,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const generatedId = useId();
   const datePickerId = id || generatedId;
 
@@ -86,6 +97,67 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const initialDate = selectedDateObj || new Date();
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
+
+  // Dynamic coordinates calculated synchronously before mount
+  const [coords, setCoords] = useState<DatePickerCoords | null>(null);
+
+  const calculatePosition = useCallback((): DatePickerCoords | null => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return null;
+
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setIsOpen(false);
+      return null;
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const calendarWidth = Math.min(300, viewportWidth - 24);
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const estimatedCalendarHeight = 350;
+    const openAbove = spaceBelow < estimatedCalendarHeight && spaceAbove > spaceBelow;
+
+    const idealLeft = align === 'right' ? rect.right - calendarWidth : rect.left;
+    const left = Math.max(12, Math.min(idealLeft, viewportWidth - calendarWidth - 12));
+
+    if (openAbove) {
+      return {
+        bottom: viewportHeight - rect.top + 6,
+        left,
+        maxWidth: calendarWidth,
+        maxHeight: Math.max(200, Math.min(380, spaceAbove - 16)),
+        openAbove: true,
+      };
+    } else {
+      return {
+        top: rect.bottom + 6,
+        left,
+        maxWidth: calendarWidth,
+        maxHeight: Math.max(200, Math.min(380, spaceBelow - 16)),
+        openAbove: false,
+      };
+    }
+  }, [align]);
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      const newCoords = calculatePosition();
+      if (newCoords) setCoords(newCoords);
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const newCoords = calculatePosition();
+    if (newCoords) setCoords(newCoords);
+  }, [isOpen, calculatePosition]);
 
   // Update view when value changes from external prop
   useEffect(() => {
@@ -98,10 +170,34 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     }
   }, [value]);
 
+  // Position tracking on scroll (with capture for modal scroll containers) and resize
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleUpdate = () => {
+      const newCoords = calculatePosition();
+      if (newCoords) setCoords(newCoords);
+    };
+
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('resize', handleUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [isOpen, calculatePosition]);
+
   // Outside click and escape listeners
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -148,14 +244,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   // Variant classes for trigger
   const triggerVariantClasses = {
-    mint: 'bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D] border border-black/5',
+    mint: 'bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] border border-[#EAEAEA]',
     white: 'bg-white hover:bg-[#F4F7F4] text-[#16281D] border border-[#EAEAEA]',
     forest: 'bg-[#203628] hover:bg-[#274232] text-white border border-white/10',
   }[variant];
 
   const sizeClasses = {
-    sm: 'h-8 px-3 text-xs gap-1.5',
-    md: 'h-10 px-4 text-xs font-semibold gap-2',
+    sm: 'h-8 px-3 text-[11px] font-bold gap-1.5',
+    md: 'h-9 sm:h-10 px-3.5 sm:px-4 text-xs font-bold gap-2',
   }[size];
 
   const handleSelectDay = (day: number) => {
@@ -182,51 +278,80 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         id={datePickerId}
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        className={`w-full rounded-full transition-all flex items-center justify-between cursor-pointer shadow-xs active:scale-[0.98] outline-none disabled:opacity-50 disabled:pointer-events-none ${sizeClasses} ${triggerVariantClasses} ${
+        className={`w-full rounded-full transition-all flex items-center justify-between cursor-pointer shadow-xs active:scale-[0.98] outline-none disabled:opacity-50 disabled:pointer-events-none font-sans ${sizeClasses} ${triggerVariantClasses} ${
           isOpen ? 'ring-2 ring-[#9FE870]/40 border-[#9FE870]' : ''
         } ${triggerClassName}`}
       >
-        <div className="flex items-center gap-2 truncate">
+        <div className="flex items-center gap-1.5 sm:gap-2 truncate">
           <CalendarIcon
-            size={size === 'sm' ? 13 : 15}
-            className={isDark ? 'text-[#9FE870] shrink-0' : 'text-[#16281D] shrink-0'}
+            size={size === 'sm' ? 12 : 13}
+            className={
+              isDark
+                ? 'text-[#9FE870] shrink-0'
+                : value
+                ? 'text-[#15803D] shrink-0'
+                : 'text-[#71717A] shrink-0'
+            }
             strokeWidth={2.2}
           />
-          <span className={`truncate ${!value ? (isDark ? 'text-[#8FA89B]' : 'text-[#71717A]') : 'font-bold'}`}>
+          <span className={`truncate ${!value ? (isDark ? 'text-[#8FA89B]' : 'text-[#71717A]') : (isDark ? 'text-white font-bold' : 'text-[#16281D] font-bold')}`}>
             {value ? formatDisplayDate(value) : placeholder}
           </span>
         </div>
 
-        {value && !disabled && (
+        {value && !disabled ? (
           <span
             onClick={(e) => {
               e.stopPropagation();
               onChange(null);
             }}
-            className="w-4 h-4 rounded-full flex items-center justify-center text-[#71717A] hover:text-[#16281D] hover:bg-black/5 ml-1 transition-colors"
+            className="w-5 h-5 rounded-full flex items-center justify-center bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] ml-1 transition-colors shrink-0"
             title="Clear date"
           >
             <X size={11} strokeWidth={2.4} />
           </span>
+        ) : (
+          <ChevronDown
+            size={size === 'sm' ? 12 : 14}
+            className={`shrink-0 ml-1 transition-transform duration-200 ${
+              isOpen
+                ? `rotate-180 ${variant === 'forest' ? 'text-[#9FE870]' : 'text-[#16281D]'}`
+                : variant === 'forest'
+                ? 'text-[#8FA89B]'
+                : 'text-[#71717A]'
+            }`}
+          />
         )}
       </button>
 
-      {/* Calendar Popover */}
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-label="Calendar date picker"
-          className={`absolute top-[calc(100%+8px)] ${
-            align === 'right' ? 'right-0' : 'left-0'
-          } z-50 w-[300px] p-4 rounded-3xl transition-all shadow-[0_16px_48px_rgba(20,40,24,0.16)] animate-in fade-in zoom-in-95 duration-150 ${
-            isDark
-              ? 'bg-[#16281D] border border-white/10 text-white'
-              : 'bg-white border border-[#EAEAEA] text-[#16281D]'
-          } ${popoverClassName}`}
-        >
+      {/* Calendar Popover (Rendered via Portal on document.body for zero modal scroll) */}
+      {isOpen && coords && (
+        <Portal>
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-label="Calendar date picker"
+            style={{
+              position: 'fixed',
+              top: coords.top !== undefined ? `${coords.top}px` : undefined,
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
+              left: `${coords.left}px`,
+              width: `${coords.maxWidth}px`,
+              maxHeight: `${coords.maxHeight}px`,
+              zIndex: 99999,
+              transformOrigin: coords.openAbove ? 'bottom' : 'top',
+            }}
+            className={`p-3 sm:p-4 rounded-3xl transition-all shadow-[0_16px_48px_rgba(20,40,24,0.18)] ${
+              coords.openAbove ? 'animate-dropdown-up' : 'animate-dropdown'
+            } overflow-y-auto ${
+              isDark
+                ? 'bg-[#16281D] border border-white/10 text-white shadow-[0_16px_48px_rgba(0,0,0,0.5)]'
+                : 'bg-white border border-[#EAEAEA] text-[#16281D]'
+            } ${popoverClassName}`}
+          >
           {/* Month/Year Navigation Header */}
           <div className="flex items-center justify-between mb-3 px-1">
             <span className="font-bold text-sm">
@@ -367,8 +492,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             </button>
           </div>
         </div>
-      )}
-    </div>
+      </Portal>
+    )}
+  </div>
   );
 };
 

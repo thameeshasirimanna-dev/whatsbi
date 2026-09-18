@@ -7,6 +7,7 @@ export * from './dashboard/CampaignInspector';
 export * from './dashboard/ShowcaseDashboard';
 export * from './tokens/TokenSystemView';
 export * from './tokens/ButtonsBadgesPanel';
+export * from './tokens/SearchBarPanel';
 export * from './tokens/FormsFeedbackPanel';
 export * from './tokens/DateTimePickerPanel';
 export * from './tokens/ModalDrawerPreview';

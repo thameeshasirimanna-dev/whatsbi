@@ -55,16 +55,16 @@ export const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[110] bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop font-sans">
-        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-modal-card">
+      <div className="fixed inset-0 z-[110] bg-[#16281D]/65 flex items-center justify-center p-2.5 sm:p-4 animate-modal-backdrop font-sans">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-2xl w-full max-w-[min(28rem,95vw)] sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-modal-card">
         {/* Header */}
-        <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center">
+        <div className="shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0 mr-2">
+            <div className="w-8 h-8 rounded-xl bg-[#16281D] text-[#9FE870] flex items-center justify-center shrink-0">
               <CheckCircle2 size={16} strokeWidth={2.4} />
             </div>
-            <div>
-              <h3 className="font-sans text-base font-bold text-[#16281D]">
+            <div className="min-w-0">
+              <h3 className="font-sans text-sm sm:text-base font-bold text-[#16281D] truncate">
                 Mark Paid & Create Order
               </h3>
             </div>
@@ -72,7 +72,7 @@ export const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
           <button
             onClick={onClose}
             disabled={creatingOrderFromInv}
-            className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer disabled:opacity-50"
+            className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717A] hover:text-[#16281D] transition-colors border-0 cursor-pointer disabled:opacity-50 shrink-0"
             aria-label="Close modal"
           >
             <X size={15} />
@@ -80,7 +80,7 @@ export const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
         </div>
 
         {/* Modal Form Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           <div className="p-3.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-2xl space-y-1.5">
             <div className="flex justify-between items-center text-xs text-[#71717A]">
               <span>Invoice:</span>
@@ -91,14 +91,14 @@ export const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
             <div className="flex justify-between items-center text-xs text-[#71717A]">
               <span>Invoice Total:</span>
               <span className="font-mono text-sm font-bold text-[#15803D]">
-                LKR {invoiceTotal.toFixed(2)}
+                Rs. {invoiceTotal.toFixed(2)}
               </span>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
-              Confirmed Paid / Advance Amount (LKR)
+              Confirmed Paid / Advance Amount (Rs.)
             </label>
             <input
               type="number"
@@ -158,22 +158,22 @@ export const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="shrink-0 p-4 border-t border-[#EAEAEA] bg-white flex items-center justify-between gap-2.5">
+        <div className="shrink-0 p-3 sm:p-4 border-t border-[#EAEAEA] bg-white flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={onQuickConfirm}
             disabled={creatingOrderFromInv}
-            className="font-sans text-xs font-semibold text-[#71717A] hover:text-[#16281D] underline cursor-pointer bg-transparent border-0 disabled:opacity-50"
+            className="text-center sm:text-left font-sans text-xs font-semibold text-[#71717A] hover:text-[#16281D] underline cursor-pointer bg-transparent border-0 disabled:opacity-50 py-1"
           >
             Quick Confirm
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
               disabled={creatingOrderFromInv}
-              className="h-10 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] text-[#52525B] text-xs font-bold font-sans transition-all disabled:opacity-50 cursor-pointer"
+              className="flex-1 sm:flex-none justify-center h-10 px-4 rounded-full bg-white border border-[#E4E4E7] hover:bg-[#F4F7F4] active:scale-[0.98] text-[#52525B] text-xs font-bold font-sans transition-all disabled:opacity-50 cursor-pointer flex items-center"
             >
               Cancel
             </button>
@@ -181,7 +181,7 @@ export const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
               type="button"
               onClick={onConfirmAndCreate}
               disabled={creatingOrderFromInv}
-              className="h-10 px-5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
+              className="flex-1 sm:flex-none justify-center h-10 px-4 sm:px-5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
             >
               <CheckCircle2 size={14} strokeWidth={2.4} />
               <span>{creatingOrderFromInv ? "Creating Order…" : "Confirm & Create Order"}</span>

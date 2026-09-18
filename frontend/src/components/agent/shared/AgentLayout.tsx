@@ -267,7 +267,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
           />
           <main
             key={location.pathname}
-            className="animate-fade-in flex-1 flex flex-col min-h-0 bg-[#F4F7F4]"
+            className="animate-fade-in flex-1 flex flex-col min-h-0 bg-[#F4F7F4] no-scrollbar"
             style={{
               overflowY: location.pathname.includes('/conversations') ? 'hidden' : 'auto',
               overflowX: 'hidden',

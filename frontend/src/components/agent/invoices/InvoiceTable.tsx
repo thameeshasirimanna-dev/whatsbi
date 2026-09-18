@@ -146,7 +146,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 {/* Total */}
                 <td className="p-2.5 whitespace-nowrap">
                   <span className="font-mono text-xs font-extrabold text-[#16281D]">
-                    LKR {invoice.total.toFixed(2)}
+                    Rs. {invoice.total.toFixed(2)}
                   </span>
                 </td>
 

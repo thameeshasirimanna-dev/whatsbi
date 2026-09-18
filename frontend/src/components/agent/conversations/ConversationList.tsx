@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Conversation } from "./ConversationsPage";
-import { Search, Plus, MessageSquare } from "lucide-react";
+import { Search, Plus, MessageSquare, X } from "lucide-react";
 import { SkeletonConversationList } from "../shared/Skeleton";
 import CustomDropdown, { DropdownOption } from "../shared/CustomDropdown";
 
@@ -162,19 +162,28 @@ const ConversationList: React.FC<ConversationListProps> = ({
       {/* 2. Search & Filter Controls Bar */}
       <div className="px-3.5 pb-3 pt-1 border-b border-[#EAEAEA] flex flex-col gap-2 shrink-0">
         {/* Search Capsule Input */}
-        <div className="relative flex items-center">
+        <div className="relative flex items-center w-full">
           <Search
             size={14}
-            className="absolute left-3.5 text-[#8FA89B] pointer-events-none"
-            strokeWidth={2.2}
+            className="absolute left-3.5 text-[#a1a1aa] pointer-events-none shrink-0"
           />
           <input
             type="text"
             value={searchConversations}
             onChange={onSearchChange}
             placeholder="Search conversations..."
-            className="w-full h-9 pl-9 pr-4 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] focus:bg-white text-xs font-medium text-[#16281D] placeholder-[#A1A1AA] border border-[#EAEAEA] focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 outline-none transition-all box-border"
+            className="w-full h-10 pl-9 pr-9 rounded-full bg-white border border-[#EAEAEA] text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
           />
+          {searchConversations && (
+            <button
+              type="button"
+              onClick={() => onSearchChange({ target: { value: "" } } as any)}
+              className="absolute right-3 w-5 h-5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717a] hover:text-[#16281D] cursor-pointer border-0 transition-colors"
+              title="Clear search"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
 
         {/* Stage & Time Filter Row */}

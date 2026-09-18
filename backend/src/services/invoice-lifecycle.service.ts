@@ -230,10 +230,10 @@ export async function markInvoiceAsPaidAndRedispatch({
   if (customer && customer.phone && finalPdfUrl && whatsappConfig) {
     try {
       console.log(`[Invoice Lifecycle] Re-dispatching invoice ${invNumber} (${newStatus}) to customer ${customer.phone}...`);
-      const formatLkr = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const formatRs = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const caption = isFullPaid
         ? `*Invoice ${invNumber}* - Paid in Full. Thank you! We have started the work. Our project manager will contact you soon for gathering requirements.`
-        : `*Invoice ${invNumber}* - Advance Payment Received (LKR ${formatLkr(paidAmount)}). Balance Due: LKR ${formatLkr(remainingBalance)}. We have started the work. Our project manager will contact you soon for gathering requirements.`;
+        : `*Invoice ${invNumber}* - Advance Payment Received (Rs. ${formatRs(paidAmount)}). Balance Due: Rs. ${formatRs(remainingBalance)}. We have started the work. Our project manager will contact you soon for gathering requirements.`;
 
       whatsappDispatched = await dispatchCustomerInvoicePdf({
         agent: agentFull,
@@ -418,7 +418,7 @@ export async function sendOrResendInvoiceViaWhatsApp({
   }
 
   // 5. Build clean caption (Zero Singlish)
-  const formatLkr = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatRs = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const isPaid = (invoice.status || '').toLowerCase() === 'paid';
   const isPartial = (invoice.status || '').toLowerCase() === 'partially_paid' || (isPaid && advanceAmount > 0 && advanceAmount < totalAmount);
 
@@ -426,9 +426,9 @@ export async function sendOrResendInvoiceViaWhatsApp({
   if (isPaid && !isPartial) {
     caption = `*Invoice ${invNumber}* - Paid in Full. Thank you! We have started the work. Our project manager will contact you soon for gathering requirements.`;
   } else if (isPartial) {
-    caption = `*Invoice ${invNumber}* - Advance Payment Received (LKR ${formatLkr(advanceAmount)}). Balance Due: LKR ${formatLkr(remainingBalance)}. We have started the work. Our project manager will contact you soon for gathering requirements.`;
+    caption = `*Invoice ${invNumber}* - Advance Payment Received (Rs. ${formatRs(advanceAmount)}). Balance Due: Rs. ${formatRs(remainingBalance)}. We have started the work. Our project manager will contact you soon for gathering requirements.`;
   } else {
-    caption = `*Invoice ${invNumber}* - ${agentFull.business_name || agentFull.name || 'Invoice'}\nTotal Amount: LKR ${formatLkr(totalAmount)}\nOnce you make the advance or full payment at once, we start the work immediately. Our project manager will contact you soon for gathering requirements.`;
+    caption = `*Invoice ${invNumber}* - ${agentFull.business_name || agentFull.name || 'Invoice'}\nTotal Amount: Rs. ${formatRs(totalAmount)}\nOnce you make the advance or full payment at once, we start the work immediately. Our project manager will contact you soon for gathering requirements.`;
   }
 
   // 6. Dispatch PDF document to WhatsApp

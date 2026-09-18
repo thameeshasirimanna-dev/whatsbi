@@ -35,10 +35,10 @@ interface RevenuePerformanceChartsProps {
 }
 
 export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> = ({
-  profit,
-  expense,
-  monthlyRevenue,
-  monthlyOrders,
+  profit = 0,
+  expense = 0,
+  monthlyRevenue = [],
+  monthlyOrders = [],
 }) => {
   // Sales Overview Doughnut Data
   const total = profit + expense;
@@ -64,7 +64,7 @@ export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> =
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (context: any) => ` $${(context.raw as number).toLocaleString()}`,
+          label: (context: any) => ` Rs. ${(context.raw as number).toLocaleString()}`,
         },
       },
     },
@@ -72,13 +72,12 @@ export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> =
   };
 
   // Monthly Revenue Bar Data
-  const recentRevenue = monthlyRevenue.slice(-6);
   const barData = {
-    labels: recentRevenue.map((d) => d.month),
+    labels: monthlyRevenue.map((d) => d.month),
     datasets: [
       {
         label: 'Revenue',
-        data: recentRevenue.map((d) => d.revenue),
+        data: monthlyRevenue.map((d) => d.revenue),
         backgroundColor: '#16281D',
         hoverBackgroundColor: '#9FE870',
         borderRadius: 8,
@@ -94,7 +93,7 @@ export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> =
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (context: any) => ` $${(context.raw as number).toLocaleString()}`,
+          label: (context: any) => ` Rs. ${(context.raw as number).toLocaleString()}`,
         },
       },
     },
@@ -111,20 +110,19 @@ export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> =
         ticks: {
           font: { size: 10 },
           color: '#71717A',
-          callback: (value: any) => `$${value >= 1000 ? value / 1000 + 'k' : value}`,
+          callback: (value: any) => `Rs. ${value >= 1000 ? value / 1000 + 'k' : value}`,
         },
       },
     },
   };
 
   // Yearly Sales Line Data
-  const recentOrders = monthlyOrders.slice(-12);
   const lineData = {
-    labels: recentOrders.map((d) => d.month),
+    labels: monthlyOrders.map((d) => d.month),
     datasets: [
       {
         label: 'Orders',
-        data: recentOrders.map((d) => d.count),
+        data: monthlyOrders.map((d) => d.count),
         borderColor: '#16281D',
         backgroundColor: 'rgba(159, 232, 112, 0.25)',
         fill: true,
@@ -192,13 +190,13 @@ export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> =
         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-[#F4F7F4]">
           <div className="p-3 bg-[#F4F7F4] rounded-xl text-center">
             <span className="font-mono text-xs font-bold text-[#16281D] block">
-              ${profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              Rs. {profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </span>
             <span className="text-[10px] font-semibold text-[#15803D]">Profit</span>
           </div>
           <div className="p-3 bg-[#F4F7F4] rounded-xl text-center">
             <span className="font-mono text-xs font-bold text-[#EF4444] block">
-              ${expense.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              Rs. {expense.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </span>
             <span className="text-[10px] font-semibold text-[#EF4444]">Expense</span>
           </div>
@@ -209,7 +207,7 @@ export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> =
       <div className="bg-white rounded-[24px] p-6 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col justify-between">
         <div>
           <span className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider block">
-            6-Month Trajectory
+            Revenue Trajectory
           </span>
           <h3 className="text-sm font-bold text-[#16281D] mt-0.5 mb-4">Revenue Updates</h3>
         </div>
@@ -223,9 +221,9 @@ export const RevenuePerformanceCharts: React.FC<RevenuePerformanceChartsProps> =
       <div className="bg-white rounded-[24px] p-6 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col justify-between">
         <div>
           <span className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider block">
-            Annual Momentum
+            Order Momentum
           </span>
-          <h3 className="text-sm font-bold text-[#16281D] mt-0.5 mb-4">Yearly Orders</h3>
+          <h3 className="text-sm font-bold text-[#16281D] mt-0.5 mb-4">Order Volume</h3>
         </div>
 
         <div className="h-44 w-full">

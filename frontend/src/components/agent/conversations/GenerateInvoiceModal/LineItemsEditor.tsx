@@ -66,7 +66,7 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
                 className="w-full px-2.5 py-1.5 text-xs font-mono text-[#16281D] bg-[#F4F7F4] border border-[#EAEAEA] rounded-lg focus:border-[#16281D] focus:ring-1 focus:ring-[#9FE870]/30 outline-none transition-all"
               />
               <div className="font-mono text-xs font-bold text-[#16281D] text-right truncate">
-                LKR {lineTotal.toFixed(2)}
+                Rs. {lineTotal.toFixed(2)}
               </div>
               <button
                 type="button"

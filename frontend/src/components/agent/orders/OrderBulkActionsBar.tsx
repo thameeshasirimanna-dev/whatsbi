@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { CheckCircle2, ChevronDown, Trash2, X, RefreshCw } from "lucide-react";
+import { BulkProgressTracker, BulkProgress } from "../shared/BulkProgress";
 
 interface OrderBulkActionsBarProps {
   selectedCount: number;
@@ -8,8 +9,8 @@ interface OrderBulkActionsBarProps {
   onBulkDelete: () => void;
   onClearSelection: () => void;
   isProcessing?: boolean;
+  bulkProgress?: BulkProgress | null;
 }
-
 
 export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
   selectedCount,
@@ -18,10 +19,11 @@ export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
   onBulkDelete,
   onClearSelection,
   isProcessing = false,
+  bulkProgress,
 }) => {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-  if (selectedCount === 0) return null;
+  if (selectedCount === 0 && !bulkProgress) return null;
 
   const statusOptions = [
     { label: "Pending", value: "pending" },
@@ -51,13 +53,17 @@ export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      {/* Left: Selected count */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          style={{
-            background: "#9FE870",
-            color: "#16281D",
-            padding: "3px 10px",
+      {bulkProgress ? (
+        <BulkProgressTracker progress={bulkProgress} />
+      ) : (
+        <>
+          {/* Left: Selected count */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                background: "#9FE870",
+                color: "#16281D",
+                padding: "3px 10px",
             borderRadius: 9999,
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: 12,
@@ -221,6 +227,8 @@ export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
           <X size={14} />
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 };

@@ -11,7 +11,7 @@ import {
   Customer,
   Broadcast,
 } from '../../../lib/api';
-import { Plus, RefreshCw, Search, Send } from 'lucide-react';
+import { Plus, RefreshCw, Search, Send, X } from 'lucide-react';
 import { useDialog } from '../shared/DialogProvider';
 import { SkeletonPage } from '../shared/Skeleton';
 import BroadcastSummaryCards from './BroadcastSummaryCards';
@@ -459,63 +459,87 @@ const BroadcastsPage: React.FC = () => {
       <BroadcastSummaryCards broadcasts={broadcasts} />
 
       {/* Toolbar */}
-      <div className="bg-white rounded-[20px] p-3.5 sm:p-4 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 min-w-[240px] max-w-md">
-          <Search
-            size={14}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A]"
-          />
-          <input
-            type="text"
-            placeholder="Search campaigns by name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 bg-[#F4F7F4] border border-transparent rounded-full text-xs text-[#16281D] placeholder-[#71717A] outline-none focus:border-[#9FE870] focus:bg-white transition-all"
-          />
+      <div className="bg-white rounded-[20px] p-3 sm:p-4 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col gap-2.5 sm:gap-3">
+        {/* Row 1: Search & Primary Actions (Full width) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0 flex items-center">
+            <Search
+              size={14}
+              className="absolute left-3.5 text-[#a1a1aa] pointer-events-none shrink-0"
+            />
+            <input
+              type="text"
+              placeholder="Search campaigns by name or status..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-10 pl-9 pr-9 bg-white border border-[#EAEAEA] rounded-full text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 w-5 h-5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717a] hover:text-[#16281D] cursor-pointer border-0 transition-colors"
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* Refresh & Create Broadcast Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-end shrink-0">
+            <button
+              onClick={handleRefresh}
+              className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 px-4 py-2 min-h-[36px] rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-xs font-semibold text-[#16281D] transition-colors cursor-pointer border border-[#EAEAEA] shrink-0"
+              title="Refresh Broadcasts"
+            >
+              <RefreshCw size={13} /> Refresh
+            </button>
+
+            <button
+              onClick={() => {
+                setWizardStep(1);
+                setShowCreateModal(true);
+              }}
+              className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 px-5 py-2 min-h-[36px] rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-xs font-bold text-[#16281D] shadow-[0_4px_16px_rgba(159,232,112,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border-0 shrink-0"
+            >
+              <Plus size={14} /> Create Broadcast
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <CustomDropdown
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-            options={[
-              { value: "all", label: "All Statuses" },
-              { value: "pending", label: "Pending" },
-              { value: "processing", label: "Processing" },
-              { value: "completed", label: "Completed" },
-              { value: "failed", label: "Failed" },
-            ]}
-            minWidth={130}
-          />
+        {/* Row 2: Filters Grid (Full fill 100% row width across all screen sizes) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full items-center">
+          {/* Status Dropdown */}
+          <div className="col-span-1 w-full min-w-0">
+            <CustomDropdown
+              value={statusFilter}
+              onChange={(val) => setStatusFilter(val)}
+              options={[
+                { value: "all", label: "All Statuses" },
+                { value: "pending", label: "Pending" },
+                { value: "processing", label: "Processing" },
+                { value: "completed", label: "Completed" },
+                { value: "failed", label: "Failed" },
+              ]}
+              className="w-full"
+            />
+          </div>
 
-          <CustomDropdown
-            value={typeFilter}
-            onChange={(val) => setTypeFilter(val)}
-            options={[
-              { value: "all", label: "All Types" },
-              { value: "text", label: "Text" },
-              { value: "template", label: "Template" },
-            ]}
-            minWidth={120}
-          />
-
-          <button
-            onClick={handleRefresh}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-xs font-semibold text-[#16281D] transition-colors cursor-pointer border border-[#EAEAEA]"
-            title="Refresh Broadcasts"
-          >
-            <RefreshCw size={13} /> Refresh
-          </button>
-
-          <button
-            onClick={() => {
-              setWizardStep(1);
-              setShowCreateModal(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-xs font-bold text-[#16281D] shadow-[0_4px_16px_rgba(159,232,112,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border-0"
-          >
-            <Plus size={14} /> Create Broadcast
-          </button>
+          {/* Type Dropdown */}
+          <div className="col-span-1 w-full min-w-0">
+            <CustomDropdown
+              value={typeFilter}
+              onChange={(val) => setTypeFilter(val)}
+              options={[
+                { value: "all", label: "All Types" },
+                { value: "text", label: "Text" },
+                { value: "template", label: "Template" },
+              ]}
+              className="w-full"
+            />
+          </div>
         </div>
       </div>
 

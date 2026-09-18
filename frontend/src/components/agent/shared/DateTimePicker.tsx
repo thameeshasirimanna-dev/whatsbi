@@ -1,6 +1,16 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useId } from 'react';
 import { CalendarClock, X, Clock } from 'lucide-react';
+import Portal from './Portal';
 import { formatDisplayDate } from './DatePicker';
+import {
+  MONTH_NAMES,
+  DAY_LABELS,
+  QUICK_SLOTS,
+  HOURS,
+  MINUTES,
+  parseDateTimeValue,
+  to24Hour,
+} from './dateTimeUtils';
 
 export interface DateTimePickerProps {
   value?: string | null; // ISO string ("2026-09-18T10:30"), "YYYY-MM-DD HH:mm", or "YYYY-MM-DD hh:mm AM/PM"
@@ -19,66 +29,13 @@ export interface DateTimePickerProps {
   id?: string;
 }
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const QUICK_SLOTS = [
-  { label: '09:00 AM', h: '09', m: '00', p: 'AM' as const },
-  { label: '10:30 AM', h: '10', m: '30', p: 'AM' as const },
-  { label: '02:00 PM', h: '02', m: '00', p: 'PM' as const },
-  { label: '04:30 PM', h: '04', m: '30', p: 'PM' as const },
-];
-const HOURS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-const MINUTES = ['00', '15', '30', '45'];
-
-function parseDateTimeValue(val: string | null | undefined): {
-  date: string;
-  hour: string;
-  minute: string;
-  period: 'AM' | 'PM';
-  wasIso: boolean;
-} {
-  if (!val) {
-    return { date: '', hour: '09', minute: '00', period: 'AM', wasIso: true };
-  }
-
-  const wasIso = val.includes('T') || val.endsWith('Z');
-  const cleaned = val.replace('T', ' ').replace(/Z$/, '').trim();
-  const parts = cleaned.split(' ');
-  const date = parts[0] || '';
-  const rest = parts.slice(1).join(' ').trim();
-
-  const match = rest.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
-  if (match) {
-    let h = parseInt(match[1], 10);
-    const m = match[2];
-    let p = (match[3] ? match[3].toUpperCase() : '') as 'AM' | 'PM';
-    if (!p) {
-      p = h >= 12 ? 'PM' : 'AM';
-      if (h > 12) h -= 12;
-      if (h === 0) h = 12;
-    } else {
-      if (h === 0) h = 12;
-    }
-    return {
-      date,
-      hour: String(h).padStart(2, '0'),
-      minute: m,
-      period: p,
-      wasIso,
-    };
-  }
-
-  return { date, hour: '09', minute: '00', period: 'AM', wasIso };
-}
-
-function to24Hour(hour12: string, minute: string, period: 'AM' | 'PM'): string {
-  let h = parseInt(hour12, 10);
-  if (period === 'PM' && h < 12) h += 12;
-  if (period === 'AM' && h === 12) h = 0;
-  return `${String(h).padStart(2, '0')}:${minute}`;
+interface DateTimePickerCoords {
+  top?: number;
+  bottom?: number;
+  left: number;
+  maxWidth: number;
+  maxHeight: number;
+  openAbove: boolean;
 }
 
 export const DateTimePicker: React.FC<DateTimePickerProps> = ({
@@ -99,6 +56,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const generatedId = useId();
   const pickerId = id || generatedId;
 
@@ -114,6 +72,8 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const initialMonth = activeDate ? parseInt(activeDate.split('-')[1], 10) - 1 : new Date().getMonth();
   const [viewYear, setViewYear] = useState(initialYear);
   const [viewMonth, setViewMonth] = useState(initialMonth);
+
+  const [coords, setCoords] = useState<DateTimePickerCoords | null>(null);
 
   useEffect(() => {
     if (value) {
@@ -135,9 +95,87 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
     }
   }, [value]);
 
+  const calculatePosition = useCallback((): DateTimePickerCoords | null => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return null;
+
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setIsOpen(false);
+      return null;
+    }
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const popoverWidth = Math.min(340, vw - 24);
+    const spaceBelow = vh - rect.bottom;
+    const spaceAbove = rect.top;
+    const openAbove = spaceBelow < 420 && spaceAbove > spaceBelow;
+
+    const idealLeft = align === 'right' ? rect.right - popoverWidth : rect.left;
+    const left = Math.max(12, Math.min(idealLeft, vw - popoverWidth - 12));
+
+    if (openAbove) {
+      return {
+        bottom: vh - rect.top + 6,
+        left,
+        maxWidth: popoverWidth,
+        maxHeight: Math.max(200, Math.min(460, spaceAbove - 16)),
+        openAbove: true,
+      };
+    } else {
+      return {
+        top: rect.bottom + 6,
+        left,
+        maxWidth: popoverWidth,
+        maxHeight: Math.max(200, Math.min(460, spaceBelow - 16)),
+        openAbove: false,
+      };
+    }
+  }, [align]);
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      const newCoords = calculatePosition();
+      if (newCoords) setCoords(newCoords);
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const newCoords = calculatePosition();
+    if (newCoords) setCoords(newCoords);
+  }, [isOpen, calculatePosition]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleUpdate = () => {
+      const newCoords = calculatePosition();
+      if (newCoords) setCoords(newCoords);
+    };
+
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('resize', handleUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [isOpen, calculatePosition]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -194,7 +232,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         id={pickerId}
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         className={`w-full rounded-full transition-all flex items-center justify-between cursor-pointer shadow-xs active:scale-[0.98] outline-none disabled:opacity-50 disabled:pointer-events-none ${sizeClasses} ${triggerVariantClasses} ${
@@ -226,19 +264,31 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         )}
       </button>
 
-      {/* Popover */}
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-label="Date and time picker popover"
-          className={`absolute top-[calc(100%+8px)] ${
-            align === 'right' ? 'right-0' : 'left-0'
-          } z-50 w-[340px] p-4 rounded-3xl transition-all shadow-[0_16px_48px_rgba(20,40,24,0.16)] animate-in fade-in zoom-in-95 duration-150 ${
-            isDark
-              ? 'bg-[#16281D] border border-white/10 text-white'
-              : 'bg-white border border-[#EAEAEA] text-[#16281D]'
-          } ${popoverClassName}`}
-        >
+      {/* Popover (Rendered via Portal on document.body for zero modal scroll) */}
+      {isOpen && coords && (
+        <Portal>
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-label="Date and time picker popover"
+            style={{
+              position: 'fixed',
+              top: coords.top !== undefined ? `${coords.top}px` : undefined,
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
+              left: `${coords.left}px`,
+              width: `${coords.maxWidth}px`,
+              maxHeight: `${coords.maxHeight}px`,
+              zIndex: 99999,
+              transformOrigin: coords.openAbove ? 'bottom' : 'top',
+            }}
+            className={`p-4 rounded-3xl transition-all shadow-[0_16px_48px_rgba(20,40,24,0.18)] ${
+              coords.openAbove ? 'animate-dropdown-up' : 'animate-dropdown'
+            } overflow-y-auto ${
+              isDark
+                ? 'bg-[#16281D] border border-white/10 text-white shadow-[0_16px_48px_rgba(0,0,0,0.5)]'
+                : 'bg-white border border-[#EAEAEA] text-[#16281D]'
+            } ${popoverClassName}`}
+          >
           {/* Month/Year Header */}
           <div className="flex items-center justify-between mb-3 px-1">
             <span className="font-bold text-sm">
@@ -427,8 +477,9 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             </button>
           </div>
         </div>
-      )}
-    </div>
+      </Portal>
+    )}
+  </div>
   );
 };
 

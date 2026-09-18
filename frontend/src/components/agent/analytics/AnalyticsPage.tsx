@@ -89,8 +89,23 @@ const AnalyticsPage: React.FC = () => {
       messages = messages.slice(-sliceCount);
     }
 
+    const isAll = activePreset === "all";
+    const filteredTotalOrders = (orders || []).reduce((sum, o) => sum + (o?.count || 0), 0);
+    const filteredTotalRevenue = (revenue || []).reduce((sum, r) => sum + (r?.revenue || 0), 0);
+    const filteredProfit = filteredTotalRevenue * 0.7;
+    const filteredExpense = filteredTotalRevenue * 0.3;
+    const ratio = (analytics.totalOrders && analytics.totalOrders > 0) ? filteredTotalOrders / analytics.totalOrders : 1;
+    const filteredCompletedOrders = Math.round((analytics.completedOrders || 0) * ratio);
+    const filteredPendingOrders = Math.round((analytics.pendingOrders || 0) * ratio);
+
     return {
       ...analytics,
+      totalOrders: isAll ? analytics.totalOrders : filteredTotalOrders,
+      totalRevenue: isAll ? analytics.totalRevenue : filteredTotalRevenue,
+      profit: isAll ? analytics.profit : filteredProfit,
+      expense: isAll ? analytics.expense : filteredExpense,
+      completedOrders: isAll ? analytics.completedOrders : filteredCompletedOrders,
+      pendingOrders: isAll ? analytics.pendingOrders : filteredPendingOrders,
       monthlyOrders: orders.length > 0 ? orders : analytics.monthlyOrders,
       monthlyRevenue: revenue.length > 0 ? revenue : analytics.monthlyRevenue,
       monthlyMessages: messages.length > 0 ? messages : analytics.monthlyMessages,
@@ -116,11 +131,11 @@ const AnalyticsPage: React.FC = () => {
       className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans"
     >
       {/* Top Controls Bar: Time Ranges on Left, Export Report on Right */}
-      <div className="bg-white rounded-[20px] p-3 sm:p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white rounded-[20px] p-3 sm:p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
         {/* Left Side: Time Ranges & Direct Date Period */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5 flex-1 min-w-0 w-full">
           {/* Quick Presets Strip */}
-          <div className="inline-flex p-1 bg-[#F4F7F4] border border-[#EAEAEA] rounded-full">
+          <div className="w-full lg:flex-1 flex items-center justify-between p-1 bg-[#F4F7F4] border border-[#EAEAEA] rounded-full overflow-x-auto scrollbar-none gap-0.5">
             {[
               { id: 'all', label: 'All Time' },
               { id: 'today', label: 'Today' },
@@ -132,7 +147,7 @@ const AnalyticsPage: React.FC = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => handlePresetSelect(tab.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
+                className={`flex-1 text-center justify-center px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 whitespace-nowrap ${
                   activePreset === tab.id
                     ? 'bg-[#16281D] text-[#9FE870] shadow-sm'
                     : 'bg-transparent text-[#71717A] hover:text-[#16281D]'
@@ -145,35 +160,43 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Direct Date Period Selector (From -> To DatePicker) */}
           <div
-            className={`flex items-center gap-1.5 p-1 border rounded-full transition-all ${
+            className={`w-full lg:flex-1 flex items-center justify-between gap-1.5 p-1 border rounded-full transition-all ${
               activePreset === 'custom'
                 ? 'bg-[#F0FDF4] border-[#BBF7D0]'
                 : 'bg-[#F4F7F4] border-[#EAEAEA]'
             }`}
           >
-            <DatePicker
-              value={fromDate}
-              onChange={handleFromDateChange}
-              placeholder="From date..."
-              size="sm"
-              variant={fromDate ? "mint" : "white"}
-              maxDate={toDate ?? undefined}
-            />
-            <span className="text-xs text-[#71717A] font-medium px-0.5">to</span>
-            <DatePicker
-              value={toDate}
-              onChange={handleToDateChange}
-              placeholder="To date..."
-              size="sm"
-              variant={toDate ? "mint" : "white"}
-              minDate={fromDate ?? undefined}
-            />
+            <div className="flex-1 min-w-0">
+              <DatePicker
+                value={fromDate}
+                onChange={handleFromDateChange}
+                placeholder="From date..."
+                size="sm"
+                variant={fromDate ? "mint" : "white"}
+                maxDate={toDate ?? undefined}
+                className="w-full"
+                triggerClassName="w-full text-center !justify-center"
+              />
+            </div>
+            <span className="text-xs text-[#71717A] font-medium px-1 shrink-0">to</span>
+            <div className="flex-1 min-w-0">
+              <DatePicker
+                value={toDate}
+                onChange={handleToDateChange}
+                placeholder="To date..."
+                size="sm"
+                variant={toDate ? "mint" : "white"}
+                minDate={fromDate ?? undefined}
+                className="w-full"
+                triggerClassName="w-full text-center !justify-center"
+              />
+            </div>
             {(fromDate || toDate) && (
               <button
                 type="button"
                 onClick={handleClearCustomDates}
                 title="Clear date period"
-                className="w-6 h-6 rounded-full bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] flex items-center justify-center transition-colors cursor-pointer border-0 mr-1"
+                className="w-6 h-6 rounded-full bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] flex items-center justify-center transition-colors cursor-pointer border-0 mr-1 shrink-0"
               >
                 <X size={11} strokeWidth={2.4} />
               </button>
@@ -184,7 +207,7 @@ const AnalyticsPage: React.FC = () => {
         {/* Right Side: Export Report Button */}
         <button
           onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-xs font-semibold text-[#16281D] transition-colors border border-[#EAEAEA] cursor-pointer"
+          className="w-full xl:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-xs font-semibold text-[#16281D] transition-colors border border-[#EAEAEA] cursor-pointer shrink-0"
         >
           <Download size={13} /> Export Report
         </button>

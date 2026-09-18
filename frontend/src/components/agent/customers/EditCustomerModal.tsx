@@ -77,14 +77,7 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
             >
               {/* Header */}
               <div
-                style={{
-                  flexShrink: 0,
-                  padding: '20px 24px 16px',
-                  borderBottom: '1px solid #EAEAEA',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
+                className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[#EAEAEA] flex items-center justify-between shrink-0"
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div
@@ -129,14 +122,7 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
               {/* Form Body */}
               <div
-                style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  padding: 24,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
-                }}
+                className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-3.5"
               >
                 <div>
                   <label
@@ -176,13 +162,14 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   >
                     Phone Number *
                   </label>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <CustomDropdown
                       value={selectedCountryCode}
                       onChange={(val) => onCountryChange(val)}
                       options={countryCodes.map((c) => ({ value: c.value, label: c.label }))}
                       minWidth={110}
                       maxWidth={120}
+                      className="w-full sm:w-auto"
                     />
                     <input
                       type="tel"
@@ -193,6 +180,7 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                       style={inputStyle}
                       onFocus={onFocusG}
                       onBlur={onBlurG}
+                      className="flex-1"
                     />
                   </div>
                   <div style={{ ...MONO, fontSize: 11, color: '#71717A', marginTop: 4 }}>
@@ -212,70 +200,25 @@ export const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
               {/* Actions */}
               <div
-                style={{
-                  flexShrink: 0,
-                  padding: '16px 24px',
-                  borderTop: '1px solid #EAEAEA',
-                  display: 'flex',
-                  gap: 10,
-                  justifyContent: 'space-between',
-                }}
+                className="p-3 sm:px-6 sm:py-4 border-t border-[#EAEAEA] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0"
               >
                 <button
                   onClick={() => onDeleteTrigger(editingCustomer)}
-                  style={{
-                    background: '#FEE2E2',
-                    color: '#EF4444',
-                    border: 'none',
-                    borderRadius: 9999,
-                    padding: '10px 18px',
-                    ...PJS,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
+                  className="rounded-full px-4 py-2.5 bg-[#FEE2E2] hover:bg-[#FECACA] text-[#EF4444] font-sans text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-0 w-full sm:w-auto"
                 >
                   <Trash2 size={13} /> Delete
                 </button>
-                <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     onClick={onClose}
-                    style={{
-                      background: '#fff',
-                      color: '#71717A',
-                      border: '1px solid #EAEAEA',
-                      borderRadius: 9999,
-                      padding: '10px 16px',
-                      ...PJS,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
+                    className="flex-1 sm:flex-none rounded-full px-4 py-2.5 bg-white border border-[#EAEAEA] text-[#71717A] hover:text-[#16281D] hover:bg-[#F4F7F4] font-sans text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={onSubmit}
                     disabled={!form.name.trim() || !form.phone.trim()}
-                    style={{
-                      flex: 1,
-                      background: !form.name.trim() || !form.phone.trim() ? '#EAEAEA' : '#9FE870',
-                      color: '#16281D',
-                      border: 'none',
-                      borderRadius: 9999,
-                      padding: '10px 16px',
-                      ...PJS,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: !form.name.trim() || !form.phone.trim() ? 'not-allowed' : 'pointer',
-                      boxShadow:
-                        !form.name.trim() || !form.phone.trim()
-                          ? 'none'
-                          : '0 4px 16px rgba(159,232,112,0.35)',
-                    }}
+                    className="flex-1 sm:flex-none rounded-full px-5 py-2.5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] disabled:bg-[#EAEAEA] disabled:text-[#A1A1AA] disabled:shadow-none disabled:cursor-not-allowed transition-all cursor-pointer border-0"
                   >
                     Update Customer
                   </button>

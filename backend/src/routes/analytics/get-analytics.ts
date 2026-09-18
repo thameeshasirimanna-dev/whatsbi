@@ -36,10 +36,10 @@ export default async function getAnalyticsRoutes(
       const { rows: orderSumRows } = await pgClient.query(`
         SELECT 
           COUNT(*)::integer as total_orders,
-          COUNT(*) FILTER (WHERE status = 'pending')::integer as pending_orders,
-          COUNT(*) FILTER (WHERE status = 'completed')::integer as completed_orders,
-          COALESCE(SUM(total_amount), 0)::double precision as total_revenue,
-          COALESCE(SUM(total_amount) FILTER (WHERE status = 'completed'), 0)::double precision as completed_revenue
+          COUNT(*) FILTER (WHERE LOWER(status) = 'pending')::integer as pending_orders,
+          COUNT(*) FILTER (WHERE LOWER(status) IN ('completed', 'delivered'))::integer as completed_orders,
+          COALESCE(SUM(total_amount) FILTER (WHERE status IS NULL OR LOWER(status) != 'cancelled'), 0)::double precision as total_revenue,
+          COALESCE(SUM(total_amount) FILTER (WHERE LOWER(status) IN ('completed', 'delivered')), 0)::double precision as completed_revenue
         FROM ${agentPrefix}_orders
       `);
       const totalOrders = orderSumRows[0].total_orders;
@@ -64,6 +64,7 @@ export default async function getAnalyticsRoutes(
         ) m
         LEFT JOIN ${agentPrefix}_orders o 
           ON date_trunc('month', o.created_at) = m.month
+          AND (o.status IS NULL OR LOWER(o.status) != 'cancelled')
         GROUP BY m.month
         ORDER BY m.month ASC
       `);
@@ -174,7 +175,7 @@ export default async function getAnalyticsRoutes(
           COALESCE(SUM(CASE WHEN id % 4 = 2 THEN total_amount ELSE 0 END), 0)::double precision as paypal,
           COALESCE(SUM(CASE WHEN id % 4 = 3 THEN total_amount ELSE 0 END), 0)::double precision as stripe
         FROM ${agentPrefix}_orders
-        WHERE status = 'completed'
+        WHERE LOWER(status) IN ('completed', 'delivered')
       `);
       
       const paymentGateways = [
@@ -186,9 +187,9 @@ export default async function getAnalyticsRoutes(
 
       // 9. Fetch order statuses
       const { rows: statusRows } = await pgClient.query(`
-        SELECT status, COUNT(*)::integer as count 
+        SELECT LOWER(status) as status, COUNT(*)::integer as count 
         FROM ${agentPrefix}_orders 
-        GROUP BY status
+        GROUP BY LOWER(status)
       `);
       const orderStatuses = statusRows.map((row: any) => ({
         status: row.status || "unknown",
@@ -196,11 +197,13 @@ export default async function getAnalyticsRoutes(
       }));
 
       // 10. Fetch CRM lead stages breakdown
-      const { rows: leadStageRows } = await pgClient.query(
-        `SELECT lead_stage, COUNT(*)::integer as count FROM ${agentPrefix}_customers GROUP BY lead_stage`
-      );
+      const { rows: leadStageRows } = await pgClient.query(`
+        SELECT COALESCE(NULLIF(TRIM(lead_stage), ''), 'New Lead') as lead_stage, COUNT(*)::integer as count 
+        FROM ${agentPrefix}_customers 
+        GROUP BY COALESCE(NULLIF(TRIM(lead_stage), ''), 'New Lead')
+      `);
 
-      const leadStageCounts = {
+      const leadStageCounts: Record<string, number> = {
         "New Lead": 0,
         "Contacted": 0,
         "Not Responding": 0,
@@ -208,8 +211,11 @@ export default async function getAnalyticsRoutes(
       };
 
       leadStageRows.forEach((row: any) => {
-        if (row.lead_stage && row.lead_stage in leadStageCounts) {
-          leadStageCounts[row.lead_stage as keyof typeof leadStageCounts] = row.count;
+        const stage = row.lead_stage;
+        if (stage && stage in leadStageCounts) {
+          leadStageCounts[stage] = row.count;
+        } else if (stage) {
+          leadStageCounts["New Lead"] += row.count;
         }
       });
 

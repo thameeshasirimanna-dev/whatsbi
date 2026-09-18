@@ -178,7 +178,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     return items.reduce((total, item) => total + item.quantity * item.price, 0);
   };
 
-  const CURRENCY_SYMBOL = 'LKR';
+  const CURRENCY_SYMBOL = 'Rs.';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,7 +292,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           {/* Currency */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Currency</label>
-            <div style={{ ...MONO, fontSize: 13, color: '#16281D', padding: '9px 12px', background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 12 }}>LKR</div>
+            <div style={{ ...MONO, fontSize: 13, color: '#16281D', padding: '9px 12px', background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 12 }}>Rs.</div>
           </div>
 
           {error && (
@@ -308,28 +308,30 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 10 }}>Order Items</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {items.map((item, index) => (
-                    <div key={index} style={itemRowStyle}>
-                      <div style={{ flex: 1 }}>
+                    <div key={index} className="p-3 bg-[#F4F7F4] rounded-2xl border border-[#EAEAEA] flex flex-col sm:flex-row sm:items-end gap-2.5">
+                      <div className="w-full sm:flex-1">
                         <div style={{ ...PJS, fontSize: 11, color: '#71717A', marginBottom: 4 }}>Item Name</div>
                         <input type="text" value={item.name} onChange={(e) => updateItem(index, 'name', e.target.value)} placeholder="Item name" required style={{ ...inputStyle, background: '#FFFFFF' }} onFocus={onFocusG} onBlur={onBlurG} />
                       </div>
-                      <div style={{ width: 68 }}>
-                        <div style={{ ...PJS, fontSize: 11, color: '#71717A', marginBottom: 4 }}>Qty</div>
-                        <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} required style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                      <div className="flex items-end gap-2 w-full sm:w-auto">
+                        <div className="flex-1 sm:w-[68px]">
+                          <div style={{ ...PJS, fontSize: 11, color: '#71717A', marginBottom: 4 }}>Qty</div>
+                          <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} required style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                        </div>
+                        <div className="flex-1 sm:w-[90px]">
+                          <div style={{ ...PJS, fontSize: 11, color: '#71717A', marginBottom: 4 }}>Price (Rs.)</div>
+                          <input type="number" min="0" step="0.01" value={item.price} onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)} placeholder="0.00" required style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'right', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                        </div>
+                        <div className="flex-1 sm:w-[88px]">
+                          <div style={{ ...PJS, fontSize: 11, color: '#71717A', marginBottom: 4 }}>Total</div>
+                          <input type="number" value={(item.quantity * item.price).toFixed(2)} readOnly style={{ ...inputStyle, background: '#EAEAEA', cursor: 'not-allowed', color: '#16281D', textAlign: 'right', ...MONO }} />
+                        </div>
+                        {items.length > 1 && (
+                          <button type="button" onClick={() => removeItem(index)} className="w-8 h-8 rounded-full bg-[#FEE2E2] hover:bg-[#FECACA] flex items-center justify-center text-[#EF4444] shrink-0 border-0 cursor-pointer mb-1">
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
-                      <div style={{ width: 90 }}>
-                        <div style={{ ...PJS, fontSize: 11, color: '#71717A', marginBottom: 4 }}>Price (LKR)</div>
-                        <input type="number" min="0" step="0.01" value={item.price} onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)} placeholder="0.00" required style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'right', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
-                      </div>
-                      <div style={{ width: 88 }}>
-                        <div style={{ ...PJS, fontSize: 11, color: '#71717A', marginBottom: 4 }}>Total</div>
-                        <input type="number" value={(item.quantity * item.price).toFixed(2)} readOnly style={{ ...inputStyle, background: '#EAEAEA', cursor: 'not-allowed', color: '#16281D', textAlign: 'right', ...MONO }} />
-                      </div>
-                      {items.length > 1 && (
-                        <button type="button" onClick={() => removeItem(index)} style={{ width: 28, height: 28, background: '#FEE2E2', border: 'none', borderRadius: 9999, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', flexShrink: 0, marginBottom: 2 }}>
-                          <Trash2 size={13} />
-                        </button>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -360,7 +362,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           )}
                           <div style={{ minWidth: 0 }}>
                             <div style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#16281D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invItem.name}</div>
-                            <div style={{ ...MONO, fontSize: 12, color: '#71717A' }}>LKR {invItem.price.toFixed(2)}</div>
+                            <div style={{ ...MONO, fontSize: 12, color: '#71717A' }}>Rs. {invItem.price.toFixed(2)}</div>
                           </div>
                         </div>
                         <button type="button" onClick={() => addFromInventory(invItem, defaultAddQuantity)} style={{ flexShrink: 0, marginLeft: 10, padding: '5px 14px', background: 'rgba(159,232,112,0.2)', color: '#16281D', border: '1px solid #9FE870', borderRadius: 9999, cursor: 'pointer', ...PJS, fontSize: 12, fontWeight: 700 }}>
@@ -379,22 +381,24 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                     <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 8 }}>Added Items</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {items.map((item, index) => (
-                        <div key={index} style={itemRowStyle}>
-                          <div style={{ flex: 1 }}>
+                        <div key={index} className="p-3 bg-[#F4F7F4] rounded-2xl border border-[#EAEAEA] flex flex-col sm:flex-row sm:items-center gap-2.5">
+                          <div className="w-full sm:flex-1">
                             <input type="text" value={item.name} readOnly style={{ ...inputStyle, background: '#EAEAEA', cursor: 'not-allowed', color: '#16281D' }} />
                           </div>
-                          <div style={{ width: 68 }}>
-                            <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex-1 sm:w-[68px]">
+                              <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} style={{ ...inputStyle, background: '#FFFFFF', textAlign: 'center', ...MONO }} onFocus={onFocusG} onBlur={onBlurG} />
+                            </div>
+                            <div className="flex-1 sm:w-[90px]">
+                              <input type="number" value={item.price} readOnly style={{ ...inputStyle, background: '#EAEAEA', cursor: 'not-allowed', color: '#16281D', textAlign: 'right', ...MONO }} />
+                            </div>
+                            <div className="flex-1 sm:w-[88px]">
+                              <input type="number" value={(item.quantity * item.price).toFixed(2)} readOnly style={{ ...inputStyle, background: '#EAEAEA', cursor: 'not-allowed', color: '#16281D', textAlign: 'right', ...MONO }} />
+                            </div>
+                            <button type="button" onClick={() => removeItem(index)} className="w-8 h-8 rounded-full bg-[#FEE2E2] hover:bg-[#FECACA] flex items-center justify-center text-[#EF4444] shrink-0 border-0 cursor-pointer">
+                              <Trash2 size={13} />
+                            </button>
                           </div>
-                          <div style={{ width: 90 }}>
-                            <input type="number" value={item.price} readOnly style={{ ...inputStyle, background: '#EAEAEA', cursor: 'not-allowed', color: '#16281D', textAlign: 'right', ...MONO }} />
-                          </div>
-                          <div style={{ width: 88 }}>
-                            <input type="number" value={(item.quantity * item.price).toFixed(2)} readOnly style={{ ...inputStyle, background: '#EAEAEA', cursor: 'not-allowed', color: '#16281D', textAlign: 'right', ...MONO }} />
-                          </div>
-                          <button type="button" onClick={() => removeItem(index)} style={{ width: 28, height: 28, background: '#FEE2E2', border: 'none', borderRadius: 9999, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', flexShrink: 0 }}>
-                            <Trash2 size={13} />
-                          </button>
                         </div>
                       ))}
                     </div>
@@ -433,9 +437,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             </div>
 
             {/* Advance Payment and Payment Status */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Advance Payment (LKR) (Optional)</label>
+                <label style={{ ...PJS, fontSize: 12, fontWeight: 600, color: '#16281D', display: 'block', marginBottom: 6 }}>Advance Payment (Rs.) (Optional)</label>
                 <input
                   type="number"
                   min="0"
@@ -486,11 +490,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#71717A' }}>Total Amount</span>
-                <span style={{ ...MONO, fontSize: 15, fontWeight: 700, color: '#16281D' }}>LKR {calculateTotal().toFixed(2)}</span>
+                <span style={{ ...MONO, fontSize: 15, fontWeight: 700, color: '#16281D' }}>Rs. {calculateTotal().toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #EAEAEA', paddingTop: 8 }}>
                 <span style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#71717A' }}>Balance Due</span>
-                <span style={{ ...MONO, fontSize: 18, fontWeight: 700, color: '#16281D' }}>LKR {Math.max(0, calculateTotal() - advanceAmount).toFixed(2)}</span>
+                <span style={{ ...MONO, fontSize: 18, fontWeight: 700, color: '#16281D' }}>Rs. {Math.max(0, calculateTotal() - advanceAmount).toFixed(2)}</span>
               </div>
             </div>
 

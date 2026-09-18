@@ -235,7 +235,7 @@ const OrderDetailsPage: React.FC = () => {
   const sendWhatsAppMessage = () => {
     if (!order || !order.customer_phone) { toast('Customer phone number not available', 'error'); return; }
     const phoneNumber = order.customer_phone.replace(/\D/g, '');
-    const message = `Order #${order.id.toString().padStart(4, '0')} Update\n\nCustomer: ${order.customer_name}\nStatus: ${order.status}\n\nItems:\n${order.order_details.items.map(item => `${item.name} - Qty: ${item.quantity} x LKR ${item.price.toFixed(2)} = LKR ${item.total.toFixed(2)}`).join('\n')}\n\nTotal: LKR ${order.order_details.total_amount.toFixed(2)}\n\n${order.order_details.notes ? `Notes: ${order.order_details.notes}` : ''}\n\nThank you!`;
+    const message = `Order #${order.id.toString().padStart(4, '0')} Update\n\nCustomer: ${order.customer_name}\nStatus: ${order.status}\n\nItems:\n${order.order_details.items.map(item => `${item.name} - Qty: ${item.quantity} x Rs. ${item.price.toFixed(2)} = Rs. ${item.total.toFixed(2)}`).join('\n')}\n\nTotal: Rs. ${order.order_details.total_amount.toFixed(2)}\n\n${order.order_details.notes ? `Notes: ${order.order_details.notes}` : ''}\n\nThank you!`;
     window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -272,24 +272,24 @@ const OrderDetailsPage: React.FC = () => {
       <div className="no-print w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <button onClick={() => navigate('/agent/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F4F7F4', color: '#16281D', border: '1px solid #EAEAEA', borderRadius: 9999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => navigate('/agent/orders')} className="inline-flex items-center gap-1.5 bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] border border-[#EAEAEA] rounded-full px-3.5 py-2 text-xs font-semibold cursor-pointer transition-all shrink-0">
               <ArrowLeft size={14} /> Back
             </button>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#16281D', fontFamily: "'JetBrains Mono', monospace" }}>Order #{order.id.toString().padStart(4, '0')}</div>
-              <div style={{ fontSize: 12, color: '#71717a' }}>Order details and customer information</div>
+            <div className="min-w-0">
+              <div className="text-lg sm:text-2xl font-extrabold text-[#16281D] font-mono truncate">Order #{order.id.toString().padStart(4, '0')}</div>
+              <div className="text-xs text-[#71717a] truncate">Order details and customer information</div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 9999, ...getStatusStyle(order.status) }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 9999, ...getStatusStyle(order.status) }}>
               Status: {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
             </span>
-            <span style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 9999, ...getPaymentStatusStyle(order.payment_status || 'unpaid') }}>
+            <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 9999, ...getPaymentStatusStyle(order.payment_status || 'unpaid') }}>
               Payment: {order.payment_status === 'partially_paid' ? 'Partially Paid' : order.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
             </span>
-            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F4F7F4', color: '#16281D', border: '1px solid #EAEAEA', borderRadius: 9999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+            <button onClick={() => window.print()} className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] border border-[#EAEAEA] rounded-full px-4 py-2 text-xs font-semibold cursor-pointer transition-all">
               <Printer size={14} /> Print Receipt
             </button>
           </div>
@@ -301,7 +301,7 @@ const OrderDetailsPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left: Customer + Status */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -377,17 +377,24 @@ const OrderDetailsPage: React.FC = () => {
               <div style={{ padding: '16px 20px', borderBottom: '1px solid #EAEAEA' }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: '#16281D' }}>Order Summary</span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3" style={{ padding: '20px 24px' }}>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 p-3 sm:p-5">
                 {[
-                  { value: `LKR ${Number(order.order_details.total_amount).toFixed(2)}`, label: 'Total Amount', color: '#16281D' },
-                  { value: `LKR ${Number(order.advance_amount || 0).toFixed(2)}`, label: order.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid', color: '#1D4ED8' },
-                  { value: `LKR ${Math.max(0, Number(order.order_details.total_amount) - Number(order.advance_amount || 0)).toFixed(2)}`, label: 'Balance Due', color: '#EF4444' },
+                  { value: `Rs. ${Number(order.order_details.total_amount).toFixed(2)}`, label: 'Total Amount', color: '#16281D' },
+                  { value: `Rs. ${Number(order.advance_amount || 0).toFixed(2)}`, label: order.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid', color: '#1D4ED8' },
+                  { value: `Rs. ${Math.max(0, Number(order.order_details.total_amount) - Number(order.advance_amount || 0)).toFixed(2)}`, label: 'Balance Due', color: '#EF4444' },
                   { value: order.order_details.items.length, label: 'Line Items', color: '#7c3aed' },
                   { value: totalQty, label: 'Total Qty', color: '#15803D' },
-                ].map((stat, i) => (
-                  <div key={stat.label} style={{ textAlign: 'center', padding: '6px 8px', borderRight: i < 4 ? '1px solid #EAEAEA' : 'none' }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stat.value}</div>
-                    <div style={{ fontSize: 11, color: '#71717a' }}>{stat.label}</div>
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="col-span-1 last:col-span-2 md:last:col-span-1 bg-[#F4F7F4] rounded-xl p-2.5 sm:p-3 text-center min-w-0"
+                  >
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4 }} className="truncate" title={String(stat.value)}>
+                      {stat.value}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#71717a' }} className="truncate">
+                      {stat.label}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -407,15 +414,15 @@ const OrderDetailsPage: React.FC = () => {
                       <div key={index} style={{ padding: '14px 20px', borderBottom: '1px solid #EAEAEA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#16281D' }}>{item.name}</div>
-                          <div style={{ fontSize: 12, color: '#71717a' }}>Qty: {item.quantity} × <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>LKR {item.price.toFixed(2)}</span></div>
+                          <div style={{ fontSize: 12, color: '#71717a' }}>Qty: {item.quantity} × <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Rs. {item.price.toFixed(2)}</span></div>
                         </div>
-                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D', flexShrink: 0 }}>LKR {item.total.toFixed(2)}</div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D', flexShrink: 0 }}>Rs. {item.total.toFixed(2)}</div>
                       </div>
                     ))}
                   </div>
                   <div style={{ padding: '14px 20px', borderTop: '1px solid #EAEAEA', display: 'flex', justifyContent: 'space-between', background: '#F4F7F4' }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#16281D' }}>Total</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 800, color: '#16281D' }}>LKR {order.order_details.total_amount.toFixed(2)}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 800, color: '#16281D' }}>Rs. {order.order_details.total_amount.toFixed(2)}</span>
                   </div>
                 </div>
               )}
@@ -480,15 +487,15 @@ const OrderDetailsPage: React.FC = () => {
                   <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '6px 8px', border: '1px solid #ccc' }}>{item.name}</td>
                     <td style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc' }}>{item.quantity}</td>
-                    <td style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc' }}>LKR {item.price.toFixed(2)}</td>
-                    <td style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc', fontWeight: 600 }}>LKR {item.total.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc' }}>Rs. {item.price.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc', fontWeight: 600 }}>Rs. {item.total.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
                   <td colSpan={3} style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc', fontWeight: 700 }}>TOTAL:</td>
-                  <td style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc', fontWeight: 700 }}>LKR {order.order_details.total_amount.toFixed(2)}</td>
+                  <td style={{ textAlign: 'right', padding: '6px 8px', border: '1px solid #ccc', fontWeight: 700 }}>Rs. {order.order_details.total_amount.toFixed(2)}</td>
                 </tr>
               </tfoot>
             </table>

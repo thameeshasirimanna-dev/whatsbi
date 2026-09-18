@@ -235,66 +235,86 @@ const AppointmentsPage: React.FC = () => {
       )}
 
       {/* Toolbar */}
-      <div className="bg-white rounded-[20px] p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="bg-white rounded-[20px] p-3 sm:p-3.5 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col gap-2.5 sm:gap-3">
+        {/* Row 1: Search & Primary Action Button (Full width) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+          {/* Search Bar */}
+          <div className="relative flex-1 min-w-0 flex items-center">
             <Search
               size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A] pointer-events-none"
+              className="absolute left-3.5 text-[#a1a1aa] pointer-events-none shrink-0"
             />
             <input
               type="text"
               placeholder="Search by customer, title, status…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 pl-9 pr-4 bg-[#F4F7F4] border border-[#EAEAEA] rounded-full text-xs text-[#16281D] placeholder-[#71717A] focus:outline-none focus:border-[#9FE870] focus:ring-2 focus:ring-[#9FE870]/20 transition-all"
+              className="w-full h-10 pl-9 pr-9 rounded-full bg-white border border-[#EAEAEA] text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 w-5 h-5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717a] hover:text-[#16281D] cursor-pointer border-0 transition-colors"
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* Book Appointment Action Button */}
+          <button
+            onClick={() => setShowCustomerSelect(true)}
+            className="flex-1 sm:flex-initial justify-center px-4 py-2.5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer border-0 shrink-0"
+          >
+            <Plus size={14} />
+            <span>Book Appointment</span>
+          </button>
+        </div>
+
+        {/* Row 2: Filters Grid (Full fill 100% row width across all screen sizes) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-2 sm:gap-2.5 w-full">
+          {/* Customer Filter */}
+          <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? "lg:w-48 xl:w-56 lg:shrink-0" : "lg:flex-1"}`}>
+            <CustomDropdown
+              value={customerFilter}
+              onChange={(val) => setCustomerFilter(val)}
+              options={[
+                { value: "", label: "All Customers" },
+                ...allCustomers.map((c) => ({
+                  value: c.name,
+                  label: c.name,
+                  badge: c.phone || undefined,
+                })),
+              ]}
+              placeholder="All Customers"
+              searchable={true}
+              searchPlaceholder="Search customer..."
+              className="w-full"
             />
           </div>
 
-          <CustomDropdown
-            value={customerFilter}
-            onChange={(val) => setCustomerFilter(val)}
-            options={[
-              { value: "", label: "All Customers" },
-              ...allCustomers.map((c) => ({ value: c.name, label: c.name })),
-            ]}
-            placeholder="All Customers"
-            minWidth={150}
-          />
+          {/* Status Filter */}
+          <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? "lg:w-40 xl:w-48 lg:shrink-0" : "lg:flex-1"}`}>
+            <CustomDropdown
+              value={statusFilter}
+              onChange={(val) => setStatusFilter(val)}
+              options={statusOptions.map((o) => ({ value: o.value, label: o.label }))}
+              placeholder="All Statuses"
+              className="w-full"
+            />
+          </div>
 
-          <CustomDropdown
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-            options={statusOptions.map((o) => ({ value: o.value, label: o.label }))}
-            placeholder="All Statuses"
-            minWidth={130}
-          />
-
-          <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
-
-          {(searchTerm || customerFilter || statusFilter || timeRange.period !== "all") && (
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setCustomerFilter("");
-                setStatusFilter("");
-                setTimeRange(emptyTimeRange);
-              }}
-              title="Clear filters"
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          )}
+          {/* Time Range Filter */}
+          <div className="col-span-1 sm:col-span-2 lg:flex-1 w-full min-w-0">
+            <TimeRangeFilter
+              value={timeRange}
+              onChange={setTimeRange}
+              className="w-full"
+            />
+          </div>
         </div>
-
-        <button
-          onClick={() => setShowCustomerSelect(true)}
-          className="px-4 py-2 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.3)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer border-0 shrink-0"
-        >
-          <Plus size={14} />
-          <span>Book Appointment</span>
-        </button>
       </div>
 
       {/* Appointments Table / Cards Container */}

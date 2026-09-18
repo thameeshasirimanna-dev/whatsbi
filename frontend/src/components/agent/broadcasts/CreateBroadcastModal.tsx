@@ -93,15 +93,15 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 bg-[#16281D]/65 flex items-center justify-center p-4 animate-modal-backdrop">
-        <div className="bg-white rounded-3xl border border-[#EAEAEA] shadow-[0_24px_64px_rgba(22,40,29,0.15)] w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-modal-card">
+      <div className="fixed inset-0 z-50 bg-[#16281D]/65 flex items-center justify-center p-2.5 sm:p-4 animate-modal-backdrop">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#EAEAEA] shadow-[0_24px_64px_rgba(22,40,29,0.15)] w-full max-w-[min(42rem,95vw)] sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-modal-card">
           {/* Header */}
-          <div className="shrink-0 px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-[#16281D]">Create WhatsApp Broadcast</h3>
-              <div className="flex items-center gap-2 mt-2">
+          <div className="shrink-0 px-4 py-3.5 sm:px-6 sm:py-5 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="min-w-0 mr-2">
+              <h3 className="text-sm sm:text-base font-bold text-[#16281D] truncate">Create WhatsApp Broadcast</h3>
+              <div className="flex items-center gap-1.5 sm:gap-2 mt-1.5 overflow-x-auto no-scrollbar pb-0.5">
                 <span
-                  className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                  className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-semibold transition-colors shrink-0 ${
                     wizardStep === 1
                       ? 'bg-[#16281D] text-[#9FE870]'
                       : 'bg-[#F4F7F4] text-[#71717A]'
@@ -110,7 +110,7 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
                   1. Audience
                 </span>
                 <span
-                  className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                  className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-semibold transition-colors shrink-0 ${
                     wizardStep === 2
                       ? 'bg-[#16281D] text-[#9FE870]'
                       : 'bg-[#F4F7F4] text-[#71717A]'
@@ -119,7 +119,7 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
                   2. Composer
                 </span>
                 <span
-                  className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                  className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-semibold transition-colors shrink-0 ${
                     wizardStep === 3
                       ? 'bg-[#16281D] text-[#9FE870]'
                       : 'bg-[#F4F7F4] text-[#71717A]'
@@ -131,14 +131,14 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors shrink-0"
             >
               <X size={15} />
             </button>
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             {wizardStep === 1 && (
               <AudienceStep
                 campaignName={campaignName}
@@ -283,14 +283,14 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 px-6 py-4 border-t border-[#EAEAEA] bg-[#F4F7F4] flex items-center justify-between">
+          <div className="shrink-0 p-3 sm:px-6 sm:py-4 border-t border-[#EAEAEA] bg-[#F4F7F4] flex items-center justify-between gap-3">
             <div>
               {wizardStep > 1 ? (
                 <button
                   type="button"
                   onClick={() => setWizardStep((prev) => prev - 1)}
                   disabled={submittingCampaign}
-                  className="px-4 py-2 rounded-full bg-white border border-[#EAEAEA] hover:border-[#71717A] text-xs font-semibold text-[#16281D] flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 min-h-[38px] rounded-full bg-white border border-[#EAEAEA] hover:border-[#71717A] text-xs font-semibold text-[#16281D] flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   <ArrowLeft size={13} /> Back
                 </button>
@@ -305,7 +305,7 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
                   type="button"
                   onClick={() => setWizardStep((prev) => prev + 1)}
                   disabled={wizardStep === 1 && !campaignName.trim()}
-                  className="px-5 py-2 rounded-full bg-[#9FE870] hover:bg-[#8edb5f] text-xs font-semibold text-[#16281D] flex items-center gap-1.5 transition-all shadow-[0_4px_14px_rgba(159,232,112,0.3)] disabled:opacity-50"
+                  className="px-5 py-2 min-h-[38px] rounded-full bg-[#9FE870] hover:bg-[#8edb5f] text-xs font-semibold text-[#16281D] flex items-center gap-1.5 transition-all shadow-[0_4px_14px_rgba(159,232,112,0.3)] disabled:opacity-50 cursor-pointer"
                 >
                   Next <ArrowRight size={13} />
                 </button>
@@ -314,7 +314,7 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
                   type="button"
                   onClick={onSubmit}
                   disabled={submittingCampaign || !hasSufficientCredits}
-                  className="px-5 py-2 rounded-full bg-[#9FE870] hover:bg-[#8edb5f] text-xs font-semibold text-[#16281D] flex items-center gap-1.5 transition-all shadow-[0_4px_14px_rgba(159,232,112,0.3)] disabled:opacity-50"
+                  className="px-5 py-2 min-h-[38px] rounded-full bg-[#9FE870] hover:bg-[#8edb5f] text-xs font-semibold text-[#16281D] flex items-center gap-1.5 transition-all shadow-[0_4px_14px_rgba(159,232,112,0.3)] disabled:opacity-50 cursor-pointer"
                 >
                   <Send size={13} />
                   {submittingCampaign ? 'Launching...' : 'Send Broadcast'}

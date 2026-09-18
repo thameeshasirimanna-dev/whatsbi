@@ -43,25 +43,25 @@ const BroadcastDetailsDrawer: React.FC<BroadcastDetailsDrawerProps> = ({
           className="fixed inset-0"
           onClick={onClose}
         />
-        <div className="relative w-full max-w-lg bg-white h-full shadow-[0_24px_64px_rgba(22,40,29,0.15)] z-10 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+        <div className="relative w-full max-w-full sm:max-w-lg bg-white h-full shadow-[0_24px_64px_rgba(22,40,29,0.15)] z-10 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
           {/* Header */}
-          <div className="shrink-0 px-6 py-4 border-b border-[#EAEAEA] flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wider block">
+          <div className="shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[#EAEAEA] flex items-center justify-between">
+            <div className="min-w-0 mr-2">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#71717A] uppercase tracking-wider block truncate">
                 Broadcast Campaign Details
               </span>
-              <h3 className="text-base font-bold text-[#16281D] mt-0.5">{broadcast.name}</h3>
+              <h3 className="text-sm sm:text-base font-bold text-[#16281D] mt-0.5 truncate">{broadcast.name}</h3>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#71717A] hover:text-[#16281D] flex items-center justify-center transition-colors shrink-0"
             >
               <X size={15} />
             </button>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
             {/* Quick Metrics */}
             <div className="grid grid-cols-2 gap-3 bg-[#F4F7F4] p-4 rounded-2xl border border-[#EAEAEA]">
               <div>

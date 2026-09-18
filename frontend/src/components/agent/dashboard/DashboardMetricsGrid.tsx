@@ -102,7 +102,7 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3 md:gap-3.5">
-      {metricCards.map((card, index) => {
+      {metricCards.map((card) => {
         const Icon = card.icon;
         const isPositive = card.trend === 'up';
         const isNegative = card.trend === 'down';
@@ -110,19 +110,19 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
         return (
           <div
             key={card.title}
-            className="col-span-1 bg-white rounded-[24px] border border-[#EAEAEA] p-3.5 sm:p-4 md:p-5 shadow-xs hover:shadow-[0_12px_28px_rgba(20,40,24,0.08)] transition-shadow duration-200 flex flex-col justify-between"
+            className="col-span-1 bg-white rounded-[20px] sm:rounded-[24px] border border-[#EAEAEA] p-3 sm:p-4 md:p-5 shadow-xs hover:shadow-[0_12px_28px_rgba(20,40,24,0.08)] transition-shadow duration-200 flex flex-col justify-between min-w-0"
           >
             <div>
               {/* Header: Icon container + Trend/Status Badge */}
-              <div className="flex items-start justify-between mb-2.5 sm:mb-3">
+              <div className="flex items-start justify-between gap-1 mb-2 sm:mb-3">
                 <div
-                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl ${card.iconBg} ${card.iconColor} flex items-center justify-center shrink-0 shadow-xs`}
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl ${card.iconBg} ${card.iconColor} flex items-center justify-center shrink-0 shadow-xs`}
                 >
                   <Icon className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.4} />
                 </div>
 
                 <div
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold ${
+                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[11px] font-bold shrink-0 ${
                     card.badge
                       ? 'bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]'
                       : isPositive
@@ -139,7 +139,7 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
                           isPositive ? 'bg-[#22C55E]' : isNegative ? 'bg-[#EF4444]' : 'bg-[#71717A]'
                         }`}
                       />
-                      <span>{card.change}</span>
+                      <span className="truncate max-w-[45px] sm:max-w-none">{card.change}</span>
                     </>
                   ) : (
                     <>
@@ -151,18 +151,18 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
               </div>
 
               {/* Numeric Value */}
-              <div className="text-xl sm:text-2xl lg:text-[25px] font-extrabold text-[#16281D] tracking-tight leading-tight font-mono">
+              <div className="text-lg sm:text-2xl lg:text-[25px] font-extrabold text-[#16281D] tracking-tight leading-tight font-mono truncate">
                 {card.value}
               </div>
 
               {/* Title */}
-              <div className="text-xs sm:text-[13px] font-bold text-[#52525B] mt-1 truncate">
+              <div className="text-xs sm:text-[13px] font-bold text-[#52525B] mt-0.5 sm:mt-1 truncate">
                 {card.title}
               </div>
             </div>
 
             {/* Description / Footer */}
-            <div className="text-[10px] sm:text-[11px] text-[#71717A] mt-3 pt-2.5 border-t border-[#F4F4F5] flex items-center justify-between font-medium">
+            <div className="text-[10px] sm:text-[11px] text-[#71717A] mt-2.5 sm:mt-3 pt-2 sm:pt-2.5 border-t border-[#F4F4F5] flex items-center justify-between font-medium">
               <span className="truncate">{card.description}</span>
             </div>
           </div>

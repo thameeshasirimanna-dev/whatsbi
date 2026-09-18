@@ -19,6 +19,8 @@ import { DatePicker } from "../shared/DatePicker";
 import { SkeletonPage } from "../shared/Skeleton";
 import { useTableSelection } from "../shared/useTableSelection";
 import OrderBulkActionsBar from "./OrderBulkActionsBar";
+import { useBulkProgress, FloatingBulkProgress } from "../shared/BulkProgress";
+import { EmptyTableState } from "../shared/EmptyTableState";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
 const DM: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif" };
@@ -75,6 +77,7 @@ const OrdersPage: React.FC = () => {
   const [agentPrefix, setAgentPrefix] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [customerFilter, setCustomerFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount">("newest");
   const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [estDeliveryDateFilter, setEstDeliveryDateFilter] = useState<string>("");
@@ -179,25 +182,45 @@ const OrdersPage: React.FC = () => {
       setAgentPrefix(agentData.agent_prefix);
       if (!agentData.agent_prefix) { setError("Agent prefix not found"); setLoading(false); return; }
 
-      const ordersResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-orders`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
+      const [ordersResponse, customersResponse] = await Promise.all([
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-orders`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        }),
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-customers`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        }),
+      ]);
       if (!ordersResponse.ok) { setError("Failed to fetch orders"); setLoading(false); return; }
       const ordersData = await ordersResponse.json();
       if (!ordersData.success) { setError("Failed to fetch orders"); setLoading(false); return; }
 
       const ordersDataArray = ordersData.orders || [];
-      if (ordersDataArray.length === 0) { setOrders([]); setCustomerMap({}); setLoading(false); return; }
 
-      const customerMapFromOrders = ordersDataArray.reduce((map: any, order: any) => {
-        if (order.customer) map[String(order.customer.id)] = order.customer;
-        return map;
-      }, {});
-      setCustomerMap(customerMapFromOrders);
+      const allCustMap: any = {};
+      if (customersResponse.ok) {
+        const custData = await customersResponse.json();
+        if (custData.success && Array.isArray(custData.customers)) {
+          custData.customers.forEach((c: any) => {
+            allCustMap[String(c.id)] = c;
+          });
+        }
+      }
+      ordersDataArray.forEach((order: any) => {
+        if (order.customer && order.customer.id) {
+          allCustMap[String(order.customer.id)] = {
+            ...allCustMap[String(order.customer.id)],
+            ...order.customer,
+          };
+        }
+      });
+      setCustomerMap(allCustMap);
+
+      if (ordersDataArray.length === 0) { setOrders([]); setLoading(false); return; }
 
       const customerMapInstance = new Map<number, any>();
-      Object.entries(customerMapFromOrders).forEach(([idStr, customer]) => {
+      Object.entries(allCustMap).forEach(([idStr, customer]) => {
         const idNum = Number(idStr);
         if (!isNaN(idNum)) customerMapInstance.set(idNum, customer);
       });
@@ -226,7 +249,7 @@ const OrdersPage: React.FC = () => {
             })),
             total_amount: totalAmount,
             shipping_address: order.shipping_address,
-            currency: "LKR",
+            currency: "Rs.",
             created_via: "manual",
           },
           type: "order" as const,
@@ -270,6 +293,10 @@ const OrdersPage: React.FC = () => {
       (order.customer_phone && order.customer_phone.includes(searchTerm)) ||
       order.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
       extractOrderText(order).includes(searchTerm.toLowerCase());
+    const matchesCustomer = customerFilter === "" ||
+      String(order.customer_id) === customerFilter ||
+      order.customer_name === customerFilter ||
+      order.customer_name?.toLowerCase() === customerFilter.toLowerCase();
     const matchesStatus = statusFilter === "" || order.status.toLowerCase() === statusFilter;
     const matchesTime = matchesTimeRange(order.created_at, timeRange);
     const matchesEstDelivery = estDeliveryDateFilter === "" || (
@@ -281,7 +308,7 @@ const OrdersPage: React.FC = () => {
         return `${year}-${month}-${day}` === estDeliveryDateFilter;
       })() : false
     );
-    return matchesSearch && matchesStatus && matchesTime && matchesEstDelivery;
+    return matchesSearch && matchesCustomer && matchesStatus && matchesTime && matchesEstDelivery;
   });
 
   filteredOrders = [...filteredOrders].sort((a, b) => {
@@ -386,7 +413,7 @@ const OrdersPage: React.FC = () => {
 
   // Table selection & bulk actions
   const selection = useTableSelection<number>([]);
-  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const { bulkProgress, isProcessing: isBulkProcessing, setBulkProgress } = useBulkProgress();
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
   const pageIds = paginatedOrders.map((o) => o.id);
@@ -413,7 +440,7 @@ const OrdersPage: React.FC = () => {
     )
       return;
 
-    setIsBulkProcessing(true);
+    setBulkProgress({ actionLabel: "Marking orders as paid...", current: 0, total: unpaid.length });
     try {
       const token = getToken();
       if (!token) {
@@ -421,7 +448,13 @@ const OrdersPage: React.FC = () => {
         return;
       }
       let successCount = 0;
-      for (const order of unpaid) {
+      for (let i = 0; i < unpaid.length; i++) {
+        const order = unpaid[i];
+        setBulkProgress({
+          actionLabel: `Marking as paid: #${order.id}...`,
+          current: i + 1,
+          total: unpaid.length,
+        });
         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-orders`, {
           method: "PUT",
           headers: {
@@ -445,7 +478,7 @@ const OrdersPage: React.FC = () => {
     } catch (err: any) {
       toast(`Bulk update failed: ${err.message || "Unknown error"}`, "error");
     } finally {
-      setIsBulkProcessing(false);
+      setBulkProgress(null);
     }
   };
 
@@ -459,7 +492,8 @@ const OrdersPage: React.FC = () => {
     )
       return;
 
-    setIsBulkProcessing(true);
+    const total = selection.selectedIds.length;
+    setBulkProgress({ actionLabel: `Updating status to "${capitalizeFirst(newStatus)}"...`, current: 0, total });
     try {
       const token = getToken();
       if (!token) {
@@ -467,7 +501,13 @@ const OrdersPage: React.FC = () => {
         return;
       }
       let successCount = 0;
-      for (const id of selection.selectedIds) {
+      for (let i = 0; i < total; i++) {
+        const id = selection.selectedIds[i];
+        setBulkProgress({
+          actionLabel: `Updating order #${id} status...`,
+          current: i + 1,
+          total,
+        });
         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-orders`, {
           method: "PUT",
           headers: {
@@ -487,7 +527,7 @@ const OrdersPage: React.FC = () => {
     } catch (err: any) {
       toast(`Bulk status update failed: ${err.message || "Unknown error"}`, "error");
     } finally {
-      setIsBulkProcessing(false);
+      setBulkProgress(null);
     }
   };
 
@@ -502,7 +542,8 @@ const OrdersPage: React.FC = () => {
     )
       return;
 
-    setIsBulkProcessing(true);
+    const total = selection.selectedIds.length;
+    setBulkProgress({ actionLabel: "Deleting orders...", current: 0, total });
     try {
       const token = getToken();
       if (!token) {
@@ -510,7 +551,13 @@ const OrdersPage: React.FC = () => {
         return;
       }
       let successCount = 0;
-      for (const id of selection.selectedIds) {
+      for (let i = 0; i < total; i++) {
+        const id = selection.selectedIds[i];
+        setBulkProgress({
+          actionLabel: `Deleting order #${id}...`,
+          current: i + 1,
+          total,
+        });
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/manage-orders?id=${id}`,
           {
@@ -526,7 +573,7 @@ const OrdersPage: React.FC = () => {
     } catch (err: any) {
       toast(`Bulk delete failed: ${err.message || "Unknown error"}`, "error");
     } finally {
-      setIsBulkProcessing(false);
+      setBulkProgress(null);
     }
   };
 
@@ -635,23 +682,31 @@ const OrdersPage: React.FC = () => {
       <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {[
             { Icon: ShoppingBag, label: 'Total Orders', value: totalOrders.toLocaleString(), iconColor: '#16281D', iconBg: 'rgba(159,232,112,0.25)' },
-            { Icon: DollarSign, label: 'Total Revenue', value: `LKR ${totalRevenue.toLocaleString()}`, iconColor: '#15803D', iconBg: 'rgba(34,197,94,0.1)' },
+            { Icon: DollarSign, label: 'Total Revenue', value: `Rs. ${totalRevenue.toLocaleString()}`, iconColor: '#15803D', iconBg: 'rgba(34,197,94,0.1)' },
             { Icon: Clock, label: 'Pending Orders', value: pendingOrders, iconColor: '#B45309', iconBg: 'rgba(245,158,11,0.1)' },
             { Icon: CheckCircle, label: 'Completed Orders', value: completedOrders, iconColor: '#1D4ED8', iconBg: 'rgba(59,130,246,0.1)' },
           ].map(({ Icon, label, value, iconColor, iconBg }) => (
-            <div key={label}
-              style={{ background: '#fff', borderRadius: 20, padding: '20px 22px', border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}
+            <div
+              key={label}
+              className="bg-white rounded-[16px] sm:rounded-[20px] p-3 sm:p-5 border border-[#EAEAEA] shadow-[0_2px_8px_rgba(0,0,0,0.03)] min-w-0"
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 9999, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon size={17} style={{ color: iconColor }} />
+              <div className="flex items-start justify-between mb-2 sm:mb-3.5">
+                <div
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: iconBg }}
+                >
+                  <Icon className="w-4 h-4 sm:w-[17px] sm:h-[17px]" style={{ color: iconColor }} />
                 </div>
               </div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 26, fontWeight: 700, color: '#16281D', lineHeight: 1, marginBottom: 4 }}>{value}</div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#71717a' }}>{label}</div>
+              <div className="font-mono text-base sm:text-2xl font-bold text-[#16281D] leading-none mb-1 sm:mb-1.5 truncate" title={String(value)}>
+                {value}
+              </div>
+              <div className="text-xs sm:text-[13px] font-medium text-[#71717a] truncate">
+                {label}
+              </div>
             </div>
           ))}
         </div>
@@ -664,89 +719,166 @@ const OrdersPage: React.FC = () => {
 
         {/* Toolbar */}
         <div
-          style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', padding: '14px 18px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}
+          className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-[0_2px_8px_rgba(0,0,0,0.03)] p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3"
         >
-          <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-            <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa', pointerEvents: 'none' }} />
-            <input
-              type="text"
-              placeholder="Search by ID, customer, or phone…"
-              value={searchTerm}
-              onChange={e => {
-                setSearchTerm(e.target.value);
-                handlePageChange(1, false);
-              }}
-              style={{ ...inputStyle, paddingLeft: 34, borderRadius: 9999 }}
-              onFocus={onFocusG}
-              onBlur={onBlurG}
-            />
+          {/* Row 1: Search & Primary Action Row (Full width) */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+            {/* Search Bar Capsule */}
+            <div className="relative flex-1 min-w-0 flex items-center">
+              <Search
+                size={14}
+                className="absolute left-3.5 text-[#a1a1aa] pointer-events-none shrink-0"
+              />
+              <input
+                type="text"
+                placeholder="Search by ID, customer, phone, or status…"
+                value={searchTerm}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  handlePageChange(1, false);
+                }}
+                className="w-full h-10 pl-9 pr-9 rounded-full bg-white border border-[#EAEAEA] text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    handlePageChange(1, false);
+                  }}
+                  className="absolute right-3 w-5 h-5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] flex items-center justify-center text-[#71717a] hover:text-[#16281D] cursor-pointer border-0 transition-colors"
+                  title="Clear search"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Rows Per Page & New Order Action Button */}
+            <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-end shrink-0">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: '#71717a', whiteSpace: 'nowrap', fontWeight: 500 }}>Rows:</span>
+                <CustomDropdown
+                  value={rowsPerPage}
+                  onChange={(val) => handleRowsPerPageChange(Number(val))}
+                  options={[
+                    { value: 10, label: "10" },
+                    { value: 20, label: "20" },
+                    { value: 50, label: "50" },
+                    { value: 100, label: "100" },
+                  ]}
+                  minWidth={75}
+                />
+              </div>
+
+              <button
+                onClick={() => setShowCustomerSelect(true)}
+                className="flex-1 sm:flex-initial justify-center rounded-full px-5 py-2.5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_2px_10px_rgba(159,232,112,0.3)] hover:shadow-[0_4px_16px_rgba(159,232,112,0.4)] flex items-center gap-2 shrink-0 cursor-pointer border-0 transition-all"
+              >
+                <Plus size={14} /> New Order
+              </button>
+            </div>
           </div>
 
-          <CustomDropdown
-            value={statusFilter}
-            onChange={(val) => {
-              setStatusFilter(val);
-              handlePageChange(1, false);
-            }}
-            options={statusOptions.map((o) => ({ value: o.value, label: o.label }))}
-            minWidth={130}
-          />
+          {/* Row 2: Filters Grid (Full fill 100% row width across all screen sizes) */}
+          <div className="grid grid-cols-2 lg:flex lg:items-center gap-2 sm:gap-2.5 w-full">
+            {/* Customer Filter */}
+            <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? "lg:w-36 xl:w-44 lg:shrink-0" : "lg:flex-1"}`}>
+              <CustomDropdown
+                value={customerFilter}
+                onChange={(val) => {
+                  setCustomerFilter(val);
+                  handlePageChange(1, false);
+                }}
+                options={[
+                  { value: "", label: "All Customers" },
+                  ...allCustomers.map((c: any) => ({
+                    value: String(c.id),
+                    label: c.name,
+                    badge: c.phone || undefined,
+                  })),
+                ]}
+                placeholder="All Customers"
+                searchable={true}
+                searchPlaceholder="Search customer..."
+                className="w-full"
+                triggerClassName={
+                  customerFilter
+                    ? "!bg-[#22C55E]/10 !border-[#22C55E]/30 !text-[#16281D] !font-bold"
+                    : ""
+                }
+              />
+            </div>
 
-          <CustomDropdown
-            value={sortBy}
-            onChange={(val) => {
-              setSortBy(val as any);
-              handlePageChange(1, false);
-            }}
-            options={[
-              { value: "newest", label: "Newest First" },
-              { value: "oldest", label: "Oldest First" },
-              { value: "amount", label: "Amount (High → Low)" },
-            ]}
-            minWidth={140}
-          />
+            {/* Status Dropdown */}
+            <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? "lg:w-32 xl:w-36 lg:shrink-0" : "lg:flex-1"}`}>
+              <CustomDropdown
+                value={statusFilter}
+                onChange={(val) => {
+                  setStatusFilter(val);
+                  handlePageChange(1, false);
+                }}
+                options={statusOptions.map((o) => ({ value: o.value, label: o.label }))}
+                className="w-full"
+                triggerClassName={
+                  statusFilter
+                    ? "!bg-[#22C55E]/10 !border-[#22C55E]/30 !text-[#16281D] !font-bold"
+                    : ""
+                }
+              />
+            </div>
 
-          <TimeRangeFilter
-            value={timeRange}
-            onChange={range => {
-              setTimeRange(range);
-              handlePageChange(1, false);
-            }}
-            placeholder="Placed Date..."
-          />
+            {/* Sort Dropdown */}
+            <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? "lg:w-32 xl:w-36 lg:shrink-0" : "lg:flex-1"}`}>
+              <CustomDropdown
+                value={sortBy}
+                onChange={(val) => {
+                  setSortBy(val as any);
+                  handlePageChange(1, false);
+                }}
+                options={[
+                  { value: "newest", label: "Newest First" },
+                  { value: "oldest", label: "Oldest First" },
+                  { value: "amount", label: "Amount (High → Low)" },
+                ]}
+                className="w-full"
+              />
+            </div>
 
-          {/* Est. Delivery Date Filter */}
-          <DatePicker
-            value={estDeliveryDateFilter || null}
-            onChange={(val) => {
-              setEstDeliveryDateFilter(val || '');
-              handlePageChange(1, false);
-            }}
-            placeholder="Est. Delivery..."
-            size="sm"
-            variant={estDeliveryDateFilter ? "mint" : "white"}
-            triggerClassName={estDeliveryDateFilter ? "!bg-[#F0FDF4] !border-[#BBF7D0] !text-[#15803D]" : ""}
-          />
+            {/* Est Delivery Date Picker */}
+            <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? "lg:w-32 xl:w-36 lg:shrink-0" : "lg:flex-1"}`}>
+              <DatePicker
+                value={estDeliveryDateFilter || null}
+                onChange={(val) => {
+                  setEstDeliveryDateFilter(val || '');
+                  handlePageChange(1, false);
+                }}
+                placeholder="Est. Delivery..."
+                size="md"
+                variant="mint"
+                align="right"
+                className="w-full"
+                triggerClassName={`w-full !justify-between ${
+                  estDeliveryDateFilter
+                    ? "!bg-[#22C55E]/10 !border-[#22C55E]/30 !text-[#16281D] !font-bold"
+                    : ""
+                }`}
+              />
+            </div>
 
-          {/* Rows per page */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <span style={{ fontSize: 12, color: '#71717a', whiteSpace: 'nowrap', fontWeight: 500 }}>Rows:</span>
-            <CustomDropdown
-              value={rowsPerPage}
-              onChange={(val) => handleRowsPerPageChange(Number(val))}
-              options={[
-                { value: 10, label: "10" },
-                { value: 20, label: "20" },
-                { value: 50, label: "50" },
-                { value: 100, label: "100" },
-              ]}
-              minWidth={75}
-            />
+            {/* Placed Date Filter */}
+            <div className="col-span-2 lg:flex-1 w-full min-w-0">
+              <TimeRangeFilter
+                value={timeRange}
+                onChange={range => {
+                  setTimeRange(range);
+                  handlePageChange(1, false);
+                }}
+                placeholder="Placed Date..."
+                className="w-full"
+              />
+            </div>
           </div>
-
-          <button onClick={() => setShowCustomerSelect(true)} style={{ background: '#9FE870', color: '#16281D', border: 'none', borderRadius: 9999, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 10px rgba(159,232,112,0.3)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, transition: 'all 0.15s' }}>
-            <Plus size={14} /> New Order
-          </button>
         </div>
 
         {/* Bulk Actions Bar */}
@@ -757,33 +889,34 @@ const OrdersPage: React.FC = () => {
           onBulkDelete={handleBulkDelete}
           onClearSelection={selection.clearSelection}
           isProcessing={isBulkProcessing}
+          bulkProgress={bulkProgress}
         />
+
+        {/* Floating Viewport Progress Banner */}
+        <FloatingBulkProgress progress={bulkProgress} />
 
         {/* Table */}
         <div ref={tableRef}
           style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflow: 'visible', scrollMarginTop: 20 }}
         >
           {orders.length === 0 ? (
-            <div style={{ padding: '56px 24px', textAlign: 'center' }}>
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#F4F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-                <ShoppingBag size={22} style={{ color: '#71717a' }} />
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#16281D', marginBottom: 6 }}>No orders yet</div>
-              <div style={{ fontSize: 13, color: '#71717a', marginBottom: 20 }}>Start by creating your first order for a customer.</div>
-              <button onClick={() => setShowCustomerSelect(true)} style={{ background: '#9FE870', color: '#16281D', border: 'none', borderRadius: 9999, padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 10px rgba(159,232,112,0.3)', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}>
-                <Plus size={14} /> Create Order
-              </button>
-            </div>
+            <EmptyTableState
+              icon={ShoppingBag}
+              title="No orders yet"
+              description="Start by creating your first order for a customer."
+              actionLabel="Create Order"
+              onAction={() => setShowCustomerSelect(true)}
+            />
           ) : filteredOrders.length === 0 ? (
-            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F4F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                <Search size={20} style={{ color: '#71717a' }} />
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#16281D', marginBottom: 4 }}>No orders found</div>
-              <div style={{ fontSize: 12, color: '#71717a' }}>
-                {searchTerm || statusFilter ? "No orders match your current filters." : "No orders available."}
-              </div>
-            </div>
+            <EmptyTableState
+              isFiltered
+              filteredTitle="No orders found"
+              filteredMessage={
+                searchTerm || statusFilter
+                  ? "No orders match your current filters."
+                  : "No orders available."
+              }
+            />
           ) : (
             <>
               {/* Mobile/Tablet Card Layout */}
@@ -837,16 +970,16 @@ const OrdersPage: React.FC = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                           <span style={{ fontSize: 11, color: '#71717a' }}>Amount</span>
                           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D' }}>
-                            {order.total_amount !== undefined ? `LKR ${Number(order.total_amount).toFixed(2)}` : "LKR 0.00"}
+                            {order.total_amount !== undefined ? `Rs. ${Number(order.total_amount).toFixed(2)}` : "Rs. 0.00"}
                           </span>
                           {order.payment_status === 'partially_paid' && (
                             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#71717a' }}>
-                              Bal: LKR {(Number(order.total_amount || 0) - Number(order.advance_amount || 0)).toFixed(2)}
+                              Bal: Rs. {(Number(order.total_amount || 0) - Number(order.advance_amount || 0)).toFixed(2)}
                             </span>
                           )}
                           {order.payment_status === 'unpaid' && Number(order.total_amount) > 0 && (
                             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#71717a' }}>
-                              Bal: LKR {Number(order.total_amount || 0).toFixed(2)}
+                              Bal: Rs. {Number(order.total_amount || 0).toFixed(2)}
                             </span>
                           )}
                         </div>
@@ -868,13 +1001,13 @@ const OrdersPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+                      <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
                         {/* Status Dropdown */}
                         <div style={{ position: 'relative' }}>
                           <Menu as="div" style={{ position: 'relative', display: 'inline-block' }}>
                             <Menu.Button
                               disabled={updatingOrderId === order.id}
-                              style={{ ...getStatusStyle(order.status), fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 9999, border: 'none', cursor: updatingOrderId === order.id ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, opacity: updatingOrderId === order.id ? 0.6 : 1 }}
+                              style={{ ...getStatusStyle(order.status), fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 9999, border: 'none', cursor: updatingOrderId === order.id ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, opacity: updatingOrderId === order.id ? 0.6 : 1 }}
                             >
                               {updatingOrderId === order.id ? (
                                 <><div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.2)', borderTopColor: 'currentColor', animation: 'op-spin 0.7s linear infinite' }} />Updating…</>
@@ -910,7 +1043,7 @@ const OrdersPage: React.FC = () => {
                         </div>
 
                         {/* Actions */}
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {[
                             { Icon: Eye, color: '#16281D', bg: '#F4F7F4', hbg: 'rgba(159,232,112,0.3)', title: 'View', onClick: () => { setSelectedOrderForView(order); setShowViewModal(true); } },
                             { Icon: Pencil, color: '#B45309', bg: 'rgba(245,158,11,0.1)', hbg: 'rgba(245,158,11,0.2)', title: 'Edit', onClick: () => { setSelectedOrder(order); setShowEditModal(true); } },
@@ -919,11 +1052,12 @@ const OrdersPage: React.FC = () => {
                             { Icon: Trash2, color: '#EF4444', bg: 'rgba(239,68,68,0.08)', hbg: 'rgba(239,68,68,0.16)', title: 'Delete', onClick: () => deleteOrder(order.id) },
                           ].map(({ Icon, color, bg, hbg, title, onClick }) => (
                             <button key={title} onClick={onClick} title={title}
-                              style={{ width: 28, height: 28, borderRadius: 9999, background: bg, border: '1px solid #EAEAEA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.1s' }}
+                              className="w-8 h-8 rounded-full border border-[#EAEAEA] flex items-center justify-center cursor-pointer shrink-0 transition-all"
+                              style={{ background: bg }}
                               onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = hbg}
                               onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = bg}
                             >
-                              <Icon size={13} style={{ color }} />
+                              <Icon size={14} style={{ color }} />
                             </button>
                           ))}
                         </div>
@@ -1040,7 +1174,7 @@ const OrdersPage: React.FC = () => {
                       {/* Amount */}
                       <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#16281D' }}>
-                          {order.total_amount !== undefined ? `LKR ${Number(order.total_amount).toFixed(2)}` : "LKR 0.00"}
+                          {order.total_amount !== undefined ? `Rs. ${Number(order.total_amount).toFixed(2)}` : "Rs. 0.00"}
                         </span>
                       </td>
 
@@ -1052,12 +1186,12 @@ const OrdersPage: React.FC = () => {
                           </span>
                           {order.payment_status === 'partially_paid' && (
                             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#71717a', paddingLeft: 4 }}>
-                              Bal: LKR {(Number(order.total_amount || 0) - Number(order.advance_amount || 0)).toFixed(2)}
+                              Bal: Rs. {(Number(order.total_amount || 0) - Number(order.advance_amount || 0)).toFixed(2)}
                             </span>
                           )}
                           {order.payment_status === 'unpaid' && Number(order.total_amount) > 0 && (
                             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#71717a', paddingLeft: 4 }}>
-                              Bal: LKR {Number(order.total_amount || 0).toFixed(2)}
+                              Bal: Rs. {Number(order.total_amount || 0).toFixed(2)}
                             </span>
                           )}
                         </div>

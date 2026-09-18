@@ -129,7 +129,7 @@ export default async function triggerAiResponseRoutes(
           const item = itemRows[0];
           customPrompt =
             prompt ||
-            `The customer is asking about product "${item.name}" (SKU: ${item.sku || 'N/A'}, Price: LKR ${item.price || '0.00'}). Description: ${item.description || 'Standard product'}. Please provide a polite, concise overview of this product, confirm the price, and ask if they would like to place an order or have questions.`;
+            `The customer is asking about product "${item.name}" (SKU: ${item.sku || 'N/A'}, Price: Rs. ${item.price || '0.00'}). Description: ${item.description || 'Standard product'}. Please provide a polite, concise overview of this product, confirm the price, and ask if they would like to place an order or have questions.`;
         }
       } else if (action_type === 'service_inquiry' && service_id) {
         const servicesTable = `${agent.agent_prefix}_services`;
@@ -152,7 +152,7 @@ export default async function triggerAiResponseRoutes(
               [service_id]
             );
             if (pkgRows.length > 0) {
-              packageInfo = ' Packages: ' + pkgRows.map(p => `${p.package_name} (${p.currency || 'LKR'} ${p.price || 'N/A'})`).join(', ');
+              packageInfo = ' Packages: ' + pkgRows.map(p => `${p.package_name} (${p.currency || 'Rs.'} ${p.price || 'N/A'})`).join(', ');
             }
           } catch (pErr) {
             console.warn('Could not fetch packages for service inquiry prompt:', pErr);
