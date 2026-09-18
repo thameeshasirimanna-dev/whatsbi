@@ -599,3 +599,4 @@ All database transformations are tracked in `frontend/database/migrations/`:
 | `039` | `039_change_default_language_to_sinhala.sql` | Set default customer language to Sinhala |
 | `040` | `040_invoices_first_flow.sql` | Invert sales lifecycle: invoice-first flow, customer_id/advance/total/notes on invoices, optional order_id, invoice_id on items and orders |
 | `041` | `041_add_ai_balance_to_agents.sql` | Added `ai_balance` (NUMERIC(14, 6) DEFAULT 4.000000) for DeepSeek AI, separating it from WhatsApp template `credits` |
+| `042` | `042_add_company_overview_to_agents.sql` | Added `company_overview` (TEXT) to `agents` table for direct text knowledge grounding |

@@ -42,7 +42,7 @@ export default async function triggerAiResponseRoutes(
       let agentRows;
       try {
         const res = await pgClient.query(
-          `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.ai_balance, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
+          `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.ai_balance, a.company_overview, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
            FROM agents a
            LEFT JOIN users u ON a.user_id = u.id
            WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
@@ -50,14 +50,25 @@ export default async function triggerAiResponseRoutes(
         );
         agentRows = res.rows;
       } catch (colErr: any) {
-        const res = await pgClient.query(
-          `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
-           FROM agents a
-           LEFT JOIN users u ON a.user_id = u.id
-           WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
-          [user.id]
-        );
-        agentRows = res.rows;
+        try {
+          const res = await pgClient.query(
+            `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.ai_balance, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
+             FROM agents a
+             LEFT JOIN users u ON a.user_id = u.id
+             WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
+            [user.id]
+          );
+          agentRows = res.rows;
+        } catch {
+          const res = await pgClient.query(
+            `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
+             FROM agents a
+             LEFT JOIN users u ON a.user_id = u.id
+             WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
+            [user.id]
+          );
+          agentRows = res.rows;
+        }
       }
 
       if (agentRows.length === 0) {

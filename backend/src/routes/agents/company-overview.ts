@@ -129,7 +129,70 @@ export default async function companyOverviewRoutes(fastify: FastifyInstance, pg
     }
   });
 
-  // Delete company overview document
+  // Update company overview text
+  fastify.post('/update-company-overview', async (request, reply) => {
+    try {
+      const authenticatedUser = await verifyJWT(request, pgClient);
+      const { agentId, company_overview } = request.body as {
+        agentId?: string;
+        company_overview?: string;
+      };
+
+      if (!agentId) {
+        return reply.code(400).send({
+          success: false,
+          error: "agentId is required",
+        });
+      }
+
+      // Check ownership/permissions
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix FROM agents WHERE id = $1 AND (user_id = $2 OR created_by = $2)",
+        [agentId, authenticatedUser.id]
+      );
+
+      if (agentRows.length === 0) {
+        return reply.code(403).send({
+          success: false,
+          error: "Agent not found or access denied",
+        });
+      }
+
+      const trimmedOverview = typeof company_overview === 'string' ? company_overview.trim() : null;
+
+      try {
+        await pgClient.query(
+          "UPDATE agents SET company_overview = $1 WHERE id = $2",
+          [trimmedOverview || null, agentId]
+        );
+      } catch (colErr: any) {
+        // In case migration 042 hasn't been executed yet, ensure column exists
+        if (colErr.code === '42703') {
+          await pgClient.query("ALTER TABLE agents ADD COLUMN IF NOT EXISTS company_overview TEXT;");
+          await pgClient.query(
+            "UPDATE agents SET company_overview = $1 WHERE id = $2",
+            [trimmedOverview || null, agentId]
+          );
+        } else {
+          throw colErr;
+        }
+      }
+
+      return reply.code(200).send({
+        success: true,
+        message: "Company overview updated successfully",
+        company_overview: trimmedOverview || "",
+      });
+    } catch (error) {
+      console.error("Update company overview error:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Internal server error",
+      });
+    }
+  });
+
+  // Delete company overview document or text
   fastify.post('/delete-company-overview', async (request, reply) => {
     try {
       const authenticatedUser = await verifyJWT(request, pgClient);
@@ -167,15 +230,22 @@ export default async function companyOverviewRoutes(fastify: FastifyInstance, pg
         }
       }
 
-      // Update agent record
-      await pgClient.query(
-        "UPDATE agents SET company_overview_path = NULL WHERE id = $1",
-        [agentId]
-      );
+      // Update agent record: clear both company_overview text and company_overview_path
+      try {
+        await pgClient.query(
+          "UPDATE agents SET company_overview = NULL, company_overview_path = NULL WHERE id = $1",
+          [agentId]
+        );
+      } catch (colErr: any) {
+        await pgClient.query(
+          "UPDATE agents SET company_overview_path = NULL WHERE id = $1",
+          [agentId]
+        );
+      }
 
       return reply.code(200).send({
         success: true,
-        message: "Company overview document removed successfully",
+        message: "Company overview removed successfully",
       });
     } catch (error) {
       console.error("Delete company overview error:", error);
@@ -186,3 +256,4 @@ export default async function companyOverviewRoutes(fastify: FastifyInstance, pg
     }
   });
 }
+

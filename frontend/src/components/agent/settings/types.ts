@@ -8,6 +8,7 @@ export interface AgentProfile {
   website?: string;
   invoice_template_path?: string;
   company_overview_path?: string;
+  company_overview?: string;
   credits?: number;
   ai_balance?: number;
   user_id?: string;

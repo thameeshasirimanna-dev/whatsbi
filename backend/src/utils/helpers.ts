@@ -221,13 +221,26 @@ export async function processIncomingMessage(
 
         let isNewCustomer = false;
 
-        const { rows: agentRows } = await pgClient.query(
-          `SELECT a.id, a.user_id, a.agent_prefix, a.business_type, a.company_overview_path, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path, u.name as business_name
-           FROM agents a
-           LEFT JOIN users u ON a.user_id = u.id
-           WHERE a.user_id = $1`,
-          [whatsappConfig.user_id]
-        );
+        let agentRows: any[] = [];
+        try {
+          const res = await pgClient.query(
+            `SELECT a.id, a.user_id, a.agent_prefix, a.business_type, a.company_overview_path, a.company_overview, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path, u.name as business_name
+             FROM agents a
+             LEFT JOIN users u ON a.user_id = u.id
+             WHERE a.user_id = $1`,
+            [whatsappConfig.user_id]
+          );
+          agentRows = res.rows;
+        } catch {
+          const res = await pgClient.query(
+            `SELECT a.id, a.user_id, a.agent_prefix, a.business_type, a.company_overview_path, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path, u.name as business_name
+             FROM agents a
+             LEFT JOIN users u ON a.user_id = u.id
+             WHERE a.user_id = $1`,
+            [whatsappConfig.user_id]
+          );
+          agentRows = res.rows;
+        }
 
         if (agentRows.length === 0) {
           return;

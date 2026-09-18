@@ -164,16 +164,13 @@ export async function generateCustomerReply({
   // 1. Fetch catalog data according to business type (encapsulated module)
   const catalogContext = await fetchCatalogContext({ agent, pgClient });
 
-  // 2. Fetch company overview document if provided in R2
-  let companyOverview = '';
-  if (agent.company_overview_path) {
+  // 2. Fetch company overview text or fallback to document in R2
+  let companyOverview = (agent.company_overview || '').trim().slice(0, 3000);
+  if (!companyOverview && agent.company_overview_path) {
     try {
       const s3Key = getS3KeyFromUrl(agent.company_overview_path);
       const buffer = await downloadMediaFromR2(s3Key);
-      if (buffer) {
-        // Read text/markdown up to 3000 chars
-        companyOverview = buffer.toString('utf-8').slice(0, 3000);
-      }
+      if (buffer) companyOverview = buffer.toString('utf-8').slice(0, 3000);
     } catch (overviewErr) {
       console.error('[DeepSeek AI] Error reading company overview document:', overviewErr);
     }

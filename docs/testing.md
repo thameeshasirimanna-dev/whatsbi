@@ -78,7 +78,7 @@ All agent pages and subcomponents must strictly verify against these design toke
 
 ### 3.8 Account Settings (`/agent/settings`)
 - **TC-SET-01 (Inline Editable Fields)**: Edit Contact Name, Business Address, Business Email, Contact Phone, and Website. Verify Save/Cancel capsule pills.
-- **TC-SET-02 (Branding & Document Upload)**: Test invoice background image upload + margin guide download. Test Company Overview Document upload with progress bar.
+- **TC-SET-02 (Branding & Company Overview)**: Test invoice background image upload + margin guide download. Test Company Overview direct text input, character counter (max 3,000 chars), saving, resetting, clearing, and AI chatbot knowledge grounding.
 - **TC-SET-03 (Password Security)**: Change password with password visibility toggle and 8+ character validation.
 - **TC-SET-04 (Team Management - Owner Only)**: Log in as agent owner. Add new team member via `rounded-3xl` modal. Delete member with confirm modal.
 

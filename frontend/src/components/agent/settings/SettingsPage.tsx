@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { getToken } from '../../../lib/auth';
 import { SkeletonPage } from '../shared/Skeleton';
 import { useDialog } from '../shared/DialogProvider';
 import AccountInfoCard from './AccountInfoCard';
 import PasswordCard from './PasswordCard';
-import CompanyDocumentCard from './CompanyDocumentCard';
+import CompanyOverviewCard from './CompanyOverviewCard';
 import TeamManagementCard from './TeamManagementCard';
 import type { AgentProfile, UserProfile, TeamMember } from './types';
+import {
+  fetchAgentProfileApi,
+  fetchTeamMembersApi,
+  updateAgentDetailsApi,
+  updatePasswordApi,
+  uploadInvoiceTemplateApi,
+  removeInvoiceTemplateApi,
+  saveCompanyOverviewApi,
+  deleteCompanyOverviewApi,
+  addTeamMemberApi,
+  deleteTeamMemberApi,
+  downloadInvoiceMarginGuide,
+} from './settingsApi';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
@@ -22,9 +34,9 @@ const SettingsPage: React.FC = () => {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState('');
 
-  // Company document state
-  const [currentDocument, setCurrentDocument] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  // Company overview state
+  const [companyOverview, setCompanyOverview] = useState<string>('');
+  const [savingOverview, setSavingOverview] = useState<boolean>(false);
 
   // Team management state
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -49,28 +61,16 @@ const SettingsPage: React.FC = () => {
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      const token = getToken();
-      if (!token) {
-        setError('User not authenticated');
-        return;
-      }
-      const response = await fetch(`${backendUrl}/get-agent-profile`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      const data = await response.json();
-      if (!response.ok) {
+      const data = await fetchAgentProfileApi(backendUrl);
+      if (!data.success) {
         setError(data.message || 'Failed to fetch agent profile');
         return;
       }
       const agentData = data.agent;
       setUser({ id: agentData.id, email: agentData.email });
       setAgent({ ...agentData, credits: parseFloat(agentData.credits) || 0 });
-      setCurrentDocument(agentData.company_overview_path || null);
-    } catch (err) {
+      setCompanyOverview(agentData.company_overview || '');
+    } catch {
       setError('Failed to load user data');
     } finally {
       setLoading(false);
@@ -80,22 +80,13 @@ const SettingsPage: React.FC = () => {
   const fetchTeamMembers = async () => {
     try {
       setTeamLoading(true);
-      const token = getToken();
-      if (!token) return;
-      const response = await fetch(`${backendUrl}/agent/get-users`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
+      const data = await fetchTeamMembersApi(backendUrl);
+      if (data.success) {
         setTeamMembers(data.users || []);
       } else {
         setTeamError(data.message || 'Failed to fetch team members');
       }
-    } catch (err) {
+    } catch {
       setTeamError('Failed to load team members');
     } finally {
       setTeamLoading(false);
@@ -111,21 +102,11 @@ const SettingsPage: React.FC = () => {
       return;
     }
     try {
-      const token = getToken();
-      if (!token) return;
-      const response = await fetch(`${backendUrl}/update-agent-details`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          agent_id: agent.id,
-          user_updates: { name: newName.trim() },
-          agent_updates: {},
-        }),
+      const data = await updateAgentDetailsApi(backendUrl, {
+        agent_id: agent.id,
+        user_updates: { name: newName.trim() },
+        agent_updates: {},
       });
-      const data = await response.json();
       if (data.success) {
         setAgent({ ...agent, name: newName.trim() });
         setUpdateMessage('Name updated successfully!');
@@ -162,25 +143,12 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    const updates: any = {};
-    updates[field] = value.trim();
-
     try {
-      const token = getToken();
-      if (!token) return;
-      const response = await fetch(`${backendUrl}/update-agent-details`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          agent_id: agent.id,
-          user_updates: {},
-          agent_updates: updates,
-        }),
+      const data = await updateAgentDetailsApi(backendUrl, {
+        agent_id: agent.id,
+        user_updates: {},
+        agent_updates: { [field]: value.trim() },
       });
-      const data = await response.json();
       if (data.success) {
         setAgent({ ...agent, [field]: value.trim() });
         const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace('_', ' ');
@@ -213,26 +181,9 @@ const SettingsPage: React.FC = () => {
       return;
     }
     try {
-      const token = getToken();
-      if (!token) {
-        setPasswordMessage('Please log in to continue');
-        setChangingPassword(false);
-        return;
-      }
-      const response = await fetch(`${backendUrl}/update-password`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setPasswordMessage(data.message || 'Failed to update password');
+      const data = await updatePasswordApi(backendUrl, currentPassword, newPassword);
+      if (!data.success && data.message) {
+        setPasswordMessage(data.message);
       } else {
         setPasswordMessage('Password updated successfully!');
         toast('Password updated successfully', 'success');
@@ -255,28 +206,7 @@ const SettingsPage: React.FC = () => {
     const filePath = `agents/${agent.id}/${fileName}`;
     try {
       setUpdateMessage('');
-      const token = getToken();
-      if (!token) return;
-      const reader = new FileReader();
-      const base64 = await new Promise((resolve) => {
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-      const fileBase64 = (base64 as string).split(',')[1];
-      const fileType = file.type;
-      const fName = file.name;
-      const response = await fetch(`${backendUrl}/upload-invoice-template`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          agentId: agent.id.toString(),
-          file: { fileName: fName, fileBase64, fileType },
-        }),
-      });
-      const data = await response.json();
+      const data = await uploadInvoiceTemplateApi(backendUrl, agent.id.toString(), file);
       if (data && data.success) {
         setAgent({ ...agent, invoice_template_path: filePath });
         setUpdateMessage('Invoice template uploaded successfully!');
@@ -300,17 +230,7 @@ const SettingsPage: React.FC = () => {
       return;
     }
     try {
-      const token = getToken();
-      if (!token) return;
-      const response = await fetch(`${backendUrl}/update-agent-template-path`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ agent_id: agent.id, template_path: null }),
-      });
-      const data = await response.json();
+      const data = await removeInvoiceTemplateApi(backendUrl, agent.id);
       if (data.success) {
         setAgent({ ...agent, invoice_template_path: undefined });
         setUpdateMessage('Invoice template removed successfully!');
@@ -323,118 +243,54 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleDocumentUpload = async (file: File) => {
-    if (!agent || !user) return;
+  const handleSaveCompanyOverview = async (newText: string) => {
+    if (!agent) return;
     try {
-      setUpdateMessage('');
-      setUploadProgress(0);
-      const token = getToken();
-      const formData = new FormData();
-      formData.append('agentId', agent.id.toString());
-      formData.append('file', file);
-
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${backendUrl}/upload-company-overview`);
-
-        if (token) {
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        }
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          setUploadProgress(null);
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              if (data && data.success) {
-                setCurrentDocument(data.filePath);
-                toast('Company overview document uploaded successfully!', 'success');
-                resolve(data);
-              } else {
-                reject(new Error(data.error || 'Upload failed'));
-              }
-            } catch (e) {
-              reject(new Error('Invalid response from server'));
-            }
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => {
-          setUploadProgress(null);
-          reject(new Error('Network connection error'));
-        };
-
-        xhr.send(formData);
-      });
+      setSavingOverview(true);
+      const data = await saveCompanyOverviewApi(backendUrl, agent.id.toString(), newText);
+      if (data && data.success) {
+        setCompanyOverview(newText);
+        setAgent({ ...agent, company_overview: newText });
+        toast('Company overview updated successfully!', 'success');
+      } else {
+        toast(data?.error || 'Failed to update company overview', 'error');
+      }
     } catch (err: any) {
-      setUploadProgress(null);
-      setUpdateMessage(`Upload failed: ${err.message}`);
+      toast(`Failed to update company overview: ${err.message}`, 'error');
+    } finally {
+      setSavingOverview(false);
     }
   };
 
-  const handleDocumentRemove = async () => {
-    if (!currentDocument || !agent) return;
+  const handleClearCompanyOverview = async () => {
+    if (!agent) return;
     if (
       !(await dlgConfirm(
-        'Are you sure you want to remove the company overview document?',
-        { danger: true, confirmLabel: 'Remove' }
+        'Are you sure you want to remove the company overview? The AI chatbot will revert to default system prompts.',
+        { danger: true, confirmLabel: 'Clear Overview' }
       ))
     ) {
       return;
     }
     try {
-      const token = getToken();
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const response = await fetch(`${backendUrl}/delete-company-overview`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ agentId: agent.id.toString() }),
-      });
-      const data = await response.json();
+      setSavingOverview(true);
+      const data = await deleteCompanyOverviewApi(backendUrl, agent.id.toString());
       if (data && data.success) {
-        setCurrentDocument(null);
-        toast('Company overview document removed successfully!', 'success');
+        setCompanyOverview('');
+        setAgent({ ...agent, company_overview: '' });
+        toast('Company overview cleared successfully!', 'success');
       } else {
-        setUpdateMessage('Removal failed: ' + (data?.error || 'Unknown error'));
+        toast(data?.error || 'Failed to clear company overview', 'error');
       }
     } catch (err: any) {
-      setUpdateMessage(`Removal failed: ${err.message}`);
+      toast(`Failed to clear company overview: ${err.message}`, 'error');
+    } finally {
+      setSavingOverview(false);
     }
   };
 
-  const handleDownloadMarginGuide = async () => {
-    try {
-      const response = await fetch(`${backendUrl}/get-invoice-template`);
-      if (!response.ok) throw new Error('Failed to fetch guide template');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'Invoice_Margin_Guide.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch {
-      const fallbackLink = document.createElement('a');
-      fallbackLink.href = `${backendUrl}/get-invoice-template`;
-      fallbackLink.download = 'Invoice_Margin_Guide.png';
-      document.body.appendChild(fallbackLink);
-      fallbackLink.click();
-      document.body.removeChild(fallbackLink);
-    }
+  const handleDownloadMarginGuide = () => {
+    downloadInvoiceMarginGuide(backendUrl);
   };
 
   const handleAddTeamMember = async (name: string, email: string, pass: string) => {
@@ -449,24 +305,8 @@ const SettingsPage: React.FC = () => {
     }
 
     try {
-      const token = getToken();
-      if (!token) return;
-
-      const response = await fetch(`${backendUrl}/agent/add-user`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          password: pass,
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok && data.success) {
+      const data = await addTeamMemberApi(backendUrl, name.trim(), email.trim(), pass);
+      if (data.success) {
         setAddMemberSuccess('Team member added successfully!');
         toast('Team member added successfully', 'success');
         fetchTeamMembers();
@@ -492,19 +332,8 @@ const SettingsPage: React.FC = () => {
 
     try {
       setTeamError('');
-      const token = getToken();
-      if (!token) return;
-
-      const response = await fetch(`${backendUrl}/agent/delete-user/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-      if (response.ok && data.success) {
+      const data = await deleteTeamMemberApi(backendUrl, userId);
+      if (data.success) {
         fetchTeamMembers();
         toast('Team member removed', 'success');
       } else {
@@ -537,7 +366,7 @@ const SettingsPage: React.FC = () => {
           error={error}
         />
 
-        {/* Right Column: Security & Company Document */}
+        {/* Right Column: Security & Company Overview */}
         <div className="flex flex-col gap-3.5 sm:gap-4 h-full">
           <PasswordCard
             onUpdatePassword={handlePasswordChange}
@@ -545,12 +374,12 @@ const SettingsPage: React.FC = () => {
             passwordMessage={passwordMessage}
           />
 
-          <CompanyDocumentCard
-            currentDocument={currentDocument}
+          <CompanyOverviewCard
+            companyOverview={companyOverview}
             isOwner={isOwner}
-            onUploadDocument={handleDocumentUpload}
-            onRemoveDocument={handleDocumentRemove}
-            uploadProgress={uploadProgress}
+            onSaveOverview={handleSaveCompanyOverview}
+            onClearOverview={handleClearCompanyOverview}
+            saving={savingOverview}
           />
         </div>
       </div>

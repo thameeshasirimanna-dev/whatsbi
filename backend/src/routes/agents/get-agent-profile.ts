@@ -22,6 +22,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
             website,
             invoice_template_path,
             company_overview_path,
+            company_overview,
             credits,
             ai_balance
           FROM agents
@@ -29,52 +30,73 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
         `;
         agentResult = await pgClient.query(agentQuery, [authenticatedUser.id]);
       } catch (colErr: any) {
-        // Graceful fallback if ai_balance column has not been added to the database yet
-        const fallbackQuery = `
-          SELECT
-            id,
-            user_id,
-            agent_prefix,
-            business_type,
-            address,
-            business_email,
-            contact_number,
-            website,
-            invoice_template_path,
-            company_overview_path,
-            credits
-          FROM agents
-          WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
-        `;
-        agentResult = await pgClient.query(fallbackQuery, [authenticatedUser.id]);
+        // Graceful fallback if company_overview or ai_balance column has not been added to the database yet
+        try {
+          const fallbackQuery1 = `
+            SELECT
+              id,
+              user_id,
+              agent_prefix,
+              business_type,
+              address,
+              business_email,
+              contact_number,
+              website,
+              invoice_template_path,
+              company_overview_path,
+              credits,
+              ai_balance
+            FROM agents
+            WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
+          `;
+          agentResult = await pgClient.query(fallbackQuery1, [authenticatedUser.id]);
+        } catch (colErr2: any) {
+          const fallbackQuery2 = `
+            SELECT
+              id,
+              user_id,
+              agent_prefix,
+              business_type,
+              address,
+              business_email,
+              contact_number,
+              website,
+              invoice_template_path,
+              company_overview_path,
+              credits
+            FROM agents
+            WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
+          `;
+          agentResult = await pgClient.query(fallbackQuery2, [authenticatedUser.id]);
+        }
       }
- 
+
       if (agentResult.rows.length === 0) {
         return reply
           .code(404)
           .send({ success: false, message: "Agent not found" });
       }
- 
+
       const agentData = agentResult.rows[0];
- 
+
       // Get user name
       const userQuery = 'SELECT name, email, role FROM users WHERE id = $1';
       const userResult = await pgClient.query(userQuery, [authenticatedUser.id]);
- 
+
       if (userResult.rows.length === 0) {
         return reply
           .code(404)
           .send({ success: false, message: "User not found" });
       }
- 
+
       const userData = userResult.rows[0];
- 
+
       // Get whatsapp configuration for the agent owner user_id
       const whatsappQuery = 'SELECT whatsapp_number FROM whatsapp_configuration WHERE user_id = $1';
       const whatsappResult = await pgClient.query(whatsappQuery, [agentData.user_id]);
- 
+
       const whatsappData = whatsappResult.rows.length > 0 ? whatsappResult.rows[0] : null;
- 
+
       return reply.code(200).send({
         success: true,
         agent: {
@@ -93,6 +115,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
           website: agentData.website || "",
           invoice_template_path: agentData.invoice_template_path,
           company_overview_path: agentData.company_overview_path,
+          company_overview: agentData.company_overview || "",
           credits: agentData.credits || 0,
           ai_balance: parseFloat(agentData.ai_balance ?? '4.0'),
         },
