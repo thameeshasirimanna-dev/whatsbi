@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Coins, Sparkles, Layers, Users, X, AlertTriangle } from 'lucide-react';
+import { Search, Coins, Sparkles, Layers, Users, X, AlertTriangle, Smartphone } from 'lucide-react';
 import { Agent } from './admin.types';
 
 interface TopUpsTabProps {
@@ -65,11 +65,13 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
   const metrics = useMemo(() => {
     let totalAi = 0;
     let totalCredits = 0;
+    let totalSmsCredits = 0;
     for (const a of agents) {
       totalAi += parseFloat(String(a.ai_balance ?? '0')) || 0;
       totalCredits += parseFloat(String(a.credits ?? '0')) || 0;
+      totalSmsCredits += parseFloat(String(a.sms_credits ?? '0')) || 0;
     }
-    return { totalAi, totalCredits, totalCount: agents.length };
+    return { totalAi, totalCredits, totalSmsCredits, totalCount: agents.length };
   }, [agents]);
 
   return (
@@ -91,8 +93,8 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
         </div>
       </div>
 
-      {/* Summary KPI Cards Grid (2 Columns on Mobile) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+      {/* Summary KPI Cards Grid (2 Columns on Mobile, 4 on Desktop - Rule 7) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total AI Balance */}
         <div className="bg-white rounded-[20px] sm:rounded-[24px] border border-[#EAEAEA] p-3.5 sm:p-5 md:p-6 shadow-sm hover:border-[#9FE870] transition-all flex flex-col justify-between gap-2.5 sm:gap-3 group">
           <div className="flex items-center justify-between gap-1">
@@ -104,7 +106,7 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
             </div>
           </div>
           <div>
-            <div className="text-xl sm:text-3xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1">
+            <div className="text-xl sm:text-2xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1 truncate">
               ${metrics.totalAi.toFixed(2)}{' '}
               <span className="text-[10px] sm:text-xs font-semibold text-[#8FA89B]">USD</span>
             </div>
@@ -114,28 +116,48 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
           </div>
         </div>
 
-        {/* Total Template Credits */}
+        {/* Total WhatsApp Credits */}
         <div className="bg-white rounded-[20px] sm:rounded-[24px] border border-[#EAEAEA] p-3.5 sm:p-5 md:p-6 shadow-sm hover:border-[#9FE870] transition-all flex flex-col justify-between gap-2.5 sm:gap-3 group">
           <div className="flex items-center justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-[#71717A] uppercase tracking-wider truncate">
-              Template Credits
+              WhatsApp Credits
             </span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#E8F8EE] text-[#059669] flex items-center justify-center shrink-0 group-hover:bg-[#9FE870] group-hover:text-[#16281D] transition-colors shadow-xs">
               <Layers size={14} strokeWidth={2.4} />
             </div>
           </div>
           <div>
-            <div className="text-xl sm:text-3xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1">
-              {metrics.totalCredits.toFixed(2)}
+            <div className="text-xl sm:text-2xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1 truncate">
+              Rs. {metrics.totalCredits.toFixed(2)}
             </div>
             <p className="text-[11px] sm:text-xs text-[#8FA89B] font-medium m-0 truncate">
-              Template message credits
+              Rs. 30/template msg
+            </p>
+          </div>
+        </div>
+
+        {/* Total SMS Credits */}
+        <div className="bg-white rounded-[20px] sm:rounded-[24px] border border-[#EAEAEA] p-3.5 sm:p-5 md:p-6 shadow-sm hover:border-[#9FE870] transition-all flex flex-col justify-between gap-2.5 sm:gap-3 group">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-[#71717A] uppercase tracking-wider truncate">
+              SMS Credits
+            </span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0 group-hover:bg-[#9FE870] group-hover:text-[#16281D] transition-colors shadow-xs">
+              <Smartphone size={14} strokeWidth={2.4} />
+            </div>
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1 truncate">
+              Rs. {metrics.totalSmsCredits.toFixed(2)}
+            </div>
+            <p className="text-[11px] sm:text-xs text-[#8FA89B] font-medium m-0 truncate">
+              Rs. 1/SMS part
             </p>
           </div>
         </div>
 
         {/* Total Managed Agents */}
-        <div className="bg-white rounded-[20px] sm:rounded-[24px] border border-[#EAEAEA] p-3.5 sm:p-5 md:p-6 col-span-2 sm:col-span-1 shadow-sm hover:border-[#9FE870] transition-all flex flex-col justify-between gap-2.5 sm:gap-3 group">
+        <div className="bg-white rounded-[20px] sm:rounded-[24px] border border-[#EAEAEA] p-3.5 sm:p-5 md:p-6 shadow-sm hover:border-[#9FE870] transition-all flex flex-col justify-between gap-2.5 sm:gap-3 group">
           <div className="flex items-center justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-[#71717A] uppercase tracking-wider truncate">
               Managed Agents
@@ -145,11 +167,11 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
             </div>
           </div>
           <div>
-            <div className="text-xl sm:text-3xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1">
+            <div className="text-xl sm:text-2xl font-extrabold text-[#16281D] tracking-tight leading-none mb-1 truncate">
               {metrics.totalCount}
             </div>
             <p className="text-[11px] sm:text-xs text-[#8FA89B] font-medium m-0 truncate">
-              Eligible for top-ups
+              Active workspace accounts
             </p>
           </div>
         </div>
@@ -271,7 +293,7 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-[#FAFCFA] border-b border-[#EAEAEA]">
-                    {['Agent', 'Email', 'Prefix', 'DeepSeek AI Balance', 'Template Credits', 'Action'].map((h) => (
+                    {['Agent', 'Email', 'Prefix', 'DeepSeek AI', 'WhatsApp Credits', 'SMS Credits', 'Action'].map((h) => (
                       <th
                         key={h}
                         className="px-5 py-3 text-[11px] font-bold text-[#52525B] uppercase tracking-wider text-left whitespace-nowrap"
@@ -320,7 +342,10 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
                           </div>
                         </td>
                         <td className="px-5 py-3.5 text-xs font-bold text-[#059669]">
-                          {credVal.toFixed(2)}
+                          Rs. {credVal.toFixed(2)}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs font-bold text-[#2563EB]">
+                          Rs. {(parseFloat(String(agent.sms_credits ?? '0')) || 0).toFixed(2)}
                         </td>
                         <td className="px-5 py-3.5 text-xs">
                           <button
@@ -360,18 +385,26 @@ export const TopUpsTab: React.FC<TopUpsTabProps> = ({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 bg-[#F4F7F4] p-2.5 rounded-xl text-xs">
+                    <div className="grid grid-cols-3 gap-2 bg-[#F4F7F4] p-2.5 rounded-xl text-xs">
                       <div>
-                        <span className="text-[10px] font-bold text-[#8FA89B] uppercase block">
+                        <span className="text-[9px] font-bold text-[#8FA89B] uppercase block truncate">
                           AI Balance
                         </span>
-                        <span className="font-bold text-[#16281D]">${aiVal.toFixed(2)} USD</span>
+                        <span className="font-bold text-[#16281D] truncate block">${aiVal.toFixed(2)}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-[#8FA89B] uppercase block">
-                          Template Credits
+                        <span className="text-[9px] font-bold text-[#8FA89B] uppercase block truncate">
+                          WhatsApp
                         </span>
-                        <span className="font-bold text-[#059669]">{credVal.toFixed(2)}</span>
+                        <span className="font-bold text-[#059669] truncate block">Rs. {credVal.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] font-bold text-[#8FA89B] uppercase block truncate">
+                          SMS
+                        </span>
+                        <span className="font-bold text-[#2563EB] truncate block">
+                          Rs. {(parseFloat(String(agent.sms_credits ?? '0')) || 0).toFixed(2)}
+                        </span>
                       </div>
                     </div>
 

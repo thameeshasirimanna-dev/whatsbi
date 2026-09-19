@@ -42,7 +42,7 @@ const baseNavigation: { name: string; href: string; icon: LucideIcon }[] = [
   { name: 'Inventory', href: '/agent/inventory', icon: Package },
   { name: 'Customers', href: '/agent/customers', icon: Users },
   { name: 'Customer Groups', href: '/agent/customer-groups', icon: Layers },
-  { name: 'Broadcasts', href: '/agent/broadcasts', icon: Send },
+  { name: 'Message Marketing', href: '/agent/broadcasts', icon: Send },
   { name: 'Templates', href: '/agent/templates', icon: Files },
   { name: 'Analytics', href: '/agent/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/agent/settings', icon: Settings },

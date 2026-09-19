@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Coins, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { X, Coins, CheckCircle2, AlertCircle, Sparkles, Smartphone } from 'lucide-react';
 import { getToken } from '../../lib/auth';
 
 interface TopUpCreditsModalProps {
@@ -10,6 +10,7 @@ interface TopUpCreditsModalProps {
     user_name: string;
     ai_balance?: number;
     credits?: number;
+    sms_credits?: number;
   } | null;
   onSuccess: () => void;
 }
@@ -20,7 +21,7 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
   agent,
   onSuccess,
 }) => {
-  const [balanceType, setBalanceType] = useState<'ai' | 'template'>('ai');
+  const [balanceType, setBalanceType] = useState<'ai' | 'template' | 'sms'>('ai');
   const [amount, setAmount] = useState<string>('5.00');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,9 +68,14 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
         throw new Error(data.error || data.message || 'Top-up request failed');
       }
 
-      setSuccessMsg(
-        `Successfully added ${balanceType === 'ai' ? `$${numAmount.toFixed(2)} USD` : `${numAmount.toFixed(2)} credits`} to ${agent.user_name}.`
-      );
+      const formattedLabel =
+        balanceType === 'ai'
+          ? `$${numAmount.toFixed(2)} USD`
+          : balanceType === 'sms'
+          ? `Rs. ${numAmount.toFixed(2)} SMS credits`
+          : `Rs. ${numAmount.toFixed(2)} WhatsApp credits`;
+
+      setSuccessMsg(`Successfully added ${formattedLabel} to ${agent.user_name}.`);
       onSuccess();
       setTimeout(() => {
         onClose();
@@ -81,9 +87,16 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
     }
   };
 
+  const presets =
+    balanceType === 'ai'
+      ? ['2.00', '5.00', '10.00', '20.00']
+      : balanceType === 'template'
+      ? ['150.00', '300.00', '600.00', '1500.00']
+      : ['50.00', '100.00', '250.00', '500.00'];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#16281D]/65 font-sans animate-modal-backdrop">
-      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.18)] max-w-md w-full p-6 md:p-7 overflow-hidden flex flex-col gap-5 animate-modal-card">
+      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_24px_72px_rgba(20,40,24,0.18)] max-w-lg w-full p-6 md:p-7 overflow-hidden flex flex-col gap-5 animate-modal-card">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#F4F4F5] pb-4">
           <div className="flex items-center gap-3">
@@ -123,21 +136,29 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
 
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           {/* Current Balance Snapshot Strip */}
-          <div className="grid grid-cols-2 gap-3 p-3.5 bg-[#F4F7F4] rounded-2xl border border-black/5">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3.5 bg-[#F4F7F4] rounded-2xl border border-black/5">
             <div>
-              <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider block">
-                Current DeepSeek AI
+              <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider block truncate">
+                DeepSeek AI
               </span>
-              <span className="text-sm font-bold text-[#15803D] mt-0.5 block">
+              <span className="text-xs sm:text-sm font-bold text-[#15803D] mt-0.5 block truncate">
                 ${(agent.ai_balance ?? 0.0).toFixed(2)} USD
               </span>
             </div>
             <div>
-              <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider block">
-                Template Credits
+              <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider block truncate">
+                WhatsApp (Rs. 30)
               </span>
-              <span className="text-sm font-bold text-[#0F766E] mt-0.5 block">
-                {(agent.credits ?? 1.0).toFixed(2)}
+              <span className="text-xs sm:text-sm font-bold text-[#0F766E] mt-0.5 block truncate">
+                Rs. {(agent.credits ?? 0.0).toFixed(2)}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider block truncate">
+                SMS (Rs. 1)
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-[#2563EB] mt-0.5 block truncate">
+                Rs. {(agent.sms_credits ?? 0.0).toFixed(2)}
               </span>
             </div>
           </div>
@@ -147,31 +168,53 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
             <label className="text-xs font-bold text-[#52525B] block mb-1.5">
               Target Balance Type
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setBalanceType('ai')}
-                className={`py-2.5 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                onClick={() => {
+                  setBalanceType('ai');
+                  setAmount('5.00');
+                }}
+                className={`py-2 px-2 rounded-2xl border text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer transition-all ${
                   balanceType === 'ai'
                     ? 'bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0] shadow-sm'
                     : 'bg-[#F4F7F4] text-[#71717A] border-transparent hover:bg-[#EAEAEA]'
                 }`}
               >
                 <Sparkles size={14} strokeWidth={2.4} />
-                <span>DeepSeek AI</span>
+                <span className="truncate">AI ($ USD)</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setBalanceType('template')}
-                className={`py-2.5 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                onClick={() => {
+                  setBalanceType('template');
+                  setAmount('300.00');
+                }}
+                className={`py-2 px-2 rounded-2xl border text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer transition-all ${
                   balanceType === 'template'
                     ? 'bg-[#F0FDF4] text-[#0F766E] border-[#CCFBF1] shadow-sm'
                     : 'bg-[#F4F7F4] text-[#71717A] border-transparent hover:bg-[#EAEAEA]'
                 }`}
               >
                 <Coins size={14} strokeWidth={2.4} />
-                <span>Template Msg</span>
+                <span className="truncate">WhatsApp (Rs. 30)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBalanceType('sms');
+                  setAmount('100.00');
+                }}
+                className={`py-2 px-2 rounded-2xl border text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                  balanceType === 'sms'
+                    ? 'bg-[#EFF6FF] text-[#2563EB] border-[#BFDBFE] shadow-sm'
+                    : 'bg-[#F4F7F4] text-[#71717A] border-transparent hover:bg-[#EAEAEA]'
+                }`}
+              >
+                <Smartphone size={14} strokeWidth={2.4} />
+                <span className="truncate">SMS (Rs. 1)</span>
               </button>
             </div>
           </div>
@@ -179,7 +222,7 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
           {/* Amount Input */}
           <div>
             <label className="text-xs font-bold text-[#52525B] block mb-1.5">
-              Amount to Add ({balanceType === 'ai' ? 'USD' : 'Credits'})
+              Amount to Add ({balanceType === 'ai' ? 'USD' : 'LKR / Rs.'})
             </label>
             <input
               type="number"
@@ -195,7 +238,7 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
 
           {/* Quick Amount Presets */}
           <div className="flex gap-2">
-            {['2.00', '5.00', '10.00', '20.00'].map((preset) => (
+            {presets.map((preset) => (
               <button
                 key={preset}
                 type="button"
@@ -206,7 +249,7 @@ export const TopUpCreditsModal: React.FC<TopUpCreditsModalProps> = ({
                     : 'bg-[#F4F7F4] text-[#52525B] border-[#EAEAEA] hover:bg-[#EAEAEA]'
                 }`}
               >
-                +{balanceType === 'ai' ? `$${preset}` : preset}
+                +{balanceType === 'ai' ? `$${preset}` : `Rs. ${preset}`}
               </button>
             ))}
           </div>

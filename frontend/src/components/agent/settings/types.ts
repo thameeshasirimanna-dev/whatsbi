@@ -11,6 +11,7 @@ export interface AgentProfile {
   company_overview?: string;
   ai_instructions?: string;
   credits?: number;
+  sms_credits?: number;
   ai_balance?: number;
   user_id?: string;
   logged_in_user_id?: string;

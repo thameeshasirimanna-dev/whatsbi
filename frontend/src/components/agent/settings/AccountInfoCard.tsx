@@ -423,7 +423,7 @@ const AccountInfoCard: React.FC<AccountInfoCardProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-sm font-extrabold text-[#16281D]">
-                ${agent.ai_balance ? Number(agent.ai_balance).toFixed(2) : '4.00'} USD
+                ${agent.ai_balance ? Number(agent.ai_balance).toFixed(1) : '4.0'} USD
               </span>
               <span className="text-[10px] font-semibold text-[#71717A] bg-[#F4F7F4] px-2 py-0.5 rounded-full">
                 Admin Managed
@@ -431,19 +431,39 @@ const AccountInfoCard: React.FC<AccountInfoCardProps> = ({
             </div>
           </div>
 
-          {/* WhatsApp Template Message Credits */}
+          {/* WhatsApp Marketing Message Credits */}
           <div className="py-3.5 flex items-center justify-between gap-2">
             <div>
               <span className="text-xs font-medium text-[#71717A] block">
-                Template Credits
+                WhatsApp Marketing Credits
               </span>
               <span className="text-[11px] text-[#71717A]">
-                Meta WhatsApp template messages
+                Rs. 30 per template message (10 msgs = Rs. 300)
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-extrabold text-[#16281D]">
-                {agent.credits ? `${Number(agent.credits).toFixed(2)}` : '0.00'} credits
+              <span className="font-mono text-sm font-extrabold text-[#059669]">
+                Rs. {Math.round(Number(agent.credits ?? 300))}
+              </span>
+              <span className="text-[10px] font-semibold text-[#71717A] bg-[#F4F7F4] px-2 py-0.5 rounded-full">
+                Admin Managed
+              </span>
+            </div>
+          </div>
+
+          {/* Normal SMS Marketing Credits */}
+          <div className="py-3.5 flex items-center justify-between gap-2">
+            <div>
+              <span className="text-xs font-medium text-[#71717A] block">
+                SMS Marketing Credits
+              </span>
+              <span className="text-[11px] text-[#71717A]">
+                Rs. 1 per SMS (100 SMS = Rs. 100)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-extrabold text-[#2563EB]">
+                Rs. {Math.round(Number(agent.sms_credits ?? 100))}
               </span>
               <span className="text-[10px] font-semibold text-[#71717A] bg-[#F4F7F4] px-2 py-0.5 rounded-full">
                 Admin Managed

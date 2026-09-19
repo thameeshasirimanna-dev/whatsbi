@@ -222,6 +222,8 @@ const AdminDashboard: React.FC = () => {
             phone_number_id: actualConfig.phone_number_id || '',
             whatsapp_app_secret: actualConfig.whatsapp_app_secret || '',
             deepseek_api_key: actualConfig.deepseek_api_key || '',
+            sms_sender_id: actualConfig.sms_sender_id || '',
+            sms_api_token: actualConfig.sms_api_token || '',
             is_active: Boolean(actualConfig.is_active),
           };
         }

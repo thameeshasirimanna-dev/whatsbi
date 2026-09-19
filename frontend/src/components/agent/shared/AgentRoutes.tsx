@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AgentLayout from './AgentLayout';
 import AgentDashboard from '../dashboard/AgentDashboard';
 import ConversationsPage from '../conversations/ConversationsPage';
@@ -34,6 +34,7 @@ const AgentRoutes: React.FC = () => {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="customer-groups" element={<CustomerGroupsPage />} />
         <Route path="broadcasts" element={<BroadcastsPage />} />
+        <Route path="sms-marketing" element={<Navigate to="/agent/broadcasts" replace />} />
         <Route path="templates" element={<TemplatesPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="settings" element={<SettingsPage />} />

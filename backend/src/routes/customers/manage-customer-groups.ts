@@ -4,6 +4,7 @@ import {
   ensureCustomerGroupTables,
   syncCustomerLeadStageGroup,
   reconcileLeadStageGroupMemberships,
+  reconcile24hActiveMemberships,
   normalizeLeadStageName,
   assignCustomerToDefaultGroup,
   removeCustomerFromDefaultGroup,
@@ -13,6 +14,7 @@ export {
   ensureCustomerGroupTables,
   syncCustomerLeadStageGroup,
   reconcileLeadStageGroupMemberships,
+  reconcile24hActiveMemberships,
   normalizeLeadStageName,
   assignCustomerToDefaultGroup,
   removeCustomerFromDefaultGroup,
@@ -51,6 +53,7 @@ export default async function manageCustomerGroupsRoutes(
 
       switch (method) {
         case 'GET': {
+          await reconcile24hActiveMemberships(pgClient, agentPrefix);
           const groupIdParam = url.searchParams.get('group_id');
           const includeMembers = url.searchParams.get('include_members') === 'true';
           const exportPhones = url.searchParams.get('action') === 'export_phones';
@@ -246,6 +249,19 @@ export default async function manageCustomerGroupsRoutes(
           const customerIds = Array.isArray(body.customer_ids) ? body.customer_ids : [];
 
           // Membership mutations
+          if (['add_members', 'remove_members', 'set_members'].includes(action)) {
+            const { rows: grpRows } = await pgClient.query(
+              `SELECT id, name FROM ${agentPrefix}_customer_groups WHERE id = $1`,
+              [id]
+            );
+            if (grpRows[0]?.name?.toLowerCase() === 'within 24h active') {
+              return reply.code(400).send({
+                success: false,
+                message: 'The "Within 24h Active" group is automatically managed by WhatsApp messaging activity and cannot be manually modified.',
+              });
+            }
+          }
+
           if (action === 'add_members' && customerIds.length > 0) {
             const groupRes = await pgClient.query(
               `SELECT id, name, is_default FROM ${agentPrefix}_customer_groups WHERE id = $1`,

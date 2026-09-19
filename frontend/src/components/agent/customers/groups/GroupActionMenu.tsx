@@ -8,6 +8,7 @@ import {
   Pencil,
   Trash2,
   ExternalLink,
+  Send,
 } from 'lucide-react';
 import Portal from '../../shared/Portal';
 import { CustomerGroup } from '../CustomerTypes';
@@ -49,8 +50,8 @@ export const GroupActionMenu: React.FC<GroupActionMenuProps> = ({
     if (rect.width === 0 && rect.height === 0) return null;
 
     const menuWidth = 208; // 52 * 4 = 208px
-    // Estimated height: ~165px for default groups (4 items), ~205px for custom groups (5 items + divider)
-    const menuHeight = group.is_default ? 165 : 205;
+    // Estimated height: ~200px for default groups, ~245px for custom groups
+    const menuHeight = group.is_default ? 200 : 245;
 
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
@@ -190,6 +191,22 @@ export const GroupActionMenu: React.FC<GroupActionMenuProps> = ({
             >
               <ExternalLink size={14} className="shrink-0 text-[#71717A]" />
               <span className="flex-1">Filter in CRM</span>
+            </button>
+
+            {/* 4. Send Marketing Campaign */}
+            <button
+              type="button"
+              onClick={() =>
+                handleAction(() =>
+                  navigate('/agent/broadcasts', {
+                    state: { selectedGroupId: group.id, groupName: group.name },
+                  })
+                )
+              }
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#15803D] hover:bg-[#DCFCE7]/60 transition-colors cursor-pointer text-left"
+            >
+              <Send size={14} className="shrink-0 text-[#15803D]" />
+              <span className="flex-1">Send Campaign</span>
             </button>
 
             {/* Divider */}

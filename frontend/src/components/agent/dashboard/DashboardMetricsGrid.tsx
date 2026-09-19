@@ -22,8 +22,8 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
 }) => {
   const formattedBalance =
     typeof balance === 'number'
-      ? balance.toFixed(2)
-      : parseFloat(String(balance) || '0').toFixed(2);
+      ? balance.toFixed(1)
+      : parseFloat(String(balance) || '0').toFixed(1);
 
   const rawCredits = templateCredits ?? metrics.template_credits ?? 0;
   const formattedCredits =

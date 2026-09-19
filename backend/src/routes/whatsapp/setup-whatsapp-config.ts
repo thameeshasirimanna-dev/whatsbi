@@ -72,6 +72,8 @@ export default async function setupWhatsappConfigRoutes(
         await pgClient.query(`
           ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS deepseek_api_key TEXT;
           ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS whatsapp_app_secret TEXT;
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS sms_sender_id TEXT;
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS sms_api_token TEXT;
           ALTER TABLE whatsapp_configuration ALTER COLUMN webhook_url DROP NOT NULL;
         `);
       } catch (colErr: any) {
@@ -81,6 +83,12 @@ export default async function setupWhatsappConfigRoutes(
       const webhookUrl = body.webhook_url ? String(body.webhook_url).trim() : "";
       const trimmedDeepSeekKey = body.deepseek_api_key !== undefined && body.deepseek_api_key !== null
         ? String(body.deepseek_api_key).trim() || null
+        : null;
+      const smsSenderId = body.sms_sender_id !== undefined && body.sms_sender_id !== null
+        ? String(body.sms_sender_id).trim() || null
+        : null;
+      const smsApiToken = body.sms_api_token !== undefined && body.sms_api_token !== null
+        ? String(body.sms_api_token).trim() || null
         : null;
 
       // Check if WhatsApp configuration already exists for this user/agent
@@ -104,9 +112,11 @@ export default async function setupWhatsappConfigRoutes(
               phone_number_id = COALESCE($5, phone_number_id),
               whatsapp_app_secret = COALESCE($6, whatsapp_app_secret),
               deepseek_api_key = $7,
+              sms_sender_id = COALESCE($8, sms_sender_id),
+              sms_api_token = COALESCE($9, sms_api_token),
               is_active = true,
               updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $8
+            WHERE user_id = $10
             RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
           `, [
             body.whatsapp_number,
@@ -116,6 +126,8 @@ export default async function setupWhatsappConfigRoutes(
             body.phone_number_id || null,
             body.whatsapp_app_secret || null,
             trimmedDeepSeekKey,
+            smsSenderId,
+            smsApiToken,
             configUserId,
           ]);
 
@@ -123,7 +135,7 @@ export default async function setupWhatsappConfigRoutes(
             configData = updateRows[0].config;
           }
         } catch (updateErr: any) {
-          console.warn("Update with whatsapp_app_secret failed, trying fallback:", updateErr.message);
+          console.warn("Update with whatsapp_app_secret/sms failed, trying fallback:", updateErr.message);
           const { rows: fallbackUpdateRows } = await pgClient.query(`
             UPDATE whatsapp_configuration
             SET
@@ -133,9 +145,11 @@ export default async function setupWhatsappConfigRoutes(
               business_account_id = COALESCE($4, business_account_id),
               phone_number_id = COALESCE($5, phone_number_id),
               deepseek_api_key = $6,
+              sms_sender_id = COALESCE($7, sms_sender_id),
+              sms_api_token = COALESCE($8, sms_api_token),
               is_active = true,
               updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $7
+            WHERE user_id = $9
             RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
           `, [
             body.whatsapp_number,
@@ -144,6 +158,8 @@ export default async function setupWhatsappConfigRoutes(
             body.business_account_id || null,
             body.phone_number_id || null,
             trimmedDeepSeekKey,
+            smsSenderId,
+            smsApiToken,
             configUserId,
           ]);
 
@@ -164,10 +180,12 @@ export default async function setupWhatsappConfigRoutes(
               phone_number_id,
               whatsapp_app_secret,
               deepseek_api_key,
+              sms_sender_id,
+              sms_api_token,
               is_active,
               updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, CURRENT_TIMESTAMP)
             RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
           `, [
             configUserId,
@@ -178,13 +196,15 @@ export default async function setupWhatsappConfigRoutes(
             body.phone_number_id || null,
             body.whatsapp_app_secret || null,
             trimmedDeepSeekKey,
+            smsSenderId,
+            smsApiToken,
           ]);
 
           if (insertRows.length > 0) {
             configData = insertRows[0].config;
           }
         } catch (insertErr: any) {
-          console.warn("Insert with whatsapp_app_secret failed, trying fallback:", insertErr.message);
+          console.warn("Insert with whatsapp_app_secret/sms failed, trying fallback:", insertErr.message);
           const { rows: fallbackInsertRows } = await pgClient.query(`
             INSERT INTO whatsapp_configuration (
               user_id,
@@ -194,10 +214,12 @@ export default async function setupWhatsappConfigRoutes(
               business_account_id,
               phone_number_id,
               deepseek_api_key,
+              sms_sender_id,
+              sms_api_token,
               is_active,
               updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, true, CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, CURRENT_TIMESTAMP)
             RETURNING row_to_json(whatsapp_configuration.*)::jsonb AS config;
           `, [
             configUserId,
@@ -207,6 +229,8 @@ export default async function setupWhatsappConfigRoutes(
             body.business_account_id || null,
             body.phone_number_id || null,
             trimmedDeepSeekKey,
+            smsSenderId,
+            smsApiToken,
           ]);
 
           if (fallbackInsertRows.length > 0) {

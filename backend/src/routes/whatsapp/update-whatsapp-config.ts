@@ -41,6 +41,8 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
         await pgClient.query(`
           ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS deepseek_api_key TEXT;
           ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS whatsapp_app_secret TEXT;
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS sms_sender_id TEXT;
+          ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS sms_api_token TEXT;
           ALTER TABLE whatsapp_configuration ALTER COLUMN webhook_url DROP NOT NULL;
         `);
       } catch (colErr: any) {
@@ -77,6 +79,18 @@ export default async function updateWhatsappConfigRoutes(fastify: FastifyInstanc
       if (body.whatsapp_app_secret !== undefined) {
         params.push(body.whatsapp_app_secret || null);
         updateSetClauses.push(`whatsapp_app_secret = $${params.length}`);
+      }
+
+      if (body.sms_sender_id !== undefined) {
+        const trimmedSenderId = body.sms_sender_id !== null ? String(body.sms_sender_id).trim() || null : null;
+        params.push(trimmedSenderId);
+        updateSetClauses.push(`sms_sender_id = $${params.length}`);
+      }
+
+      if (body.sms_api_token !== undefined) {
+        const trimmedApiToken = body.sms_api_token !== null ? String(body.sms_api_token).trim() || null : null;
+        params.push(trimmedApiToken);
+        updateSetClauses.push(`sms_api_token = $${params.length}`);
       }
 
       params.push(configUserId);

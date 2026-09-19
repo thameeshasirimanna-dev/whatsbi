@@ -1,12 +1,19 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 import { CacheService } from "../../utils/cache.js";
+import {
+  handleSmsBroadcastCreate,
+  handleSmsBroadcastResend,
+} from "./broadcast-sms-handler.js";
+import { interpolateSmsTemplate } from "../../services/textlk-sms.service.js";
 
 export default async function manageBroadcastsRoutes(
   fastify: FastifyInstance,
   pgClient: any,
   cacheService: CacheService,
-  emitNewMessage?: (agentId: number, messageData: any) => void
+  emitNewMessage?: (agentId: number, messageData: any) => void,
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void,
+  emitBroadcastUpdated?: (agentId: number, data: any) => void
 ) {
   fastify.all("/manage-broadcasts", async (request, reply) => {
     try {
@@ -15,7 +22,7 @@ export default async function manageBroadcastsRoutes(
 
       // Get agent (support both owner and sub-users)
       const agentQuery =
-        "SELECT id, agent_prefix, user_id, credits FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)";
+        "SELECT id, agent_prefix, user_id, credits, COALESCE(sms_credits, 0.00) as sms_credits FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)";
       const agentResult = await pgClient.query(agentQuery, [
         authenticatedUser.id,
       ]);
@@ -78,9 +85,45 @@ export default async function manageBroadcastsRoutes(
             });
           }
 
+          // Defensive addition of channel column if migration has not been applied yet
+          try {
+            await pgClient.query(`
+              ALTER TABLE ${agentPrefix}_broadcasts ADD COLUMN IF NOT EXISTS channel VARCHAR(20) DEFAULT 'whatsapp';
+            `);
+          } catch {}
+
           // Get list of all broadcasts
-          const listQuery = `SELECT * FROM ${agentPrefix}_broadcasts ORDER BY created_at DESC`;
-          const { rows: broadcasts } = await pgClient.query(listQuery);
+          const queryParams = (request.query as Record<string, string>) || {};
+          const channelFilter = queryParams.channel;
+
+          let broadcasts: any[] = [];
+          try {
+            let listQuery = `SELECT * FROM ${agentPrefix}_broadcasts`;
+            if (channelFilter === "sms") {
+              listQuery += ` WHERE channel = 'sms' OR message_type = 'sms'`;
+            } else if (channelFilter === "whatsapp") {
+              listQuery += ` WHERE channel = 'whatsapp' OR (channel IS NULL AND message_type != 'sms')`;
+            }
+            listQuery += ` ORDER BY created_at DESC`;
+
+            const result = await pgClient.query(listQuery);
+            broadcasts = result.rows || [];
+          } catch (queryErr: any) {
+            // Fallback if 'channel' column does not exist in broadcasts table yet
+            if (queryErr.code === "42703" || String(queryErr.message).includes("channel")) {
+              let fallbackQuery = `SELECT * FROM ${agentPrefix}_broadcasts`;
+              if (channelFilter === "sms") {
+                fallbackQuery += ` WHERE message_type = 'sms'`;
+              } else if (channelFilter === "whatsapp") {
+                fallbackQuery += ` WHERE message_type != 'sms'`;
+              }
+              fallbackQuery += ` ORDER BY created_at DESC`;
+              const fallbackResult = await pgClient.query(fallbackQuery);
+              broadcasts = fallbackResult.rows || [];
+            } else {
+              throw queryErr;
+            }
+          }
 
           return reply.code(200).send({
             success: true,
@@ -132,6 +175,13 @@ export default async function manageBroadcastsRoutes(
               });
             }
 
+            if (broadcast.channel === "sms" || broadcast.message_type === "sms") {
+              return handleSmsBroadcastResend(
+                { request, reply, pgClient, cacheService, emitNewMessage, emitAgentStatusUpdate, emitBroadcastUpdated, agent },
+                broadcast
+              );
+            }
+
             // Find all failed recipients
             const failedRecipientsQuery = `
               SELECT customer_id, phone 
@@ -147,13 +197,13 @@ export default async function manageBroadcastsRoutes(
               });
             }
 
-            // Check credits if template
+            // Check credits if template (Rs. 30.00 per WhatsApp template message)
             if (broadcast.message_type === "template") {
-              const requiredCredits = failedRecipients.length * 0.01;
-              if (agent.credits < requiredCredits) {
+              const requiredCredits = failedRecipients.length * 30.00;
+              if (Number(agent.credits) < requiredCredits) {
                 return reply.code(400).send({
                   success: false,
-                  message: `Insufficient credits. Required: ${requiredCredits.toFixed(2)}, Available: ${agent.credits.toFixed(2)}`,
+                  message: `Insufficient WhatsApp credits. Required: Rs. ${Math.round(requiredCredits)}, Available: Rs. ${Math.round(Number(agent.credits))}`,
                 });
               }
             }
@@ -211,6 +261,16 @@ export default async function manageBroadcastsRoutes(
               broadcast_id: broadcast_id,
             });
 
+            if (emitBroadcastUpdated) {
+              emitBroadcastUpdated(agent.id, {
+                broadcast_id: broadcast_id,
+                sent_count: broadcast.sent_count,
+                failed_count: broadcast.failed_count - failedRecipients.length,
+                total_recipients: broadcast.total_recipients,
+                status: "processing",
+              });
+            }
+
             // Background sending loop (Asynchronous)
             (async () => {
               let sentCount = broadcast.sent_count;
@@ -219,19 +279,22 @@ export default async function manageBroadcastsRoutes(
               for (const customer of targetCustomers) {
                 try {
                   const creditsRes = await pgClient.query("SELECT credits FROM agents WHERE id = $1", [agent.id]);
-                  const currentCredits = creditsRes.rows[0]?.credits ?? 0;
+                  const currentCredits = Number(creditsRes.rows[0]?.credits ?? 0);
 
-                  if (broadcast.message_type === "template" && currentCredits < 0.01) {
-                    throw new Error("Insufficient credits left to send message");
+                  if (broadcast.message_type === "template" && currentCredits < 30.00) {
+                    throw new Error("Insufficient WhatsApp credits left to send message (Rs. 30.00 required)");
                   }
 
-                  if (broadcast.message_type === "text" && customer.last_user_message_time) {
+                  if (broadcast.message_type === "text") {
+                    if (!customer.last_user_message_time) {
+                      throw new Error("Blocked: Customer has never messaged the business (outside 24-hour window)");
+                    }
                     const now = new Date();
                     const lastTime = new Date(customer.last_user_message_time);
                     const hoursSince = (now.getTime() - lastTime.getTime()) / (1000 * 60 * 60);
 
                     if (hoursSince > 24) {
-                      throw new Error("Cannot send free-text message after 24h window (template required)");
+                      throw new Error("Blocked: Cannot send free-text message after 24h window (template required)");
                     }
                   }
 
@@ -244,13 +307,41 @@ export default async function manageBroadcastsRoutes(
                   let whatsappPayload: any;
 
                   if (broadcast.message_type === "text") {
-                    whatsappPayload = {
-                      messaging_product: "whatsapp",
-                      recipient_type: "individual",
-                      to: normalizedPhone,
-                      type: "text",
-                      text: { body: broadcast.message },
-                    };
+                    const personalizedMessage = interpolateSmsTemplate(broadcast.message || "", customer);
+                    let media_header = broadcast.media_header;
+                    if (typeof media_header === "string") {
+                      try {
+                        media_header = JSON.parse(media_header);
+                      } catch (e) {}
+                    }
+
+                    if (media_header && (media_header.link || media_header.id)) {
+                      const mediaType = media_header.type || "image";
+                      const mediaObj: any = {};
+                      if (media_header.id) {
+                        mediaObj.id = media_header.id;
+                      } else if (media_header.link) {
+                        mediaObj.link = media_header.link;
+                      }
+                      if (personalizedMessage && personalizedMessage.trim().length > 0) {
+                        mediaObj.caption = personalizedMessage;
+                      }
+                      whatsappPayload = {
+                        messaging_product: "whatsapp",
+                        recipient_type: "individual",
+                        to: normalizedPhone,
+                        type: mediaType,
+                        [mediaType]: mediaObj,
+                      };
+                    } else {
+                      whatsappPayload = {
+                        messaging_product: "whatsapp",
+                        recipient_type: "individual",
+                        to: normalizedPhone,
+                        type: "text",
+                        text: { body: personalizedMessage },
+                      };
+                    }
                   } else {
                     let components: any[] = [];
                     const template_params = broadcast.template_params;
@@ -263,7 +354,7 @@ export default async function manageBroadcastsRoutes(
                         type: "body",
                         parameters: template_params.map((param: any) => {
                           if (param.type === "text") {
-                            return { type: "text", text: param.text };
+                            return { type: "text", text: interpolateSmsTemplate(param.text || "", customer) };
                           } else if (param.type === "currency") {
                             return {
                               type: "currency",
@@ -290,7 +381,7 @@ export default async function manageBroadcastsRoutes(
                         type: "header",
                         parameters: header_params.map((param: any) => {
                           if (param.type === "text") {
-                            return { type: "text", text: param.text };
+                            return { type: "text", text: interpolateSmsTemplate(param.text || "", customer) };
                           } else if (param.type === "currency") {
                             return {
                               type: "currency",
@@ -392,23 +483,42 @@ export default async function manageBroadcastsRoutes(
                   const result = (await response.json()) as any;
                   const messageId = result.messages?.[0]?.id;
 
-                  const messageText = broadcast.message_type === "text" ? broadcast.message : broadcast.template_name;
+                  const messageText = broadcast.message_type === "text" ? interpolateSmsTemplate(broadcast.message || "", customer) : broadcast.template_name;
+                  let retryMediaHeader = broadcast.media_header;
+                  if (typeof retryMediaHeader === "string") {
+                    try {
+                      retryMediaHeader = JSON.parse(retryMediaHeader);
+                    } catch (e) {}
+                  }
+                  const retryMediaType = retryMediaHeader ? (retryMediaHeader.type || "image") : "none";
+                  const retryMediaUrl = retryMediaHeader?.link || null;
+                  const retryCaption = retryMediaHeader ? messageText : null;
+
                   const { rows: insertedMessageRows } = await pgClient.query(
-                    `INSERT INTO ${agentPrefix}_messages (customer_id, message, direction, timestamp, is_read) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+                    `INSERT INTO ${agentPrefix}_messages (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
                     [
                       customer.id,
                       messageText,
                       "outbound",
                       new Date(),
                       true,
+                      retryMediaType,
+                      retryMediaUrl,
+                      retryCaption,
                     ]
                   );
 
                   if (broadcast.message_type === "template") {
-                    await pgClient.query(
-                      "UPDATE agents SET credits = credits - 0.01 WHERE id = $1",
+                    const { rows: creditRows } = await pgClient.query(
+                      "UPDATE agents SET credits = GREATEST(0, credits - 30.00) WHERE id = $1 RETURNING credits",
                       [agent.id]
                     );
+                    if (emitAgentStatusUpdate && creditRows.length > 0) {
+                      emitAgentStatusUpdate(agent.id, {
+                        type: "credits_updated",
+                        credits: parseFloat(creditRows[0].credits),
+                      });
+                    }
                   }
 
                   if (emitNewMessage && insertedMessageRows.length > 0) {
@@ -421,7 +531,9 @@ export default async function manageBroadcastsRoutes(
                       message: insertedMessage.message,
                       sender_type: "agent",
                       timestamp: insertedMessage.timestamp,
-                      media_type: "none",
+                      media_type: insertedMessage.media_type || "none",
+                      media_url: insertedMessage.media_url || null,
+                      caption: insertedMessage.caption || null,
                     });
                   }
 
@@ -447,6 +559,16 @@ export default async function manageBroadcastsRoutes(
                   `UPDATE ${agentPrefix}_broadcasts SET sent_count = $1, failed_count = $2 WHERE id = $3`,
                   [sentCount, failedCount, broadcast_id]
                 );
+
+                if (emitBroadcastUpdated) {
+                  emitBroadcastUpdated(agent.id, {
+                    broadcast_id: broadcast_id,
+                    sent_count: sentCount,
+                    failed_count: failedCount,
+                    total_recipients: broadcast.total_recipients,
+                    status: "processing",
+                  });
+                }
               }
 
               const finalStatus = (sentCount === 0) ? "failed" : "completed";
@@ -454,9 +576,26 @@ export default async function manageBroadcastsRoutes(
                 `UPDATE ${agentPrefix}_broadcasts SET status = $1, updated_at = now() WHERE id = $2`,
                 [finalStatus, broadcast_id]
               );
+
+              if (emitBroadcastUpdated) {
+                emitBroadcastUpdated(agent.id, {
+                  broadcast_id: broadcast_id,
+                  sent_count: sentCount,
+                  failed_count: failedCount,
+                  total_recipients: broadcast.total_recipients,
+                  status: finalStatus,
+                });
+              }
             })();
 
             return;
+          }
+
+          if (body.channel === "sms" || message_type === "sms") {
+            return handleSmsBroadcastCreate(
+              { request, reply, pgClient, cacheService, emitNewMessage, emitAgentStatusUpdate, emitBroadcastUpdated, agent },
+              body
+            );
           }
 
           // Validate required fields
@@ -490,13 +629,13 @@ export default async function manageBroadcastsRoutes(
               .send({ success: false, message: "Recipient IDs list cannot be empty" });
           }
 
-          // Check credits for templates
+          // Check credits for templates (Rs. 30.00 per WhatsApp template message)
           if (message_type === "template") {
-            const requiredCredits = recipient_ids.length * 0.01;
-            if (agent.credits < requiredCredits) {
+            const requiredCredits = recipient_ids.length * 30.00;
+            if (Number(agent.credits) < requiredCredits) {
               return reply.code(400).send({
                 success: false,
-                message: `Insufficient credits. Required: ${requiredCredits.toFixed(2)}, Available: ${agent.credits.toFixed(2)}`,
+                message: `Insufficient WhatsApp credits. Required: Rs. ${requiredCredits.toFixed(2)}, Available: Rs. ${Number(agent.credits).toFixed(2)}`,
               });
             }
           }
@@ -507,13 +646,35 @@ export default async function manageBroadcastsRoutes(
             FROM ${agentPrefix}_customers 
             WHERE id = ANY($1)
           `;
-          const { rows: targetCustomers } = await pgClient.query(customersQuery, [recipient_ids]);
+          const { rows: initialCustomers } = await pgClient.query(customersQuery, [recipient_ids]);
 
-          if (targetCustomers.length === 0) {
+          if (initialCustomers.length === 0) {
             return reply.code(400).send({
               success: false,
               message: "No valid customers resolved for the provided recipient IDs",
             });
+          }
+
+          let targetCustomers = initialCustomers;
+
+          if (message_type === "text") {
+            const within24hList = targetCustomers.filter(c => {
+              if (!c.last_user_message_time) return false;
+              const lastTime = new Date(c.last_user_message_time).getTime();
+              if (isNaN(lastTime)) return false;
+              const hoursSince = (Date.now() - lastTime) / (1000 * 60 * 60);
+              return hoursSince >= 0 && hoursSince <= 24;
+            });
+
+            if (within24hList.length === 0) {
+              return reply.code(400).send({
+                success: false,
+                message: "Cannot send free-form text: Free-form WhatsApp messages can only be sent to customers in the 24-hour active window. Please select the 'Within 24h Active' customer group or use an Approved Template.",
+              });
+            }
+
+            // Strictly constrain free-form broadcast to only within-24h active customers
+            targetCustomers = within24hList;
           }
 
           // 1. Create Broadcast Record
@@ -541,7 +702,7 @@ export default async function manageBroadcastsRoutes(
           // 2. Create Recipients Records (Pending)
           const insertRecipientsQuery = `
             INSERT INTO ${agentPrefix}_broadcast_recipients (broadcast_id, customer_id, phone, status)
-            VALUES ${targetCustomers.map((_, i) => `($1, $${i * 3 + 2}, $${i * 3 + 3}, 'pending')`).join(', ')}
+            VALUES ${targetCustomers.map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3}, 'pending')`).join(', ')}
           `;
           const insertRecipientsParams = [broadcastId];
           targetCustomers.forEach(c => {
@@ -578,6 +739,16 @@ export default async function manageBroadcastsRoutes(
             broadcast_id: broadcastId,
           });
 
+          if (emitBroadcastUpdated) {
+            emitBroadcastUpdated(agent.id, {
+              broadcast_id: broadcastId,
+              sent_count: 0,
+              failed_count: 0,
+              total_recipients: targetCustomers.length,
+              status: "processing",
+            });
+          }
+
           // Background sending loop (Asynchronous)
           (async () => {
             let sentCount = 0;
@@ -587,20 +758,23 @@ export default async function manageBroadcastsRoutes(
               try {
                 // Fetch latest credit count check
                 const creditsRes = await pgClient.query("SELECT credits FROM agents WHERE id = $1", [agent.id]);
-                const currentCredits = creditsRes.rows[0]?.credits ?? 0;
+                const currentCredits = Number(creditsRes.rows[0]?.credits ?? 0);
 
-                if (message_type === "template" && currentCredits < 0.01) {
-                  throw new Error("Insufficient credits left to send message");
+                if (message_type === "template" && currentCredits < 30.00) {
+                  throw new Error("Insufficient WhatsApp credits left to send message (Rs. 30.00 required)");
                 }
 
                 // Check 24 hour window for text messages
-                if (message_type === "text" && customer.last_user_message_time) {
+                if (message_type === "text") {
+                  if (!customer.last_user_message_time) {
+                    throw new Error("Blocked: Customer has never messaged the business (outside 24-hour window)");
+                  }
                   const now = new Date();
                   const lastTime = new Date(customer.last_user_message_time);
                   const hoursSince = (now.getTime() - lastTime.getTime()) / (1000 * 60 * 60);
 
                   if (hoursSince > 24) {
-                    throw new Error("Cannot send free-text message after 24h window (template required)");
+                    throw new Error("Blocked: Cannot send free-text message after 24h window (template required)");
                   }
                 }
 
@@ -615,13 +789,34 @@ export default async function manageBroadcastsRoutes(
                 let whatsappPayload: any;
 
                 if (message_type === "text") {
-                  whatsappPayload = {
-                    messaging_product: "whatsapp",
-                    recipient_type: "individual",
-                    to: normalizedPhone,
-                    type: "text",
-                    text: { body: message },
-                  };
+                  const personalizedMessage = interpolateSmsTemplate(message || "", customer);
+                  if (media_header && (media_header.link || media_header.id)) {
+                    const mediaType = media_header.type || "image";
+                    const mediaObj: any = {};
+                    if (media_header.id) {
+                      mediaObj.id = media_header.id;
+                    } else if (media_header.link) {
+                      mediaObj.link = media_header.link;
+                    }
+                    if (personalizedMessage && personalizedMessage.trim().length > 0) {
+                      mediaObj.caption = personalizedMessage;
+                    }
+                    whatsappPayload = {
+                      messaging_product: "whatsapp",
+                      recipient_type: "individual",
+                      to: normalizedPhone,
+                      type: mediaType,
+                      [mediaType]: mediaObj,
+                    };
+                  } else {
+                    whatsappPayload = {
+                      messaging_product: "whatsapp",
+                      recipient_type: "individual",
+                      to: normalizedPhone,
+                      type: "text",
+                      text: { body: personalizedMessage },
+                    };
+                  }
                 } else {
                   // Template payload building
                   let components: any[] = [];
@@ -630,7 +825,7 @@ export default async function manageBroadcastsRoutes(
                       type: "body",
                       parameters: template_params.map((param: any) => {
                         if (param.type === "text") {
-                          return { type: "text", text: param.text };
+                          return { type: "text", text: interpolateSmsTemplate(param.text || "", customer) };
                         } else if (param.type === "currency") {
                           return {
                             type: "currency",
@@ -657,7 +852,7 @@ export default async function manageBroadcastsRoutes(
                       type: "header",
                       parameters: header_params.map((param: any) => {
                         if (param.type === "text") {
-                          return { type: "text", text: param.text };
+                          return { type: "text", text: interpolateSmsTemplate(param.text || "", customer) };
                         } else if (param.type === "currency") {
                           return {
                             type: "currency",
@@ -761,24 +956,37 @@ export default async function manageBroadcastsRoutes(
                 const messageId = result.messages?.[0]?.id;
 
                 // Create message record in database
-                const messageText = message_type === "text" ? message : template_name;
+                const messageText = message_type === "text" ? interpolateSmsTemplate(message || "", customer) : template_name;
+                const outboundMediaType = media_header ? (media_header.type || "image") : "none";
+                const outboundMediaUrl = media_header?.link || null;
+                const outboundCaption = media_header ? messageText : null;
+
                 const { rows: insertedMessageRows } = await pgClient.query(
-                  `INSERT INTO ${agentPrefix}_messages (customer_id, message, direction, timestamp, is_read) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+                  `INSERT INTO ${agentPrefix}_messages (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
                   [
                     customer.id,
                     messageText,
                     "outbound",
                     new Date(),
                     true,
+                    outboundMediaType,
+                    outboundMediaUrl,
+                    outboundCaption,
                   ]
                 );
 
-                // Deduct credits if template
+                // Deduct credits if template (Rs. 30.00)
                 if (message_type === "template") {
-                  await pgClient.query(
-                    "UPDATE agents SET credits = credits - 0.01 WHERE id = $1",
+                  const { rows: creditRows } = await pgClient.query(
+                    "UPDATE agents SET credits = GREATEST(0, credits - 30.00) WHERE id = $1 RETURNING credits",
                     [agent.id]
                   );
+                  if (emitAgentStatusUpdate && creditRows.length > 0) {
+                    emitAgentStatusUpdate(agent.id, {
+                      type: "credits_updated",
+                      credits: parseFloat(creditRows[0].credits),
+                    });
+                  }
                 }
 
                 // Emit Socket event if configured
@@ -792,7 +1000,9 @@ export default async function manageBroadcastsRoutes(
                     message: insertedMessage.message,
                     sender_type: "agent",
                     timestamp: insertedMessage.timestamp,
-                    media_type: "none",
+                    media_type: insertedMessage.media_type || "none",
+                    media_url: insertedMessage.media_url || null,
+                    caption: insertedMessage.caption || null,
                   });
                 }
 
@@ -824,6 +1034,16 @@ export default async function manageBroadcastsRoutes(
                 `UPDATE ${agentPrefix}_broadcasts SET sent_count = $1, failed_count = $2 WHERE id = $3`,
                 [sentCount, failedCount, broadcastId]
               );
+
+              if (emitBroadcastUpdated) {
+                emitBroadcastUpdated(agent.id, {
+                  broadcast_id: broadcastId,
+                  sent_count: sentCount,
+                  failed_count: failedCount,
+                  total_recipients: targetCustomers.length,
+                  status: "processing",
+                });
+              }
             }
 
             // Mark campaign as completed
@@ -833,6 +1053,16 @@ export default async function manageBroadcastsRoutes(
               [finalStatus, broadcastId]
             );
 
+            if (emitBroadcastUpdated) {
+              emitBroadcastUpdated(agent.id, {
+                broadcast_id: broadcastId,
+                sent_count: sentCount,
+                failed_count: failedCount,
+                total_recipients: targetCustomers.length,
+                status: finalStatus,
+              });
+            }
+
           })();
 
           break;
@@ -840,39 +1070,51 @@ export default async function manageBroadcastsRoutes(
 
         case "DELETE": {
           const id = url.searchParams.get("id");
+          const idsParam = url.searchParams.get("ids");
 
-          if (!id) {
+          let targetIds: number[] = [];
+          if (idsParam) {
+            targetIds = idsParam.split(",").map(Number).filter((n) => !isNaN(n) && n > 0);
+          } else if (id) {
+            const parsedId = Number(id);
+            if (!isNaN(parsedId) && parsedId > 0) targetIds = [parsedId];
+          } else if (parsedBody?.ids && Array.isArray(parsedBody.ids)) {
+            targetIds = parsedBody.ids.map(Number).filter((n: any) => !isNaN(n) && n > 0);
+          }
+
+          if (targetIds.length === 0) {
             return reply.code(400).send({
               success: false,
-              message: "Broadcast campaign ID is required",
+              message: "Broadcast campaign ID(s) required",
             });
           }
 
-          // Check if broadcast exists
-          const checkQuery = `SELECT status FROM ${agentPrefix}_broadcasts WHERE id = $1`;
-          const { rows: campaigns } = await pgClient.query(checkQuery, [id]);
+          // Check if any matching campaign is currently processing
+          const checkQuery = `SELECT id, status FROM ${agentPrefix}_broadcasts WHERE id = ANY($1)`;
+          const { rows: campaigns } = await pgClient.query(checkQuery, [targetIds]);
 
           if (campaigns.length === 0) {
             return reply.code(404).send({
               success: false,
-              message: "Broadcast campaign not found",
+              message: "No matching broadcast campaigns found",
             });
           }
 
-          if (campaigns[0].status === "processing") {
+          const processingCampaigns = campaigns.filter((c: any) => c.status === "processing");
+          if (processingCampaigns.length > 0) {
             return reply.code(400).send({
               success: false,
-              message: "Cannot delete a campaign that is currently processing messages",
+              message: "Cannot delete campaigns that are currently processing messages",
             });
           }
 
-          // Delete the broadcast campaign record (will cascade delete recipients)
-          const deleteQuery = `DELETE FROM ${agentPrefix}_broadcasts WHERE id = $1`;
-          await pgClient.query(deleteQuery, [id]);
+          // Delete the broadcast campaign records (will cascade delete recipients)
+          const deleteQuery = `DELETE FROM ${agentPrefix}_broadcasts WHERE id = ANY($1)`;
+          await pgClient.query(deleteQuery, [targetIds]);
 
           return reply.code(200).send({
             success: true,
-            message: "Broadcast campaign deleted successfully",
+            message: `${targetIds.length} campaign(s) deleted successfully`,
           });
         }
 

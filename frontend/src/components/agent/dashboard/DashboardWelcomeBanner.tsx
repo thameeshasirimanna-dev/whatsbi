@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wallet, FileText } from 'lucide-react';
+import { Wallet, MessageSquare, Smartphone } from 'lucide-react';
 import { DashboardAgent } from './dashboard.types';
 
 interface DashboardWelcomeBannerProps {
@@ -14,14 +14,20 @@ export const DashboardWelcomeBanner: React.FC<DashboardWelcomeBannerProps> = ({
   const rawBalance = agent?.ai_balance ?? agent?.balance ?? 4.0;
   const formattedBalance =
     typeof rawBalance === 'number'
-      ? rawBalance.toFixed(2)
-      : parseFloat(String(rawBalance) || '0').toFixed(2);
+      ? rawBalance.toFixed(1)
+      : parseFloat(String(rawBalance) || '0').toFixed(1);
 
-  const rawCredits = agent?.template_credits ?? agent?.credits ?? 0;
+  const rawCredits = agent?.template_credits ?? agent?.credits ?? 300;
   const formattedCredits =
     typeof rawCredits === 'number'
       ? Math.floor(rawCredits)
       : parseInt(String(rawCredits) || '0', 10);
+
+  const rawSmsCredits = agent?.sms_credits ?? 100;
+  const formattedSmsCredits =
+    typeof rawSmsCredits === 'number'
+      ? Math.floor(rawSmsCredits)
+      : parseInt(String(rawSmsCredits) || '0', 10);
 
   return (
     <div
@@ -62,12 +68,12 @@ export const DashboardWelcomeBanner: React.FC<DashboardWelcomeBannerProps> = ({
         </p>
       </div>
 
-      {/* Right: AI Query Balance + Template Credits + Digital Clock */}
-      <div className="relative z-10 w-full lg:w-auto grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-between lg:justify-end gap-2.5 sm:gap-3.5 pt-3 lg:pt-0 border-t border-white/10 lg:border-t-0">
+      {/* Right: AI Query Balance + WhatsApp Credits + SMS Credits + Digital Clock */}
+      <div className="relative z-10 w-full lg:w-auto grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-between lg:justify-end gap-2 sm:gap-2.5 pt-3 lg:pt-0 border-t border-white/10 lg:border-t-0">
         {/* 1. AI Balance Card */}
-        <div className="col-span-1 sm:flex-initial bg-[#203628] border border-white/10 rounded-2xl p-2.5 sm:px-3.5 sm:py-2.5 flex items-center gap-2.5 shadow-xs">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#9FE870] text-[#16281D] flex items-center justify-center font-bold shadow-[0_2px_8px_rgba(159,232,112,0.3)] shrink-0">
-            <Wallet size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.4} />
+        <div className="col-span-1 sm:flex-initial bg-[#203628] border border-white/10 rounded-2xl p-2 sm:px-3 sm:py-2 flex items-center gap-2 shadow-xs">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#9FE870] text-[#16281D] flex items-center justify-center font-bold shadow-[0_2px_8px_rgba(159,232,112,0.3)] shrink-0">
+            <Wallet size={15} className="sm:w-4 sm:h-4" strokeWidth={2.4} />
           </div>
 
           <div className="min-w-0">
@@ -75,7 +81,7 @@ export const DashboardWelcomeBanner: React.FC<DashboardWelcomeBannerProps> = ({
               AI Balance
             </div>
             <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-base sm:text-xl font-extrabold text-white tracking-tight leading-none font-mono">
+              <span className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-none font-mono">
                 ${formattedBalance}
               </span>
               <span className="text-[9px] sm:text-[10px] font-bold text-[#9FE870]">
@@ -85,33 +91,54 @@ export const DashboardWelcomeBanner: React.FC<DashboardWelcomeBannerProps> = ({
           </div>
         </div>
 
-        {/* 2. Template Messages Credits Card */}
-        <div className="col-span-1 sm:flex-initial bg-[#203628] border border-white/10 rounded-2xl p-2.5 sm:px-3.5 sm:py-2.5 flex items-center gap-2.5 shadow-xs">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#22C55E]/20 text-[#4ADE80] border border-[#22C55E]/30 flex items-center justify-center font-bold shrink-0">
-            <FileText size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.4} />
+        {/* 2. WhatsApp Credits Card */}
+        <div className="col-span-1 sm:flex-initial bg-[#203628] border border-white/10 rounded-2xl p-2 sm:px-3 sm:py-2 flex items-center gap-2 shadow-xs">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#22C55E]/20 text-[#4ADE80] border border-[#22C55E]/30 flex items-center justify-center font-bold shrink-0">
+            <MessageSquare size={15} className="sm:w-4 sm:h-4" strokeWidth={2.4} />
           </div>
 
           <div className="min-w-0">
             <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#A1BAAE] truncate">
-              Credits
+              WhatsApp
             </div>
             <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-base sm:text-xl font-extrabold text-white tracking-tight leading-none font-mono">
-                {formattedCredits}
+              <span className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-none font-mono">
+                Rs. {formattedCredits}
               </span>
               <span className="text-[9px] sm:text-[10px] font-bold text-[#4ADE80]">
-                Msg
+                WA
               </span>
             </div>
           </div>
         </div>
 
-        {/* 3. Live Digital Clock & Date (Desktop / Tablet) */}
-        <div className="hidden sm:block text-right shrink-0 min-w-[80px] sm:min-w-[95px] pl-1">
-          <div className="font-mono text-base sm:text-lg md:text-xl font-bold text-white tracking-tight leading-none">
+        {/* 3. SMS Credits Card */}
+        <div className="col-span-2 sm:col-span-1 sm:flex-initial bg-[#203628] border border-white/10 rounded-2xl p-2 sm:px-3 sm:py-2 flex items-center gap-2 shadow-xs">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#3B82F6]/20 text-[#60A5FA] border border-[#3B82F6]/30 flex items-center justify-center font-bold shrink-0">
+            <Smartphone size={15} className="sm:w-4 sm:h-4" strokeWidth={2.4} />
+          </div>
+
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#A1BAAE] truncate">
+              SMS
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-none font-mono">
+                Rs. {formattedSmsCredits}
+              </span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-[#60A5FA]">
+                SMS
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Live Digital Clock & Date (Desktop / Tablet) */}
+        <div className="hidden sm:block text-right shrink-0 min-w-[70px] sm:min-w-[85px] pl-1">
+          <div className="font-mono text-sm sm:text-base md:text-lg font-bold text-white tracking-tight leading-none">
             {currentTime}
           </div>
-          <div className="text-[10px] sm:text-[11px] text-[#A1BAAE] font-medium mt-1">
+          <div className="text-[9px] sm:text-[10px] text-[#A1BAAE] font-medium mt-0.5">
             {new Date().toLocaleDateString('en-US', {
               weekday: 'short',
               month: 'short',

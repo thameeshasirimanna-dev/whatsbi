@@ -18,6 +18,7 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
+  Smartphone,
 } from 'lucide-react';
 import Portal from './Portal';
 
@@ -42,7 +43,7 @@ const COMMAND_ITEMS: CommandItem[] = [
   { id: 'p-inv2', title: 'Inventory', subtitle: 'Stock & product management', icon: Package, path: '/agent/inventory', category: 'Pages', keywords: ['stock', 'items', 'catalog'] },
   { id: 'p-cust', title: 'Customers', subtitle: 'Client profiles & history', icon: Users, path: '/agent/customers', category: 'Pages', keywords: ['clients', 'contacts', 'directory'] },
   { id: 'p-cgroups', title: 'Customer Groups', subtitle: 'Segments & audience management', icon: Layers, path: '/agent/customer-groups', category: 'Pages', keywords: ['groups', 'segments', 'tags', 'audience'] },
-  { id: 'p-broad', title: 'Broadcast Campaigns', subtitle: 'Bulk messaging & blasts', icon: Send, path: '/agent/broadcasts', category: 'Pages', keywords: ['campaigns', 'marketing', 'blast'] },
+  { id: 'p-broad', title: 'Message Marketing', subtitle: 'WhatsApp & SMS campaign blasts', icon: Send, path: '/agent/broadcasts', category: 'Pages', keywords: ['campaigns', 'marketing', 'blast', 'sms', 'whatsapp', 'textlk', 'broadcast'] },
   { id: 'p-tmpl', title: 'WhatsApp Templates', subtitle: 'Approved message templates', icon: Files, path: '/agent/templates', category: 'Pages', keywords: ['templates', 'meta', 'messages'] },
   { id: 'p-ana', title: 'Analytics', subtitle: 'Performance & charts', icon: BarChart3, path: '/agent/analytics', category: 'Pages', keywords: ['reports', 'stats', 'telemetry'] },
   { id: 'p-set', title: 'Workspace Settings', subtitle: 'Profile, AI, & billing settings', icon: Settings, path: '/agent/settings', category: 'Pages', keywords: ['config', 'balance', 'topup', 'profile'] },
@@ -50,6 +51,7 @@ const COMMAND_ITEMS: CommandItem[] = [
   // Actions
   { id: 'a-chat', title: 'Start New Conversation', subtitle: 'Open customer chat', icon: Plus, path: '/agent/conversations', category: 'Actions', keywords: ['new message', 'create chat'] },
   { id: 'a-inv', title: 'Create New Invoice', subtitle: 'Issue client invoice', icon: FileText, path: '/agent/invoices', category: 'Actions', keywords: ['new invoice', 'bill client'] },
+  { id: 'a-broad', title: 'New Marketing Campaign', subtitle: 'Launch WhatsApp or SMS blast', icon: Send, path: '/agent/broadcasts', category: 'Actions', keywords: ['sms', 'textlk', 'blast', 'broadcast', 'whatsapp', 'marketing'] },
   { id: 'a-tmpl', title: 'Manage Templates', subtitle: 'Browse WhatsApp templates', icon: Files, path: '/agent/templates', category: 'Actions', keywords: ['create template', 'edit template'] },
   { id: 'a-top', title: 'Top-up AI Assistant Liquidity', subtitle: 'Settings balance top-up', icon: Sparkles, path: '/agent/settings', category: 'Actions', keywords: ['ai balance', 'deposit', 'liquidity'] },
 ];

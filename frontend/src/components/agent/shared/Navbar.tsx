@@ -6,6 +6,7 @@ import {
   Sparkles,
   ChevronRight,
   Search,
+  Smartphone,
 } from 'lucide-react';
 import HeaderCommandPalette from './HeaderCommandPalette';
 import HeaderNotificationPopover, { NotificationItem } from './HeaderNotificationPopover';
@@ -17,6 +18,7 @@ interface NavbarProps {
     email: string;
     agent_prefix: string;
     credits: number;
+    sms_credits?: number;
     ai_balance?: number;
   } & {
     unreadCount: number;
@@ -63,7 +65,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
     if (s === 'inventory') return 'Inventory';
     if (s === 'invoices') return 'Invoices';
     if (s === 'templates') return 'Templates';
-    if (s === 'broadcasts') return 'Broadcasts';
+    if (s === 'broadcasts' || s === 'sms-marketing') return 'Message Marketing';
     if (s === 'analytics') return 'Analytics';
     if (s === 'settings') return 'Settings';
     return 'Dashboard';
@@ -76,10 +78,15 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
       ? agent.ai_balance
       : parseFloat(String(agent.ai_balance ?? '4.00')) || 0;
 
-  const templateCredits =
+  const waCredits =
     typeof agent.credits === 'number'
       ? agent.credits
-      : parseFloat(String(agent.credits ?? '0.00')) || 0;
+      : parseFloat(String(agent.credits ?? '300.00')) || 0;
+
+  const smsCredits =
+    typeof agent.sms_credits === 'number'
+      ? agent.sms_credits
+      : parseFloat(String(agent.sms_credits ?? '100.00')) || 0;
 
   return (
     <>
@@ -151,31 +158,47 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
           <button
             type="button"
             onClick={() => navigate('/agent/settings')}
-            className="px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-[#F0FDF4] hover:bg-[#DCFCE7] active:scale-95 border border-[#BBF7D0] hover:border-[#86EFAC] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all group"
-            title="AI Assistant Liquidity — Click to manage in Settings"
+            className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#F0FDF4] hover:bg-[#DCFCE7] active:scale-95 border border-[#BBF7D0] hover:border-[#86EFAC] flex items-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer transition-all group shrink-0"
+            title={`DeepSeek AI Balance: $${aiBalance.toFixed(1)} USD — Click to view Settings`}
           >
-            <Sparkles size={13} className="text-[#15803D] shrink-0 group-hover:scale-110 transition-transform" strokeWidth={2.4} />
-            <span className="text-xs sm:text-[13px] font-bold text-[#15803D] font-mono tracking-tight leading-none">
-              ${aiBalance.toFixed(2)}
+            <Sparkles size={12} className="text-[#15803D] shrink-0 group-hover:scale-110 transition-transform" strokeWidth={2.4} />
+            <span className="text-[11px] sm:text-xs font-bold text-[#15803D] font-mono tracking-tight leading-none">
+              ${aiBalance.toFixed(1)}
             </span>
             <span className="hidden sm:inline text-[9px] font-bold text-[#166534] tracking-wider uppercase">
               AI
             </span>
           </button>
 
-          {/* Interactive WhatsApp Template Credits Pill */}
+          {/* Interactive WhatsApp Marketing Credits Pill */}
           <button
             type="button"
-            onClick={() => navigate('/agent/templates')}
-            className="px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 border border-[#EAEAEA] hover:border-[#D4D4D8] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all group"
-            title="WhatsApp Template Credits — Click to view Templates"
+            onClick={() => navigate('/agent/broadcasts')}
+            className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] active:scale-95 border border-[#EAEAEA] hover:border-[#D4D4D8] flex items-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer transition-all group shrink-0"
+            title={`WhatsApp Marketing Balance: Rs. ${Math.round(waCredits)} (~${Math.floor(waCredits / 30)} messages at Rs. 30/msg; Free within 24h window) — Click to open Message Marketing`}
           >
-            <Coins size={13} className="text-[#16281D] shrink-0 group-hover:scale-110 transition-transform" strokeWidth={2.2} />
-            <span className="text-xs sm:text-[13px] font-bold text-[#16281D] font-mono tracking-tight leading-none">
-              {templateCredits.toFixed(2)}
+            <Coins size={12} className="text-[#059669] shrink-0 group-hover:scale-110 transition-transform" strokeWidth={2.2} />
+            <span className="text-[11px] sm:text-xs font-bold text-[#16281D] font-mono tracking-tight leading-none">
+              Rs. {Math.round(waCredits)}
             </span>
-            <span className="hidden sm:inline text-[9px] font-bold text-[#71717A] tracking-wider uppercase">
-              Credits
+            <span className="hidden sm:inline text-[9px] font-bold text-[#059669] tracking-wider uppercase">
+              WA
+            </span>
+          </button>
+
+          {/* Interactive SMS Marketing Credits Pill */}
+          <button
+            type="button"
+            onClick={() => navigate('/agent/broadcasts')}
+            className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#EFF6FF] hover:bg-[#DBEAFE] active:scale-95 border border-[#BFDBFE] hover:border-[#93C5FD] flex items-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer transition-all group shrink-0"
+            title={`SMS Marketing Balance: Rs. ${Math.round(smsCredits)} (~${Math.floor(smsCredits / 1)} SMS at Rs. 1/SMS) — Click to open Message Marketing`}
+          >
+            <Smartphone size={12} className="text-[#2563EB] shrink-0 group-hover:scale-110 transition-transform" strokeWidth={2.2} />
+            <span className="text-[11px] sm:text-xs font-bold text-[#1D4ED8] font-mono tracking-tight leading-none">
+              Rs. {Math.round(smsCredits)}
+            </span>
+            <span className="hidden sm:inline text-[9px] font-bold text-[#2563EB] tracking-wider uppercase">
+              SMS
             </span>
           </button>
 

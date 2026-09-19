@@ -25,13 +25,14 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
             company_overview,
             ai_instructions,
             credits,
+            COALESCE(sms_credits, 0.00) as sms_credits,
             ai_balance
           FROM agents
           WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
         `;
         agentResult = await pgClient.query(agentQuery, [authenticatedUser.id]);
       } catch (colErr: any) {
-        // Graceful fallback if company_overview or ai_balance column has not been added to the database yet
+        // Graceful fallback if company_overview or ai_balance or sms_credits column has not been added yet
         try {
           const fallbackQuery1 = `
             SELECT
@@ -46,6 +47,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
               invoice_template_path,
               company_overview_path,
               credits,
+              COALESCE(sms_credits, 0.00) as sms_credits,
               ai_balance
             FROM agents
             WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)
@@ -118,7 +120,8 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
           company_overview_path: agentData.company_overview_path,
           company_overview: agentData.company_overview || "",
           ai_instructions: agentData.ai_instructions || "",
-          credits: agentData.credits || 0,
+          credits: parseFloat(agentData.credits || '0'),
+          sms_credits: parseFloat(agentData.sms_credits ?? '0.00'),
           ai_balance: parseFloat(agentData.ai_balance ?? '4.0'),
         },
       });

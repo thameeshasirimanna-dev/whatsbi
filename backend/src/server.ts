@@ -234,7 +234,14 @@ async function registerRoutes() {
   await loginRoutes(server, pgClient);
   await logoutRoutes(server, pgClient);
   await getCurrentUserRoutes(server, pgClient);
-  await manageBroadcastsRoutes(server, pgClient, cacheService, emitNewMessage);
+  await manageBroadcastsRoutes(
+    server,
+    pgClient,
+    cacheService,
+    emitNewMessage,
+    emitAgentStatusUpdate,
+    emitBroadcastUpdated
+  );
   await maintenanceRoutes(server, pgClient, cacheService);
   await systemAnalyticsRoutes(server, pgClient);
 }
@@ -317,13 +324,23 @@ server.get("/health", async (request, reply) => {
 
 // Socket.IO utility functions
 function emitNewMessage(agentId: number, messageData: any) {
-  (server as any).io.to(`agent-${agentId}`).emit("new-message", messageData);
+  (server as any).io?.to(`agent-${agentId}`)?.emit("new-message", messageData);
 }
 
 function emitAgentStatusUpdate(agentId: number, statusData: any) {
-  (server as any).io
-    .to(`agent-${agentId}`)
-    .emit("agent-status-update", statusData);
+  const io = (server as any).io;
+  if (!io) return;
+  io.to(`agent-${agentId}`).emit("agent-status-update", statusData);
+  io.to(`agent-${agentId}`).emit("agent_status_update", statusData);
+}
+
+function emitBroadcastUpdated(agentId: number, data: any) {
+  const io = (server as any).io;
+  if (!io) return;
+  io.to(`agent-${agentId}`).emit("broadcast_updated", data);
+  io.to(`agent-${agentId}`).emit("broadcast-updated", data);
+  io.to(`agent-${agentId}`).emit("agent-status-update", { type: "broadcast_updated", ...data });
+  io.to(`agent-${agentId}`).emit("agent_status_update", { type: "broadcast_updated", ...data });
 }
 
 const start = async () => {

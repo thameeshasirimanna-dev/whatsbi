@@ -131,10 +131,13 @@ CREATE TABLE agents (
 | `email` | TEXT | NOT NULL | Contact email address |
 | `role` | TEXT | DEFAULT 'agent' | Authorization role |
 | `business_type` | TEXT | DEFAULT 'product' | 'product' (SKU-based) or 'service' (packages) |
-| `credits` | NUMERIC(10, 2) | DEFAULT 1.00 | Available credits strictly for WhatsApp template messages ($0.01 per template broadcast). Admin-managed. |
+| `credits` | NUMERIC(10, 2) | DEFAULT 300.00 | Available credits for WhatsApp Marketing templates outside 24h window (Rs. 30.00/msg). Initial 300 credits (10 msgs). Free-form within 24h is Rs. 0. Admin-managed. |
+| `sms_credits` | NUMERIC(10, 2) | DEFAULT 100.00 | Available credits for Normal SMS marketing (Rs. 1.00/SMS part). Initial 100 credits (100 SMS). Admin-managed. |
 | `ai_balance` | NUMERIC(14, 6) | DEFAULT 4.000000 | Available balance in USD for DeepSeek AI engine. Initial $4.00 USD for new agents. Backend silently deducts 2.0x raw DeepSeek API cost. Admin-managed. |
 | `invoice_template_path`| TEXT | NULLABLE | Cloudflare R2 object key for invoice layout |
 | `company_overview_path`| TEXT | NULLABLE | Cloudflare R2 key for company context doc |
+| `company_overview` | TEXT | NULLABLE | Direct text context for company business background |
+| `ai_instructions` | TEXT | NULLABLE | Fine-grained custom system prompt instructions for autonomous chatbot |
 | `webhook_url` | TEXT | NULLABLE | Optional external webhook endpoint (native AI handled via built-in DeepSeek model) |
 | `created_at` | TIMESTAMPTZ | DEFAULT now() | Registration timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT now() | Modification timestamp |
@@ -142,7 +145,7 @@ CREATE TABLE agents (
 ---
 
 ### 3.3. `whatsapp_configuration` Table
-Stores Meta WhatsApp Cloud API credentials and webhook verification secrets.
+Stores Meta WhatsApp Cloud API credentials, Text.lk SMS gateway credentials, and webhook verification secrets.
 
 ```sql
 CREATE TABLE whatsapp_configuration (
@@ -156,6 +159,8 @@ CREATE TABLE whatsapp_configuration (
     deepseek_api_key TEXT,
     verify_token TEXT NOT NULL,
     app_secret TEXT,
+    sms_sender_id TEXT,
+    sms_api_token TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
@@ -174,6 +179,8 @@ CREATE TABLE whatsapp_configuration (
 | `deepseek_api_key` | TEXT | NULLABLE | Dedicated DeepSeek API key (1 per agent) for autonomous chatbot |
 | `verify_token` | TEXT | NOT NULL | Shared secret for Meta webhook GET verification |
 | `app_secret` | TEXT | NULLABLE | Meta App Secret for SHA256 signature validation |
+| `sms_sender_id` | TEXT | NULLABLE | Registered SMS sender alphanumeric ID (Text.lk) |
+| `sms_api_token` | TEXT | NULLABLE | Secret API authentication token for Text.lk SMS Gateway |
 | `is_active` | BOOLEAN | DEFAULT true | Toggles active webhook processing |
 | `created_at` | TIMESTAMPTZ | DEFAULT now() | Registration timestamp |
 | `updated_at` | TIMESTAMPTZ | DEFAULT now() | Modification timestamp |
@@ -417,14 +424,21 @@ CREATE TABLE {prefix}_broadcasts (
     id SERIAL PRIMARY KEY,
     agent_id BIGINT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    template_id INTEGER REFERENCES {prefix}_templates(id) ON DELETE SET NULL,
-    status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'processing', 'completed', 'failed')),
-    scheduled_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
+    channel VARCHAR(20) DEFAULT 'whatsapp',
+    message_type VARCHAR(20) NOT NULL CHECK (message_type IN ('text', 'template', 'sms')),
+    template_name TEXT,
+    template_language VARCHAR(10) DEFAULT 'en',
+    message TEXT,
+    template_params JSONB DEFAULT NULL,
+    header_params JSONB DEFAULT NULL,
+    template_buttons JSONB DEFAULT NULL,
+    media_header JSONB DEFAULT NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
     total_recipients INTEGER DEFAULT 0,
-    successful_count INTEGER DEFAULT 0,
+    sent_count INTEGER DEFAULT 0,
     failed_count INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
@@ -629,6 +643,9 @@ All database transformations are tracked in `frontend/database/migrations/`:
 | `037` | `037_add_estimated_delivery_date_to_orders.sql` | Added estimated_delivery_date to orders |
 | `038` | `038_add_broadcasts_tables.sql` | Provisioned dynamic broadcasts and recipient logs |
 | `039` | `039_change_default_language_to_sinhala.sql` | Set default customer language to Sinhala |
+| `039b`| `039_add_sms_gateway_support.sql` | Added Text.lk SMS Gateway config columns to whatsapp_configuration and updated broadcast tables to support SMS marketing |
 | `040` | `040_invoices_first_flow.sql` | Invert sales lifecycle: invoice-first flow, customer_id/advance/total/notes on invoices, optional order_id, invoice_id on items and orders |
 | `041` | `041_add_ai_balance_to_agents.sql` | Added `ai_balance` (NUMERIC(14, 6) DEFAULT 4.000000) for DeepSeek AI, separating it from WhatsApp template `credits` |
 | `042` | `042_add_company_overview_to_agents.sql` | Added `company_overview` (TEXT) to `agents` table for direct text knowledge grounding |
+| `043` | `043_add_ai_instructions_to_agents.sql` | Added `ai_instructions` (TEXT) to `agents` table for custom agent system prompt instructions |
+| `044` | `044_add_sms_credits_to_agents.sql` | Added `sms_credits` (NUMERIC(10, 2) DEFAULT 100.00) for Normal SMS marketing (Rs. 1.00/SMS part) |

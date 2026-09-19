@@ -3,6 +3,7 @@ import { Search, Users } from 'lucide-react';
 import type { Customer } from '../../../lib/api';
 import CustomDropdown from '../shared/CustomDropdown';
 import { RoundCheckbox } from '../shared/RoundCheckbox';
+import { isCustomerWithin24Hours, formatHoursSinceLastMessage } from './broadcastHelpers';
 
 interface AudienceStepProps {
   campaignName: string;
@@ -28,6 +29,9 @@ interface AudienceStepProps {
   onSelectAllManualCustomers: () => void;
   onClearManualSelection: () => void;
   targetRecipientsCount: number;
+  channel?: 'whatsapp' | 'sms';
+  messageType?: 'text' | 'template';
+  setMessageType?: (t: 'text' | 'template') => void;
 }
 
 const AudienceStep: React.FC<AudienceStepProps> = ({
@@ -54,7 +58,12 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
   onSelectAllManualCustomers,
   onClearManualSelection,
   targetRecipientsCount,
+  channel = 'whatsapp',
+  messageType = 'template',
+  setMessageType,
 }) => {
+  const isFreeTextRestricted = channel === 'whatsapp' && messageType === 'text';
+
   return (
     <div className="space-y-5 font-sans">
       <div>
@@ -70,6 +79,30 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
         />
       </div>
 
+      {/* Free-Form 24h Policy Notice */}
+      {isFreeTextRestricted && (
+        <div className="p-3.5 bg-[#E8F8EE] border border-[#BBF7D0] rounded-2xl flex items-center justify-between gap-3 text-xs text-[#15803D]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] shrink-0 animate-pulse" />
+            <div className="min-w-0">
+              <span className="font-bold">Free-form WhatsApp messages can only target the "Within 24h Active" group.</span>
+              <p className="text-[11px] text-[#15803D]/80 truncate">
+                Meta policy requires an Approved Template or SMS to message contacts outside 24 hours.
+              </p>
+            </div>
+          </div>
+          {setMessageType && (
+            <button
+              type="button"
+              onClick={() => setMessageType('template')}
+              className="shrink-0 px-3 py-1.5 rounded-full bg-white border border-[#BBF7D0] text-xs font-bold text-[#15803D] hover:bg-[#DCFCE7] transition-colors cursor-pointer shadow-xs"
+            >
+              Switch to Template
+            </button>
+          )}
+        </div>
+      )}
+
       <div>
         <label className="block text-xs font-semibold text-[#16281D] mb-2">
           Target Audience
@@ -80,18 +113,26 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
               key={type}
               type="button"
               onClick={() => setTargetAudienceType(type)}
-              className={`py-2 px-3 rounded-full text-xs font-semibold border transition-all text-center ${
+              className={`py-2 px-3 rounded-full text-xs font-semibold border transition-all text-center cursor-pointer ${
                 targetAudienceType === type
                   ? 'bg-[#16281D] text-[#9FE870] border-[#16281D] shadow-sm'
                   : 'bg-white text-[#71717A] border-[#EAEAEA] hover:border-[#71717A]'
               }`}
             >
               {type === 'all'
-                ? 'All Customers'
+                ? isFreeTextRestricted
+                  ? 'All (Template)'
+                  : 'All Customers'
                 : type === 'group'
-                ? 'By Group'
+                ? isFreeTextRestricted
+                  ? 'Within 24h Active'
+                  : 'By Group'
                 : type === 'filtered'
-                ? 'By Segments'
+                ? isFreeTextRestricted
+                  ? 'Segments (Template)'
+                  : 'By Segments'
+                : isFreeTextRestricted
+                ? 'Manual (Template)'
                 : 'Manual Pick'}
             </button>
           ))}
@@ -114,7 +155,11 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
                 onChange={(val) => setSelectedGroupId(val)}
                 options={customerGroups.map((g) => ({
                   value: String(g.id),
-                  label: `${g.name} (${g.member_count ?? 0} members)`,
+                  label: isFreeTextRestricted
+                    ? g.name.toLowerCase() === 'within 24h active'
+                      ? `${g.name} (${g.member_count ?? 0} members) - Free Text Eligible`
+                      : `${g.name} (${g.member_count ?? 0} members) - Switches to Template`
+                    : `${g.name} (${g.member_count ?? 0} members)`,
                 }))}
                 variant="white"
                 className="w-full"
@@ -247,9 +292,22 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
                     onChange={() => onToggleCustomerSelection(c.id)}
                     aria-label={`Select customer ${c.name}`}
                   />
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-xs font-medium text-[#16281D]">{c.name}</span>
-                    <span className="text-[11px] font-mono text-[#71717A]">{c.phone}</span>
+                  <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-xs font-medium text-[#16281D] truncate block">{c.name}</span>
+                      <span className="text-[11px] font-mono text-[#71717A]">{c.phone}</span>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {isCustomerWithin24Hours(c.last_user_message_time) ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#22C55E]/15 text-[#15803D]">
+                          ● Active 24h
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono text-[#71717A] bg-[#F4F7F4] border border-[#EAEAEA]">
+                          {formatHoursSinceLastMessage(c.last_user_message_time)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </label>
               ))}

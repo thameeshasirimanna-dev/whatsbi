@@ -37,6 +37,13 @@ Biz Agentz transforms chaotic WhatsApp chat threads into a structured, revenue-g
    - **Product Businesses**: SKU inventory management, stock tracking, and item selection.
    - **Service Businesses**: Tiered service package catalogs and appointment booking.
 4. **Native DeepSeek AI Chatbot**: Built-in, context-aware AI chatbot powered by DeepSeek (`deepseek-chat`) that automatically responds to customer inquiries using real catalog items, prices, and business policies without external webhook friction, while preserving seamless human agent escalation.
+5. **Unified Message Marketing Suite**:
+   - **WhatsApp Marketing**: Dispatches Meta-approved templates (Rs. 30.00/msg outside 24h window) or free-form text with promotional posters/media attachments (Rs. 0.00 Free within 24h window). Automatically isolates and blocks non-24h active customers when free-form text is selected.
+   - **SMS Marketing**: Direct GSM carrier delivery via Text.lk v3 REST Gateway (Rs. 1.00/SMS part) with automated GSM 7-bit / UCS-2 Unicode segment calculation and template personalization tags (`{first_name}`, `{name}`, `{phone}`, etc.).
+6. **Dual Credit & Provisioning System**:
+   - Dedicated balances for WhatsApp Marketing (`credits`), SMS Marketing (`sms_credits`), and DeepSeek AI (`ai_balance`).
+   - Initial agent provisioning: **300 WhatsApp Credits** (10 template messages @ Rs. 30), **100 SMS Credits** (100 SMS @ Rs. 1), and **$4.00 USD** DeepSeek AI token balance.
+   - Real-time automatic delivery telemetry and live credit synchronization via Socket.IO.
 
 ---
 

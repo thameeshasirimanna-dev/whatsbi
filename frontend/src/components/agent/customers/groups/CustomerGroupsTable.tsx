@@ -33,6 +33,14 @@ const getStageBadge = (group: CustomerGroup) => {
     };
   }
   const name = group.name;
+  if (name.toLowerCase() === 'within 24h active') {
+    return {
+      label: 'WhatsApp 24h',
+      bg: 'bg-[#DCFCE7]',
+      text: 'text-[#15803D]',
+      border: 'border-[#22C55E]/30',
+    };
+  }
   if (['New Lead', 'Contacted', 'Follow-up Needed', 'Not Responding'].includes(name)) {
     return {
       label: 'Lead Stage',

@@ -4,6 +4,7 @@ import { downloadWhatsAppMedia, uploadMediaToStorage, escapeRegExp, verifyJWT } 
 import { uploadMediaToR2 } from "../../utils/s3.js";
 import { CacheService } from "../../utils/cache.js";
 import { formatBankDetails, sanitizeWhatsAppFormatting } from "../../services/ai-chatbot.service.js";
+import { interpolateSmsTemplate } from "../../services/textlk-sms.service.js";
 
 export default async function sendWhatsappMessageRoutes(
   fastify: FastifyInstance,
@@ -462,6 +463,9 @@ export default async function sendWhatsappMessageRoutes(
           // Free-form text
           let formattedMessage = message ? formatBankDetails(message) : message;
           formattedMessage = sanitizeWhatsAppFormatting(formattedMessage);
+          if (customer) {
+            formattedMessage = interpolateSmsTemplate(formattedMessage, customer);
+          }
           whatsappPayload = {
             messaging_product: "whatsapp",
             recipient_type: "individual",
@@ -476,7 +480,10 @@ export default async function sendWhatsappMessageRoutes(
             );
           }
           const rawCaption = (caption || message || "").trim();
-          const effective_caption = rawCaption ? sanitizeWhatsAppFormatting(formatBankDetails(rawCaption)) : "";
+          let effective_caption = rawCaption ? sanitizeWhatsAppFormatting(formatBankDetails(rawCaption)) : "";
+          if (customer && effective_caption) {
+            effective_caption = interpolateSmsTemplate(effective_caption, customer);
+          }
           // For multiple images, prepare array of payloads
           if (processedMedia.length === 1) {
             const singleMedia = processedMedia[0];
@@ -599,7 +606,7 @@ export default async function sendWhatsappMessageRoutes(
               type: "body",
               parameters: template_params.map((param: any) => {
                 if (param.type === "text") {
-                  return { type: "text", text: param.text };
+                  return { type: "text", text: customer ? interpolateSmsTemplate(param.text || "", customer) : param.text };
                 } else if (param.type === "currency") {
                   return {
                     type: "currency",
@@ -626,7 +633,7 @@ export default async function sendWhatsappMessageRoutes(
               type: "header",
               parameters: header_params.map((param: any) => {
                 if (param.type === "text") {
-                  return { type: "text", text: param.text };
+                  return { type: "text", text: customer ? interpolateSmsTemplate(param.text || "", customer) : param.text };
                 } else if (param.type === "currency") {
                   return {
                     type: "currency",
@@ -746,9 +753,15 @@ export default async function sendWhatsappMessageRoutes(
         if (!useTemplate) {
           if (type === "text") {
             messageText = message ? sanitizeWhatsAppFormatting(formatBankDetails(message)) : message;
+            if (customer && messageText) {
+              messageText = interpolateSmsTemplate(messageText, customer);
+            }
           } else {
             // media
-            const formattedCaption = caption ? sanitizeWhatsAppFormatting(formatBankDetails(caption)) : (caption || "");
+            let formattedCaption = caption ? sanitizeWhatsAppFormatting(formatBankDetails(caption)) : (caption || "");
+            if (customer && formattedCaption) {
+              formattedCaption = interpolateSmsTemplate(formattedCaption, customer);
+            }
             messageText = formattedCaption;
             mediaType = type;
             mediaUrl = processedMedia[i]?.storedMediaUrl || null;

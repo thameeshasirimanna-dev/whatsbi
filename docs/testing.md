@@ -75,12 +75,29 @@ All agent pages and subcomponents must strictly verify against these design toke
 - **TC-TMP-01 (Live WhatsApp Preview)**: Open "Create Template". Type header, body text with `{{1}}`, `{{2}}` and watch the real-time WhatsApp chat bubble update dynamically.
 - **TC-TMP-02 (Variable Validation)**: Ensure form enforces sample values for all dynamic placeholders before Meta Graph API submission.
 
-### 3.7 WhatsApp Broadcasts (`/agent/broadcasts`)
-- **TC-BC-01 (3-Step Campaign Wizard)**:
-  - Step 1: Campaign name + Audience selection (All, By Segments, Manual Pick). Verify selected customer count badge updates immediately.
-  - Step 2: Choose Approved Template vs Free-Form Text. If template selected, fill variable inputs `{{1}}`. If text selected, observe 24-hour window policy warning.
-  - Step 3: Review summary card, verify Credit Estimation vs Agent Balance calculation. Launch campaign.
-- **TC-BC-02 (Slide-out Details Drawer)**: Click "View Details" on campaign. Verify slide-out drawer displays recipient delivery status log, error reasons, and resend failed trigger.
+### 3.7 Message Marketing (`/agent/broadcasts`)
+- **TC-MM-01 (Multi-Channel Campaign Wizard)**:
+  - **Step 1 (Audience & Channel)**: Select between WhatsApp and Normal SMS. Test audience segmentation (All, Customer Groups, Within 24h Active, Manual Selection).
+  - **Step 2 (Composer & 24h Window)**:
+    - WhatsApp Template: Select approved Meta template and fill parameter variables.
+    - WhatsApp Free-Form Text: Attach promotional media poster (image/pdf) with caption. Verify automatic enforcement of 24h active customer window; customers outside 24h must be blocked and listed with clear warnings.
+    - SMS Marketing: Input message with personalization tags (`{first_name}`, `{name}`, `{phone}`). Verify live segment counter toggles between GSM 7-bit (160 chars/part) and UCS-2 Unicode (70 chars/part).
+  - **Step 3 (Summary & Credit Verification)**: Verify estimated cost and available balance displayed as whole numbers (`Rs. 30`, `Rs. 300`, `Rs. 100`). Verify insufficient credit blocking.
+- **TC-MM-02 (Dual Credit System & Pricing Compliance)**:
+  - WhatsApp Templates: Deducts Rs. 30.00 per message from `agents.credits`.
+  - WhatsApp Free-Form Text within 24h: Free (Rs. 0.00), zero credits deducted.
+  - Normal SMS: Deducts Rs. 1.00 per part from `agents.sms_credits`.
+  - Agent Viewport Formatting: AI balance displayed with 1 decimal place (e.g. `$4.0 USD`); message credits displayed as whole numbers (e.g. `Rs. 300`, `Rs. 100`).
+  - Message Marketing Page: Toolbar contains zero credit badges, presenting a clean operational search and action bar.
+- **TC-MM-03 (Real-Time Automatic Progress & Live Balance Sync)**:
+  - Launch an SMS or WhatsApp broadcast campaign.
+  - Confirm the campaign row immediately enters `processing` status with live delivery progress bar.
+  - Verify delivery progress (`sent_count`, `failed_count`, `status`) updates automatically in real time without refreshing or reloading the page (via `broadcast_updated` socket event + 2.5s active polling fallback).
+  - Verify the Navbar liquidity pills (`Rs. 300 WA`, `Rs. 100 SMS`) deduct in real time via `credits_updated` / `sms_credits_updated` without page refresh.
+- **TC-MM-04 (Bulk Actions & Retry Failed)**:
+  - Select multiple campaigns via round checkboxes: verify floating bulk action bar displays selection count.
+  - Execute bulk delete: verify confirmation modal with danger styling.
+  - Click "Resend Failed" on a campaign with failed recipients: verify channel-aware credit verification and live retry status update.
 
 ### 3.8 Account Settings (`/agent/settings`)
 - **TC-SET-01 (Inline Editable Fields)**: Edit Contact Name, Business Address, Business Email, Contact Phone, and Website. Verify Save/Cancel capsule pills.

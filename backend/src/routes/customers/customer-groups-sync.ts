@@ -12,69 +12,17 @@
  */
 
 export const DEFAULT_PIPELINE_GROUPS = [
-  // 1. Initial Lead Stages
-  {
-    name: 'New Lead',
-    description: 'Default group for newly acquired leads',
-    color: '#3B82F6',
-    category: 'lead',
-  },
-  {
-    name: 'Contacted',
-    description: 'Default group for contacted leads',
-    color: '#8B5CF6',
-    category: 'lead',
-  },
-  {
-    name: 'Follow-up Needed',
-    description: 'Default group for leads requiring follow-up',
-    color: '#F59E0B',
-    category: 'lead',
-  },
-  {
-    name: 'Not Responding',
-    description: 'Default group for inactive or unresponsive leads',
-    color: '#6B7280',
-    category: 'lead',
-  },
-  // 2. Mid-Funnel Interest Stages
-  {
-    name: 'Interested',
-    description: 'Default group for leads actively showing interest',
-    color: '#10B981',
-    category: 'interest',
-  },
-  {
-    name: 'Quotation Sent',
-    description: 'Default group for leads who received a price quotation',
-    color: '#06B6D4',
-    category: 'interest',
-  },
-  {
-    name: 'Asked for More Info',
-    description: 'Default group for leads requesting product or service details',
-    color: '#EC4899',
-    category: 'interest',
-  },
-  // 3. Bottom-Funnel Conversion Stages
-  {
-    name: 'Payment Pending',
-    description: 'Default group for customers awaiting invoice or payment confirmation',
-    color: '#EAB308',
-    category: 'conversion',
-  },
-  {
-    name: 'Paid',
-    description: 'Default group for paying customers',
-    color: '#22C55E',
-    category: 'conversion',
-  },
-  {
-    name: 'Order Confirmed',
-    description: 'Default group for customers with confirmed orders',
-    color: '#16A34A',
-    category: 'conversion',
-  },
+  { name: 'New Lead', description: 'Default group for newly acquired leads', color: '#3B82F6', category: 'lead' },
+  { name: 'Contacted', description: 'Default group for contacted leads', color: '#8B5CF6', category: 'lead' },
+  { name: 'Follow-up Needed', description: 'Default group for leads requiring follow-up', color: '#F59E0B', category: 'lead' },
+  { name: 'Not Responding', description: 'Default group for inactive or unresponsive leads', color: '#6B7280', category: 'lead' },
+  { name: 'Interested', description: 'Default group for leads actively showing interest', color: '#10B981', category: 'interest' },
+  { name: 'Quotation Sent', description: 'Default group for leads who received a price quotation', color: '#06B6D4', category: 'interest' },
+  { name: 'Asked for More Info', description: 'Default group for leads requesting product or service details', color: '#EC4899', category: 'interest' },
+  { name: 'Payment Pending', description: 'Default group for customers awaiting invoice or payment confirmation', color: '#EAB308', category: 'conversion' },
+  { name: 'Paid', description: 'Default group for paying customers', color: '#22C55E', category: 'conversion' },
+  { name: 'Order Confirmed', description: 'Default group for customers with confirmed orders', color: '#16A34A', category: 'conversion' },
+  { name: 'Within 24h Active', description: 'Active customers who sent a message within the last 24 hours (eligible for WhatsApp free-form marketing)', color: '#22C55E', category: 'messaging_window' },
 ] as const;
 
 export const INTEREST_STAGE_NAMES = ['Interested', 'Quotation Sent', 'Asked for More Info'];
@@ -85,22 +33,12 @@ export const LEAD_STAGE_NAMES = ['New Lead', 'Contacted', 'Follow-up Needed', 'N
  * Normalizes any lead stage string into canonical format
  */
 export function normalizeLeadStageName(leadStage?: string | null): string {
-  if (!leadStage || typeof leadStage !== 'string' || !leadStage.trim()) {
-    return 'New Lead';
-  }
+  if (!leadStage || typeof leadStage !== 'string' || !leadStage.trim()) return 'New Lead';
   const clean = leadStage.trim().toLowerCase();
-  if (clean === 'new lead' || clean === 'new_lead' || clean === 'new') {
-    return 'New Lead';
-  }
-  if (clean === 'contacted') {
-    return 'Contacted';
-  }
-  if (clean === 'follow-up needed' || clean === 'follow-up' || clean === 'follow_up_needed' || clean === 'follow_up') {
-    return 'Follow-up Needed';
-  }
-  if (clean === 'not responding' || clean === 'not_responding') {
-    return 'Not Responding';
-  }
+  if (clean === 'new lead' || clean === 'new_lead' || clean === 'new') return 'New Lead';
+  if (clean === 'contacted') return 'Contacted';
+  if (clean === 'follow-up needed' || clean === 'follow-up' || clean === 'follow_up_needed' || clean === 'follow_up') return 'Follow-up Needed';
+  if (clean === 'not responding' || clean === 'not_responding') return 'Not Responding';
   return leadStage.trim();
 }
 
@@ -117,6 +55,7 @@ export async function reconcileLeadStageGroupMemberships(pgClient: any, agentPre
       WHERE gm.group_id = g.id
         AND gm.customer_id = c.id
         AND g.is_default = true
+        AND lower(g.name) != 'within 24h active'
         AND lower(g.name) != lower(
           CASE 
             WHEN c.lead_stage IS NULL OR trim(c.lead_stage) = '' THEN 'New Lead'
@@ -179,8 +118,41 @@ export async function reconcileLeadStageGroupMemberships(pgClient: any, agentPre
       )
       ON CONFLICT (group_id, customer_id) DO NOTHING;
     `);
+
+    // 5. Reconcile 24h active group memberships
+    await reconcile24hActiveMemberships(pgClient, agentPrefix);
   } catch (err: any) {
     console.warn(`[Customer Groups] Error reconciling group memberships for ${agentPrefix}:`, err.message);
+  }
+}
+
+/**
+ * Automatically reconciles membership for the "Within 24h Active" customer group.
+ * Customers who messaged within the last 24 hours are added; expired ones are removed.
+ */
+export async function reconcile24hActiveMemberships(pgClient: any, agentPrefix: string) {
+  try {
+    await pgClient.query(`
+      DELETE FROM ${agentPrefix}_customer_group_members gm
+      USING ${agentPrefix}_customer_groups g, ${agentPrefix}_customers c
+      WHERE gm.group_id = g.id
+        AND gm.customer_id = c.id
+        AND g.is_default = true
+        AND lower(g.name) = 'within 24h active'
+        AND (c.last_user_message_time IS NULL OR c.last_user_message_time < (NOW() - INTERVAL '24 hours'));
+
+      INSERT INTO ${agentPrefix}_customer_group_members (group_id, customer_id)
+      SELECT g.id, c.id
+      FROM ${agentPrefix}_customers c
+      JOIN ${agentPrefix}_customer_groups g ON (
+        g.is_default = true AND lower(g.name) = 'within 24h active'
+      )
+      WHERE c.last_user_message_time IS NOT NULL
+        AND c.last_user_message_time >= (NOW() - INTERVAL '24 hours')
+      ON CONFLICT (group_id, customer_id) DO NOTHING;
+    `);
+  } catch (err: any) {
+    console.warn(`[Customer Groups] Error reconciling 24h active group for ${agentPrefix}:`, err.message);
   }
 }
 
@@ -224,7 +196,8 @@ export async function ensureCustomerGroupTables(pgClient: any, agentPrefix: stri
         (${agentId}, 'Asked for More Info', 'Default group for leads requesting product or service details', '#EC4899', true),
         (${agentId}, 'Payment Pending', 'Default group for customers awaiting invoice or payment confirmation', '#EAB308', true),
         (${agentId}, 'Paid', 'Default group for paying customers', '#22C55E', true),
-        (${agentId}, 'Order Confirmed', 'Default group for customers with confirmed orders', '#16A34A', true)
+        (${agentId}, 'Order Confirmed', 'Default group for customers with confirmed orders', '#16A34A', true),
+        (${agentId}, 'Within 24h Active', 'Active customers who sent a message within the last 24 hours (eligible for WhatsApp free-form marketing)', '#22C55E', true)
       ON CONFLICT (agent_id, name) DO UPDATE
         SET is_default = true;
     `);
@@ -240,6 +213,7 @@ export async function ensureCustomerGroupTables(pgClient: any, agentPrefix: stri
         v_lead_group_id int;
         v_interest_group_id int;
         v_conversion_group_id int;
+        v_active_24h_group_id int;
         v_lead_stage text;
       BEGIN
         -- 1. Determine canonical lead stage
@@ -282,12 +256,13 @@ export async function ensureCustomerGroupTables(pgClient: any, agentPrefix: stri
           v_conversion_group_id := NULL;
         END IF;
 
-        -- 4. Clean up stale default memberships for this customer
+        -- 4. Clean up stale default memberships (preserve Within 24h Active)
         DELETE FROM ${agentPrefix}_customer_group_members
         WHERE customer_id = NEW.id
           AND group_id IN (
             SELECT id FROM ${agentPrefix}_customer_groups
             WHERE is_default = true
+              AND lower(name) != 'within 24h active'
               AND id NOT IN (
                 COALESCE(v_lead_group_id, 0),
                 COALESCE(v_interest_group_id, 0),
@@ -314,6 +289,23 @@ export async function ensureCustomerGroupTables(pgClient: any, agentPrefix: stri
           ON CONFLICT (group_id, customer_id) DO NOTHING;
         END IF;
 
+        -- 6. Real-time automatic sync for Within 24h Active group
+        SELECT id INTO v_active_24h_group_id
+        FROM ${agentPrefix}_customer_groups
+        WHERE is_default = true AND lower(name) = 'within 24h active'
+        LIMIT 1;
+
+        IF v_active_24h_group_id IS NOT NULL THEN
+          IF NEW.last_user_message_time IS NOT NULL AND NEW.last_user_message_time >= (NOW() - INTERVAL '24 hours') THEN
+            INSERT INTO ${agentPrefix}_customer_group_members (group_id, customer_id)
+            VALUES (v_active_24h_group_id, NEW.id)
+            ON CONFLICT (group_id, customer_id) DO NOTHING;
+          ELSE
+            DELETE FROM ${agentPrefix}_customer_group_members
+            WHERE group_id = v_active_24h_group_id AND customer_id = NEW.id;
+          END IF;
+        END IF;
+
         RETURN NEW;
       END;
       $$ LANGUAGE plpgsql;
@@ -321,7 +313,7 @@ export async function ensureCustomerGroupTables(pgClient: any, agentPrefix: stri
       DROP TRIGGER IF EXISTS trg_sync_lead_stage_${agentPrefix} ON ${agentPrefix}_customers;
       DROP TRIGGER IF EXISTS trg_sync_customer_stages_${agentPrefix} ON ${agentPrefix}_customers;
       CREATE TRIGGER trg_sync_customer_stages_${agentPrefix}
-      AFTER INSERT OR UPDATE OF lead_stage, interest_stage, conversion_stage ON ${agentPrefix}_customers
+      AFTER INSERT OR UPDATE OF lead_stage, interest_stage, conversion_stage, last_user_message_time ON ${agentPrefix}_customers
       FOR EACH ROW
       EXECUTE FUNCTION sync_customer_stage_groups_${agentPrefix}();
     `);
@@ -339,6 +331,8 @@ export async function assignCustomerToDefaultGroup(
   groupName: string,
   customerId: number
 ) {
+  if (groupName.toLowerCase() === 'within 24h active') return;
+
   if (INTEREST_STAGE_NAMES.includes(groupName)) {
     await pgClient.query(
       `UPDATE ${agentPrefix}_customers SET interest_stage = $1, updated_at = now() WHERE id = $2`,
@@ -367,6 +361,8 @@ export async function removeCustomerFromDefaultGroup(
   customerIds: number[]
 ) {
   if (customerIds.length === 0) return;
+  if (groupName.toLowerCase() === 'within 24h active') return;
+
   if (INTEREST_STAGE_NAMES.includes(groupName)) {
     await pgClient.query(
       `UPDATE ${agentPrefix}_customers SET interest_stage = NULL, updated_at = now() WHERE id = ANY($1::int[]) AND lower(interest_stage) = lower($2)`,
@@ -419,13 +415,15 @@ export async function syncCustomerLeadStageGroup(
     if (is && typeof is === 'string' && is.trim()) targetNames.push(is.trim());
     if (cs && typeof cs === 'string' && cs.trim()) targetNames.push(cs.trim());
 
-    // Remove obsolete default memberships
+    // Remove obsolete default memberships (preserve Within 24h Active)
     await pgClient.query(`
       DELETE FROM ${agentPrefix}_customer_group_members
       WHERE customer_id = $1
         AND group_id IN (
           SELECT id FROM ${agentPrefix}_customer_groups
-          WHERE is_default = true AND lower(name) != ALL($2::text[])
+          WHERE is_default = true
+            AND lower(name) != 'within 24h active'
+            AND lower(name) != ALL($2::text[])
         )
     `, [customerId, targetNames.map(n => n.toLowerCase())]);
 

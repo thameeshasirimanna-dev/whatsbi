@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Users, Search, Copy, Check, UserMinus, UserPlus, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Users, Search, Copy, Check, UserMinus, UserPlus, MessageCircle, Send } from 'lucide-react';
 import Portal from '../../shared/Portal';
 import { CustomerGroup, GroupMemberDetail, Customer } from '../CustomerTypes';
 import { fetchGroupDetails, removeCustomersFromGroup, addCustomersToGroup, fetchAllCustomers } from './customerGroupsApi';
@@ -21,6 +22,7 @@ export const GroupMembersDrawer: React.FC<GroupMembersDrawerProps> = ({
   onMembershipChanged,
   allCustomers = [],
 }) => {
+  const navigate = useNavigate();
   const { toast, confirm: dlgConfirm } = useDialog();
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState<GroupMemberDetail[]>([]);
@@ -201,7 +203,7 @@ export const GroupMembersDrawer: React.FC<GroupMembersDrawerProps> = ({
                   />
                   {group.is_default && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#16281D] text-[#9FE870] shrink-0">
-                      Pipeline Stage
+                      {group.name.toLowerCase() === 'within 24h active' ? 'WhatsApp 24h' : 'Pipeline Stage'}
                     </span>
                   )}
                 </div>
@@ -218,11 +220,15 @@ export const GroupMembersDrawer: React.FC<GroupMembersDrawerProps> = ({
             </button>
           </div>
 
-          {/* Automatic Sync Info Ribbon for Default Lead Stage Groups */}
+          {/* Automatic Sync Info Ribbon for Default Groups */}
           {group.is_default && (
             <div className="px-5 py-2 bg-[#F4F7F4] border-b border-[#EAEAEA] flex items-center gap-2 text-[11px] text-[#71717A]">
               <span className="w-2 h-2 rounded-full bg-[#22C55E] shrink-0 animate-pulse" />
-              <span>Automatically syncs when a customer's pipeline stage transitions to <strong>{group.name}</strong>.</span>
+              <span>
+                {group.name.toLowerCase() === 'within 24h active'
+                  ? 'Automatically tracks customers who sent a WhatsApp message within the last 24 hours.'
+                  : <>Automatically syncs when a customer's pipeline stage transitions to <strong>{group.name}</strong>.</>}
+              </span>
             </div>
           )}
 
@@ -239,14 +245,31 @@ export const GroupMembersDrawer: React.FC<GroupMembersDrawerProps> = ({
               <span>{copied ? 'Copied' : 'Copy Numbers'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowAddMode(!showAddMode)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#9FE870] bg-[#9FE870]/15 hover:bg-[#9FE870]/25 text-xs font-bold text-[#16281D] transition-colors cursor-pointer"
-            >
-              {showAddMode ? <Users size={12} /> : <UserPlus size={12} />}
-              <span>{showAddMode ? 'View Members' : 'Add Members'}</span>
-            </button>
+            {group.name.toLowerCase() === 'within 24h active' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate('/agent/broadcasts', {
+                    state: { selectedGroupId: group.id, groupName: group.name },
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#22C55E]/40 bg-[#DCFCE7] hover:bg-[#BBF7D0] text-xs font-bold text-[#15803D] transition-colors cursor-pointer"
+                title="Launch a marketing campaign targeting within 24h active customers"
+              >
+                <Send size={12} />
+                <span>Launch Campaign</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAddMode(!showAddMode)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#9FE870] bg-[#9FE870]/15 hover:bg-[#9FE870]/25 text-xs font-bold text-[#16281D] transition-colors cursor-pointer"
+              >
+                {showAddMode ? <Users size={12} /> : <UserPlus size={12} />}
+                <span>{showAddMode ? 'View Members' : 'Add Members'}</span>
+              </button>
+            )}
           </div>
 
           {/* Drawer Body */}
@@ -422,14 +445,16 @@ export const GroupMembersDrawer: React.FC<GroupMembersDrawerProps> = ({
                           >
                             <MessageCircle size={13} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMember(member.id, member.name)}
-                            title="Remove from group"
-                            className="w-7 h-7 rounded-full bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] flex items-center justify-center transition-colors cursor-pointer"
-                          >
-                            <UserMinus size={13} />
-                          </button>
+                          {group.name.toLowerCase() !== 'within 24h active' && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMember(member.id, member.name)}
+                              title="Remove from group"
+                              className="w-7 h-7 rounded-full bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <UserMinus size={13} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))

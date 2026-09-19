@@ -7,10 +7,11 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  Shield,
   Loader2,
 } from 'lucide-react';
 import { getToken } from '../lib/auth';
+import { MetaCredentialsFields } from './admin/whatsapp-setup/MetaCredentialsFields';
+import { SmsGatewayFields } from './admin/whatsapp-setup/SmsGatewayFields';
 
 interface WhatsAppConfig {
   whatsapp_number: string;
@@ -20,6 +21,8 @@ interface WhatsAppConfig {
   phone_number_id?: string;
   whatsapp_app_secret?: string;
   deepseek_api_key?: string;
+  sms_sender_id?: string;
+  sms_api_token?: string;
 }
 
 interface WhatsAppSetupModalProps {
@@ -40,6 +43,8 @@ interface WhatsAppSetupModalProps {
     phone_number_id?: string;
     whatsapp_app_secret?: string;
     deepseek_api_key?: string;
+    sms_sender_id?: string;
+    sms_api_token?: string;
     is_active: boolean;
   } | null;
 }
@@ -59,10 +64,13 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
     phone_number_id: '',
     whatsapp_app_secret: '',
     deepseek_api_key: '',
+    sms_sender_id: '',
+    sms_api_token: '',
   });
   const [showDeepSeekKey, setShowDeepSeekKey] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showAppSecret, setShowAppSecret] = useState(false);
+  const [showSmsToken, setShowSmsToken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -77,6 +85,8 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         phone_number_id: initialConfig.phone_number_id || '',
         whatsapp_app_secret: initialConfig.whatsapp_app_secret || '',
         deepseek_api_key: initialConfig.deepseek_api_key || '',
+        sms_sender_id: initialConfig.sms_sender_id || '',
+        sms_api_token: initialConfig.sms_api_token || '',
       });
     } else {
       setFormData({
@@ -87,6 +97,8 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         phone_number_id: '',
         whatsapp_app_secret: '',
         deepseek_api_key: '',
+        sms_sender_id: '',
+        sms_api_token: '',
       });
     }
   }, [initialConfig, isOpen]);
@@ -133,6 +145,8 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
         phone_number_id: formData.phone_number_id?.trim() || null,
         whatsapp_app_secret: formData.whatsapp_app_secret?.trim() || null,
         deepseek_api_key: formData.deepseek_api_key?.trim() || null,
+        sms_sender_id: formData.sms_sender_id?.trim() || null,
+        sms_api_token: formData.sms_api_token?.trim() || null,
       };
 
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
@@ -149,14 +163,11 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to setup WhatsApp configuration');
-      }
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to setup WhatsApp configuration');
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to setup WhatsApp & SMS configuration');
       }
 
-      setSuccessMessage('WhatsApp configuration committed successfully!');
+      setSuccessMessage('Instance credentials committed successfully!');
       onSuccess();
 
       setTimeout(() => {
@@ -191,10 +202,10 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-[#16281D] m-0 tracking-tight leading-snug">
-                {selectedAgent ? `WhatsApp Setup — ${selectedAgent.user_name}` : 'Setup WhatsApp Instance'}
+                {selectedAgent ? `Channel Setup — ${selectedAgent.user_name}` : 'Setup Communication Instance'}
               </h3>
               <p className="text-xs text-[#71717A] m-0 mt-0.5 font-medium">
-                Configure Meta Business Cloud API and dedicated DeepSeek AI routing.
+                Configure Meta Business Cloud API, DeepSeek AI, and Text.lk SMS Sender ID.
               </p>
             </div>
           </div>
@@ -228,7 +239,7 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
               </div>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#E8F8EE] text-[#059669] border border-[#BBF7D0] shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
-                Meta Cloud Ready
+                Fleet Ready
               </span>
             </div>
           )}
@@ -252,9 +263,8 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
           <div className="p-3.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl flex items-start gap-2.5 text-xs text-[#15803D] font-medium">
             <Sparkles size={16} className="shrink-0 mt-0.5 text-[#059669]" />
             <div className="leading-relaxed">
-              <strong className="font-bold text-[#16281D]">Autonomous DeepSeek AI Core</strong>: Customer
-              queries are responded to in real-time via the agent&apos;s allocated DeepSeek engine.
-              Zero manual server webhooks required.
+              <strong className="font-bold text-[#16281D]">Autonomous Communication Core</strong>: Customer
+              WhatsApp queries use DeepSeek routing, while SMS campaigns deliver via Text.lk.
             </div>
           </div>
 
@@ -276,7 +286,7 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
                 className="w-full px-3.5 py-2.5 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-sm font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 font-mono disabled:opacity-50"
               />
               <p className="text-[11px] text-[#8FA89B] font-medium mt-1 m-0">
-                Enter international E.164 phone format (e.g. +14155552671).
+                Enter international E.164 phone format (e.g. +94771234567).
               </p>
             </div>
 
@@ -315,105 +325,29 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
               </p>
             </div>
 
+            {/* SMS Gateway Fields (Text.lk) */}
+            <SmsGatewayFields
+              smsSenderId={formData.sms_sender_id || ''}
+              smsApiToken={formData.sms_api_token || ''}
+              showSmsToken={showSmsToken}
+              loading={loading}
+              onToggleShowSmsToken={() => setShowSmsToken(!showSmsToken)}
+              onChange={handleInputChange}
+            />
+
             {/* Meta Business API Credentials */}
-            <div className="border-t border-[#F4F4F5] pt-4 mt-1 flex flex-col gap-3.5">
-              <div className="flex items-center gap-2">
-                <Shield size={14} className="text-[#059669]" />
-                <span className="text-xs font-bold text-[#16281D] uppercase tracking-wider">
-                  Meta Business API Credentials (Optional)
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* Meta API Key */}
-                <div>
-                  <label htmlFor="api_key" className="block text-xs font-bold text-[#52525B] mb-1">
-                    API Access Token
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      id="api_key"
-                      name="api_key"
-                      value={formData.api_key}
-                      onChange={handleInputChange}
-                      placeholder="EAA..."
-                      disabled={loading}
-                      className="w-full px-3 py-2 pr-9 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-xs font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 font-mono disabled:opacity-50"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8FA89B] hover:text-[#16281D] border-0 bg-transparent cursor-pointer p-0.5"
-                      aria-label={showApiKey ? 'Hide token' : 'Show token'}
-                    >
-                      {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Business Account ID */}
-                <div>
-                  <label htmlFor="business_account_id" className="block text-xs font-bold text-[#52525B] mb-1">
-                    Business Account ID
-                  </label>
-                  <input
-                    type="text"
-                    id="business_account_id"
-                    name="business_account_id"
-                    value={formData.business_account_id}
-                    onChange={handleInputChange}
-                    placeholder="e.g. 1029384756..."
-                    disabled={loading}
-                    className="w-full px-3 py-2 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-xs font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 font-mono disabled:opacity-50"
-                  />
-                </div>
-
-                {/* Phone Number ID */}
-                <div>
-                  <label htmlFor="phone_number_id" className="block text-xs font-bold text-[#52525B] mb-1">
-                    Phone Number ID
-                  </label>
-                  <input
-                    type="text"
-                    id="phone_number_id"
-                    name="phone_number_id"
-                    value={formData.phone_number_id}
-                    onChange={handleInputChange}
-                    placeholder="e.g. 10987654321..."
-                    disabled={loading}
-                    className="w-full px-3 py-2 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-xs font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 font-mono disabled:opacity-50"
-                  />
-                </div>
-
-                {/* App Secret */}
-                <div>
-                  <label htmlFor="whatsapp_app_secret" className="block text-xs font-bold text-[#52525B] mb-1">
-                    App Secret
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showAppSecret ? 'text' : 'password'}
-                      id="whatsapp_app_secret"
-                      name="whatsapp_app_secret"
-                      value={formData.whatsapp_app_secret}
-                      onChange={handleInputChange}
-                      placeholder="Meta App Secret"
-                      disabled={loading}
-                      className="w-full px-3 py-2 pr-9 bg-[#F4F7F4] border border-[#EAEAEA] focus:border-[#9FE870] focus:bg-white rounded-xl text-xs font-medium text-[#16281D] placeholder-[#8FA89B] outline-none transition-all focus:ring-2 focus:ring-[#9FE870]/20 font-mono disabled:opacity-50"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowAppSecret(!showAppSecret)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8FA89B] hover:text-[#16281D] border-0 bg-transparent cursor-pointer p-0.5"
-                      aria-label={showAppSecret ? 'Hide secret' : 'Show secret'}
-                    >
-                      {showAppSecret ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <MetaCredentialsFields
+              apiKey={formData.api_key || ''}
+              businessAccountId={formData.business_account_id || ''}
+              phoneNumberId={formData.phone_number_id || ''}
+              whatsappAppSecret={formData.whatsapp_app_secret || ''}
+              showApiKey={showApiKey}
+              showAppSecret={showAppSecret}
+              loading={loading}
+              onToggleShowApiKey={() => setShowApiKey(!showApiKey)}
+              onToggleShowAppSecret={() => setShowAppSecret(!showAppSecret)}
+              onChange={handleInputChange}
+            />
           </form>
         </div>
 
@@ -441,7 +375,7 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
             ) : (
               <>
                 <MessageSquare size={14} strokeWidth={2.4} />
-                <span>Commit WhatsApp Setup</span>
+                <span>Save Channel Setup</span>
               </>
             )}
           </button>
@@ -450,4 +384,3 @@ export const WhatsAppSetupModal: React.FC<WhatsAppSetupModalProps> = ({
     </div>
   );
 };
-

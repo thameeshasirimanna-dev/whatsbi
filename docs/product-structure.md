@@ -11,6 +11,8 @@
 - **Media Ingestion**: Automated download of WhatsApp media and streaming storage into Cloudflare R2.
 - **Native DeepSeek AI Chatbot**: Built-in autonomous conversation AI powered by DeepSeek (`deepseek-chat`), grounded in tenant inventory/service catalogs, company overview knowledge, and conversation memory.
 - **Real-Time AI Dispatch**: Automated outbound messaging via Meta Cloud API v23.0 with instant Socket.IO agent inbox synchronization.
+- **Unified Message Marketing**: Multi-channel marketing campaign engine supporting WhatsApp Marketing (Meta templates and free-form 24h messages with media posters) and Normal SMS Marketing (Text.lk v3 gateway with dynamic GSM/Unicode segmenting).
+- **Dual Credit System**: Isolated accounting for WhatsApp Marketing (`credits`), SMS Marketing (`sms_credits`), and DeepSeek AI tokens (`ai_balance`).
 
 ---
 
@@ -69,6 +71,8 @@
 | Real-Time | fastify-socket.io | 5.1.0 | Event broadcasting to agent rooms |
 | Image Processing| sharp | 0.34.5 | Thumbnail generation and WebP conversion |
 | External API | Meta Graph API | v23.0 | WhatsApp Cloud API integration |
+| External API | Text.lk v3 REST API | v3.0 | Direct GSM SMS Gateway delivery (Sri Lanka) |
+| AI Model API | DeepSeek API | deepseek-chat | Native LLM inference for autonomous agent |
 
 ---
 
@@ -125,7 +129,7 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 - `GET /get-agent-profile`: Fetches active agent profile.
 - `PUT /update-agent-details`: Updates agent metadata.
 - `PUT /update-agent-template-path`: Sets invoice PDF template R2 path.
-- `POST /add-credits`: Credits additional AI message tokens to an agent.
+- `POST /add-credits`: Credits additional funds to an agent account. Supports `balance_type`: `'whatsapp'` (WhatsApp marketing credits @ Rs. 30/msg), `'sms'` (Normal SMS credits @ Rs. 1/SMS), and `'ai'` (DeepSeek USD balance). Emits instant `credits_updated`, `sms_credits_updated`, or `ai_balance_updated` socket events.
 
 ### Conversations & Messaging
 - `GET /get-conversations`: Lists conversations with cached unread counts.
@@ -133,8 +137,18 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 - `POST /mark-messages-read`: Updates message read receipts and cache.
 - `GET /authenticated-messages-stream`: Server-Sent Events (SSE) fallback stream.
 
+### Message Marketing & Campaigns
+- `GET /manage-broadcasts`: Lists all marketing campaigns with live delivery metrics (`sent_count`, `failed_count`, `total_recipients`) and execution status (`pending`, `processing`, `completed`, `failed`).
+- `GET /manage-broadcasts?action=details&broadcast_id=:id`: Returns granular recipient logs, dispatch timestamps, and delivery errors.
+- `POST /manage-broadcasts`: Launches a multi-channel campaign:
+  - **WhatsApp Marketing**: Meta template messages (`message_type: 'template'`, billed at Rs. 30.00/msg) or free-form text with media posters (`message_type: 'text'`, billed at Rs. 0.00 Free strictly within 24h customer window).
+  - **Normal SMS Marketing**: Carrier SMS dispatch via Text.lk v3 REST Gateway (`channel: 'sms'`, billed at Rs. 1.00/SMS part) with automated GSM 7-bit vs UCS-2 Unicode parts calculation and personalization interpolation.
+  - **Campaign Resend**: `POST /manage-broadcasts?action=resend` to retry failed recipients with automated credit verification.
+- `DELETE /manage-broadcasts`: Permanently deletes single campaign (`id`) or bulk campaigns (`ids: number[]`).
+
 ### Business Entities
-- `/manage-customers`: CRUD operations for CRM customer records.
+- `/manage-customers`: CRUD operations for CRM customer records, pipeline stages, and auto-syncing customer groups (e.g. `Within 24h Active`).
+- `/manage-customer-groups`: CRUD operations for segmentation groups and group member assignments.
 - `/manage-orders`: CRUD operations for orders and items.
 - `/manage-invoices`: CRUD operations for invoices, PDF generation, and `POST /manage-invoices?action=create-order-from-invoice` (atomically marks invoice as paid and generates CRM order).
 - `/upload-invoice`: Uploads generated PDF invoice and persists invoice items linked directly to the customer in the invoice-first lifecycle.
@@ -149,6 +163,12 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 - `POST /trigger-ai-response`: Authenticated trigger for on-demand DeepSeek AI responses (product inquiries, service inquiries, or custom prompts).
 - `GET /bot-context/:customerId`: Aggregates customer history and catalog data for AI bots.
 - `POST /chatbot-reply`: Allows authorized AI bots (`CHATBOT_SECRET`) or legacy integrations to dispatch replies.
+
+### Real-Time Socket.IO Architecture
+Rooms are partitioned by agent ID (`agent-${agentId}`).
+- `new-message`: Outbound and inbound WhatsApp message synchronization.
+- `agent-status-update` & `agent_status_update`: Real-time balance synchronization for `ai_balance_updated`, `credits_updated`, and `sms_credits_updated`.
+- `broadcast_updated` & `broadcast-updated`: Live campaign telemetry emitting `broadcast_id`, `sent_count`, `failed_count`, `total_recipients`, and `status`. Frontend client couples this with an automated 2.5s polling loop during active processing.
 
 ---
 
@@ -184,9 +204,10 @@ frontend/src/
         ├── appointments/            # Booking calendar
         ├── inventory/               # Product catalog & stock
         ├── services/                # Service tiers & packages
+        ├── broadcasts/              # Message Marketing (WhatsApp & SMS campaigns, wizard, poster upload)
         ├── templates/               # Message template editor
         ├── analytics/               # Revenue and conversion charts
-        └── settings/                # WhatsApp API & account settings
+        └── settings/                # WhatsApp/SMS API & account settings
 ```
 
 ---

@@ -13,6 +13,9 @@ interface GroupCardProps {
 }
 
 const getStageBadge = (name: string) => {
+  if (name.toLowerCase() === 'within 24h active') {
+    return { label: 'WhatsApp 24h', bg: 'bg-[#DCFCE7]', text: 'text-[#15803D]', border: 'border-[#22C55E]/30' };
+  }
   if (['New Lead', 'Contacted', 'Follow-up Needed', 'Not Responding'].includes(name)) {
     return { label: 'Lead Stage', bg: 'bg-[#DBEAFE]', text: 'text-[#1D4ED8]', border: 'border-[#3B82F6]/20' };
   }

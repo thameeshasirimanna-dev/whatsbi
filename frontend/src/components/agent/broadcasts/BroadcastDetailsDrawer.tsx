@@ -72,9 +72,11 @@ const BroadcastDetailsDrawer: React.FC<BroadcastDetailsDrawerProps> = ({
                 </span>
               </div>
               <div>
-                <span className="text-[11px] font-medium text-[#71717A] block">Format</span>
+                <span className="text-[11px] font-medium text-[#71717A] block">Channel / Format</span>
                 <span className="text-xs font-bold text-[#16281D] uppercase tracking-wider block mt-1">
-                  {broadcast.message_type}
+                  {broadcast.channel === 'sms' || broadcast.message_type === 'sms'
+                    ? 'Normal SMS'
+                    : broadcast.message_type}
                 </span>
               </div>
               <div>
@@ -115,8 +117,41 @@ const BroadcastDetailsDrawer: React.FC<BroadcastDetailsDrawerProps> = ({
             {/* Message Body or Template */}
             <div className="space-y-1.5">
               <span className="text-xs font-semibold text-[#16281D] block">
-                {broadcast.message_type === 'template' ? "WhatsApp Template" : "Message Body"}
+                {broadcast.channel === 'sms' || broadcast.message_type === 'sms'
+                  ? 'SMS Message Content'
+                  : broadcast.message_type === 'template'
+                  ? 'WhatsApp Template'
+                  : (broadcast.media_header ? 'Poster Caption & Message' : 'Message Body')}
               </span>
+
+              {(() => {
+                let mediaHeader = broadcast.media_header;
+                if (typeof mediaHeader === 'string') {
+                  try { mediaHeader = JSON.parse(mediaHeader); } catch (e) {}
+                }
+                const mediaUrl = mediaHeader?.link || mediaHeader?.url;
+                return mediaUrl ? (
+                  <div className="p-2.5 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl flex items-center gap-3 mb-2">
+                    <img
+                      src={mediaUrl}
+                      alt="Broadcast poster"
+                      className="w-14 h-14 rounded-lg object-cover border border-[#EAEAEA] shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#15803D] bg-[#22C55E]/15 px-2 py-0.5 rounded-full">
+                        Attached Poster
+                      </span>
+                      <p className="text-xs font-semibold text-[#16281D] truncate mt-1">
+                        {mediaHeader.filename || 'Promotional Poster'}
+                      </p>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
               {broadcast.message_type === 'template' ? (
                 <div className="p-3 bg-[#F4F7F4] border border-[#EAEAEA] rounded-xl font-mono text-xs text-[#16281D]">
                   {broadcast.template_name}

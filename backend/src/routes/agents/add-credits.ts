@@ -6,7 +6,16 @@ export default async function addCreditsRoutes(
   pgClient: any,
   emitAgentStatusUpdate: (agentId: number, statusData: any) => void
 ) {
-  const handleAddCredits = async (request: any, reply: any, forcedType?: 'ai' | 'template') => {
+  // Ensure credits and sms_credits column defaults exist in agents table (300 WA credits = 10 msgs, 100 SMS credits = 100 SMS)
+  try {
+    await pgClient.query('ALTER TABLE agents ADD COLUMN IF NOT EXISTS sms_credits NUMERIC(10, 2) DEFAULT 100.00');
+    await pgClient.query('ALTER TABLE agents ALTER COLUMN credits SET DEFAULT 300.00');
+    await pgClient.query('ALTER TABLE agents ALTER COLUMN sms_credits SET DEFAULT 100.00');
+  } catch (colErr) {
+    console.warn('Could not auto-configure credit defaults on agents table:', colErr);
+  }
+
+  const handleAddCredits = async (request: any, reply: any, forcedType?: 'ai' | 'template' | 'whatsapp' | 'sms') => {
     try {
       // Verify JWT and get authenticated user
       const authenticatedUser = await verifyJWT(request, pgClient);
@@ -40,9 +49,39 @@ export default async function addCreditsRoutes(
         });
       }
 
-      if (resolvedType === 'template') {
-        // Update template message credits
-        const updateQuery = 'UPDATE agents SET credits = credits + $1 WHERE id = $2 RETURNING credits';
+      if (resolvedType === 'sms') {
+        // Update Normal SMS message credits (Rs. 1.00 / SMS)
+        const updateQuery =
+          'UPDATE agents SET sms_credits = COALESCE(sms_credits, 0) + $1 WHERE id = $2 RETURNING sms_credits, credits, ai_balance';
+        const { rows: updateRows } = await pgClient.query(updateQuery, [
+          numAmount,
+          parsedAgentId,
+        ]);
+
+        if (updateRows.length === 0) {
+          return reply.code(404).send({
+            success: false,
+            error: 'Agent not found',
+          });
+        }
+
+        const newSmsCredits = parseFloat(updateRows[0].sms_credits);
+
+        emitAgentStatusUpdate(parsedAgentId, {
+          type: 'sms_credits_updated',
+          sms_credits: newSmsCredits,
+        });
+
+        return reply.code(200).send({
+          success: true,
+          message: `Added Rs. ${numAmount.toFixed(2)} SMS credits successfully`,
+          sms_credits: newSmsCredits,
+          balance_type: 'sms',
+        });
+      } else if (resolvedType === 'template' || resolvedType === 'whatsapp') {
+        // Update WhatsApp Marketing template credits (Rs. 30.00 / msg)
+        const updateQuery =
+          'UPDATE agents SET credits = COALESCE(credits, 0) + $1 WHERE id = $2 RETURNING credits, sms_credits, ai_balance';
         const { rows: updateRows } = await pgClient.query(updateQuery, [
           numAmount,
           parsedAgentId,
@@ -60,18 +99,20 @@ export default async function addCreditsRoutes(
         emitAgentStatusUpdate(parsedAgentId, {
           type: 'credits_updated',
           credits: newCredits,
+          whatsapp_credits: newCredits,
         });
 
         return reply.code(200).send({
           success: true,
-          message: 'Credits added successfully',
+          message: `Added Rs. ${numAmount.toFixed(2)} WhatsApp Marketing credits successfully`,
           credits: newCredits,
-          balance_type: 'template',
+          whatsapp_credits: newCredits,
+          balance_type: 'whatsapp',
         });
       } else {
-        // Update DeepSeek AI balance
+        // Update DeepSeek AI balance (USD)
         const updateQuery =
-          'UPDATE agents SET ai_balance = ai_balance + $1 WHERE id = $2 RETURNING ai_balance, credits';
+          'UPDATE agents SET ai_balance = COALESCE(ai_balance, 0) + $1 WHERE id = $2 RETURNING ai_balance, credits, sms_credits';
         const { rows: updateRows } = await pgClient.query(updateQuery, [
           numAmount,
           parsedAgentId,
@@ -94,7 +135,7 @@ export default async function addCreditsRoutes(
 
         return reply.code(200).send({
           success: true,
-          message: 'Credits added successfully',
+          message: `Added $${numAmount.toFixed(2)} USD DeepSeek AI balance successfully`,
           ai_balance: newAiBalance,
           balance_type: 'ai',
         });
@@ -110,5 +151,7 @@ export default async function addCreditsRoutes(
 
   fastify.post('/add-credits', (req, rep) => handleAddCredits(req, rep));
   fastify.post('/admin/topup-ai', (req, rep) => handleAddCredits(req, rep, 'ai'));
-  fastify.post('/admin/topup-credits', (req, rep) => handleAddCredits(req, rep, 'template'));
+  fastify.post('/admin/topup-credits', (req, rep) => handleAddCredits(req, rep, 'whatsapp'));
+  fastify.post('/admin/topup-whatsapp', (req, rep) => handleAddCredits(req, rep, 'whatsapp'));
+  fastify.post('/admin/topup-sms', (req, rep) => handleAddCredits(req, rep, 'sms'));
 }

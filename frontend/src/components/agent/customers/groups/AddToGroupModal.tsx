@@ -23,8 +23,9 @@ export const AddToGroupModal: React.FC<AddToGroupModalProps> = ({
   onCreateNewGroup,
 }) => {
   const { toast } = useDialog();
+  const assignableGroups = groups.filter((g) => g.name.toLowerCase() !== 'within 24h active');
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(
-    groups.length > 0 ? groups[0].id : null
+    assignableGroups.length > 0 ? assignableGroups[0].id : null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -80,7 +81,7 @@ export const AddToGroupModal: React.FC<AddToGroupModalProps> = ({
 
           {/* Body */}
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            {groups.length === 0 ? (
+            {assignableGroups.length === 0 ? (
               <div className="p-6 text-center">
                 <p className="text-xs text-[#71717A] mb-3">No customer groups exist yet.</p>
                 <button
@@ -102,7 +103,7 @@ export const AddToGroupModal: React.FC<AddToGroupModalProps> = ({
                     Select Target Group
                   </label>
                   <div className="max-h-56 overflow-y-auto border border-[#EAEAEA] rounded-2xl divide-y divide-[#EAEAEA]/80">
-                    {groups.map((group) => {
+                    {assignableGroups.map((group) => {
                       const isSelected = selectedGroupId === group.id;
                       return (
                         <div

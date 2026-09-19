@@ -277,17 +277,17 @@ export const WhatsAppConfigTab: React.FC<WhatsAppConfigTabProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between bg-[#F4F7F4] p-3 rounded-2xl border border-black/5">
+                    <div className="grid grid-cols-2 gap-2 bg-[#F4F7F4] p-3 rounded-2xl border border-black/5">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider">Number</span>
-                        <span className="font-mono text-xs font-semibold text-[#16281D]">
+                        <span className="font-mono text-xs font-semibold text-[#16281D] truncate">
                           {agent.whatsapp_config?.whatsapp_number || 'None'}
                         </span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider">Engine</span>
-                        <span className="text-xs font-bold text-[#15803D]">
-                          DeepSeek V3
+                        <span className="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider">SMS Sender ID</span>
+                        <span className="font-mono text-xs font-bold text-[#059669] truncate">
+                          {agent.whatsapp_config?.sms_sender_id || 'Not Set'}
                         </span>
                       </div>
                     </div>
@@ -319,7 +319,7 @@ export const WhatsAppConfigTab: React.FC<WhatsAppConfigTabProps> = ({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-[#FAFCFA] border-b border-[#EAEAEA]">
-                    {['Agent', 'WhatsApp Number', 'Status', 'AI Engine', 'Action'].map((h) => (
+                    {['Agent', 'WhatsApp Number', 'SMS Sender ID', 'Status', 'AI Engine', 'Action'].map((h) => (
                       <th
                         key={h}
                         className="px-5 py-3 text-[11px] font-bold text-[#52525B] uppercase tracking-wider text-left whitespace-nowrap"
@@ -343,6 +343,15 @@ export const WhatsAppConfigTab: React.FC<WhatsAppConfigTabProps> = ({
                           {agent.whatsapp_config?.whatsapp_number ? (
                             <span className="font-mono text-xs font-semibold text-[#16281D] bg-[#F4F7F4] px-2.5 py-0.5 rounded-md border border-black/5">
                               {agent.whatsapp_config.whatsapp_number}
+                            </span>
+                          ) : (
+                            <span className="text-[#A1A1AA] text-xs font-medium">Not configured</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs">
+                          {agent.whatsapp_config?.sms_sender_id ? (
+                            <span className="font-mono text-xs font-bold text-[#059669] bg-[#E8F8EE] px-2.5 py-0.5 rounded-md border border-[#BBF7D0]">
+                              {agent.whatsapp_config.sms_sender_id}
                             </span>
                           ) : (
                             <span className="text-[#A1A1AA] text-xs font-medium">Not configured</span>

@@ -14,7 +14,7 @@ export default async function getDashboardDataRoutes(
       let agentRows;
       try {
         const agentQuery = `
-          SELECT a.id, a.agent_prefix, a.credits, a.ai_balance, u.name
+          SELECT a.id, a.agent_prefix, a.credits, COALESCE(a.sms_credits, 0.00) as sms_credits, a.ai_balance, u.name
           FROM agents a
           JOIN users u ON u.id = $1
           WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)
@@ -23,7 +23,7 @@ export default async function getDashboardDataRoutes(
         agentRows = res.rows;
       } catch (colErr: any) {
         const fallbackQuery = `
-          SELECT a.id, a.agent_prefix, a.credits, u.name
+          SELECT a.id, a.agent_prefix, a.credits, COALESCE(a.sms_credits, 0.00) as sms_credits, u.name
           FROM agents a
           JOIN users u ON u.id = $1
           WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)
@@ -263,6 +263,7 @@ export default async function getDashboardDataRoutes(
 
       const currentAiBalance = parseFloat(agent.ai_balance ?? '4.0');
       const currentTemplateCredits = parseFloat(agent.credits ?? '0');
+      const currentSmsCredits = parseFloat(agent.sms_credits ?? '0');
 
       // AI Quota: budget = $4.00 USD
       const budget = 4.0;
@@ -279,6 +280,7 @@ export default async function getDashboardDataRoutes(
           name: agent.name || "Agent",
           credits: currentTemplateCredits,
           template_credits: currentTemplateCredits,
+          sms_credits: currentSmsCredits,
           ai_balance: currentAiBalance,
           balance: currentAiBalance,
         },
@@ -290,6 +292,7 @@ export default async function getDashboardDataRoutes(
           balance: currentAiBalance,
           ai_balance: currentAiBalance,
           template_credits: currentTemplateCredits,
+          sms_credits: currentSmsCredits,
         },
         telemetry: {
           throughput: {

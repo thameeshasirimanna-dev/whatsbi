@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getCurrentAgent } from '../../../lib/agent';
 import { getToken } from '../../../lib/auth';
 import {
@@ -7,6 +7,7 @@ import {
   getBroadcastDetails,
   createBroadcast,
   deleteBroadcast,
+  deleteBroadcasts,
   Customer,
   Broadcast,
 } from '../../../lib/api';
@@ -17,9 +18,13 @@ import BroadcastSummaryCards from './BroadcastSummaryCards';
 import BroadcastTable from './BroadcastTable';
 import BroadcastDetailsDrawer from './BroadcastDetailsDrawer';
 import CreateBroadcastModal from './CreateBroadcastModal';
+import { BroadcastBulkActionsBar } from './BroadcastBulkActionsBar';
+import { useTableSelection } from '../shared/useTableSelection';
+import { fetchWhatsAppConfigAndTemplates } from './broadcastHelpers';
 import type { WhatsAppConfig, MetaTemplate } from './types';
 import CustomDropdown from '../shared/CustomDropdown';
 import { useBroadcastWizard } from './useBroadcastWizard';
+import { useBroadcastProgressSync } from './useBroadcastProgressSync';
 
 const BroadcastsPage: React.FC = () => {
   const { confirm: dlgConfirm, toast } = useDialog();
@@ -40,6 +45,10 @@ const BroadcastsPage: React.FC = () => {
 
   // Creator modal visibility state
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Table row selection state & bulk actions
+  const selection = useTableSelection<number>();
+  const [bulkProcessing, setBulkProcessing] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -62,47 +71,9 @@ const BroadcastsPage: React.FC = () => {
       // Fetch WhatsApp Configuration to get templates
       const token = getToken();
       if (token && currentAgent) {
-        const userResp = await fetch(`${import.meta.env.VITE_BACKEND_URL}/get-current-user`, {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const userData = await userResp.json();
-
-        if (userData.success && userData.user) {
-          const configResp = await fetch(
-            `${import.meta.env.VITE_BACKEND_URL}/get-whatsapp-config?user_id=${userData.user.id}`,
-            {
-              method: 'GET',
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          if (configResp.ok) {
-            const configData = await configResp.json();
-            if (configData.success && configData.whatsapp_config) {
-              const whatsappConfig = configData.whatsapp_config[0] || configData.whatsapp_config;
-              setConfig(whatsappConfig);
-
-              try {
-                const metaResp = await fetch(
-                  `https://graph.facebook.com/v20.0/${whatsappConfig.business_account_id}/message_templates`,
-                  {
-                    method: 'GET',
-                    headers: { Authorization: `Bearer ${whatsappConfig.api_key}` },
-                  }
-                );
-                if (metaResp.ok) {
-                  const metaData = await metaResp.json();
-                  const approvedTemplates = metaData.data.filter(
-                    (t: any) => t.status === 'APPROVED'
-                  );
-                  setMetaTemplates(approvedTemplates);
-                }
-              } catch (metaErr) {
-                console.error('Failed to load Meta templates:', metaErr);
-              }
-            }
-          }
-        }
+        const { config: waConfig, templates } = await fetchWhatsAppConfigAndTemplates(token);
+        if (waConfig) setConfig(waConfig);
+        if (templates) setMetaTemplates(templates);
       }
 
       setLoading(false);
@@ -120,10 +91,20 @@ const BroadcastsPage: React.FC = () => {
     customers,
     agent,
     metaTemplates,
+    smsSenderId: config?.sms_sender_id,
+    smsApiToken: config?.sms_api_token,
     onSuccess: loadData,
     isOpen: showCreateModal,
     onOpenModal: () => setShowCreateModal(true),
     onCloseModal: () => setShowCreateModal(false),
+  });
+
+  // Real-time synchronization of delivery progress and agent credits
+  useBroadcastProgressSync({
+    broadcasts,
+    setBroadcasts,
+    setSelectedBroadcast,
+    setAgent,
   });
 
   const handleRefresh = async () => {
@@ -133,7 +114,7 @@ const BroadcastsPage: React.FC = () => {
 
       const currentAgent = await getCurrentAgent();
       setAgent(currentAgent);
-      toast('Broadcasts refreshed', 'success');
+      toast('Campaigns refreshed', 'success');
     } catch (err: any) {
       console.error('Failed to refresh:', err);
     }
@@ -159,12 +140,18 @@ const BroadcastsPage: React.FC = () => {
       return;
     }
 
+    if (broadcast.channel === 'sms' && agent && (agent.sms_credits ?? 0) < broadcast.failed_count * 1) {
+      toast('Insufficient SMS credits to resend to failed recipients!', 'error');
+      return;
+    }
+
     if (
+      broadcast.channel !== 'sms' &&
       broadcast.message_type === 'template' &&
       agent &&
-      agent.credits < broadcast.failed_count * 0.01
+      (agent.credits ?? 0) < broadcast.failed_count * 30
     ) {
-      toast('Insufficient credits to resend to failed recipients!', 'error');
+      toast('Insufficient WhatsApp credits to resend to failed recipients!', 'error');
       return;
     }
 
@@ -216,6 +203,9 @@ const BroadcastsPage: React.FC = () => {
           setShowDetailsDrawer(false);
           setSelectedBroadcast(null);
         }
+        if (selection.isSelected(broadcast.id)) {
+          selection.toggleSelect(broadcast.id);
+        }
         toast('Campaign deleted successfully!', 'success');
         loadData();
       }
@@ -227,9 +217,92 @@ const BroadcastsPage: React.FC = () => {
   const filteredBroadcasts = broadcasts.filter((b) => {
     const matchesSearch = b.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || b.status.toLowerCase() === statusFilter;
-    const matchesType = typeFilter === 'all' || b.message_type.toLowerCase() === typeFilter;
+    const matchesType =
+      typeFilter === 'all' ||
+      b.message_type.toLowerCase() === typeFilter ||
+      (b.channel && b.channel.toLowerCase() === typeFilter);
     return matchesSearch && matchesStatus && matchesType;
   });
+
+  const filteredBroadcastIds = useMemo(
+    () => filteredBroadcasts.map((b) => b.id),
+    [filteredBroadcasts]
+  );
+
+  const selectedCampaigns = useMemo(
+    () => broadcasts.filter((b) => selection.isSelected(b.id)),
+    [broadcasts, selection]
+  );
+
+  const totalFailedInSelection = useMemo(
+    () => selectedCampaigns.reduce((acc, b) => acc + (b.failed_count || 0), 0),
+    [selectedCampaigns]
+  );
+
+  const handleBulkDelete = async () => {
+    if (selection.selectedCount === 0) return;
+
+    const hasProcessing = selectedCampaigns.some((b) => b.status === 'processing');
+    if (hasProcessing) {
+      toast('Cannot delete campaigns that are currently processing.', 'warning');
+      return;
+    }
+
+    const confirmed = await dlgConfirm(
+      `Are you sure you want to delete ${selection.selectedCount} selected campaign(s)? This will permanently remove them and all recipient logs.`,
+      { danger: true, confirmLabel: 'Delete Selected' }
+    );
+    if (!confirmed) return;
+
+    try {
+      setBulkProcessing(true);
+      const res = await deleteBroadcasts(selection.selectedIds);
+      if (res.success) {
+        toast(`Successfully deleted ${selection.selectedCount} campaign(s)`, 'success');
+        selection.clearSelection();
+        loadData();
+      }
+    } catch (err: any) {
+      toast(err.message || 'Failed to delete selected campaigns', 'error');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleBulkResendFailed = async () => {
+    const eligible = selectedCampaigns.filter((b) => (b.failed_count || 0) > 0);
+    if (eligible.length === 0) {
+      toast('No failed recipients in selected campaigns.', 'warning');
+      return;
+    }
+
+    const totalFailed = eligible.reduce((acc, b) => acc + (b.failed_count || 0), 0);
+
+    const confirmed = await dlgConfirm(
+      `Are you sure you want to resend to ${totalFailed} failed recipient(s) across ${eligible.length} campaign(s)?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setBulkProcessing(true);
+      let successCount = 0;
+      for (const b of eligible) {
+        try {
+          await createBroadcast({ action: 'resend', broadcast_id: b.id });
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to resend broadcast ${b.id}:`, err);
+        }
+      }
+      toast(`Triggered resend for ${successCount} campaign(s)!`, 'success');
+      selection.clearSelection();
+      loadData();
+    } catch (err: any) {
+      toast(err.message || 'Failed to resend some campaigns', 'error');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
 
   const hasActiveFilters =
     searchTerm !== '' || statusFilter !== 'all' || typeFilter !== 'all';
@@ -299,7 +372,7 @@ const BroadcastsPage: React.FC = () => {
                 setShowCreateModal(true);
                 wizard.setWizardStep(1);
               }}
-              className="flex-1 sm:flex-initial justify-center h-9 sm:h-10 rounded-full px-4 sm:px-5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-2 shrink-0 cursor-pointer border-0"
+              className="flex-1 sm:flex-initial justify-center h-9 sm:h-10 rounded-full px-3.5 sm:px-5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-2 shrink-0 cursor-pointer border-0 whitespace-nowrap"
             >
               <Plus size={14} /> New Campaign
             </button>
@@ -329,7 +402,8 @@ const BroadcastsPage: React.FC = () => {
               value={typeFilter}
               onChange={(val) => setTypeFilter(val)}
               options={[
-                { value: 'all', label: 'All Types' },
+                { value: 'all', label: 'All Channels & Types' },
+                { value: 'sms', label: 'Normal SMS (Text.lk)' },
                 { value: 'template', label: 'Meta Template' },
                 { value: 'text', label: 'Direct Text' },
               ]}
@@ -339,6 +413,16 @@ const BroadcastsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Actions Floating Capsule Bar */}
+      <BroadcastBulkActionsBar
+        selectedCount={selection.selectedCount}
+        totalFailedInSelection={totalFailedInSelection}
+        onBulkResendFailed={handleBulkResendFailed}
+        onBulkDelete={handleBulkDelete}
+        onClearSelection={selection.clearSelection}
+        isProcessing={bulkProcessing}
+      />
+
       {/* Campaigns Table */}
       <BroadcastTable
         broadcasts={filteredBroadcasts}
@@ -347,6 +431,11 @@ const BroadcastsPage: React.FC = () => {
         onDelete={handleDeleteBroadcast}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={handleClearFilters}
+        selectedIds={selection.selectedIds}
+        onToggleSelect={selection.toggleSelect}
+        onSelectAll={() => selection.selectAll(filteredBroadcastIds)}
+        isAllSelected={selection.isAllSelected(filteredBroadcastIds)}
+        isIndeterminate={selection.isIndeterminate(filteredBroadcastIds)}
         onCreateClick={() => {
           setShowCreateModal(true);
           wizard.setWizardStep(1);
@@ -380,6 +469,8 @@ const BroadcastsPage: React.FC = () => {
         onSelectAllManualCustomers={wizard.handleSelectAllManualCustomers}
         onClearManualSelection={wizard.handleClearManualSelection}
         onTemplateParamChange={wizard.handleTemplateParamChange}
+        smsPartsInfo={wizard.smsPartsInfo}
+        estimatedCredits={wizard.estimatedCredits}
         {...wizard}
       />
     </div>

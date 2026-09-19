@@ -655,7 +655,8 @@ export interface Broadcast {
   id: number;
   agent_id: number;
   name: string;
-  message_type: 'text' | 'template';
+  channel?: 'whatsapp' | 'sms';
+  message_type: 'text' | 'template' | 'sms';
   template_name?: string;
   template_language?: string;
   message?: string;
@@ -672,12 +673,15 @@ export interface Broadcast {
   recipients?: BroadcastRecipient[];
 }
 
-export const getBroadcasts = async (): Promise<Broadcast[]> => {
+export const getBroadcasts = async (channel?: 'whatsapp' | 'sms'): Promise<Broadcast[]> => {
   try {
     const token = getToken();
     if (!token) throw new Error('No token');
 
-    const response = await fetch(`${BACKEND_URL}/manage-broadcasts`, {
+    const url = channel
+      ? `${BACKEND_URL}/manage-broadcasts?channel=${channel}`
+      : `${BACKEND_URL}/manage-broadcasts`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -724,7 +728,8 @@ export const getBroadcastDetails = async (id: number): Promise<Broadcast> => {
 
 export const createBroadcast = async (broadcastData: {
   name?: string;
-  message_type?: 'text' | 'template';
+  channel?: 'whatsapp' | 'sms';
+  message_type?: 'text' | 'template' | 'sms';
   template_name?: string;
   template_language?: string;
   message?: string;
@@ -781,6 +786,30 @@ export const deleteBroadcast = async (id: number): Promise<{ success: boolean; m
     return data;
   } catch (err) {
     console.error('Delete broadcast error:', err);
+    throw err;
+  }
+};
+
+export const deleteBroadcasts = async (ids: number[]): Promise<{ success: boolean; message: string }> => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('No token');
+
+    const response = await fetch(`${BACKEND_URL}/manage-broadcasts?ids=${ids.join(',')}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to delete broadcasts');
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Delete broadcasts error:', err);
     throw err;
   }
 };

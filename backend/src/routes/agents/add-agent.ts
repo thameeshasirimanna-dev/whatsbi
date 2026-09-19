@@ -83,24 +83,33 @@ export default async function addAgentRoutes(fastify: FastifyInstance, pgClient:
 
       const user = userRows[0];
 
-      // 3️⃣ Insert into agents table with template credits (1.00) and DeepSeek ai_balance (4.00)
+      // 3️⃣ Insert into agents table with WhatsApp credits (300.00 = 10 msgs @ Rs. 30), SMS credits (100.00 = 100 SMS @ Rs. 1), and DeepSeek ai_balance (4.00)
       const agentPrefix = "agt_" + authUserId.slice(0, 4);
       let agentRows: any[] = [];
       let agentInserted = 0;
       try {
         const res = await pgClient.query(
-          'INSERT INTO agents (user_id, agent_prefix, business_type, created_by, credits, ai_balance) VALUES ($1, $2, $3, $4, 1.00, 4.00) RETURNING *',
+          'INSERT INTO agents (user_id, agent_prefix, business_type, created_by, credits, sms_credits, ai_balance) VALUES ($1, $2, $3, $4, 300.00, 100.00, 4.00) RETURNING *',
           [authUserId, agentPrefix, business_type, createdBy || authenticatedUser.id]
         );
         agentRows = res.rows;
         agentInserted = res.rowCount || 0;
       } catch (colErr: any) {
-        const res = await pgClient.query(
-          'INSERT INTO agents (user_id, agent_prefix, business_type, created_by, credits) VALUES ($1, $2, $3, $4, 1.00) RETURNING *',
-          [authUserId, agentPrefix, business_type, createdBy || authenticatedUser.id]
-        );
-        agentRows = res.rows;
-        agentInserted = res.rowCount || 0;
+        try {
+          const res = await pgClient.query(
+            'INSERT INTO agents (user_id, agent_prefix, business_type, created_by, credits, ai_balance) VALUES ($1, $2, $3, $4, 300.00, 4.00) RETURNING *',
+            [authUserId, agentPrefix, business_type, createdBy || authenticatedUser.id]
+          );
+          agentRows = res.rows;
+          agentInserted = res.rowCount || 0;
+        } catch (colErr2: any) {
+          const res = await pgClient.query(
+            'INSERT INTO agents (user_id, agent_prefix, business_type, created_by, credits) VALUES ($1, $2, $3, $4, 300.00) RETURNING *',
+            [authUserId, agentPrefix, business_type, createdBy || authenticatedUser.id]
+          );
+          agentRows = res.rows;
+          agentInserted = res.rowCount || 0;
+        }
       }
 
       if (agentInserted === 0) {

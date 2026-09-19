@@ -34,7 +34,8 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
         email: '',
         agent_prefix: 'WA',
         role: 'agent' as const,
-        credits: 0,
+        credits: 300.0,
+        sms_credits: 100.0,
         ai_balance: 4.0,
         created_at: new Date().toISOString(),
       };
@@ -42,7 +43,8 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
     return agent
       ? {
           ...agent,
-          credits: Number(agent.credits ?? 1.0),
+          credits: Number(agent.credits ?? 300.0),
+          sms_credits: Number(agent.sms_credits ?? 100.0),
           ai_balance: Number(agent.ai_balance ?? 4.0),
         }
       : {
@@ -53,6 +55,7 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
           agent_prefix: 'WA',
           role: 'agent' as const,
           credits: 0,
+          sms_credits: 0,
           ai_balance: 4.0,
           created_at: new Date().toISOString(),
         };
@@ -160,15 +163,30 @@ const AgentLayout: React.FC<AgentLayoutProps> = ({ children }) => {
       s.emit('join-agent-room', { agentId: agent.id, token });
     });
 
-    s.on('agent_status_update', (statusData: any) => {
+    const handleStatusUpdate = (statusData: any) => {
       if (statusData?.type === 'ai_balance_updated' && statusData?.ai_balance !== undefined) {
         const updatedBalance = parseFloat(statusData.ai_balance);
         setAgent((prev) => (prev ? { ...prev, ai_balance: updatedBalance } : prev));
       } else if (statusData?.type === 'credits_updated' && statusData?.credits !== undefined) {
         const updatedCredits = parseFloat(statusData.credits);
         setAgent((prev) => (prev ? { ...prev, credits: updatedCredits } : prev));
+      } else if (statusData?.type === 'sms_credits_updated' && statusData?.sms_credits !== undefined) {
+        const updatedSmsCredits = parseFloat(statusData.sms_credits);
+        setAgent((prev) => (prev ? { ...prev, sms_credits: updatedSmsCredits } : prev));
       }
-    });
+
+      // Forward to window for active pages/components (like BroadcastsPage)
+      window.dispatchEvent(new CustomEvent('agent_status_update', { detail: statusData }));
+    };
+
+    const handleBroadcastUpdate = (data: any) => {
+      window.dispatchEvent(new CustomEvent('broadcast_updated', { detail: data }));
+    };
+
+    s.on('agent_status_update', handleStatusUpdate);
+    s.on('agent-status-update', handleStatusUpdate);
+    s.on('broadcast_updated', handleBroadcastUpdate);
+    s.on('broadcast-updated', handleBroadcastUpdate);
 
     return () => {
       s.disconnect();

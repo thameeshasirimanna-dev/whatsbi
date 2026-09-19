@@ -17,6 +17,7 @@ export interface Agent {
   user_email: string;
   is_email_verified: boolean;
   credits?: number;
+  sms_credits?: number;
   ai_balance?: number;
   last_login_at?: string | null;
   total_customers?: number;
@@ -31,6 +32,8 @@ export interface Agent {
     phone_number_id?: string;
     whatsapp_app_secret?: string;
     deepseek_api_key?: string;
+    sms_sender_id?: string;
+    sms_api_token?: string;
     is_active: boolean;
   } | null;
 }

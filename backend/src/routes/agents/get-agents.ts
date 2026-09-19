@@ -84,6 +84,7 @@ export default async function getAgentsRoutes(
               user_name: agent.user_name || "Unnamed Agent",
               user_email: agent.user_email || "",
               credits: parseFloat(agent.credits || '0'),
+              sms_credits: parseFloat(agent.sms_credits ?? '0.00'),
               ai_balance: parseFloat(agent.ai_balance ?? '4.0'),
               last_login_at: lastActivity,
               total_customers: totalCustomers,
@@ -110,6 +111,8 @@ export default async function getAgentsRoutes(
                     configItem.business_account_id || undefined,
                   phone_number_id: configItem.phone_number_id || undefined,
                   deepseek_api_key: configItem.deepseek_api_key || undefined,
+                  sms_sender_id: configItem.sms_sender_id || undefined,
+                  sms_api_token: configItem.sms_api_token || undefined,
                   is_active: Boolean(configItem.is_active),
                 };
               }

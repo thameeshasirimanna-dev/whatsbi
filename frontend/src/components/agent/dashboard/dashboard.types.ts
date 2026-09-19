@@ -5,6 +5,7 @@ export interface DashboardAgent {
   name: string;
   credits?: number;
   template_credits?: number;
+  sms_credits?: number;
   ai_balance?: number;
   balance?: number;
 }
