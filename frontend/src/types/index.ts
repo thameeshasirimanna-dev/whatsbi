@@ -15,6 +15,7 @@ export interface Agent {
   invoice_template_path?: string;
   company_overview_path?: string;
   company_overview?: string;
+  ai_instructions?: string;
 }
 
 export interface Message {

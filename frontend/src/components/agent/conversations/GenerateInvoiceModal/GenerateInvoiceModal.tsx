@@ -53,6 +53,7 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
     setInvoiceNotes,
     generating,
     error,
+    isEditing,
     handleGenerateInvoice,
   } = useInvoiceModal({ ...props, toast });
 
@@ -70,10 +71,12 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
             </div>
             <div>
               <h3 className="font-sans text-base font-bold text-[#16281D]">
-                Generate Invoice
+                {isEditing ? "Edit Invoice" : "Generate Invoice"}
               </h3>
               <p className="font-sans text-xs text-[#71717A] mt-0.5">
-                Create and dispatch an invoice. An order will auto-create upon payment.
+                {isEditing
+                  ? "Update items, pricing, or details. The PDF will regenerate automatically."
+                  : "Create and dispatch an invoice. An order will auto-create upon payment."}
               </p>
             </div>
           </div>
@@ -222,7 +225,11 @@ export const GenerateInvoiceModal: React.FC<GenerateInvoiceModalProps> = (props)
             className="h-10 px-5 rounded-full bg-[#9FE870] hover:bg-[#8CE05A] active:scale-[0.98] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_14px_rgba(159,232,112,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer border-0"
           >
             <FileText size={15} strokeWidth={2.4} />
-            <span>{generating ? "Generating & Saving..." : "Generate & Save Invoice"}</span>
+            <span>
+              {generating
+                ? (isEditing ? "Updating & Regenerating PDF..." : "Generating & Saving...")
+                : (isEditing ? "Update & Save Invoice" : "Generate & Save Invoice")}
+            </span>
           </button>
         </div>
       </div>

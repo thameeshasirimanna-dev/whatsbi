@@ -45,8 +45,9 @@ const onBlurG = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
 };
 
 const getStatusStyle = (status: string): React.CSSProperties => {
-  const s = status.toLowerCase();
+  const s = status ? status.toLowerCase() : '';
   if (s === 'pending') return { background: 'rgba(245,158,11,0.1)', color: '#B45309', borderRadius: 9999 };
+  if (s === 'confirmed') return { background: 'rgba(16,185,129,0.1)', color: '#059669', borderRadius: 9999 };
   if (s === 'processing') return { background: 'rgba(59,130,246,0.1)', color: '#1D4ED8', borderRadius: 9999 };
   if (s === 'shipped') return { background: 'rgba(124,58,237,0.1)', color: '#7c3aed', borderRadius: 9999 };
   if (s === 'delivered' || s === 'completed') return { background: 'rgba(34,197,94,0.1)', color: '#15803D', borderRadius: 9999 };
@@ -270,6 +271,7 @@ const OrdersPage: React.FC = () => {
   const statusOptions = [
     { value: "", label: "All Statuses" },
     { value: "pending", label: "Pending" },
+    { value: "confirmed", label: "Confirmed" },
     { value: "processing", label: "Processing" },
     { value: "shipped", label: "Shipped" },
     { value: "delivered", label: "Delivered" },
@@ -346,6 +348,18 @@ const OrdersPage: React.FC = () => {
 
   const handleEditOrderSuccess = () => { fetchOrders(); setShowEditModal(false); setSelectedOrder(null); };
   const handleCreateOrderSuccess = () => { fetchOrders(); setShowCreateModal(false); setSelectedCustomer(null); };
+
+  const handleNavigateToOrder = (orderId: number) => {
+    const currentOrderIds = filteredOrders.map(o => o.id);
+    try {
+      sessionStorage.setItem('orders_navigation_ids', JSON.stringify(currentOrderIds));
+    } catch (e) {
+      // ignore
+    }
+    navigate(`/agent/orders/${orderId}`, {
+      state: { orderIds: currentOrderIds },
+    });
+  };
 
   const updateOrderStatus = async (orderId: number, newStatus: string) => {
     setUpdatingOrderId(orderId);
@@ -927,6 +941,12 @@ const OrdersPage: React.FC = () => {
                     return (
                       <div
                         key={order.id}
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement;
+                          if (target.closest('button, input, [role="menu"], [role="menuitem"], .no-row-click')) return;
+                          handleNavigateToOrder(order.id);
+                        }}
+                        className="cursor-pointer hover:bg-[#F4F7F4]/60 transition-colors"
                         style={{
                           padding: '16px',
                           display: 'flex',
@@ -961,9 +981,23 @@ const OrdersPage: React.FC = () => {
                             </div>
                           </div>
 
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#16281D', fontFamily: "'JetBrains Mono', monospace" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleNavigateToOrder(order.id)}
+                            className="hover:underline cursor-pointer transition-colors"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: '#16281D',
+                              fontFamily: "'JetBrains Mono', monospace",
+                            }}
+                            title={`View Order #${order.id.toString().padStart(4, "0")}`}
+                          >
                             #{order.id.toString().padStart(4, "0")}
-                          </span>
+                          </button>
                         </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, background: '#F4F7F4', border: '1px solid #EAEAEA', padding: '10px 12px', borderRadius: 12 }}>
@@ -1045,7 +1079,7 @@ const OrdersPage: React.FC = () => {
                         {/* Actions */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {[
-                            { Icon: Eye, color: '#16281D', bg: '#F4F7F4', hbg: 'rgba(159,232,112,0.3)', title: 'View', onClick: () => { setSelectedOrderForView(order); setShowViewModal(true); } },
+                            { Icon: Eye, color: '#16281D', bg: '#F4F7F4', hbg: 'rgba(159,232,112,0.3)', title: 'View Details', onClick: () => handleNavigateToOrder(order.id) },
                             { Icon: Pencil, color: '#B45309', bg: 'rgba(245,158,11,0.1)', hbg: 'rgba(245,158,11,0.2)', title: 'Edit', onClick: () => { setSelectedOrder(order); setShowEditModal(true); } },
                             ...(order.payment_status !== 'paid' ? [{ Icon: CheckCircle, color: '#15803D', bg: 'rgba(34,197,94,0.1)', hbg: 'rgba(34,197,94,0.2)', title: 'Paid Fully', onClick: () => markAsFullyPaid(order) }] : []),
                             { Icon: MessageCircle, color: '#1D4ED8', bg: 'rgba(59,130,246,0.1)', hbg: 'rgba(59,130,246,0.2)', title: 'Message', onClick: () => navigate(`/agent/conversations?customerId=${order.customer_id}`) },
@@ -1105,10 +1139,16 @@ const OrdersPage: React.FC = () => {
                     return (
                       <tr
                         key={order.id}
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement;
+                          if (target.closest('button, input, [role="menu"], [role="menuitem"], .no-row-click')) return;
+                          handleNavigateToOrder(order.id);
+                        }}
                         style={{
                           borderBottom: '1px solid #EAEAEA',
                           transition: 'background 0.1s',
                           background: isSelected ? 'rgba(159,232,112,0.08)' : 'transparent',
+                          cursor: 'pointer',
                         }}
                         onMouseEnter={e => {
                           if (!isSelected) {
@@ -1140,9 +1180,23 @@ const OrdersPage: React.FC = () => {
 
                         {/* Order ID */}
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#16281D', fontFamily: "'JetBrains Mono', monospace" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleNavigateToOrder(order.id)}
+                            className="hover:underline text-left cursor-pointer transition-colors"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: '#16281D',
+                              fontFamily: "'JetBrains Mono', monospace",
+                            }}
+                            title={`View Order #${order.id.toString().padStart(4, "0")}`}
+                          >
                             #{order.id.toString().padStart(4, "0")}
-                          </span>
+                          </button>
                         </td>
 
                       {/* Customer */}
@@ -1244,7 +1298,7 @@ const OrdersPage: React.FC = () => {
                       <td style={{ padding: '12px 16px', width: '14%', minWidth: 155 }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                           {[
-                            { Icon: Eye, color: '#16281D', bg: '#F4F7F4', hbg: 'rgba(159,232,112,0.3)', title: 'View', onClick: () => { setSelectedOrderForView(order); setShowViewModal(true); } },
+                            { Icon: Eye, color: '#16281D', bg: '#F4F7F4', hbg: 'rgba(159,232,112,0.3)', title: 'View Details', onClick: () => handleNavigateToOrder(order.id) },
                             { Icon: Pencil, color: '#B45309', bg: 'rgba(245,158,11,0.1)', hbg: 'rgba(245,158,11,0.2)', title: 'Edit', onClick: () => { setSelectedOrder(order); setShowEditModal(true); } },
                             ...(order.payment_status !== 'paid' ? [{ Icon: CheckCircle, color: '#15803D', bg: 'rgba(34,197,94,0.1)', hbg: 'rgba(34,197,94,0.2)', title: 'Paid Fully', onClick: () => markAsFullyPaid(order) }] : []),
                             { Icon: MessageCircle, color: '#1D4ED8', bg: 'rgba(59,130,246,0.1)', hbg: 'rgba(59,130,246,0.2)', title: 'Message', onClick: () => navigate(`/agent/conversations?customerId=${order.customer_id}`) },

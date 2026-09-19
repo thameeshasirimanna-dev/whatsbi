@@ -34,14 +34,8 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
     <aside className="w-[74px] md:w-[80px] self-stretch bg-[#16281D] rounded-[32px] py-7 px-3.5 flex flex-col items-center justify-between shrink-0 shadow-sm select-none">
       {/* Top Logo */}
       <div className="flex flex-col items-center gap-7 w-full">
-        <div className="w-12 h-12 rounded-full bg-[#203628] border border-white/10 flex items-center justify-center shadow-sm cursor-pointer hover:border-[#9FE870]/40 transition-colors">
-          {/* 4-dot diamond logo */}
-          <div className="grid grid-cols-2 gap-1 w-4 h-4">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#9FE870]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#9FE870]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#9FE870]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#9FE870]" />
-          </div>
+        <div className="w-[50px] h-[50px] rounded-2xl bg-white border border-white/20 flex items-center justify-center shadow-sm cursor-pointer hover:bg-[#F4F7F4] transition-colors p-1">
+          <img src="/logo/icon-logo.svg" alt="Biz Agentz" className="w-full h-full object-contain" />
         </div>
 
         {/* Navigation Items */}

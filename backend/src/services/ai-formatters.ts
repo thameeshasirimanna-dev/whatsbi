@@ -34,116 +34,53 @@ export function isBankDetailsMessage(text: string): boolean {
 }
 
 /**
-/**
- * Formats message spacing and line breaks for WhatsApp:
- * 1. Puts each bullet point (•, -, ▪) on its own separate line.
- * 2. Puts each numbered list item (1., 2.) on its own separate line.
- * 3. Puts invoice, appointment, package, and bank fields on their own separate lines.
- * 4. Ensures double line breaks (\n\n) before major section headings (Bank Details, Invoice, etc.).
- * 5. Ensures double line breaks before closing paragraphs following field blocks.
- * 6. Fixes missing spaces after punctuation and around bold markers.
- * 7. Standardizes bold labels and cleans up excessive consecutive newlines.
+ * Formats message spacing and WhatsApp markdown using safe, non-destructive hygiene:
+ * 1. Normalizes newlines and removes zero-width characters.
+ * 2. Ensures proper spacing after sentence punctuation and around bold markers.
+ * 3. Formats bullet dots (•) at line starts without chopping running prose.
+ * 4. Standardizes currency formatting (e.g. Rs. 15,000).
+ * 5. Standardizes start-of-line bold field labels (Bank, Invoice, Customer, etc.).
+ * 6. Collapses excessive newlines (max 2 consecutive newlines = 1 blank line).
+ *
+ * NOTE: Destructive regex splits that chop sentences in half have been eliminated.
+ * The AI system prompt handles semantic paragraphing and line breaks naturally.
  */
 export function formatMessageSpacingAndLineBreaks(text: string): string {
   if (!text || typeof text !== 'string') return text;
-  let formatted = text;
 
-  // 1. Fix missing space after sentence punctuation (. ! ?) when immediately followed by capital/Sinhala letter or bold tag (without breaking URLs like .com/.lk)
-  formatted = formatted.replace(/([^0-9/:\s.]{2,}[.!?])(?=[A-Z\u0D80-\u0DFF])/g, '$1 ');
-  formatted = formatted.replace(/([.!?])(\*[a-zA-Z0-9\u0D80-\u0DFF])/g, '$1 $2');
+  // 1. Basic newline and invisible space normalization (strictly preserving \u200D ZWJ for Sinhala Yansaya/Rakaransaya)
+  let s = fixSinhalaOrthography(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/[\u200B\u200E\u200F\uFEFF]/g, '')
+    .split('\n')
+    .map((line) => line.trim())
+    .join('\n');
 
-  // 2. Fix missing space around bold asterisks (e.g. "Rs.4000*Bank:*" -> "Rs.4000 *Bank:*")
-  formatted = formatted.replace(/([a-zA-Z0-9\u0D80-\u0DFF])(\*[a-zA-Z0-9\u0D80-\u0DFF])/g, '$1 $2');
-  formatted = formatted.replace(/(\*[a-zA-Z0-9\u0D80-\u0DFF.,!?:]+\*)([a-zA-Z0-9\u0D80-\u0DFF])/g, '$1 $2');
+  // 2. Safe start-of-line bold field label normalization (only at line start, never mid-sentence!)
+  const labelPatterns: Array<[RegExp, string]> = [
+    [/^[ \t]*\*?Invoice\*?:[ \t]*/gm, '*Invoice:* '],
+    [/^[ \t]*\*?Customer\*?:[ \t]*/gm, '*Customer:* '],
+    [/^[ \t]*\*?Item\*?:[ \t]*/gm, '*Item:* '],
+    [/^[ \t]*\*?Unit Price\*?:[ \t]*/gm, '*Unit Price:* '],
+    [/^[ \t]*\*?Total Amount\*?:[ \t]*/gm, '*Total Amount:* '],
+    [/^[ \t]*\*?Bank Details\*?:?[ \t]*/gm, '*Bank Details:*'],
+    [/^[ \t]*\*?Bank\*?:[ \t]*/gm, '*Bank:* '],
+    [/^[ \t]*\*?Account Name\*?:[ \t]*/gm, '*Account Name:* '],
+    [/^[ \t]*\*?Account Number\*?:[ \t]*/gm, '*Account Number:* '],
+    [/^[ \t]*\*?Branch\*?:[ \t]*/gm, '*Branch:* '],
+  ];
+  for (const [re, rep] of labelPatterns) s = s.replace(re, rep);
 
-  // 3. Ensure a space immediately after a colon in bold field labels: *Field:*value -> *Field:* value
-  formatted = formatted.replace(/(\*[a-zA-Z0-9\u0D80-\u0DFF\s]+:\*)(?=[^\s\n*])/g, '$1 ');
+  // Normalize # on invoice number at line start
+  s = s.replace(/^(\*Invoice:\*\s*)(?!#)(INV-\d+)/gm, '$1#$2');
 
-  // 4. Split inline bullet points onto new lines
-  formatted = formatted.replace(/([^\n])\s+([•◦▪]|-(?=\s+\*?[a-zA-Z0-9\u0D80-\u0DFF]))/g, '$1\n$2');
+  // 3. Ensure clean blank lines before *Invoice:* and *Bank Details:*, and after *Branch:* (line boundaries only)
+  s = s.replace(/([^\n])\n(\*Invoice:\*)/g, '$1\n\n$2');
+  s = s.replace(/([^\n])\n(\*Bank Details:\*)/g, '$1\n\n$2');
+  s = s.replace(/(\*Branch:\*[^\n]+)\n([^\n]+)/g, '$1\n\n$2');
 
-  // 5. Split inline numbered list items (e.g. "1. First 2. Second") onto new lines
-  formatted = formatted.replace(/([^\n])\s+(\d+\.\s+\*?[a-zA-Z0-9\u0D80-\u0DFF])/g, '$1\n$2');
-
-  // 6. Split inline metadata / invoice / appointment / bank fields onto their own lines
-  const inlineFieldLabels = [
-    'Invoice(?:\\s*Number|\\s*No)?',
-    'Customer(?:\\s*Name)?',
-    'Item(?:s)?',
-    'Service(?:s)?',
-    'Package(?:s)?',
-    'Quantity|Qty',
-    'Unit\\s*Price|Price',
-    'Total(?:\\s*Amount)?',
-    'Subtotal',
-    'Advance(?:\\s*Amount)?',
-    'Balance(?:\\s*Due)?',
-    'Date',
-    'Time',
-    'Appointment(?:\\s*Date|\\s*Time)?',
-    'Bank(?:\\s*Name)?',
-    'Account\\s*Name|Acc\\s*Name|Account\\s*Holder|Beneficiary',
-    'Account\\s*No(?:\\.|umber)?|Acc\\s*No(?:\\.|umber)?|A\\/C\\s*No(?:\\.|umber)?|A\\/C',
-    'Branch(?:\\s*Name)?',
-    'SWIFT(?:\\s*Code)?|IBAN',
-    'Sample\\s*Work|Portfolio',
-    'Download\\s*Invoice\\s*PDF',
-    'බැංකුව',
-    'ගිණුමේ\\s*නම',
-    'ගිණුම්\\s*අංකය',
-    'ශාඛාව',
-    'මිල',
-    'මුළු\\s*මුදල',
-    'දිනය',
-    'වේලාව',
-  ].join('|');
-
-  const inlineFieldRegex = new RegExp(`([^\\n])(?:[ \\t]{2,}|[ \\t]+)(?=\\*?(?:${inlineFieldLabels})\\*?\\s*[:\\-–—])`, 'gi');
-  formatted = formatted.replace(inlineFieldRegex, '$1\n');
-
-  // 7. Ensure clear double line breaks (\n\n) before major section headings
-  const sectionHeaders = [
-    'Bank\\s*Details',
-    'Invoice\\s*Details',
-    'Order\\s*Summary',
-    'Appointment\\s*(?:Details|Confirmed)',
-    'Available\\s*Packages',
-    'Package\\s*Options',
-    'Services\\s*Offered',
-    'බැංකු\\s*විස්තර',
-    'ඇණවුම්\\s*සාරාංශය',
-  ].join('|');
-
-  const sectionHeaderRegex = new RegExp(`([^\\n])(?:\\s*)(?=\\*?(?:${sectionHeaders})\\*?\\s*[:\\-–—]?)`, 'gi');
-  formatted = formatted.replace(sectionHeaderRegex, '$1\n\n');
-
-  // 8. Ensure line break between section heading and its first field/bullet
-  formatted = formatted.replace(/(\*?(?:Bank\s*Details|Order\s*Summary|Appointment\s*Confirmed|බැංකු\s*විස්තර)\*?\s*[:\-–—]?)[ \t]+(?=\*?[a-zA-Z0-9\u0D80-\u0DFF•])/gi, '$1\n');
-
-  // 9. Separate trailing instruction / closing sentence after fields onto its own paragraph (\n\n)
-  const trailingSentenceRegex = /((?:Branch|ශාඛාව|Account\s*No|Acc\s*No|A\/C\s*No|Total\s*Amount|මුළු\s*මුදල|Balance|Time)\*?\s*[:\-–—]\s*[^\n.]+?\.)\s+([A-Z\u0D80-\u0DFF][^\n]{4,})/gi;
-  formatted = formatted.replace(trailingSentenceRegex, '$1\n\n$2');
-
-  // 10. Standardize and bold the common field labels for consistent presentation (safely consuming all asterisks before and after colon)
-  formatted = formatted
-    .replace(/^([ \t]*)\*{0,3}(?:Bank(?:\s*Name|\s*eka)?)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Bank:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Account\s*Name(?:\s*eka)?|Acc\s*Name(?:\s*eka)?|Account\s*Holder|Beneficiary(?:\s*Name)?)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Account Name:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Account\s*No(?:\.|umber)?(?:\s*eka)?|Acc\s*No(?:\.|umber)?(?:\s*eka)?|A\/C\s*No(?:\.|umber)?(?:\s*eka)?|A\/C)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Account Number:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Branch(?:\s*Name|\s*eka)?)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Branch:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Invoice(?:\s*Number|\s*No)?)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Invoice:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Customer(?:\s*Name)?)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Customer:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Item(?:s)?)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Item:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Unit\s*Price|Price)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Unit Price:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:Total(?:\s*Amount)?)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*Total Amount:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:බැංකුව)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*බැංකුව:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:ගිණුමේ\s*නම)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*ගිණුමේ නම:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:ගිණුම්\s*අංකය)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*ගිණුම් අංකය:* ')
-    .replace(/^([ \t]*)\*{0,3}(?:ශාඛාව)\*{0,3}\s*[:\-–—]\s*\*{0,3}\s*/gim, '$1*ශාඛාව:* ');
-
-  // 11. Clean up excessive blank lines (max 2 consecutive newlines)
-  formatted = formatted.replace(/\n{3,}/g, '\n\n').trim();
-
-  return formatted;
+  // 4. Collapse 3+ newlines to 2 (max 1 blank line)
+  return s.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**
@@ -162,7 +99,7 @@ export function formatBankDetails(text: string): string {
  */
 export function sanitizeWhatsAppFormatting(text: string): string {
   if (!text || typeof text !== 'string') return text;
-  let s = text;
+  let s = fixSinhalaOrthography(text);
 
   // 1. Convert markdown bold-italic (***bold***) or double bold (**bold**) to single asterisk *bold*
   s = s.replace(/\*{2,3}([^*\n]+?)\*{2,3}/g, '*$1*');
@@ -211,7 +148,26 @@ export function sanitizeWhatsAppFormatting(text: string): string {
   // 11. Final safety pass: strictly remove any remaining multiple consecutive asterisks (** or ***)
   s = s.replace(/\*{2,}/g, '');
 
-  return s.trim();
+  return fixSinhalaOrthography(s.trim());
+}
+
+/**
+ * Corrects Sinhala orthography, ligatures, and common AI spelling errors.
+ * Specifically converts "අවශ්ය" to "අවශ්‍ය" (with Yansaya), and repairs missing
+ * Zero-Width Joiners (ZWJ U+200D) across Sinhala Yansaya and Rakaransaya characters.
+ */
+export function fixSinhalaOrthography(text: string): string {
+  if (!text || typeof text !== 'string') return text;
+  let s = text;
+  // 1. Explicitly repair "අවශ්ය" -> "අවශ්‍ය"
+  s = s.replace(/අවශ්ය/g, 'අවශ්‍ය');
+  // 2. Repair Sha + Yansaya where ZWJ is missing (ශ් + ය -> ශ්‍ය, e.g. අවශ්‍ය, විශේෂ්‍ය, දෘශ්‍ය)
+  s = s.replace(/\u0DC1\u0DCA(?!\u200D)\u0DBA/g, 'ශ්‍ය');
+  // 3. Repair general Sinhala Yansaya (consonant + al-lakuna + ya -> consonant + yansaya)
+  s = s.replace(/([\u0D9A-\u0DC6])\u0DCA(?!\u200D)\u0DBA/g, (_, c) => c + '\u0DCA\u200D\u0DBA');
+  // 4. Repair general Sinhala Rakaransaya (consonant + al-lakuna + ra -> consonant + rakaransaya)
+  s = s.replace(/([\u0D9A-\u0DC6])\u0DCA(?!\u200D)\u0DBB/g, (_, c) => c + '\u0DCA\u200D\u0DBB');
+  return s;
 }
 
 /**
@@ -221,59 +177,44 @@ export function sanitizeWhatsAppFormatting(text: string): string {
  */
 export function naturalizeSinhalaPhrasing(text: string): string {
   if (!text || typeof text !== 'string') return text;
-  let s = text;
+  let s = fixSinhalaOrthography(text);
 
-  // 1. Time duration: "5 දවස් වලට" / "දවස් 5 වලට" -> "දවස් 5කට"
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*(?:දවස්|දින)\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1දවස් $2කට');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(?:දවස්|දින)\s*(\d+)\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1දවස් $2කට');
-
-  // 2. Future time: "5 දවස් වලින්" / "දවස් 5 වලින්" -> "දවස් 5කින්"
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*(?:දවස්|දින)\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1දවස් $2කින්');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(?:දවස්|දින)\s*(\d+)\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1දවස් $2කින්');
-
-  // 3. "Within X days": "5 දවස් ඇතුළත" -> "දවස් 5ක් ඇතුළත"
+  // 1. Time durations & units (e.g. "5 දවස් වලට" -> "දවස් 5කට", "5 දවස් වලින්" -> "දවස් 5කින්")
+  const timeUnits = [{ label: 'දවස්', alt: 'දින' }, { label: 'සති' }, { label: 'මාස' }, { label: 'පැය' }];
+  for (const u of timeUnits) {
+    const pattern = u.alt ? `(?:${u.label}|${u.alt})` : u.label;
+    s = s.replace(new RegExp(`(^|[\\s.,!?*()\\[\\]~_])(\\d+)\\s*${pattern}\\s*වලට(?=[\\s.,!?*()\\[\\]~_]|$)`, 'g'), `$1${u.label} $2කට`);
+    s = s.replace(new RegExp(`(^|[\\s.,!?*()\\[\\]~_])${pattern}\\s*(\\d+)\\s*වලට(?=[\\s.,!?*()\\[\\]~_]|$)`, 'g'), `$1${u.label} $2කට`);
+    s = s.replace(new RegExp(`(^|[\\s.,!?*()\\[\\]~_])(\\d+)\\s*${pattern}\\s*වලින්(?=[\\s.,!?*()\\[\\]~_]|$)`, 'g'), `$1${u.label} $2කින්`);
+    s = s.replace(new RegExp(`(^|[\\s.,!?*()\\[\\]~_])${pattern}\\s*(\\d+)\\s*වලින්(?=[\\s.,!?*()\\[\\]~_]|$)`, 'g'), `$1${u.label} $2කින්`);
+  }
   s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*(?:දවස්|දින)\s*ඇතුළත(?=[\s.,!?*()\[\]~_]|$)/g, '$1දවස් $2ක් ඇතුළත');
 
-  // 4. Weeks: "2 සති වලට" -> "සති 2කට", "2 සති වලින්" -> "සති 2කින්"
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*සති\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1සති $2කට');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])සති\s*(\d+)\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1සති $2කට');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*සති\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1සති $2කින්');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])සති\s*(\d+)\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1සති $2කින්');
+  // 2. Replace literary/chatbot endings with natural spoken forms
+  const spokenReplacements: Array<[RegExp, string]> = [
+    [/(^|[\s.,!?*()\[\]~_])එවන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1එවනවා'],
+    [/(^|[\s.,!?*()\[\]~_])කරන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1කරනවා'],
+    [/(^|[\s.,!?*()\[\]~_])දන්වන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1දන්වනවා'],
+    [/(^|[\s.,!?*()\[\]~_])ලබා\s*දෙන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1දෙනවා'],
+    [/(^|[\s.,!?*()\[\]~_])සලකා\s*බලන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1බලනවා'],
+    [/(^|[\s.,!?*()\[\]~_])බලන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1බලනවා'],
+    [/(^|[\s.,!?*()\[\]~_])යවන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1යවනවා'],
+    [/(^|[\s.,!?*()\[\]~_])කළ\s*හැකිය(?=[\s.,!?*()\[\]~_]|$)/g, '$1කරන්න පුළුවන්'],
+  ];
+  for (const [re, rep] of spokenReplacements) s = s.replace(re, rep);
 
-  // 5. Months: "3 මාස වලට" -> "මාස 3කට", "3 මාස වලින්" -> "මාස 3කින්"
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*මාස\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1මාස $2කට');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])මාස\s*(\d+)\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1මාස $2කට');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*මාස\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1මාස $2කින්');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])මාස\s*(\d+)\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1මාස $2කින්');
-
-  // 6. Hours: "2 පැය වලට" -> "පැය 2කට", "2 පැය වලින්" -> "පැය 2කින්"
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*පැය\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1පැය $2කට');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])පැය\s*(\d+)\s*වලට(?=[\s.,!?*()\[\]~_]|$)/g, '$1පැය $2කට');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])(\d+)\s*පැය\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1පැය $2කින්');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])පැය\s*(\d+)\s*වලින්(?=[\s.,!?*()\[\]~_]|$)/g, '$1පැය $2කින්');
-
-  // 7. Replace literary/chatbot endings with natural spoken forms
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])එවන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1එවනවා');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])කරන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1කරනවා');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])දන්වන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1දන්වනවා');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])ලබා\s*දෙන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1දෙනවා');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])සලකා\s*බලන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1බලනවා');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])බලන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1බලනවා');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])යවන්නෙමු(?=[\s.,!?*()\[\]~_]|$)/g, '$1යවනවා');
-  s = s.replace(/(^|[\s.,!?*()\[\]~_])කළ\s*හැකිය(?=[\s.,!?*()\[\]~_]|$)/g, '$1කරන්න පුළුවන්');
-
-  // 8. Convert any leaked Singlish invoice bottom / work-start lines into proper Sinhala script
+  // 3. Convert any leaked Singlish invoice bottom / work-start lines into proper Sinhala script
   s = s.replace(
-    /(?:advance|gewwata|gewala|karapu|karala)\s+(?:eka\s+)?(?:hari\s+)?(?:full\s+payment\s+)?(?:eka\s+)?(?:hari\s+)?(?:gewwata|gewala|karapu|karala)\s+passe[\s\S]*?(?:wada|wade|project\s+manager)[\s\S]*?(?=\n\n|$)/gi,
-    'Advance මුදල හෝ සම්පූර්ණ මුදල ගෙවූ පසු අපි වහාම වැඩ ආරම්භ කරනවා. ඊටපසු අපගේ project manager අවශ්‍යතා (requirements) ලබා ගැනීමට ඉක්මනින්ම ඔබව සම්බන්ධ කර ගනු ඇත. කරුණාකර මුදල් ගෙවා payment slip එක මෙතනට එවන්න. ඔයාගේ Invoice PDF එක පහළින් එවා ඇත.'
+    /(?:advance|gewwata|gewala|karapu|karala)\s+(?:eka\s+)?(?:hari\s+)?(?:full\s+payment\s+)?(?:eka\s+)?(?:hari\s+)?(?:gewwata|gewala|karapu|karala)\s+passe[\s\S]*?(?:wada|wade|project\s+manager|team)[\s\S]*?(?=\n\n|$)/gi,
+    'Advance මුදල හෝ සම්පූර්ණ මුදල ගෙවූ පසු අපගේ team එක ඔබව සම්බන්ධ කරගෙන වැඩේට අවශ්‍ය සියලුම requirements සහ විස්තර ලබාගෙන වහාම වැඩ ආරම්භ කරනවා. කරුණාකර මුදල් ගෙවා payment slip එක මෙතනට එවන්න. ඔබගේ Invoice PDF එක පහළින් එවා ඇත.'
   );
   s = s.replace(
-    /(?:api\s+)?(?:wada|wade)\s+patan\s+gannawa[\s\S]*?(?:project\s+manager)[\s\S]*?(?=\n\n|$)/gi,
-    'Advance මුදල හෝ සම්පූර්ණ මුදල ගෙවූ පසු අපි වහාම වැඩ ආරම්භ කරනවා. අපගේ project manager අවශ්‍යතා (requirements) ලබා ගැනීමට ඉක්මනින්ම ඔබව සම්බන්ධ කර ගනු ඇත.'
+    /(?:api\s+)?(?:wada|wade)\s+patan\s+gannawa[\s\S]*?(?:project\s+manager|team)[\s\S]*?(?=\n\n|$)/gi,
+    'Advance මුදල හෝ සම්පූර්ණ මුදල ගෙවූ පසු අපගේ team එක ඔබව සම්බන්ධ කරගෙන වැඩේට අවශ්‍ය සියලුම requirements සහ විස්තර ලබාගෙන වහාම වැඩ ආරම්භ කරනවා.'
   );
   s = s.replace(
     /thank\s+you!?[^\n]*?(?:ape\s+team\s+eka\s+payment\s+slip)[\s\S]*?(?=\n\n|$)/gi,
-    'ස්තූතියි! අපගේ team එක payment slip එක verify කරලා බලලා, ඉක්මනින්ම manually update කරන්නම්. Advance එක හෝ full payment එක confirm වුණු ගමන්ම අපි වැඩේ පටන් ගන්නවා. අපේ project manager අවශ්‍යතා (requirements) ලබා ගන්න ඉක්මනින්ම ඔයාට contact කරයි.'
+    'ස්තූතියි! අපගේ team එක payment slip එක verify කරලා බලලා, ඉක්මනින්ම manually update කරන්නම්. Payment එක confirm වුණු ගමන්ම අපගේ team එක ඔබව සම්බන්ධ කරගෙන වැඩේට අවශ්‍ය සියලුම requirements සහ විස්තර ලබාගෙන වහාම වැඩ ආරම්භ කරනවා.'
   );
 
   return s;
@@ -296,46 +237,16 @@ export function isPaymentSlipOrPaidMessage(
   const clean = raw.toLowerCase();
 
   // 1. Explicit English payment confirmation / slip keywords
-  const englishPaidPatterns = [
-    /\b(?:i(?:'ve| have)?\s+)?paid\b/i,
-    /\b(?:already\s+paid|paid\s+already|paid\s+done)\b/i,
-    /\b(?:payment\s+(?:done|completed|made|sent|transferred|success|successful))\b/i,
-    /\b(?:done\s+payment|made\s+the\s+payment|sent\s+the\s+payment)\b/i,
-    /\b(?:transferred|money\s+transferred|bank\s+transfer\s+done|transfer\s+completed|transfer\s+done)\b/i,
-    /\b(?:sent\s+the\s+money|transferred\s+the\s+amount|sent\s+amount)\b/i,
-    /\b(?:here\s+is\s+(?:the\s+)?(?:slip|receipt)|attached\s+(?:the\s+)?(?:slip|receipt)|receipt\s+attached)\b/i,
-    /\b(?:payment\s+slip|bank\s+slip|deposit\s+slip|transfer\s+slip|payment\s+receipt)\b/i,
-    /\b(?:check\s+(?:the\s+)?(?:slip|receipt|payment)|verify\s+(?:the\s+)?(?:slip|receipt|payment))\b/i,
-  ];
-  if (englishPaidPatterns.some((p) => p.test(clean))) {
-    return true;
-  }
+  const englishPaidPattern = /\b(?:(?:i(?:'ve| have)?\s+)?paid|already\s+paid|paid\s+already|paid\s+done|payment\s+(?:done|completed|made|sent|transferred|success|successful)|(?:done|made|sent)\s+payment|(?:money\s+)?transferred|bank\s+transfer\s+done|transfer\s+(?:completed|done)|(?:sent|transferred)\s+(?:the\s+)?amount|(?:here\s+is|attached)\s+(?:the\s+)?(?:slip|receipt)|receipt\s+attached|(?:payment|bank|deposit|transfer)\s+(?:slip|receipt)|(?:check|verify)\s+(?:the\s+)?(?:slip|receipt|payment))\b/i;
+  if (englishPaidPattern.test(clean)) return true;
 
   // 2. Explicit Singlish payment confirmation / slip keywords
-  const singlishPaidPatterns = [
-    /\b(?:mama\s+)?(?:gewwa|geva|gevva|gewa)\b/i,
-    /\b(?:salli\s+(?:gewwa|geva|gevva|damma|dapu|yawwa|transfer\s*kala|transfer\s*kara))\b/i,
-    /\b(?:mama\s+salli\s+(?:damma|gewwa|yawwa))\b/i,
-    /\b(?:slip\s*(?:eka)?\s*(?:damma|ewwa|evwa|yawwa|send\s*kala|attach\s*kala|balanna|check\s*karanna))\b/i,
-    /\b(?:menna\s+(?:slip|receipt|slip\s*eka|receipt\s*eka))\b/i,
-    /\b(?:payment\s*(?:eka)?\s*(?:kala|kara|damma|ewwa|evwa|done|transfer\s*kala|transfer\s*kara))\b/i,
-    /\b(?:transfer\s*(?:eka)?\s*(?:kala|kara|damma|done|completed))\b/i,
-  ];
-  if (singlishPaidPatterns.some((p) => p.test(clean))) {
-    return true;
-  }
+  const singlishPaidPattern = /\b(?:(?:mama\s+)?(?:gewwa|geva|gevva|gewa)|salli\s+(?:gewwa|geva|gevva|damma|dapu|yawwa|transfer\s*ka[lr]a)|mama\s+salli\s+(?:damma|gewwa|yawwa)|slip\s*(?:eka)?\s*(?:damma|ewwa|evwa|yawwa|send\s*kala|attach\s*kala|balanna|check\s*karanna)|menna\s+(?:slip|receipt|slip\s*eka|receipt\s*eka)|payment\s*(?:eka)?\s*(?:ka[lr]a|damma|e[wv]wa|done|transfer\s*ka[lr]a)|transfer\s*(?:eka)?\s*(?:ka[lr]a|damma|done|completed))\b/i;
+  if (singlishPaidPattern.test(clean)) return true;
 
   // 3. Explicit Sinhala (Unicode) payment confirmation / slip keywords
-  const sinhalaPaidPatterns = [
-    /(?:ගෙව්වා|ගෙවුවා|ගෙවීම\s*කළා|ගෙවීම\s*සිදුකළා|ගෙවීම්\s*කළා|ගෙවලා\s*තියෙන්නේ|ගෙවලා\s*ඉවරයි)/,
-    /(?:සල්ලි\s*දැම්මා|මුදල්\s*දැම්මා|මුදල්\s*තැන්පත්\s*කළා|සල්ලි\s*transfer\s*කළා|මුදල්\s*ගෙව්වා|සල්ලි\s*ගෙව්වා)/,
-    /(?:ස්ලිප්\s*එක\s*(?:දැම්මා|එව්වා|බලන්න|චෙක්\s*කරන්න|evva|damma)|මෙන්න\s*(?:ස්ලිප්|රිසිට්)|ස්ලිප්\s*පත|රිසිට්\s*පත)/,
-    /(?:ගෙවීම්\s*රිසිට්පත|ගෙවීමේ\s*රිසිට්පත|රිසිට්පත|ස්ලිප්පත)/,
-    /(?:ගෙවීම\s*පරීක්ෂා|ගෙවීම\s*බලා)/,
-  ];
-  if (sinhalaPaidPatterns.some((p) => p.test(raw))) {
-    return true;
-  }
+  const sinhalaPaidPattern = /(?:ගෙව්වා|ගෙවුවා|ගෙවීම\s*කළා|ගෙවීම\s*සිදුකළා|ගෙවීම්\s*කළා|ගෙවලා\s*තියෙන්නේ|ගෙවලා\s*ඉවරයි|සල්ලි\s*දැම්මා|මුදල්\s*දැම්මා|මුදල්\s*තැන්පත්\s*කළා|සල්ලි\s*transfer\s*කළා|මුදල්\s*ගෙව්වා|සල්ලි\s*ගෙව්වා|ස්ලිප්\s*එක\s*(?:දැම්මා|එව්වා|බලන්න|චෙක්\s*කරන්න|evva|damma)|මෙන්න\s*(?:ස්ලිප්|රිසිට්)|ස්ලිප්\s*පත|රිසිට්\s*පත|ගෙවීම්\s*රිසිට්පත|ගෙවීමේ\s*රිසිට්පත|රිසිට්පත|ස්ලිප්පත|ගෙවීම\s*පරීක්ෂා|ගෙවීම\s*බලා)/;
+  if (sinhalaPaidPattern.test(raw)) return true;
 
   // 4. Media file handling (WhatsApp image or PDF document)
   const isMedia =
@@ -364,18 +275,12 @@ export function isPaymentSlipOrPaidMessage(
  */
 export function parseJsonUrls(val: any): string[] {
   if (!val) return [];
-  if (Array.isArray(val)) {
-    return val.filter((item) => typeof item === 'string' && item.trim().length > 0);
+  try {
+    const arr = Array.isArray(val) ? val : typeof val === 'string' ? JSON.parse(val) : [];
+    return Array.isArray(arr) ? arr.filter((i) => typeof i === 'string' && i.trim().length > 0) : [];
+  } catch {
+    return [];
   }
-  if (typeof val === 'string') {
-    try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((item) => typeof item === 'string' && item.trim().length > 0);
-      }
-    } catch {}
-  }
-  return [];
 }
 
 /**
@@ -384,16 +289,12 @@ export function parseJsonUrls(val: any): string[] {
 export function isSampleRequest(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
   const clean = text.toLowerCase();
-  // Direct keywords
-  if (/\b(samples?|portfolio|portfolios|demo|demos)\b/i.test(clean)) return true;
-  // Sinhala keywords for sample or pictures
-  if (/(?:සාම්පල|සාම්පල්|පින්තූර|පින්තුර)/.test(clean)) return true;
-  // Combinations like "sample weda", "karapu weda", "photos ewanna", "pics ewanna"
-  if (/\b(?:sample|karapu)\s*(?:weda|work|designs?)\b/i.test(clean)) return true;
-  if (/\b(?:photos?|images?|pics?|pictures?)\s*(?:ewanna|evanna|balanna|danna|send|show|share|thiyenawada|thiyeda)\b/i.test(clean)) return true;
-  if (/\b(?:send|show|share|see|view)\s+(?:photos?|images?|pics?|work|samples?|designs?)\b/i.test(clean)) return true;
-  if (/\b(?:weda|designs?)\s*(?:balanna|penna|ewanna|evanna|thiyanawada|thiyeda)\b/i.test(clean)) return true;
-  return false;
+  return /\b(samples?|portfolio|portfolios|demo|demos)\b/i.test(clean) ||
+    /(?:සාම්පල|සාම්පල්|පින්තූර|පින්තුර)/.test(clean) ||
+    /\b(?:sample|karapu)\s*(?:weda|work|designs?)\b/i.test(clean) ||
+    /\b(?:photos?|images?|pics?|pictures?)\s*(?:ewanna|evanna|balanna|danna|send|show|share|thiyenawada|thiyeda)\b/i.test(clean) ||
+    /\b(?:send|show|share|see|view)\s+(?:photos?|images?|pics?|work|samples?|designs?)\b/i.test(clean) ||
+    /\b(?:weda|designs?)\s*(?:balanna|penna|ewanna|evanna|thiyanawada|thiyeda)\b/i.test(clean);
 }
 
 /**
@@ -402,26 +303,172 @@ export function isSampleRequest(text: string): boolean {
  */
 export function cleanIncompleteTrailingSentence(text: string): string {
   if (!text || typeof text !== 'string') return text;
-  let trimmed = text.trim();
-  if (!trimmed) return trimmed;
-
-  // Don't modify if it already ends with standard terminal punctuation or closures
-  if (/[.!?\n\)\*"':]$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  // Find the last terminal punctuation mark (. ! ? \n)
-  const lastTerminalIdx = Math.max(
-    trimmed.lastIndexOf('.'),
-    trimmed.lastIndexOf('!'),
-    trimmed.lastIndexOf('?'),
-    trimmed.lastIndexOf('\n')
-  );
-
-  if (lastTerminalIdx > 0 && lastTerminalIdx >= trimmed.length - 120) {
-    return trimmed.slice(0, lastTerminalIdx + 1).trim();
-  }
-
-  return trimmed;
+  const trimmed = text.trim();
+  if (!trimmed || /[.!?\n\)\*"':]$/.test(trimmed)) return trimmed;
+  const lastIdx = Math.max(trimmed.lastIndexOf('.'), trimmed.lastIndexOf('!'), trimmed.lastIndexOf('?'), trimmed.lastIndexOf('\n'));
+  return (lastIdx > 0 && lastIdx >= trimmed.length - 120) ? trimmed.slice(0, lastIdx + 1).trim() : trimmed;
 }
+
+export interface FormatMessageWithAiOptions {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  forceAi?: boolean;
+}
+
+/**
+ * Formats the entire WhatsApp message using deterministic zero-token sanitization by default,
+ * saving ~700-1,200 tokens per message while ensuring pristine WhatsApp markdown and clean spacing.
+ * The secondary DeepSeek pass can be activated via forceAi or ENABLE_AI_SECONDARY_FORMATTING=true.
+ */
+export async function formatMessageWithAI(
+  text: string,
+  options?: FormatMessageWithAiOptions
+): Promise<string> {
+  if (!text || typeof text !== 'string') return text;
+  const cleanInput = fixSinhalaOrthography(text.trim());
+  if (!cleanInput) return '';
+
+  const apiKey = options?.apiKey?.trim() || process.env.DEEPSEEK_API_KEY?.trim();
+  const shouldRunAi = Boolean(options?.forceAi || process.env.ENABLE_AI_SECONDARY_FORMATTING === 'true');
+
+  if (!shouldRunAi || !apiKey) {
+    return sanitizeWhatsAppFormatting(cleanInput);
+  }
+
+  const baseUrl = (options?.baseUrl || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/+$/, '');
+  const rawModel = options?.model || process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+  const model = (rawModel === 'deepseek-flash' || !rawModel) ? 'deepseek-chat' : rawModel;
+
+  const systemPrompt = `You are an expert WhatsApp Message Formatter for business and customer service chats.
+Your ONLY task is to take the provided draft message and format it with clean WhatsApp markdown and readable layout.
+
+Formatting Rules:
+1. DO NOT change, omit, translate, rephrase, or add ANY facts, words, prices, invoice numbers, bank account details, or customer names. Preserve the exact wording and original language (Sinhala, English, Tamil) 100%.
+2. Continuous sentences: Keep every sentence completely unbroken. NEVER split a sentence across lines in the middle of a continuous thought or phrase.
+3. Lists & Offerings: Put EACH bullet item, product, package, or service on its OWN separate line starting with a bullet dot (•).
+   Format: • *[Item Name]* - Rs. [Price]
+4. Invoice & Payment Details Layout (CRITICAL):
+   - Always leave ONE empty blank line before the invoice section (between the greeting/intro confirmation sentence and *Invoice:*).
+   - Put each invoice field on its own separate line with bold labels:
+     *Invoice:* [Number]
+     *Customer:* [Name]
+     *Item:* [Item Name] (Qty: [Qty])
+     *Unit Price:* Rs. [Price]
+     *Total Amount:* Rs. [Total]
+   - Always leave ONE empty blank line before *Bank Details:*.
+   - Put each bank detail on its own separate line with bold labels:
+     *Bank Details:*
+     *Bank:* [Bank Name]
+     *Account Name:* [Account Holder Name]
+     *Account Number:* [Account Number]
+     *Branch:* [Branch Name]
+   - Always leave ONE empty blank line after the bank details before the closing payment instructions paragraph.
+5. Line Breaks & Spacing:
+   - Leave ONE empty blank line before and after lists.
+   - Leave ONE empty blank line before and after section titles like *Invoice:*, *Items:*, *Bank Details:*.
+   - Leave ONE empty blank line before the final closing question or closing payment instructions.
+6. Bold Styling: Bold field labels and section titles using single asterisks: *Label:* value (e.g. *Invoice:*, *Customer:*, *Item:*, *Unit Price:*, *Total Amount:*, *Bank Details:*, *Bank:*, *Account Name:*, *Account Number:*, *Branch:*).
+7. Ban on Emojis: Do NOT output any emoji icons.
+8. Correct Sinhala Spelling: In Sinhala, always use correct orthography with Yansaya (e.g. write "අවශ්‍ය", NEVER "අවශ්ය").
+9. Output ONLY the cleanly formatted message text. Do not include any preface, notes, or explanations.`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: cleanInput },
+        ],
+        temperature: 0.1,
+        max_tokens: 2000,
+        stream: false,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data: any = await response.json();
+      const formatted = data.choices?.[0]?.message?.content?.trim();
+      if (formatted && formatted.length > 5) {
+        return sanitizeWhatsAppFormatting(stripEmojis(formatted));
+      }
+    } else {
+      console.warn(`[AI Formatter] Secondary formatting API returned HTTP ${response.status}. Using draft message.`);
+    }
+  } catch (err: any) {
+    console.warn(`[AI Formatter] Secondary formatting API failed (${err.message || err}). Using draft message.`);
+  }
+
+  return sanitizeWhatsAppFormatting(cleanInput);
+}
+
+/**
+ * Extracts and standardizes bank transfer details from company overview or business policy text
+ */
+export function extractBankDetails(text?: string): string {
+  if (!text || typeof text !== 'string') return '';
+
+  const bankMatch = text.match(/(?:Bank(?:\s+Transfer)?|Payment(?:\s+Options|\s+Details)?|බැංකු\s*විස්තර)[\s\S]*?(?:Commercial|Sampath|BOC|HNB|NDB|NSB|People'?s|DFCC|Seylan|Cargills|Account\s*(?:Name|Number|No)|100\d{6,})[\s\S]*?(?=\n\s*\n\s*\d+\.|\n\s*\n\s*[A-Z*]|\n\s*Card|$)/i);
+
+  const targetText = bankMatch ? bankMatch[0] : text;
+  const lines = targetText.split(/\r?\n/).map(l => l.replace(/^[\s*•\-–\d.]+/, '').trim()).filter(Boolean);
+
+  let bankName = '';
+  let accountName = '';
+  let accountNumber = '';
+  let branch = '';
+
+  for (const line of lines) {
+    const bankNameMatch = line.match(/(?:Bank|බැංකුව)\s*:\s*(.+)/i) ||
+      line.match(/\b(Commercial\s*Bank|Sampath\s*Bank|Bank\s*of\s*Ceylon|BOC|HNB|Hatton\s*National\s*Bank|People'?s\s*Bank|NDB|Seylan\s*Bank|NSB|DFCC)\b(?:\s*[-–]\s*(.+))?/i);
+    if (bankNameMatch && !bankName) {
+      bankName = bankNameMatch[1]?.trim() || '';
+      if (bankNameMatch[2]) branch = bankNameMatch[2].trim();
+      continue;
+    }
+
+    const accNameMatch = line.match(/(?:Account\s*Name|Acc\s*Name|නම)\s*:\s*(.+)/i);
+    if (accNameMatch && !accountName) {
+      accountName = accNameMatch[1].trim();
+      continue;
+    }
+
+    const accNumMatch = line.match(/(?:Account\s*(?:Number|No)|Acc\s*(?:No|Number)|ගිණුම්\s*අංකය)\s*:\s*([\d\s-]+)/i) ||
+      line.match(/\b(\d{8,16})\b/);
+    if (accNumMatch && !accountNumber) {
+      accountNumber = accNumMatch[1].replace(/[\s-]/g, '').trim();
+      continue;
+    }
+
+    const branchMatch = line.match(/(?:Branch|ශාඛාව)\s*:\s*(.+)/i);
+    if (branchMatch && !branch) {
+      branch = branchMatch[1].trim();
+      continue;
+    }
+  }
+
+  if (bankName || accountNumber) {
+    const parts = ['*Bank Details:*'];
+    if (bankName) parts.push(`*Bank:* ${bankName}`);
+    if (accountName) parts.push(`*Account Name:* ${accountName}`);
+    if (accountNumber) parts.push(`*Account Number:* ${accountNumber}`);
+    if (branch) parts.push(`*Branch:* ${branch}`);
+    return parts.join('\n');
+  }
+
+  return '';
+}
+
+
 

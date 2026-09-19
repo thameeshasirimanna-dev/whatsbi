@@ -59,30 +59,16 @@ function getTextWidth(text: string, fontSize: number, isBold: boolean = false): 
   if (!text) return 0;
   let widthEm = 0;
   for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (char === ' ' || char === '.' || char === ',' || char === ':' || char === ';' || char === '!' || char === '\'' || char === '|' || char === 'i' || char === 'l' || char === 'I') {
-      widthEm += 0.28;
-    } else if (char >= '0' && char <= '9') {
-      widthEm += 0.56;
-    } else if (char >= 'A' && char <= 'Z') {
-      if (char === 'M' || char === 'W') {
-        widthEm += isBold ? 0.95 : 0.85;
-      } else {
-        widthEm += isBold ? 0.72 : 0.68;
-      }
-    } else if (char >= 'a' && char <= 'z') {
-      if (char === 'm' || char === 'w') {
-        widthEm += isBold ? 0.85 : 0.75;
-      } else if (char === 'f' || char === 'j' || char === 'r' || char === 't') {
-        widthEm += 0.35;
-      } else {
-        widthEm += isBold ? 0.58 : 0.52;
-      }
-    } else if (char === '#' || char === '-' || char === '(' || char === ')' || char === '/' || char === '\\') {
-      widthEm += 0.35;
-    } else {
-      widthEm += 0.55;
-    }
+    const c = text[i];
+    if (' .,:;!\'|ilI'.includes(c)) widthEm += 0.28;
+    else if (c >= '0' && c <= '9') widthEm += 0.56;
+    else if (c >= 'A' && c <= 'Z') widthEm += (c === 'M' || c === 'W') ? (isBold ? 0.95 : 0.85) : (isBold ? 0.72 : 0.68);
+    else if (c >= 'a' && c <= 'z') {
+      if (c === 'm' || c === 'w') widthEm += isBold ? 0.85 : 0.75;
+      else if ('fjrt'.includes(c)) widthEm += 0.35;
+      else widthEm += isBold ? 0.58 : 0.52;
+    } else if ('#()-/\\'.includes(c)) widthEm += 0.35;
+    else widthEm += 0.55;
   }
   return widthEm * fontSize;
 }
@@ -197,9 +183,19 @@ export function generateInvoicePdfBuffer(
   stream += rightText('Invoice Details', rightX, 68, 10, true);
   stream += rightText(`Date: ${invoiceDate}`, rightX, 76, 10, false);
   stream += rightText(`Invoice #: ${invoiceNumber}`, rightX, 84, 10, false);
+  // Compute financial totals accurately from items
+  const validItems = Array.isArray(items) ? items : [];
+  const subtotal = validItems.reduce((sum, it) => sum + (Number(it.quantity) || 1) * (Number(it.price) || 0), 0);
+  const discountPct = Number(discountPercentage) || 0;
+  const discountAmount = discountPct > 0 ? (subtotal * discountPct) / 100 : 0;
+  const computedNetTotal = Math.max(0, subtotal - discountAmount);
+  const finalTotal = (totalAmount !== undefined && Number(totalAmount) >= 0 && Math.abs(Number(totalAmount) - subtotal) > 0.01)
+    ? Number(totalAmount)
+    : (discountPct > 0 ? computedNetTotal : (Number(totalAmount) > 0 ? Number(totalAmount) : subtotal));
+
   const rawStatus = (status || '').toLowerCase();
-  const isPartial = rawStatus === 'partially_paid' || (advanceAmount > 0 && advanceAmount < totalAmount);
-  const isPaid = !isPartial && (rawStatus === 'paid' || (advanceAmount >= totalAmount && totalAmount > 0));
+  const isPartial = rawStatus === 'partially_paid' || (advanceAmount > 0 && advanceAmount < finalTotal);
+  const isPaid = !isPartial && (rawStatus === 'paid' || (advanceAmount >= finalTotal && finalTotal > 0));
   const statusLabel = isPaid ? 'Status: Paid in Full' : (isPartial ? 'Status: Partially Paid' : 'Status: Generated / Unpaid');
   const statusColor = isPaid ? '0.05 0.60 0.25' : (isPartial ? '0.85 0.50 0.05' : '0 0 0');
   stream += rightText(statusLabel, rightX, 92, 10, isPaid || isPartial, statusColor);
@@ -234,7 +230,7 @@ export function generateInvoicePdfBuffer(
   yPosition += rowHeight + 2;
 
   // Rows (10pt normal)
-  items.forEach((item) => {
+  validItems.forEach((item) => {
     const descLines = wrapText(item.name, descWidthPt, 10, false);
     let lineY = yPosition;
     descLines.forEach((line) => {
@@ -261,20 +257,23 @@ export function generateInvoicePdfBuffer(
   // 6. Totals section
   let totalsY = yPosition + 5;
 
-  if (discountPercentage > 0) {
-    const discountAmount = (totalAmount * discountPercentage) / 100;
-    stream += leftText(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY, 9, false);
+  if (discountPct > 0) {
+    stream += leftText('Subtotal:', 120, totalsY, 9, false);
+    stream += rightText(formatCurrency(subtotal), 190, totalsY, 9, false);
+    totalsY += 8;
+
+    stream += leftText(`Discount (${discountPct.toFixed(2)}%):`, 120, totalsY, 9, false);
     stream += rightText(`-${formatCurrency(discountAmount)}`, 190, totalsY, 9, false);
     totalsY += 8;
   }
 
   stream += leftText('Total Amount:', 120, totalsY, 10, true);
-  stream += rightText(formatCurrency(totalAmount), 190, totalsY, 10, true);
+  stream += rightText(formatCurrency(finalTotal), 190, totalsY, 10, true);
   totalsY += 8;
 
   if (isPaid) {
     stream += leftText('Amount Paid:', 120, totalsY, 9, false);
-    stream += rightText(formatCurrency(totalAmount), 190, totalsY, 9, false);
+    stream += rightText(formatCurrency(finalTotal), 190, totalsY, 9, false);
     totalsY += 8;
 
     stream += leftText('Balance:', 120, totalsY, 10, true);
@@ -282,7 +281,7 @@ export function generateInvoicePdfBuffer(
     totalsY += 8;
   } else if (isPartial) {
     const paidAmount = advanceAmount > 0 ? advanceAmount : 0;
-    const balance = Math.max(0, totalAmount - paidAmount);
+    const balance = Math.max(0, finalTotal - paidAmount);
 
     stream += leftText('Advance Paid:', 120, totalsY, 9, false);
     stream += rightText(formatCurrency(paidAmount), 190, totalsY, 9, false);
@@ -299,7 +298,7 @@ export function generateInvoicePdfBuffer(
       totalsY += 8;
     }
 
-    const balanceDue = Math.max(0, totalAmount - advanceAmount);
+    const balanceDue = Math.max(0, finalTotal - advanceAmount);
     stream += leftText('Balance Due:', 120, totalsY, 10, true);
     stream += rightText(formatCurrency(balanceDue), 190, totalsY, 10, true);
     totalsY += 8;
@@ -428,7 +427,7 @@ export async function generateAndUploadInvoicePdf(
     customerId = agentPrefixOrOptions.customerId;
     invoiceData = agentPrefixOrOptions.invoiceData;
   } else {
-    agentPrefix = agentPrefixOrOptions;
+    agentPrefix = agentPrefixOrOptions as string;
     customerId = customerIdParam!;
     invoiceData = invoiceDataParam!;
   }

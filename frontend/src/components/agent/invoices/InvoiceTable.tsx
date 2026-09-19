@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package } from "lucide-react";
+import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package, Pencil } from "lucide-react";
 import { InvoiceWithDetails } from "./types";
 import { getStatusStyle, getStatusDotColor, capitalizeFirst } from "./constants";
 
@@ -27,6 +27,7 @@ interface InvoiceTableProps {
   onView: (invoice: InvoiceWithDetails) => void;
   onDownload: (invoice: InvoiceWithDetails) => void;
   onSend: (invoice: InvoiceWithDetails) => void;
+  onEdit?: (invoice: InvoiceWithDetails) => void;
   onMarkPaid: (invoice: InvoiceWithDetails) => void;
   onMarkPaidFull: (invoice: InvoiceWithDetails) => void;
   onDelete: (invoice: InvoiceWithDetails) => void;
@@ -43,6 +44,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
   onView,
   onDownload,
   onSend,
+  onEdit,
   onMarkPaid,
   onMarkPaidFull,
   onDelete,
@@ -183,7 +185,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 {/* Actions */}
                 <td className="p-2.5 text-right">
                   <div className="flex items-center justify-end gap-1 flex-nowrap">
-                    {/* View */}
+                    {/* View PDF */}
                     <button
                       type="button"
                       onClick={() => onView(invoice)}
@@ -192,6 +194,18 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                     >
                       <Eye size={12} strokeWidth={2.4} />
                     </button>
+
+                    {/* Edit */}
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onEdit(invoice)}
+                        title="Edit Invoice"
+                        className="w-7 h-7 rounded-full bg-[#F4F7F4] hover:bg-[#E8ECE8] text-[#16281D] flex items-center justify-center border-0 cursor-pointer transition-all"
+                      >
+                        <Pencil size={12} strokeWidth={2.4} />
+                      </button>
+                    )}
 
                     {/* Download */}
                     <button

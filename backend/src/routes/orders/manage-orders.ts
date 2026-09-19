@@ -47,7 +47,7 @@ export default async function manageOrdersRoutes(
           const limit = parseInt(url.searchParams.get("limit") || "50");
           const offset = parseInt(url.searchParams.get("offset") || "0");
           const customerId = url.searchParams.get("customer_id");
-          const orderId = url.searchParams.get("order_id");
+          const orderId = url.searchParams.get("order_id") || url.searchParams.get("id");
           const type = url.searchParams.get("type");
 
 
@@ -99,9 +99,34 @@ export default async function manageOrdersRoutes(
               });
             }
 
+            // Fetch adjacent orders (prev and next by id)
+            let prevOrderId = null;
+            let nextOrderId = null;
+            try {
+              const navSql = `
+                SELECT
+                  (SELECT id FROM ${agentPrefix}_orders WHERE id < $1 ORDER BY id DESC LIMIT 1) as prev_order_id,
+                  (SELECT id FROM ${agentPrefix}_orders WHERE id > $1 ORDER BY id ASC LIMIT 1) as next_order_id
+              `;
+              const { rows: navRows } = await pgClient.query(navSql, [parseInt(orderId)]);
+              if (navRows && navRows.length > 0) {
+                prevOrderId = navRows[0].prev_order_id || null;
+                nextOrderId = navRows[0].next_order_id || null;
+              }
+            } catch (navErr) {
+              console.warn("Failed to fetch adjacent orders:", navErr);
+            }
+
             return reply.code(200).send({
               success: true,
-              order: orders[0],
+              order: {
+                ...orders[0],
+                prev_order_id: prevOrderId,
+                next_order_id: nextOrderId,
+              },
+              prev_order_id: prevOrderId,
+              next_order_id: nextOrderId,
+              orders: orders,
             });
           }
 
@@ -507,16 +532,18 @@ export default async function manageOrdersRoutes(
               .send({ success: false, message: "Order ID is required" });
           }
 
-          // Validate status if provided
+          // Validate status if provided (support all frontend and workflow statuses)
           const validStatuses = [
             "pending",
             "confirmed",
             "processing",
             "shipped",
             "delivered",
+            "completed",
             "cancelled",
           ];
-          if (status && !validStatuses.includes(status)) {
+          const normalizedStatus = status ? String(status).trim().toLowerCase() : undefined;
+          if (normalizedStatus && !validStatuses.includes(normalizedStatus)) {
             return reply
               .code(400)
               .send({ success: false, message: "Invalid order status" });
@@ -526,7 +553,7 @@ export default async function manageOrdersRoutes(
             updated_at: new Date().toISOString(),
           };
 
-          if (status !== undefined) updateData.status = status;
+          if (normalizedStatus !== undefined) updateData.status = normalizedStatus;
           if (notes !== undefined)
             updateData.notes = notes ? notes.trim() : null;
           if (shipping_address !== undefined)
@@ -558,12 +585,12 @@ export default async function manageOrdersRoutes(
           }
 
           const setParts = [];
-          const params = [id];
+          const params: any[] = [id];
           let paramIndex = 2;
 
-          if (status !== undefined) {
+          if (normalizedStatus !== undefined) {
             setParts.push(`status = $${paramIndex++}`);
-            params.push(status);
+            params.push(normalizedStatus);
           }
           if (notes !== undefined) {
             setParts.push(`notes = $${paramIndex++}`);

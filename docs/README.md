@@ -13,6 +13,8 @@ All project architecture, specifications, style guidelines, database structure, 
   Vision, target users (business agents and admins), brand personality, anti-references, and design principles.
 - **[Product Architecture & Structure](product-structure.md)**
   Complete system overview, technology stack, backend services, frontend module layout, API endpoints, real-time messaging, and multi-tenancy model.
+- **[AI Agent Architecture](ai-agent-architecture.md)**
+  Complete technical specification for the native DeepSeek AI chatbot: multi-tenant dynamic table isolation, 4-stage token optimization, trilingual prompt engineering, autonomous action execution (PDF invoices, appointments), dual-stage formatting, automated media dispatch, and 2.0x billing model.
 
 ### 2. Database & Data Model
 - **[Database Architecture](database-architecture.md)**

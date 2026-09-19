@@ -40,6 +40,9 @@ const InvoicesPage: React.FC = () => {
     bulkProgress,
     isModalOpen,
     setIsModalOpen,
+    editingInvoice,
+    setEditingInvoice,
+    handleEditInvoice,
     fetchData,
     filteredInvoices,
     paginatedInvoices,
@@ -88,15 +91,19 @@ const InvoicesPage: React.FC = () => {
     <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
       <style>{`@keyframes ip-spin { to { transform: rotate(360deg); } }`}</style>
 
-      {/* Generate Invoice Modal */}
+      {/* Generate / Edit Invoice Modal */}
       <GenerateInvoiceModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingInvoice(null);
+        }}
         customers={customers}
         agentPrefix={agentPrefix}
         agentId={agentId}
         agentDetails={agentDetails}
         invoiceTemplatePath={invoiceTemplatePath}
+        editingInvoice={editingInvoice}
         onSuccess={fetchData}
       />
 
@@ -151,7 +158,10 @@ const InvoicesPage: React.FC = () => {
         }}
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={handleRowsPerPageChange}
-        onCreateInvoiceClick={() => setIsModalOpen(true)}
+        onCreateInvoiceClick={() => {
+          setEditingInvoice(null);
+          setIsModalOpen(true);
+        }}
       />
 
       {/* Bulk Actions Banner (appears when rows are selected) */}
@@ -203,7 +213,7 @@ const InvoicesPage: React.FC = () => {
           />
         ) : (
           <>
-            {/* Mobile/Tablet Card Layout */}
+            {/* Mobile Cards Layout */}
             <InvoiceMobileList
               invoices={paginatedInvoices}
               selectedIds={selection.selectedIds}
@@ -211,6 +221,7 @@ const InvoicesPage: React.FC = () => {
               onView={(inv) => window.open(inv.pdf_url, "_blank")}
               onDownload={downloadPDF}
               onSend={(inv) => handleSendInvoice(inv.id)}
+              onEdit={handleEditInvoice}
               onMarkPaid={handleOpenMarkPaidModal}
               onMarkPaidFull={handleMarkPaidFull}
               onDelete={handleDeleteInvoice}
@@ -228,6 +239,7 @@ const InvoicesPage: React.FC = () => {
               onView={(inv) => window.open(inv.pdf_url, "_blank")}
               onDownload={downloadPDF}
               onSend={(inv) => handleSendInvoice(inv.id)}
+              onEdit={handleEditInvoice}
               onMarkPaid={handleOpenMarkPaidModal}
               onMarkPaidFull={handleMarkPaidFull}
               onDelete={handleDeleteInvoice}

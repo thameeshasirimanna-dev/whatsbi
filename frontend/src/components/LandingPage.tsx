@@ -295,11 +295,8 @@ const LandingPage: React.FC = () => {
 
               {/* Logo */}
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{
-                  background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
-                  boxShadow: scrolled ? '0 0 14px rgba(34,197,94,0.3)' : '0 0 18px rgba(34,197,94,0.45)',
-                }}>
-                  <MessageSquare className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white flex items-center justify-center shrink-0 p-1 shadow-sm border border-white/20">
+                  <img src="/logo/icon-logo.svg" alt="Biz Agentz logo" className="w-full h-full object-contain" />
                 </div>
                 <span
                   className="text-[17px] font-bold tracking-tight"
@@ -695,8 +692,8 @@ const LandingPage: React.FC = () => {
         <footer className="py-10" style={{ background: '#0c1a0e', borderTop: '1px solid rgba(34,197,94,0.08)' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)' }}>
-                <MessageSquare className="w-3.5 h-3.5 text-white" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white flex items-center justify-center p-1 shadow-sm">
+                <img src="/logo/icon-logo.svg" alt="Biz Agentz" className="w-full h-full object-contain" />
               </div>
               <span className="text-sm font-bold" style={{ ...SYNE, color: 'rgba(255,255,255,0.9)' }}>Biz Agentz</span>
               <span className="text-sm" style={{ color: 'rgba(255,255,255,0.25)' }}>— WhatsApp Business CRM</span>

@@ -3,6 +3,7 @@ import { verifyJWT } from '../../utils/helpers.js';
 import { deleteMediaFromR2 } from "../../utils/s3.js";
 import { CacheService } from '../../utils/cache.js';
 import { markInvoiceAsPaidAndRedispatch, sendOrResendInvoiceViaWhatsApp } from '../../services/invoice-lifecycle.service.js';
+import { updateInvoiceWithPdfRegeneration } from '../../services/invoice-edit.service.js';
 
 export default async function manageInvoicesRoutes(
   fastify: FastifyInstance,
@@ -366,6 +367,30 @@ export default async function manageInvoicesRoutes(
             });
           }
 
+          // If editing invoice details (items, name, notes, totals), perform complete update & PDF regeneration
+          if (body.items || body.invoiceName || body.name || body.is_edit) {
+            try {
+              const editResult = await updateInvoiceWithPdfRegeneration({
+                agent,
+                invoiceId: id,
+                invoiceName: body.invoiceName || body.name,
+                items: body.items || [],
+                discountPercentage: body.discountPercentage,
+                advanceAmount: body.advanceAmount,
+                totalAmount: body.totalAmount,
+                notes: body.notes,
+                status: body.status,
+                customerId: body.customerId,
+                pdfBase64: body.pdfBase64,
+                pgClient,
+              });
+              return reply.code(200).send(editResult);
+            } catch (editErr: any) {
+              console.error("[Manage Invoices] Edit invoice error:", editErr);
+              return reply.code(500).send({ success: false, message: editErr.message || "Failed to update invoice" });
+            }
+          }
+
           // If marking as paid or partially paid (advance), execute complete lifecycle: update PDF, update record, re-dispatch via WhatsApp
           if (status === "paid" || status === "partially_paid") {
             try {
@@ -378,7 +403,6 @@ export default async function manageInvoicesRoutes(
                 emitNewMessage,
                 cacheService,
               });
-
               const isPaidFull = markResult.invoice?.status === 'paid';
               return reply.code(200).send({
                 success: true,
@@ -388,51 +412,25 @@ export default async function manageInvoicesRoutes(
               });
             } catch (err: any) {
               console.error("[Manage Invoices] Error marking invoice as paid:", err);
-              return reply.code(500).send({
-                success: false,
-                message: err.message || "Failed to mark invoice as paid",
-              });
+              return reply.code(500).send({ success: false, message: err.message || "Failed to mark invoice as paid" });
             }
           }
 
           const setParts: string[] = ["updated_at = NOW()"];
           const params: any[] = [id];
           let pIdx = 2;
+          if (status) { setParts.push(`status = $${pIdx++}`); params.push(status === 'partially_paid' ? 'paid' : status); }
+          if (order_id !== undefined) { setParts.push(`order_id = $${pIdx++}`); params.push(order_id); }
+          if (advance_amount !== undefined) { setParts.push(`advance_amount = $${pIdx++}`); params.push(Number(advance_amount) || 0); }
 
-          if (status) {
-            setParts.push(`status = $${pIdx++}`);
-            params.push(status === 'partially_paid' ? 'paid' : status);
-          }
-          if (order_id !== undefined) {
-            setParts.push(`order_id = $${pIdx++}`);
-            params.push(order_id);
-          }
-          if (advance_amount !== undefined) {
-            setParts.push(`advance_amount = $${pIdx++}`);
-            params.push(Number(advance_amount) || 0);
-          }
-
-          const updateQuery = `
-            UPDATE ${agentPrefix}_orders_invoices
-            SET ${setParts.join(", ")}
-            WHERE id = $1
-            RETURNING *
-          `;
-
-          const { rows: updatedInvoices } = await pgClient.query(updateQuery, params);
-
+          const { rows: updatedInvoices } = await pgClient.query(
+            `UPDATE ${agentPrefix}_orders_invoices SET ${setParts.join(", ")} WHERE id = $1 RETURNING *`,
+            params
+          );
           if (updatedInvoices.length === 0) {
-            return reply.code(404).send({
-              success: false,
-              message: "Invoice not found",
-            });
+            return reply.code(404).send({ success: false, message: "Invoice not found" });
           }
-
-          return reply.code(200).send({
-            success: true,
-            message: "Invoice updated successfully",
-            invoice: updatedInvoices[0],
-          });
+          return reply.code(200).send({ success: true, message: "Invoice updated successfully", invoice: updatedInvoices[0] });
         }
 
         case "DELETE": {

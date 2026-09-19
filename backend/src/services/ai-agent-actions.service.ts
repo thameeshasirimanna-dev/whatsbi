@@ -1,12 +1,16 @@
 import { generateAndUploadInvoicePdf, InvoiceItem } from './invoice-pdf.js';
+import { updateInvoiceWithPdfRegeneration } from './invoice-edit.service.js';
 import {
   formatBankDetails,
   sanitizeWhatsAppFormatting,
   cleanIncompleteTrailingSentence,
   isPaymentSlipOrPaidMessage,
+  isBankDetailsMessage,
+  extractBankDetails,
 } from './ai-formatters.js';
 import {
   executeCreateAppointment,
+  executeUpdateAppointment,
   ensureInvoiceTableSchema,
   extractRequestedQuantity,
   sanitizePlaceholderText,
@@ -15,6 +19,7 @@ import {
   extractAgentActions,
   sanitizeLeakedActionArtifacts,
   reconcileInvoicePayload,
+  detectAndGenerateFallbackAppointment,
 } from './ai-agent-schema.js';
 import {
   matchCatalogItems,
@@ -41,6 +46,7 @@ export {
   sanitizeLeakedActionArtifacts,
   reconcileInvoicePayload,
   detectAndGenerateFallbackInvoice,
+  detectAndGenerateFallbackAppointment,
 };
 
 /**
@@ -67,9 +73,9 @@ export async function executeCreateInvoice({
   // Ensure table schema is compatible with invoice-first flow
   await ensureInvoiceTableSchema(pgClient, agent.agent_prefix);
 
-  // 1. Reconcile item name, quantity, unit price, total amount, customer name, notes
+  // 1. Reconcile item name, quantity, unit price, total amount, customer name, notes, discount
   const reconciled = reconcileInvoicePayload(payload, customer, incomingText, replyText);
-  const { advanceAmount, customerName, notes } = reconciled;
+  const { advanceAmount, customerName, notes, discountPercentage } = reconciled;
 
   // 2. Authoritative catalog matching: ensure item name, unit price, and total are accurate for all items
   const fullSearchText = `${incomingText || ''} ${replyText || ''} ${payload?.name || ''}`;
@@ -82,9 +88,40 @@ export async function executeCreateInvoice({
   });
 
   const items = catalogResult.items;
-  const totalAmount = catalogResult.totalAmount;
+  const subtotal = catalogResult.totalAmount;
+  const effectiveDiscountPct = discountPercentage > 0
+    ? discountPercentage
+    : (payload?.discount_percentage ? Number(payload.discount_percentage) || 0 : 0);
+  const discountAmount = effectiveDiscountPct > 0 ? (subtotal * effectiveDiscountPct) / 100 : 0;
+  const totalAmount = effectiveDiscountPct > 0 ? Math.max(0, subtotal - discountAmount) : subtotal;
   const invoiceName = catalogResult.invoiceName;
 
+  // 1.5. If customer already has an active unpaid invoice or requested an update, update the existing record
+  const { rows: activeInvoices } = await pgClient.query(
+    `SELECT id, pdf_url FROM ${invoicesTable} WHERE customer_id = $1 AND status IN ('generated', 'sent') ORDER BY id DESC LIMIT 1`,
+    [customer.id]
+  );
+  const existingInvoiceId = payload?.invoice_id || (activeInvoices.length > 0 ? activeInvoices[0].id : null);
+
+  if (existingInvoiceId) {
+    console.log(`[AI Agent Actions] Updating existing active invoice #${existingInvoiceId} for customer ${customer.id}`);
+    const updateRes = await updateInvoiceWithPdfRegeneration({
+      agent,
+      invoiceId: Number(existingInvoiceId),
+      invoiceName,
+      items,
+      totalAmount,
+      discountPercentage: effectiveDiscountPct,
+      advanceAmount,
+      notes,
+      customerId: customer.id,
+      pgClient,
+    });
+    return {
+      ...updateRes.invoice,
+      is_generated: Boolean(updateRes.pdfUrl),
+    };
+  }
 
   // 2. Insert preliminary invoice record to reserve ID
   const tempPdfUrl = `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '')}/invoices`;
@@ -94,6 +131,7 @@ export async function executeCreateInvoice({
     pdfUrl: tempPdfUrl,
     totalAmount,
     advanceAmount,
+    discountPercentage: effectiveDiscountPct,
     notes,
   });
 
@@ -156,6 +194,7 @@ export async function executeCreateInvoice({
         customerName,
         customerPhone: customer.phone || 'N/A',
         items,
+        discountPercentage: effectiveDiscountPct,
         totalAmount,
         advanceAmount,
         notes: notes || undefined,
@@ -220,9 +259,9 @@ export async function parseAndExecuteAgentActions({
   for (const act of extractedActions) {
     const { type: actionType, payload, fullMatch } = act;
 
-    // If customer submitted a payment slip or notified paid, ignore any duplicate CREATE_INVOICE action
-    if (actionType === 'CREATE_INVOICE' && isPaymentSlipOrPaidMessage(incomingText, undefined, true)) {
-      console.log('[AI Agent Actions] Customer submitted payment slip or reported paid; skipping redundant CREATE_INVOICE action.');
+    // If customer submitted a payment slip or notified paid, ignore any duplicate CREATE/UPDATE_INVOICE action
+    if ((actionType === 'CREATE_INVOICE' || actionType === 'UPDATE_INVOICE') && isPaymentSlipOrPaidMessage(incomingText, undefined, true)) {
+      console.log('[AI Agent Actions] Customer submitted payment slip or reported paid; skipping redundant invoice action.');
       if (fullMatch) {
         processedText = processedText.replace(fullMatch, '');
       }
@@ -230,20 +269,17 @@ export async function parseAndExecuteAgentActions({
     }
 
     try {
-      if (actionType === 'CREATE_APPOINTMENT') {
-        const appointment = await executeCreateAppointment({
-          agent,
-          customer,
-          payload,
-          pgClient,
-        });
-        actionsExecuted.push({ type: 'CREATE_APPOINTMENT', success: true, data: appointment });
+      if (actionType === 'CREATE_APPOINTMENT' || actionType === 'UPDATE_APPOINTMENT') {
+        const appointment = actionType === 'UPDATE_APPOINTMENT'
+          ? await executeUpdateAppointment({ agent, customer, payload, pgClient })
+          : await executeCreateAppointment({ agent, customer, payload, pgClient });
+        actionsExecuted.push({ type: actionType, success: true, data: appointment });
 
         const aptNumber = `#APT-${appointment.id.toString().padStart(4, '0')}`;
         processedText = processedText
           .replace(/\{\{APPOINTMENT_ID\}\}/g, aptNumber)
           .replace(/\{\{APPOINTMENT_NUMBER\}\}/g, aptNumber);
-      } else if (actionType === 'CREATE_INVOICE') {
+      } else if (actionType === 'CREATE_INVOICE' || actionType === 'UPDATE_INVOICE') {
         const invoice = await executeCreateInvoice({
           agent,
           customer,
@@ -260,7 +296,7 @@ export async function parseAndExecuteAgentActions({
           invoice.pdf_url.startsWith('http') &&
           !invoice.pdf_url.endsWith('/invoices')
         );
-        actionsExecuted.push({ type: 'CREATE_INVOICE', success: hasValidPdf, data: invoice });
+        actionsExecuted.push({ type: actionType, success: hasValidPdf, data: invoice });
 
         if (hasValidPdf) {
           processedText = processedText
@@ -275,7 +311,32 @@ export async function parseAndExecuteAgentActions({
               .replace(/(\*Qty:\*)\s*1\b/gi, `$1 ${realQty}`)
               .replace(/(Qty:\s*)1\b/gi, `$1${realQty}`);
           }
+
+          // Safety guardrail: If the model generated an invoice but omitted bank details,
+          // automatically append the official bank details so the customer can pay immediately
+          if (!isBankDetailsMessage(processedText)) {
+            const officialBankDetails = extractBankDetails(agent.company_overview || agent.bank_details);
+            if (officialBankDetails) {
+              const custLang = (customer.language || 'sinhala').toLowerCase();
+              const isEng = custLang === 'english' || custLang === 'en';
+              const closingNote = isEng
+                ? 'Please transfer the payment and send the payment slip here. Your official Invoice PDF is attached below.'
+                : 'කරුණාකර මුදල් ගෙවා payment slip එක මෙතනට එවන්න. ඔබගේ Invoice PDF එක පහළින් එවා ඇත.';
+              processedText = `${processedText.trim()}\n\n${officialBankDetails}\n\n${closingNote}`;
+            }
+          }
         }
+      } else if (actionType === 'UPDATE_LANGUAGE') {
+        const rawLang = (payload?.language || 'english').toLowerCase().trim();
+        const normalizedLang = rawLang.startsWith('en') ? 'english' : rawLang.startsWith('ta') ? 'tamil' : 'sinhala';
+        const customersTable = `${agent.agent_prefix}_customers`;
+        await pgClient.query(
+          `UPDATE ${customersTable} SET language = $1 WHERE id = $2`,
+          [normalizedLang, customer.id]
+        );
+        customer.language = normalizedLang;
+        actionsExecuted.push({ type: 'UPDATE_LANGUAGE', success: true, data: { language: normalizedLang } });
+        console.log(`[AI Agent Actions] Customer ${customer.id} language updated to '${normalizedLang}' in database.`);
       }
     } catch (err: any) {
       console.error(`[AI Agent Actions] Error executing ${actionType}:`, err.message || err);
@@ -288,8 +349,32 @@ export async function parseAndExecuteAgentActions({
     }
   }
 
+  // 1.5 Fallback check: If no CREATE_APPOINTMENT action was executed, but appointment was confirmed in reply
+  const hasAppointment = actionsExecuted.some((a) => (a.type === 'CREATE_APPOINTMENT' || a.type === 'UPDATE_APPOINTMENT') && a.success);
+  if (!hasAppointment) {
+    try {
+      const fallbackAppt = await detectAndGenerateFallbackAppointment({
+        agent,
+        customer,
+        incomingText,
+        replyText: processedText,
+        pgClient,
+      });
+
+      if (fallbackAppt && fallbackAppt.id) {
+        actionsExecuted.push({ type: 'CREATE_APPOINTMENT', success: true, data: fallbackAppt });
+        const aptNumber = `#APT-${fallbackAppt.id.toString().padStart(4, '0')}`;
+        processedText = processedText
+          .replace(/\{\{APPOINTMENT_ID\}\}/g, aptNumber)
+          .replace(/\{\{APPOINTMENT_NUMBER\}\}/g, aptNumber);
+      }
+    } catch (apptErr: any) {
+      console.error('[AI Agent Actions] Fallback appointment error:', apptErr.message || apptErr);
+    }
+  }
+
   // 2. Fallback check: If no CREATE_INVOICE action was executed, but invoice was requested or promised
-  const hasInvoice = actionsExecuted.some((a) => a.type === 'CREATE_INVOICE' && a.success);
+  const hasInvoice = actionsExecuted.some((a) => (a.type === 'CREATE_INVOICE' || a.type === 'UPDATE_INVOICE') && a.success);
   if (!hasInvoice) {
     try {
       const fallbackInvoice = await detectAndGenerateFallbackInvoice({
@@ -329,14 +414,16 @@ export async function parseAndExecuteAgentActions({
 
   // 4. Populate invoice number. Do NOT append invoice download URL to text message (sent as WhatsApp PDF document).
   const activeInvoice = actionsExecuted.find(
-    (a) => a.type === 'CREATE_INVOICE' && a.success && a.data?.pdf_url && a.data?.is_generated
+    (a) => (a.type === 'CREATE_INVOICE' || a.type === 'UPDATE_INVOICE') && a.success && a.data?.pdf_url && a.data?.is_generated
   )?.data;
 
   if (activeInvoice) {
     cleanText = cleanText
       .replace(/\{\{INVOICE_ID\}\}/g, activeInvoice.invoice_number)
       .replace(/\{\{INVOICE_NUMBER\}\}/g, activeInvoice.invoice_number)
-      .replace(/\{\{INVOICE_URL\}\}/g, '');
+      .replace(/\{\{INVOICE_URL\}\}/g, '')
+      .replace(/(\*Invoice:\*)\s*(?:#\s*)?(?:INV-?\d+|\{\{INVOICE_NUMBER\}\})/gi, `$1 ${activeInvoice.invoice_number}`)
+      .replace(/(\*බිල්පත:\*)\s*(?:#\s*)?(?:INV-?\d+|\{\{INVOICE_NUMBER\}\})/gi, `$1 ${activeInvoice.invoice_number}`);
   }
 
   // Strip any leaked or raw invoice download URLs from message text
@@ -356,8 +443,7 @@ export async function parseAndExecuteAgentActions({
     .replace(/\{\{APPOINTMENT_ID\}\}/g, 'APT-Confirmed')
     .replace(/\{\{APPOINTMENT_NUMBER\}\}/g, 'APT-Confirmed');
 
-  // Format bank details and WhatsApp markdown
-  cleanText = formatBankDetails(cleanText);
+  // Format message spacing, line breaks, and WhatsApp markdown
   cleanText = sanitizeWhatsAppFormatting(cleanText);
 
   return {

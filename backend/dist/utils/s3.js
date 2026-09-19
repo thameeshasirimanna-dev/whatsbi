@@ -80,3 +80,23 @@ export async function deleteMediaFromR2(key) {
         return false;
     }
 }
+/**
+ * Extracts the storage key from a full public R2 URL
+ */
+export function getS3KeyFromUrl(url) {
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+        return url || '';
+    }
+    try {
+        const publicUrl = process.env.R2_PUBLIC_URL || '';
+        if (publicUrl && url.startsWith(publicUrl)) {
+            return url.replace(publicUrl, '').replace(/^\/+/, '');
+        }
+        const urlObj = new URL(url);
+        return urlObj.pathname.replace(/^\/+/, '');
+    }
+    catch (e) {
+        console.error('Error parsing R2 URL to extract S3 key:', e);
+        return url;
+    }
+}

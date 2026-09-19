@@ -23,6 +23,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
             invoice_template_path,
             company_overview_path,
             company_overview,
+            ai_instructions,
             credits,
             ai_balance
           FROM agents
@@ -116,6 +117,7 @@ export default async function getAgentProfileRoutes(fastify: FastifyInstance, pg
           invoice_template_path: agentData.invoice_template_path,
           company_overview_path: agentData.company_overview_path,
           company_overview: agentData.company_overview || "",
+          ai_instructions: agentData.ai_instructions || "",
           credits: agentData.credits || 0,
           ai_balance: parseFloat(agentData.ai_balance ?? '4.0'),
         },

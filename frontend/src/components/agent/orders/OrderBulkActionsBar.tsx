@@ -27,6 +27,7 @@ export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
 
   const statusOptions = [
     { label: "Pending", value: "pending" },
+    { label: "Confirmed", value: "confirmed" },
     { label: "Processing", value: "processing" },
     { label: "Shipped", value: "shipped" },
     { label: "Delivered", value: "delivered" },

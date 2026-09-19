@@ -1,4 +1,11 @@
-export { executeCreateAppointment, ensureInvoiceTableSchema } from './ai-agent-db.js';
+export {
+  executeCreateAppointment,
+  executeUpdateAppointment,
+  ensureInvoiceTableSchema,
+  ensureAppointmentTableSchema,
+  parseAppointmentDateTime,
+  detectAndGenerateFallbackAppointment,
+} from './ai-agent-db.js';
 
 /**
  * Detects and extracts requested quantity from user message or context
@@ -102,20 +109,22 @@ export async function insertInvoiceRecord(
     pdfUrl: string;
     totalAmount: number;
     advanceAmount: number;
+    discountPercentage?: number;
     notes: string | null;
   }
 ) {
-  const { customerId, name, pdfUrl, totalAmount, advanceAmount, notes } = data;
+  const { customerId, name, pdfUrl, totalAmount, advanceAmount, discountPercentage = 0, notes } = data;
   try {
     const insertQuery = `
       INSERT INTO ${invoicesTable} (customer_id, name, pdf_url, status, discount_percentage, total_amount, advance_amount, notes, generated_at, updated_at)
-      VALUES ($1, $2, $3, 'sent', 0, $4, $5, $6, NOW(), NOW())
+      VALUES ($1, $2, $3, 'sent', $4, $5, $6, $7, NOW(), NOW())
       RETURNING *
     `;
     const res = await pgClient.query(insertQuery, [
       customerId,
       name,
       pdfUrl,
+      discountPercentage,
       totalAmount,
       advanceAmount,
       notes,
@@ -123,14 +132,15 @@ export async function insertInvoiceRecord(
     return res.rows[0];
   } catch (insertErr: any) {
     const fallbackQuery = `
-      INSERT INTO ${invoicesTable} (customer_id, order_id, name, pdf_url, status, total_amount, advance_amount, notes, generated_at, updated_at)
-      VALUES ($1, NULL, $2, $3, 'sent', $4, $5, $6, NOW(), NOW())
+      INSERT INTO ${invoicesTable} (customer_id, order_id, name, pdf_url, status, discount_percentage, total_amount, advance_amount, notes, generated_at, updated_at)
+      VALUES ($1, NULL, $2, $3, 'sent', $4, $5, $6, $7, NOW(), NOW())
       RETURNING *
     `;
     const res = await pgClient.query(fallbackQuery, [
       customerId,
       name,
       pdfUrl,
+      discountPercentage,
       totalAmount,
       advanceAmount,
       notes,
@@ -300,6 +310,7 @@ export interface ReconciledInvoiceData {
   items: Array<{ name: string; quantity: number; price: number }>;
   totalAmount: number;
   advanceAmount: number;
+  discountPercentage: number;
   customerName: string;
   invoiceName: string;
   notes: string | null;
@@ -317,7 +328,7 @@ export function reconcileInvoicePayload(
   const p = payload || {};
   const requestedQty = extractRequestedQuantity(incomingText) || extractRequestedQuantity(replyText);
 
-  // Extract total and advance amounts supporting all naming conventions (snake_case, lower, camelCase)
+  // Extract total, advance, and discount percentages
   const rawTotalAmount = p.total_amount ?? p.totalamount ?? p.totalAmount ?? p.total ?? p.amount;
   let totalAmount = rawTotalAmount !== undefined && rawTotalAmount !== null
     ? Number(String(rawTotalAmount).replace(/[^\d.]/g, ''))
@@ -326,6 +337,11 @@ export function reconcileInvoicePayload(
   const rawAdvanceAmount = p.advance_amount ?? p.advanceamount ?? p.advanceAmount ?? p.advance ?? 0;
   let advanceAmount = rawAdvanceAmount !== undefined && rawAdvanceAmount !== null
     ? Number(String(rawAdvanceAmount).replace(/[^\d.]/g, ''))
+    : 0;
+
+  const rawDiscount = p.discount_percentage ?? p.discount ?? p.discountPercentage ?? p.discount_pct;
+  const discountPercentage = rawDiscount !== undefined && rawDiscount !== null
+    ? Math.max(0, Math.min(100, Number(String(rawDiscount).replace(/[^\d.]/g, '')) || 0))
     : 0;
 
   // Clean and sanitize item name helper
@@ -415,10 +431,10 @@ export function reconcileInvoicePayload(
   // Calculate and reconcile line totals
   const calculatedTotal = items.reduce((sum, it) => sum + ((it.quantity || 1) * (it.price || 0)), 0);
   if (items.length > 1) {
-    totalAmount = calculatedTotal > 0 ? calculatedTotal : (totalAmount > 0 ? totalAmount : 5000);
+    totalAmount = calculatedTotal > 0 ? calculatedTotal : (totalAmount > 0 ? totalAmount : 0);
   } else {
     if (isNaN(totalAmount) || totalAmount <= 0) {
-      totalAmount = calculatedTotal > 0 ? calculatedTotal : 5000;
+      totalAmount = calculatedTotal > 0 ? calculatedTotal : 0;
     } else if (items[0].price === 0 && totalAmount > 0) {
       items[0].price = totalAmount / (items[0].quantity || 1);
     } else if (calculatedTotal > 0 && Math.abs(calculatedTotal - totalAmount) > 0.01) {
@@ -467,11 +483,9 @@ export function reconcileInvoicePayload(
     items,
     totalAmount,
     advanceAmount,
+    discountPercentage,
     customerName,
     invoiceName,
     notes,
   };
 }
-
-
-

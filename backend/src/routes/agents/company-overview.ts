@@ -255,5 +255,125 @@ export default async function companyOverviewRoutes(fastify: FastifyInstance, pg
       });
     }
   });
+
+  // Update AI agent instructions (business rules) text
+  fastify.post('/update-ai-instructions', async (request, reply) => {
+    try {
+      const authenticatedUser = await verifyJWT(request, pgClient);
+      const { agentId, ai_instructions } = request.body as {
+        agentId?: string;
+        ai_instructions?: string;
+      };
+
+      if (!agentId) {
+        return reply.code(400).send({
+          success: false,
+          error: "agentId is required",
+        });
+      }
+
+      // Check ownership/permissions
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix FROM agents WHERE id = $1 AND (user_id = $2 OR created_by = $2)",
+        [agentId, authenticatedUser.id]
+      );
+
+      if (agentRows.length === 0) {
+        return reply.code(403).send({
+          success: false,
+          error: "Agent not found or access denied",
+        });
+      }
+
+      const trimmedInstructions = typeof ai_instructions === 'string' ? ai_instructions.trim() : null;
+
+      try {
+        await pgClient.query(
+          "UPDATE agents SET ai_instructions = $1 WHERE id = $2",
+          [trimmedInstructions || null, agentId]
+        );
+      } catch (colErr: any) {
+        // Fallback: add column if migration 043 hasn't run yet
+        if (colErr.code === '42703') {
+          await pgClient.query("ALTER TABLE agents ADD COLUMN IF NOT EXISTS ai_instructions TEXT;");
+          await pgClient.query(
+            "UPDATE agents SET ai_instructions = $1 WHERE id = $2",
+            [trimmedInstructions || null, agentId]
+          );
+        } else {
+          throw colErr;
+        }
+      }
+
+      return reply.code(200).send({
+        success: true,
+        message: "AI agent instructions updated successfully",
+        ai_instructions: trimmedInstructions || "",
+      });
+    } catch (error) {
+      console.error("Update AI instructions error:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Internal server error",
+      });
+    }
+  });
+
+  // Delete AI agent instructions text
+  fastify.post('/delete-ai-instructions', async (request, reply) => {
+    try {
+      const authenticatedUser = await verifyJWT(request, pgClient);
+      const { agentId } = request.body as { agentId?: string };
+
+      if (!agentId) {
+        return reply.code(400).send({
+          success: false,
+          error: "agentId is required",
+        });
+      }
+
+      // Check ownership/permissions
+      const { rows: agentRows } = await pgClient.query(
+        "SELECT id, agent_prefix FROM agents WHERE id = $1 AND (user_id = $2 OR created_by = $2)",
+        [agentId, authenticatedUser.id]
+      );
+
+      if (agentRows.length === 0) {
+        return reply.code(403).send({
+          success: false,
+          error: "Agent not found or access denied",
+        });
+      }
+
+      try {
+        await pgClient.query(
+          "UPDATE agents SET ai_instructions = NULL WHERE id = $1",
+          [agentId]
+        );
+      } catch (colErr: any) {
+        // Fallback: add column if migration 043 hasn't run yet
+        if (colErr.code === '42703') {
+          await pgClient.query("ALTER TABLE agents ADD COLUMN IF NOT EXISTS ai_instructions TEXT;");
+          await pgClient.query(
+            "UPDATE agents SET ai_instructions = NULL WHERE id = $1",
+            [agentId]
+          );
+        } else {
+          throw colErr;
+        }
+      }
+
+      return reply.code(200).send({
+        success: true,
+        message: "AI agent instructions removed successfully",
+      });
+    } catch (error) {
+      console.error("Delete AI instructions error:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Internal server error",
+      });
+    }
+  });
 }
 

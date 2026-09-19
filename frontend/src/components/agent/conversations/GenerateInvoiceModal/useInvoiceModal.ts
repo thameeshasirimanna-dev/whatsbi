@@ -17,6 +17,7 @@ interface UseInvoiceModalProps {
   agentPrefix: string | null;
   agentDetails: AgentDetails;
   invoiceTemplatePath: string | null;
+  editingInvoice?: any;
   onSuccess: () => void;
   toast: (msg: string, type?: "success" | "error" | "info" | "warning") => void;
 }
@@ -25,7 +26,7 @@ export const useInvoiceModal = (props: UseInvoiceModalProps) => {
   const {
     isOpen, onClose, selectedOrderId, orders = [], customers = [],
     customerName = "", customerId = null, customerPhone = null,
-    agentPrefix, agentDetails, invoiceTemplatePath, onSuccess, toast,
+    agentPrefix, agentDetails, invoiceTemplatePath, editingInvoice, onSuccess, toast,
   } = props;
   // Customer state
   const [localCustomerId, setLocalCustomerId] = useState<number | null>(customerId || null);
@@ -205,53 +206,72 @@ export const useInvoiceModal = (props: UseInvoiceModalProps) => {
   // Initialize form when opened
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current) {
-      const initialCustId = customerId || null;
-      const initialCustName = customerName || "";
-      const initialCustPhone = customerPhone || null;
-
-      setLocalCustomerId(initialCustId);
-      setLocalCustomerName(initialCustName);
-      setLocalCustomerPhone(initialCustPhone);
-      setCustomerSearchQuery("");
-      setIsCustomerDropdownOpen(false);
-
-      if (customers && customers.length > 0) {
-        setAllCustomers(customers);
-        if (!initialCustPhone && initialCustId) {
-          const match = customers.find((c) => c.id === initialCustId);
-          if (match?.phone) setLocalCustomerPhone(match.phone);
+      if (editingInvoice) {
+        const editCustId = editingInvoice.customer_id || customerId || null;
+        const editCustName = editingInvoice.customer_name || customerName || "";
+        const editCustPhone = editingInvoice.customer_phone || customerPhone || null;
+        setLocalCustomerId(editCustId);
+        setLocalCustomerName(editCustName);
+        setLocalCustomerPhone(editCustPhone);
+        setInvoiceName(editingInvoice.name || "");
+        setDiscountPercentage(Number(editingInvoice.discount_percentage) || 0);
+        setAdvanceAmount(Number(editingInvoice.advance_amount) || 0);
+        setAdvanceModifiedManually(true);
+        setInvoiceNotes(editingInvoice.notes || "");
+        setError(null);
+        if (Array.isArray(editingInvoice.items) && editingInvoice.items.length > 0) {
+          setItems(editingInvoice.items.map((it: any) => ({ name: it.name || "", quantity: Number(it.quantity) || 1, price: Number(it.price) || 0 })));
+        } else if (editingInvoice.id) {
+          const token = getToken();
+          if (token) {
+            fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-invoices?type=items&id=${editingInvoice.id}`, { headers: { Authorization: `Bearer ${token}` } })
+              .then((r) => r.json()).then((d) => {
+                if (d.success && Array.isArray(d.items) && d.items.length > 0) {
+                  setItems(d.items.map((it: any) => ({ name: it.name || "", quantity: Number(it.quantity) || 1, price: Number(it.price) || 0 })));
+                }
+              }).catch(() => {});
+          }
         }
-      }
-
-      fetchAllCustomers().then((loaded) => {
-        if (loaded && !initialCustPhone && initialCustId) {
-          const match = loaded.find((c) => c.id === initialCustId);
-          if (match?.phone) setLocalCustomerPhone(match.phone);
-        }
-      });
-
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const defaultName = initialCustName
-        ? `Invoice - ${initialCustName.trim()} - ${dateStr}`
-        : `Invoice - ${dateStr}`;
-
-      setInvoiceName(defaultName);
-      setDiscountPercentage(0);
-      setInvoiceNotes("");
-      setError(null);
-      setAdvanceModifiedManually(false);
-
-      if (selectedOrderId) {
-        loadOrderItems(selectedOrderId);
       } else {
-        setItems([{ name: "", quantity: 1, price: 0 }]);
-        setAdvanceAmount(0);
+        const initialCustId = customerId || null;
+        const initialCustName = customerName || "";
+        const initialCustPhone = customerPhone || null;
+        setLocalCustomerId(initialCustId);
+        setLocalCustomerName(initialCustName);
+        setLocalCustomerPhone(initialCustPhone);
+        setCustomerSearchQuery("");
+        setIsCustomerDropdownOpen(false);
+        if (customers && customers.length > 0) {
+          setAllCustomers(customers);
+          if (!initialCustPhone && initialCustId) {
+            const match = customers.find((c) => c.id === initialCustId);
+            if (match?.phone) setLocalCustomerPhone(match.phone);
+          }
+        }
+        fetchAllCustomers().then((loaded) => {
+          if (loaded && !initialCustPhone && initialCustId) {
+            const match = loaded.find((c) => c.id === initialCustId);
+            if (match?.phone) setLocalCustomerPhone(match.phone);
+          }
+        });
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const defaultName = initialCustName ? `Invoice - ${initialCustName.trim()} - ${dateStr}` : `Invoice - ${dateStr}`;
+        setInvoiceName(defaultName);
+        setDiscountPercentage(0);
+        setInvoiceNotes("");
+        setError(null);
+        setAdvanceModifiedManually(false);
+        if (selectedOrderId) {
+          loadOrderItems(selectedOrderId);
+        } else {
+          setItems([{ name: "", quantity: 1, price: 0 }]);
+          setAdvanceAmount(0);
+        }
       }
-
       loadCatalog();
     }
     prevIsOpenRef.current = isOpen;
-  }, [isOpen, selectedOrderId, customerName, customerId, customerPhone, customers, fetchAllCustomers, loadOrderItems, loadCatalog]);
+  }, [isOpen, editingInvoice, selectedOrderId, customerName, customerId, customerPhone, customers, fetchAllCustomers, loadOrderItems, loadCatalog]);
 
   // Live search backend debounce
   useEffect(() => {
@@ -417,6 +437,7 @@ export const useInvoiceModal = (props: UseInvoiceModalProps) => {
 
       await generateAndUploadInvoice({
         token,
+        invoiceId: editingInvoice?.id || undefined,
         templatePath: currentPath,
         invoiceName,
         agentDetails,
@@ -435,7 +456,7 @@ export const useInvoiceModal = (props: UseInvoiceModalProps) => {
         invoiceNotes,
       });
 
-      toast("Invoice created successfully!", "success");
+      toast(editingInvoice ? "Invoice updated successfully!" : "Invoice created successfully!", "success");
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -448,49 +469,17 @@ export const useInvoiceModal = (props: UseInvoiceModalProps) => {
 
   return {
     // Customer
-    localCustomerId,
-    localCustomerName,
-    localCustomerPhone,
-    customerSearchQuery,
-    setCustomerSearchQuery,
-    isCustomerDropdownOpen,
-    setIsCustomerDropdownOpen,
-    isSearchingCustomers,
-    customerDropdownRef,
-    customerInputRef,
-    filteredCustomers,
-    handleSelectCustomer,
-    handleClearCustomer,
+    localCustomerId, localCustomerName, localCustomerPhone, customerSearchQuery, setCustomerSearchQuery,
+    isCustomerDropdownOpen, setIsCustomerDropdownOpen, isSearchingCustomers, customerDropdownRef,
+    customerInputRef, filteredCustomers, handleSelectCustomer, handleClearCustomer,
 
-    // Form
-    invoiceName,
-    setInvoiceName,
-    items,
-    handleItemChange,
-    addItem,
-    removeItem,
-    handleQuickAdd,
+    // Form, catalog & items
+    invoiceName, setInvoiceName, items, handleItemChange, addItem, removeItem, handleQuickAdd,
+    businessType, quickItems,
 
-    // Catalog quick items
-    businessType,
-    quickItems,
-
-    // Financials
-    discountPercentage,
-    setDiscountPercentage,
-    advanceAmount,
-    setAdvanceAmount,
-    setAdvanceModifiedManually,
-    subtotal,
-    discountAmount,
-    total,
-    balanceDue,
-
-    // Notes & Submission
-    invoiceNotes,
-    setInvoiceNotes,
-    generating,
-    error,
-    handleGenerateInvoice,
+    // Financials, notes & submission
+    discountPercentage, setDiscountPercentage, advanceAmount, setAdvanceAmount, setAdvanceModifiedManually,
+    subtotal, discountAmount, total, balanceDue,
+    invoiceNotes, setInvoiceNotes, generating, error, isEditing: Boolean(editingInvoice), handleGenerateInvoice,
   };
 };

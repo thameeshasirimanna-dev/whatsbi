@@ -379,6 +379,7 @@ const AdminDashboard: React.FC = () => {
               <Menu size={18} />
             </button>
             <div className="flex items-center gap-2">
+              <img src="/logo/icon-logo.svg" alt="Biz Agentz" className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0" />
               <span className="text-sm font-bold text-[#16281D] tracking-tight">
                 Biz Agentz
               </span>

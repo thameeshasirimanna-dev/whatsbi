@@ -91,7 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col shrink-0 select-none font-sans layout-sidebar transition-all duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 md:static md:inset-auto flex flex-col shrink-0 select-none font-sans layout-sidebar transition-all duration-200 ease-in-out border-r ${
           isVisible ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } ${collapsed ? 'w-[260px] md:w-[72px]' : 'w-[260px]'}`}
         style={{
@@ -103,11 +103,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3.5 border-b border-white/10 flex items-center h-16 justify-between gap-2 overflow-hidden">
           {/* Mobile Header */}
           <div className="flex md:hidden items-center gap-2.5 min-w-0 pl-1">
-            <div className="w-8 h-8 rounded-full bg-[#203628] border border-white/10 flex items-center justify-center text-[#9FE870] font-bold text-xs shrink-0">
-              B
-            </div>
+            <img
+              src="/logo/icon-logo-green.svg"
+              alt="Biz Agentz"
+              className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0"
+            />
             <div className="flex flex-col min-w-0">
-              <span className="text-[15px] font-bold text-white tracking-tight leading-none truncate">
+              <span className="text-[16px] font-bold text-white tracking-tight leading-none truncate">
                 Biz Agentz
               </span>
               <span className="text-[10px] font-semibold text-[#8FA89B] tracking-wider uppercase mt-1 truncate">
@@ -123,18 +125,24 @@ const Sidebar: React.FC<SidebarProps> = ({
                 type="button"
                 onClick={onCollapseToggle}
                 title="Expand sidebar"
-                className="w-10 h-10 rounded-full bg-[#203628] hover:bg-[#274232] active:scale-95 border border-white/10 flex items-center justify-center text-[#9FE870] hover:text-white cursor-pointer transition-all shadow-xs border-0 mx-auto"
+                className="w-11 h-11 rounded-xl hover:bg-white/10 active:scale-95 flex items-center justify-center cursor-pointer transition-all border-0 mx-auto group"
               >
-                <ChevronRight size={18} strokeWidth={2.6} />
+                <img
+                  src="/logo/icon-logo-green.svg"
+                  alt="Biz Agentz"
+                  className="w-8 h-8 object-contain group-hover:scale-105 transition-transform"
+                />
               </button>
             ) : (
               <>
                 <div className="flex items-center gap-2.5 min-w-0 pl-1 animate-fade-in">
-                  <div className="w-8 h-8 rounded-full bg-[#203628] border border-white/10 flex items-center justify-center text-[#9FE870] font-bold text-xs shrink-0">
-                    B
-                  </div>
+                  <img
+                    src="/logo/icon-logo-green.svg"
+                    alt="Biz Agentz"
+                    className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0"
+                  />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-[15px] font-bold text-white tracking-tight leading-none truncate">
+                    <span className="text-[16px] font-bold text-white tracking-tight leading-none truncate">
                       Biz Agentz
                     </span>
                     <span className="text-[10px] font-semibold text-[#8FA89B] tracking-wider uppercase mt-1 truncate">
@@ -148,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     type="button"
                     onClick={onCollapseToggle}
                     title="Collapse sidebar"
-                    className="w-8 h-8 rounded-full bg-[#203628] hover:bg-[#274232] active:scale-95 border border-white/10 text-[#8FA89B] hover:text-[#9FE870] flex items-center justify-center cursor-pointer transition-all shrink-0 border-0"
+                    className="w-8 h-8 rounded-full bg-[#203628] hover:bg-[#274232] active:scale-95 border border-white/10 text-[#8FA89B] hover:text-[#9FE870] flex items-center justify-center cursor-pointer transition-all shrink-0"
                   >
                     <ChevronLeft size={16} strokeWidth={2.4} />
                   </button>
@@ -160,7 +168,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* Mobile close button */}
           <button
             onClick={onClose}
-            className="md:hidden w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#8FA89B] hover:text-white flex items-center justify-center border-0 cursor-pointer transition-colors shrink-0 ml-auto"
+            className="md:hidden w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#8FA89B] hover:text-white flex items-center justify-center border border-white/10 cursor-pointer transition-colors shrink-0 ml-auto"
             aria-label="Close menu"
           >
             <X size={16} />
@@ -196,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* Active Page Icon: Fully Rounded with Vibrant Lime */}
+                  {/* Active Page Icon */}
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform duration-200 relative ${
                       isCurrent
@@ -205,8 +213,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   >
                     <Icon size={16} strokeWidth={isCurrent ? 2.6 : 2} />
-                    {collapsed && showUnreadBadge && (
-                      <span className="hidden md:block absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#9FE870] ring-2 ring-[#16281D]" />
+                    {showUnreadBadge && (
+                      <span
+                        className={`absolute -top-1 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-extrabold font-mono flex items-center justify-center leading-none z-10 shadow-xs pointer-events-none transition-all ${
+                          isCurrent
+                            ? 'bg-[#16281D] text-[#9FE870] ring-2 ring-[#203628]'
+                            : 'bg-[#9FE870] text-[#16281D] ring-2 ring-[#16281D]'
+                        }`}
+                        title={`${unreadCount} unread message${unreadCount === 1 ? '' : 's'}`}
+                      >
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
                     )}
                   </div>
 
@@ -224,22 +241,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </span>
                 </div>
 
-                {/* Trailing Active Glow Dot or Unread Badge */}
-                {showUnreadBadge ? (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#9FE870] text-[#16281D] shrink-0 ${
-                      collapsed ? 'flex md:hidden' : 'flex'
-                    }`}
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                ) : isCurrent ? (
+                {/* Trailing Active Glow Dot */}
+                {isCurrent && (
                   <span
                     className={`w-1.5 h-1.5 rounded-full bg-[#9FE870] shadow-[0_0_8px_#9FE870] shrink-0 mr-1 ${
                       collapsed ? 'block md:hidden' : 'block'
                     }`}
                   />
-                ) : null}
+                )}
               </Link>
             );
           })}

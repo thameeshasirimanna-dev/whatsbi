@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getToken } from "../../../lib/auth";
 import { Order, OrderItem } from '../../../types/index';
-import { X, MessageCircle, Package, User } from 'lucide-react';
+import { X, MessageCircle, Package, User, ExternalLink } from 'lucide-react';
 import { useDialog } from '../shared/DialogProvider';
 import { SkeletonBase } from '../shared/Skeleton';
 import Portal from '../shared/Portal';
@@ -44,6 +45,7 @@ const ViewOrderModal: React.FC<ViewOrderModalProps> = ({
   agentPrefix,
   agentId
 }) => {
+  const navigate = useNavigate();
   const { toast } = useDialog();
   const [fullOrderDetails, setFullOrderDetails] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -367,9 +369,23 @@ Thank you!`;
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 9999, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-            <X size={15} style={{ color: '#71717a' }} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                navigate(`/agent/orders/${fullOrderDetails.id}`);
+              }}
+              title="Open full Order Details page"
+              className="inline-flex items-center gap-1.5 bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] border border-[#EAEAEA] rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer transition-all shrink-0"
+            >
+              <span>Full Details</span>
+              <ExternalLink size={12} />
+            </button>
+            <button onClick={onClose} style={{ width: 32, height: 32, background: '#F4F7F4', border: '1px solid #EAEAEA', borderRadius: 9999, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+              <X size={15} style={{ color: '#71717a' }} />
+            </button>
+          </div>
         </div>
 
         {/* Body */}

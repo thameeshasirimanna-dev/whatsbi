@@ -1,5 +1,5 @@
 import React from "react";
-import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package } from "lucide-react";
+import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package, Pencil } from "lucide-react";
 import { InvoiceWithDetails } from "./types";
 import { getStatusStyle, getStatusDotColor, capitalizeFirst } from "./constants";
 
@@ -10,6 +10,7 @@ interface InvoiceMobileListProps {
   onView: (invoice: InvoiceWithDetails) => void;
   onDownload: (invoice: InvoiceWithDetails) => void;
   onSend: (invoice: InvoiceWithDetails) => void;
+  onEdit?: (invoice: InvoiceWithDetails) => void;
   onMarkPaid: (invoice: InvoiceWithDetails) => void;
   onMarkPaidFull: (invoice: InvoiceWithDetails) => void;
   onDelete: (invoice: InvoiceWithDetails) => void;
@@ -23,6 +24,7 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
   onView,
   onDownload,
   onSend,
+  onEdit,
   onMarkPaid,
   onMarkPaidFull,
   onDelete,
@@ -251,6 +253,32 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                   >
                     <Download size={12} /> Download
                   </button>
+
+                  {/* Edit */}
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(invoice)}
+                      disabled={updatingId === invoice.id}
+                      title="Edit Invoice"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "6px 12px",
+                        borderRadius: 9999,
+                        border: "1px solid #EAEAEA",
+                        cursor: updatingId === invoice.id ? "not-allowed" : "pointer",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: updatingId === invoice.id ? "#F4F4F5" : "#F4F7F4",
+                        color: "#16281D",
+                        whiteSpace: "nowrap",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      <Pencil size={12} /> Edit
+                    </button>
+                  )}
 
                   {/* Send / Resend */}
                   {invoice.status !== "paid" && (

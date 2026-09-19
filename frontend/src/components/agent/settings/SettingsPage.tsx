@@ -4,6 +4,7 @@ import { useDialog } from '../shared/DialogProvider';
 import AccountInfoCard from './AccountInfoCard';
 import PasswordCard from './PasswordCard';
 import CompanyOverviewCard from './CompanyOverviewCard';
+import AiInstructionsCard from './AiInstructionsCard';
 import TeamManagementCard from './TeamManagementCard';
 import type { AgentProfile, UserProfile, TeamMember } from './types';
 import {
@@ -15,6 +16,8 @@ import {
   removeInvoiceTemplateApi,
   saveCompanyOverviewApi,
   deleteCompanyOverviewApi,
+  saveAiInstructionsApi,
+  deleteAiInstructionsApi,
   addTeamMemberApi,
   deleteTeamMemberApi,
   downloadInvoiceMarginGuide,
@@ -37,6 +40,10 @@ const SettingsPage: React.FC = () => {
   // Company overview state
   const [companyOverview, setCompanyOverview] = useState<string>('');
   const [savingOverview, setSavingOverview] = useState<boolean>(false);
+
+  // AI instructions state
+  const [aiInstructions, setAiInstructions] = useState<string>('');
+  const [savingAiInstructions, setSavingAiInstructions] = useState<boolean>(false);
 
   // Team management state
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -70,6 +77,7 @@ const SettingsPage: React.FC = () => {
       setUser({ id: agentData.id, email: agentData.email });
       setAgent({ ...agentData, credits: parseFloat(agentData.credits) || 0 });
       setCompanyOverview(agentData.company_overview || '');
+      setAiInstructions(agentData.ai_instructions || '');
     } catch {
       setError('Failed to load user data');
     } finally {
@@ -289,6 +297,52 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleSaveAiInstructions = async (newText: string) => {
+    if (!agent) return;
+    try {
+      setSavingAiInstructions(true);
+      const data = await saveAiInstructionsApi(backendUrl, agent.id.toString(), newText);
+      if (data && data.success) {
+        setAiInstructions(newText);
+        setAgent({ ...agent, ai_instructions: newText });
+        toast('AI instructions updated successfully!', 'success');
+      } else {
+        toast(data?.error || 'Failed to update AI instructions', 'error');
+      }
+    } catch (err: any) {
+      toast(`Failed to update AI instructions: ${err.message}`, 'error');
+    } finally {
+      setSavingAiInstructions(false);
+    }
+  };
+
+  const handleClearAiInstructions = async () => {
+    if (!agent) return;
+    if (
+      !(await dlgConfirm(
+        'Are you sure you want to remove the AI agent instructions? The AI chatbot will revert to default system prompts.',
+        { danger: true, confirmLabel: 'Clear Instructions' }
+      ))
+    ) {
+      return;
+    }
+    try {
+      setSavingAiInstructions(true);
+      const data = await deleteAiInstructionsApi(backendUrl, agent.id.toString());
+      if (data && data.success) {
+        setAiInstructions('');
+        setAgent({ ...agent, ai_instructions: '' });
+        toast('AI instructions cleared successfully!', 'success');
+      } else {
+        toast(data?.error || 'Failed to clear AI instructions', 'error');
+      }
+    } catch (err: any) {
+      toast(`Failed to clear AI instructions: ${err.message}`, 'error');
+    } finally {
+      setSavingAiInstructions(false);
+    }
+  };
+
   const handleDownloadMarginGuide = () => {
     downloadInvoiceMarginGuide(backendUrl);
   };
@@ -352,34 +406,44 @@ const SettingsPage: React.FC = () => {
     <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
       {/* Grid: 2-column on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 sm:gap-4">
-        {/* Left Column: Account Profile */}
-        <AccountInfoCard
-          agent={agent}
-          user={user}
-          isOwner={isOwner}
-          onUpdateName={handleNameUpdate}
-          onUpdateDetail={handleAgentDetailUpdate}
-          onUploadTemplate={handleTemplateUpload}
-          onRemoveTemplate={handleTemplateRemove}
-          onDownloadMarginGuide={handleDownloadMarginGuide}
-          updateMessage={updateMessage}
-          error={error}
-        />
-
-        {/* Right Column: Security & Company Overview */}
+        {/* Left Column: Account Profile & Security */}
         <div className="flex flex-col gap-3.5 sm:gap-4 h-full">
+          <AccountInfoCard
+            agent={agent}
+            user={user}
+            isOwner={isOwner}
+            onUpdateName={handleNameUpdate}
+            onUpdateDetail={handleAgentDetailUpdate}
+            onUploadTemplate={handleTemplateUpload}
+            onRemoveTemplate={handleTemplateRemove}
+            onDownloadMarginGuide={handleDownloadMarginGuide}
+            updateMessage={updateMessage}
+            error={error}
+          />
+
           <PasswordCard
             onUpdatePassword={handlePasswordChange}
             changingPassword={changingPassword}
             passwordMessage={passwordMessage}
           />
+        </div>
 
+        {/* Right Column: Knowledge Grounding & Operational Directives */}
+        <div className="flex flex-col gap-3.5 sm:gap-4 h-full">
           <CompanyOverviewCard
             companyOverview={companyOverview}
             isOwner={isOwner}
             onSaveOverview={handleSaveCompanyOverview}
             onClearOverview={handleClearCompanyOverview}
             saving={savingOverview}
+          />
+
+          <AiInstructionsCard
+            aiInstructions={aiInstructions}
+            isOwner={isOwner}
+            onSaveInstructions={handleSaveAiInstructions}
+            onClearInstructions={handleClearAiInstructions}
+            saving={savingAiInstructions}
           />
         </div>
       </div>

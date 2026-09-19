@@ -245,7 +245,7 @@ export const MaintenanceControlCard: React.FC<MaintenanceControlCardProps> = ({ 
           </div>
           <div className="bg-white border border-[#E4E7E4] rounded-2xl p-6 text-center shadow-xs">
             <div className="inline-flex items-center gap-2 bg-[#F4F6F4] border border-[#E4E7E4] rounded-full px-3 py-1 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
+              <img src="/logo/icon-logo.svg" alt="Biz Agentz" className="w-5 h-5 object-contain shrink-0" />
               <span className="text-xs font-bold text-[#16281D]">Biz Agentz</span>
               <span className="text-[#A1A1AA] text-xs">|</span>
               <span className="text-xs font-medium text-[#71717A]">Platform Maintenance</span>

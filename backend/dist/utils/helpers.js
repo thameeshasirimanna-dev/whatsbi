@@ -147,9 +147,9 @@ export async function uploadMediaToStorage(pgClient, agentPrefix, mediaBuffer, o
     // Use R2 instead of Supabase Storage
     return uploadMediaToR2(agentPrefix, mediaBuffer, originalFilename, contentType, 'incoming');
 }
-export async function processIncomingMessage(pgClient, message, phoneNumberId, contactName, emitNewMessage, cacheService) {
+export async function processIncomingMessage(pgClient, message, phoneNumberId, contactName, emitNewMessage, cacheService, emitAgentStatusUpdate) {
     try {
-        const { rows: whatsappConfigRows } = await pgClient.query("SELECT user_id, api_key, webhook_url, phone_number_id FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true", [phoneNumberId]);
+        const { rows: whatsappConfigRows } = await pgClient.query("SELECT user_id, api_key, webhook_url, phone_number_id, deepseek_api_key FROM whatsapp_configuration WHERE phone_number_id = $1 AND is_active = true", [phoneNumberId]);
         if (whatsappConfigRows.length === 0) {
             return;
         }
@@ -159,10 +159,30 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
                     whatsappConfig.phone_number_id = phoneNumberId;
                 }
                 let isNewCustomer = false;
-                const { rows: agentRows } = await pgClient.query(`SELECT a.id, a.agent_prefix, a.business_type, a.company_overview_path, u.name as business_name
-           FROM agents a
-           LEFT JOIN users u ON a.user_id = u.id
-           WHERE a.user_id = $1`, [whatsappConfig.user_id]);
+                let agentRows = [];
+                try {
+                    const res = await pgClient.query(`SELECT a.id, a.user_id, a.agent_prefix, a.business_type, a.company_overview_path, a.company_overview, a.ai_instructions, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path, u.name as business_name
+             FROM agents a
+             LEFT JOIN users u ON a.user_id = u.id
+             WHERE a.user_id = $1`, [whatsappConfig.user_id]);
+                    agentRows = res.rows;
+                }
+                catch {
+                    try {
+                        const res = await pgClient.query(`SELECT a.id, a.user_id, a.agent_prefix, a.business_type, a.company_overview_path, a.company_overview, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path, u.name as business_name
+               FROM agents a
+               LEFT JOIN users u ON a.user_id = u.id
+               WHERE a.user_id = $1`, [whatsappConfig.user_id]);
+                        agentRows = res.rows;
+                    }
+                    catch {
+                        const res = await pgClient.query(`SELECT a.id, a.user_id, a.agent_prefix, a.business_type, a.company_overview_path, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path, u.name as business_name
+               FROM agents a
+               LEFT JOIN users u ON a.user_id = u.id
+               WHERE a.user_id = $1`, [whatsappConfig.user_id]);
+                        agentRows = res.rows;
+                    }
+                }
                 if (agentRows.length === 0) {
                     return;
                 }
@@ -342,6 +362,7 @@ export async function processIncomingMessage(pgClient, message, phoneNumberId, c
                             pgClient,
                             cacheService,
                             emitNewMessage,
+                            emitAgentStatusUpdate,
                         });
                     }
                     catch (aiError) {

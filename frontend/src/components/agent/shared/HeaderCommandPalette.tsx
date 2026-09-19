@@ -222,9 +222,12 @@ export const HeaderCommandPalette: React.FC<HeaderCommandPaletteProps> = ({ isOp
                 Select
               </span>
             </div>
-            <span className="text-[10px] text-[#8FA89B] font-semibold">
-              Biz Agentz Quick Search
-            </span>
+            <div className="flex items-center gap-1.5">
+              <img src="/logo/icon-logo.svg" alt="" className="w-4 h-4 object-contain shrink-0" />
+              <span className="text-[10px] text-[#71717A] font-semibold">
+                Biz Agentz Quick Search
+              </span>
+            </div>
           </div>
         </div>
       </div>

@@ -61,8 +61,36 @@ import loginRoutes from "./routes/auth/login.js";
 import logoutRoutes from "./routes/auth/logout.js";
 import getCurrentUserRoutes from "./routes/auth/get-current-user.js";
 import manageBroadcastsRoutes from "./routes/conversations/manage-broadcasts.js";
+import maintenanceRoutes, { getCachedMaintenanceSettings } from "./routes/admin/maintenance.js";
+import systemAnalyticsRoutes from "./routes/admin/system-analytics.js";
 import fastifySocketIO from "fastify-socket.io";
 const server = fastify();
+// Maintenance mode interceptor hook
+server.addHook("preHandler", async (request, reply) => {
+    const maintenance = getCachedMaintenanceSettings();
+    if (!maintenance.maintenance_mode)
+        return;
+    const url = request.url.split("?")[0];
+    // Whitelist: public status, health, auth, admin management, webhooks
+    const isWhitelisted = url === "/maintenance-status" ||
+        url === "/health" ||
+        url === "/login" ||
+        url === "/logout" ||
+        url === "/get-current-user" ||
+        url === "/get-admin-info" ||
+        url.startsWith("/admin/") ||
+        url === "/whatsapp-webhook";
+    if (isWhitelisted)
+        return;
+    // If request is for an agent-facing route and maintenance is on, return 503
+    return reply.code(503).send({
+        success: false,
+        maintenance: true,
+        title: maintenance.maintenance_title,
+        message: maintenance.maintenance_message,
+        estimated_end: maintenance.estimated_end,
+    });
+});
 // Register CORS plugin
 server.register(fastifyCors, {
     origin: true, // Allow all origins
@@ -104,6 +132,7 @@ const pgClient = new Pool({
 console.log("Attempting to connect to Redis at:", REDIS_URL);
 let isRedisLogged = false;
 const redisClient = new Redis(REDIS_URL, {
+    enableOfflineQueue: false,
     maxRetriesPerRequest: 1,
     retryStrategy(times) {
         if (times > 3) {
@@ -148,7 +177,7 @@ async function registerRoutes() {
     await markMessagesReadRoutes(server, pgClient, cacheService);
     await getBotContextRoutes(server, pgClient, cacheService);
     await chatbotReplyRoutes(server, pgClient, cacheService, emitNewMessage);
-    await triggerAiResponseRoutes(server, pgClient, cacheService, emitNewMessage);
+    await triggerAiResponseRoutes(server, pgClient, cacheService, emitNewMessage, emitAgentStatusUpdate);
     await manageServicesRoutes(server, pgClient);
     await manageInventoryRoutes(server, pgClient);
     await manageCustomersRoutes(server, pgClient, cacheService);
@@ -160,7 +189,7 @@ async function registerRoutes() {
     await downloadInvoiceRoutes(server, pgClient);
     await updateAgentRoutes(server, pgClient);
     await sendInvoiceTemplateRoutes(server, pgClient, cacheService, emitNewMessage);
-    await manageInvoicesRoutes(server, pgClient);
+    await manageInvoicesRoutes(server, pgClient, cacheService, emitNewMessage);
     await getUsersRoutes(server, pgClient);
     await addUserRoutes(server, pgClient);
     await updateUserRoutes(server, pgClient);
@@ -182,6 +211,8 @@ async function registerRoutes() {
     await logoutRoutes(server, pgClient);
     await getCurrentUserRoutes(server, pgClient);
     await manageBroadcastsRoutes(server, pgClient, cacheService, emitNewMessage);
+    await maintenanceRoutes(server, pgClient, cacheService);
+    await systemAnalyticsRoutes(server, pgClient);
 }
 // Socket.IO connection handling will be set up after routes are registered
 // Helper functions (ported from Edge Function)
@@ -252,6 +283,82 @@ const start = async () => {
         // Wait for DB connection check
         await pgClient.query("SELECT 1");
         console.log("✅ Connected to PostgreSQL");
+        // Ensure whatsapp_message_logs exists
+        try {
+            await pgClient.query(`
+        CREATE TABLE IF NOT EXISTS whatsapp_message_logs (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID,
+          agent_id BIGINT,
+          customer_phone VARCHAR(20) NOT NULL,
+          message_type VARCHAR(50) NOT NULL,
+          category VARCHAR(50) NOT NULL,
+          timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          status VARCHAR(50) NOT NULL,
+          whatsapp_message_id VARCHAR(100),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_user_timestamp ON whatsapp_message_logs (user_id, timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_customer ON whatsapp_message_logs (customer_phone);
+      `);
+        }
+        catch (tblErr) {
+            console.warn("Notice: could not initialize whatsapp_message_logs table:", tblErr.message);
+        }
+        // Ensure whatsapp_configuration has deepseek_api_key and nullable webhook_url
+        try {
+            await pgClient.query(`
+        ALTER TABLE whatsapp_configuration ADD COLUMN IF NOT EXISTS deepseek_api_key TEXT;
+        ALTER TABLE whatsapp_configuration ALTER COLUMN webhook_url DROP NOT NULL;
+      `);
+            console.log("✅ whatsapp_configuration schema verified (deepseek_api_key ready)");
+        }
+        catch (schemaErr) {
+            console.warn("Notice: could not update whatsapp_configuration columns:", schemaErr.message);
+        }
+        // Ensure agents table has ai_balance column for DeepSeek AI
+        try {
+            await pgClient.query(`
+        ALTER TABLE agents ADD COLUMN IF NOT EXISTS ai_balance NUMERIC(14, 6) DEFAULT 4.000000;
+        UPDATE agents SET ai_balance = 4.000000 WHERE ai_balance IS NULL;
+      `);
+            console.log("✅ agents schema verified (ai_balance ready)");
+        }
+        catch (agentSchemaErr) {
+            console.warn("Notice: could not update agents ai_balance column:", agentSchemaErr.message);
+        }
+        // Ensure users table has last_login_at column
+        try {
+            await pgClient.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
+      `);
+            console.log("✅ users schema verified (last_login_at ready)");
+        }
+        catch (userSchemaErr) {
+            console.warn("Notice: could not update users last_login_at column:", userSchemaErr.message);
+        }
+        // Ensure system_settings table exists
+        try {
+            await pgClient.query(`
+        CREATE TABLE IF NOT EXISTS system_settings (
+          id VARCHAR(50) PRIMARY KEY,
+          maintenance_mode BOOLEAN DEFAULT FALSE,
+          maintenance_title VARCHAR(255) DEFAULT 'System Maintenance Underway',
+          maintenance_message TEXT DEFAULT 'We are currently performing scheduled maintenance to improve system stability. Services will resume shortly.',
+          estimated_end VARCHAR(100),
+          webhook_retry_mode BOOLEAN DEFAULT TRUE,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_by UUID
+        );
+        INSERT INTO system_settings (id, maintenance_mode) 
+        VALUES ('system', FALSE) 
+        ON CONFLICT (id) DO NOTHING;
+      `);
+            console.log("✅ system_settings schema verified");
+        }
+        catch (tblErr) {
+            console.warn("Notice: could not initialize system_settings table:", tblErr.message);
+        }
         await registerRoutes();
         // Set up Socket.IO connection handling after routes are registered
         server.ready().then(() => {

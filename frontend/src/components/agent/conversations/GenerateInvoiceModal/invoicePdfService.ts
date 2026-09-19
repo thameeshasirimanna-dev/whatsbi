@@ -3,6 +3,7 @@ import { AgentDetails, LineItem } from "./types";
 
 export interface GenerateInvoiceParams {
   token: string;
+  invoiceId?: number;
   templatePath: string | null;
   invoiceName: string;
   agentDetails: AgentDetails;
@@ -127,6 +128,7 @@ export const generateAndUploadInvoice = async (params: GenerateInvoiceParams): P
     agentPrefix,
     items,
     discountPercentage,
+    subtotal,
     discountAmount,
     total,
     advanceAmount,
@@ -272,10 +274,21 @@ export const generateAndUploadInvoice = async (params: GenerateInvoiceParams): P
   let totalsY = yPosition + 5;
 
   if (discountPercentage > 0) {
+    const effSubtotal = subtotal > 0
+      ? subtotal
+      : items.reduce((sum, it) => sum + (Number(it.quantity) || 1) * (Number(it.price) || 0), 0);
+    const effDiscountAmount = discountAmount !== undefined && !isNaN(discountAmount) && discountAmount > 0
+      ? discountAmount
+      : (effSubtotal * (discountPercentage / 100));
+
     doc.setFont("Poppins", "normal");
     doc.setFontSize(9);
+    doc.text("Subtotal:", 120, totalsY);
+    doc.text(`Rs. ${effSubtotal.toFixed(2)}`, 190, totalsY, { align: "right" });
+    totalsY += 8;
+
     doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
-    doc.text(`-Rs. ${discountAmount.toFixed(2)}`, 190, totalsY, { align: "right" });
+    doc.text(`-Rs. ${effDiscountAmount.toFixed(2)}`, 190, totalsY, { align: "right" });
     totalsY += 8;
   }
 
@@ -340,6 +353,7 @@ export const generateAndUploadInvoice = async (params: GenerateInvoiceParams): P
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      invoiceId: params.invoiceId || null,
       customerId,
       agentPrefix,
       orderId: selectedOrderId || null,

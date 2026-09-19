@@ -50,7 +50,13 @@ All agent pages and subcomponents must strictly verify against these design toke
 ### 3.2 Orders (`/agent/orders` & `/agent/orders/:id`)
 - **TC-ORD-01 (Bulk Actions Bar)**: Select 2+ order checkboxes. Floating bulk actions bar appears with capsule pill styling, counter badge in `font-mono`, and quick status change dropdown.
 - **TC-ORD-02 (Order Analytics)**: Verify fulfillment breakdown and 6px dot status indicators.
-- **TC-ORD-03 (Order Details)**: Navigate to `/agent/orders/:id`. Verify line-item calculations, customer metadata, and print/receipt layout.
+- **TC-ORD-03 (Order Details Navigation & Page Connectivity)**:
+  - From `/agent/orders` desktop table or mobile cards, click the Order ID (`#0001`) or the View (`Eye`) action button.
+  - Verify that the app navigates seamlessly to `/agent/orders/:id` (`OrderDetailsPage`).
+  - Verify that `OrderDetailsPage` fetches and renders the correct order by `order_id` (not default first order), displaying customer details, status badge, items breakdown, summary stats, and notes/shipping address.
+  - Verify the "Back" button returns to `/agent/orders` preserving pagination state.
+  - Verify that clicking "Full Details" from `ViewOrderModal` navigates to `/agent/orders/:id`.
+  - Test status update dropdown and "Mark as Fully Paid" in `OrderDetailsPage`.
 
 ### 3.3 Customers (`/agent/customers`)
 - **TC-CUST-01 (Analytics Grid)**: Total contacts, active pipeline, and revenue metrics displayed in `font-mono`.
@@ -93,6 +99,12 @@ All agent pages and subcomponents must strictly verify against these design toke
 - **TC-CONV-04 (Empty Conversation List Ordering)**: Select an empty conversation from further down in the conversation list. Verify that selecting it does NOT change its timestamp to "Just now" and does NOT cause it to jump to the top of the conversation list.
 - **TC-CONV-05 (Template View Layering)**: Open the Template Selection modal in Conversations. Click the View (Eye) icon on any template. Verify that the Template Preview modal opens in front of the selection modal (at `z-[110]`) with functional backdrop dismissal.
 
+### 3.11 AI Chatbot Modular System Prompt & Token Optimization
+- **TC-AI-01 (Inquiry Stage Token Pruning)**: Send a general inquiry (e.g. "What packages do you have?", "kohomada prices?"). Verify that the AI system prompt dynamically runs in `INQUIRY` mode, omitting Stage B invoice layouts, bank account details, and `[ACTION:CREATE_INVOICE]` schemas, saving ~650+ input tokens per message (~22% prompt size reduction).
+- **TC-AI-02 (Confirmation Intent Stage Transition)**: Send an explicit confirmation message (e.g. "Startup package eka confirm karanna", "I want to buy", "send invoice", or reply "yes/ow/hari" after the bot asks to confirm). Verify that the system prompt dynamically activates `CONFIRMATION` mode, generating the formatted invoice, bank account details block, and appending `[ACTION:CREATE_INVOICE:...]`.
+- **TC-AI-03 (Payment Slip / Paid Stage Transition)**: Send a payment receipt slip image or state "paid / salli damma". Verify that `PAID` mode activates, warmly acknowledging receipt and explaining manual verification by the team without re-generating invoices or repeating bank details.
+- **TC-AI-04 (Appointment Booking Mode)**: Send an appointment inquiry (e.g. "Can I book a consultation call tomorrow?"). Verify that `APPOINTMENT` mode activates, including `[ACTION:CREATE_APPOINTMENT:...]` schema while omitting invoice generation schemas.
+
 ---
 
 ## 4. Page Layout, Spacing & Container Uniformity Verification
@@ -116,3 +128,203 @@ and card/metric grids using `gap-3.5 sm:gap-4`.
 | `/agent/settings` | `w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4` | Normalized padding; removed redundant top title; direct 2-column grid |
 | `/agent/analytics` | `w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4` | Normalized padding; removed top title; time ranges on left + Export on right |
 
+---
+
+## 5. AI Agent Multi-Tenant Isolation & Universal Business Context Test Criteria
+
+- **TC-AI-01 (Multi-Tenant Prefix Isolation)**:
+  - Verify that the AI agent queries only dynamic tables prefixed with the agent's validated prefix (`{agent_prefix}_*`).
+  - Verify `validateAgentPrefix` strictly rejects any prefix containing non-alphanumeric/underscore characters to prevent SQL injection.
+- **TC-AI-02 (Customer Database Context Scoping)**:
+  - Inquire as a customer with existing appointments, invoices, or orders: verify the AI accurately answers status, date, and items based only on records in `{agent_prefix}_appointments`, `{agent_prefix}_orders_invoices`, and `{agent_prefix}_orders` for that `customer_id`.
+  - Inquire about an order or invoice belonging to a different customer or agent: verify the AI agent reports no record found.
+- **TC-AI-03 (Universal Business Phrasing - Zero Niche Trope Leakage)**:
+  - Verify that stage B and stage C responses do not mention "project manager" or "gathering requirements", and instead use universal business phrasing.
+  - Verify that prices are sourced dynamically from the agent's catalog without fallback to hardcoded arbitrary values (e.g. 5000).
+- **TC-AI-04 (Product-Based Business Workflows & Stock Checking)**:
+  - For businesses with `business_type = 'product'`:
+    - Verify catalog items include Stock quantities and status (`In Stock`, `Low Stock`, `Out of Stock`).
+    - Verify AI prompts the customer for delivery address and city when preparing orders.
+    - When customer asks for product pictures/photos, verify product images from `{agent_prefix}_inventory_items` are dispatched with caption `*[Item Name]*`.
+    - In Stage B and C, verify wording focuses on packing and courier dispatch rather than service requirements.
+- **TC-AI-05 (AI Agent Custom Instructions & Business Rules Configuration)**:
+  - Navigate to Settings -> AI Agent Instructions card.
+  - Test viewing, editing, saving, and removing instructions. Verify changes persist to `agents.ai_instructions`.
+  - In WhatsApp chat, verify the AI strictly respects custom business rules (e.g. delivery thresholds, no-COD policy, bulk discounts) over default prompts.
+- **TC-AI-06 (AI-Driven WhatsApp Message Formatting & Safe Hygiene)**:
+  - **Unbroken Sentence Integrity (Zero Regex Chops)**:
+    - Verify sentences referencing past invoices (e.g., `මේකට අපි කලින් Invoice #INV-0283 එකත් එවලා තියෙනවා.`) stay 100% continuous and never split around the word `Invoice` or `#INV-`.
+    - Verify ranges (e.g., `2 - 3 days`, `9:00 AM - 5:00 PM`, `Rs. 1,000 - 2,000`) never split onto multiple lines or convert into bullet points.
+    - Verify ordinary sentences containing words like `item`, `service`, `product`, `invoice`, `bank` are never broken mid-phrase.
+  - **AI-Prompt Generated Clean List Presentation**:
+    - Verify catalog items, packages, and products are naturally formatted on their own lines with a clean bullet dot (`• `).
+    - Verify an empty line (`\n\n`) is placed between the introductory sentence and the first item in the list.
+    - Verify an empty line (`\n\n`) is placed between the last item in the list and the closing CTA/question.
+    - Verify currency is cleanly formatted with comma thousands separators (e.g., `Rs. 15,000`).
+  - **Safe Non-Destructive Hygiene (`sanitizeWhatsAppFormatting`)**:
+    - Converts markdown `**bold**` or `***bold***` to WhatsApp `*bold*`.
+    - Eliminates invalid inner spaces that break WhatsApp bolding (`* bold *` -> `*bold*`).
+    - Strips emoji characters to maintain clean professional layout.
+    - Collapses excessive newlines (maximum 2 consecutive newlines = 1 blank line).
+  - **AI Formatter Utility (`formatMessageWithAI`)**:
+    - Test calling `formatMessageWithAI(draftText, { apiKey })` with unformatted text.
+    - Verify that output maintains 100% identical wording and numbers while laying out lines with bullets and bold headers.
+    - Verify graceful fallback to `sanitizeWhatsAppFormatting` if API key is not present or network times out.
+- **TC-AI-07 (Customer Language Preference Switching & Database Persistence)**:
+  - **Non-Sinhala Detection & DB Update**:
+    - Send an inbound message stating lack of Sinhala knowledge or requesting English (e.g., `"I don't know Sinhala, could you please speak in English?"` or `"Sinhala ba, English please"`).
+    - Verify `detectAndApplyCustomerLanguageChange` detects `'english'`.
+    - Query `{agent_prefix}_customers` and verify `language` column is updated to `'english'`.
+  - **Immediate English Response**:
+    - Verify the chatbot immediately replies 100% in English without using Sinhala greetings, Sinhala boilerplate, or Singlish.
+    - Verify confirmation question is delivered in English (`"Would you like to confirm this order?..."`).
+    - Verify delivery and invoice instructions are delivered in English.
+  - **Subsequent Messages Retention**:
+    - Send a follow-up message asking about items or products in plain text.
+    - Verify the agent keeps replying in English without reverting to Sinhala, because the database profile is persisted as `'english'`.
+  - **Action Tag Persistence (`[ACTION:UPDATE_LANGUAGE]`)**:
+    - When the AI outputs `[ACTION:UPDATE_LANGUAGE:{"language":"english"}]`, verify `parseAndExecuteAgentActions` updates the database table and customer in-memory object.
+- **TC-AI-08 (Dual-Stage AI Formatting Pipeline - Zero Regex Text Chopping)**:
+  - **Stage 1 (Generation Layout Directives)**:
+    - Primary system prompt in `ai-prompt-builder.ts` enforces unbroken continuous sentences, blank lines around lists, and language-tailored closing questions.
+  - **Stage 2 (Post-Action AI Secondary Formatting Pass)**:
+    - After action tags (`[ACTION:CREATE_INVOICE]`, etc.) are resolved and real numbers populated, the clean reply is passed through `formatMessageWithAI(cleanReply, { apiKey })`.
+    - Verify DeepSeek AI formats WhatsApp markdown (`*bold*`, bullets `•`, paragraph spacing) with temperature `0.1` and zero wording modifications.
+    - Verify sentences referencing invoices (e.g. `මේකට අපි කලින් Invoice #INV-0283 එකත් එවලා තියෙනවා.`) remain on a single unbroken line without being split by regex.
+    - Verify graceful fallback to `sanitizeWhatsAppFormatting` when no API key is available or network request exceeds 15 seconds.
+- **TC-AI-09 (Natural Sales Conversation, Proactive Lead Success & Service Pre-Payment Scoping)**:
+  - **Natural Conversational Flow**:
+    - Verify the chatbot conducts a natural, organic WhatsApp conversation without rapid-fire multiple questions or rigid checklist interrogation.
+  - **Proactive Lead Success & Value Highlighting**:
+    - When discussing offerings, verify the agent proactively describes the business (from Company Overview) and highlights special features, premium qualities, and standout benefits to convert leads into confirmed orders.
+  - **Service Pre-Payment Boundaries**:
+    - Inquire about a service (e.g. video editing, reels, consulting).
+    - Verify the agent asks ONLY for package selection and quantity for the order/invoice.
+    - Verify the agent NEVER interrogates the customer for creative briefs, video scripts, raw footage, or project work specifications before payment.
+  - **Post-Payment Requirements Gathering Flow (Stage C)**:
+    - Send a payment slip or message confirming payment.
+    - Verify the AI informs the customer that the payment will be verified manually and that the team will reach out directly to gather all work requirements/project details and begin the work.
+- **TC-AI-10 (Invoice & Bank Block Layout Spacing & Label Bolding)**:
+  - **Stage B Generation Layout**:
+    - When confirming an order, verify the AI generates the invoice message with empty blank lines (`\n\n`) separating:
+      1. Intro greeting sentence and `*Invoice:*`.
+      2. `*Total Amount:*` and `*Bank Details:*`.
+      3. `*Branch:*` and the closing payment instructions paragraph.
+  - **Label Bolding & Normalized Numbering**:
+    - Verify all labels at line starts are bolded with single asterisks (`*Invoice:*`, `*Customer:*`, `*Item:*`, `*Unit Price:*`, `*Total Amount:*`, `*Bank Details:*`, `*Bank:*`, `*Account Name:*`, `*Account Number:*`, `*Branch:*`).
+    - Verify invoice number includes the `#` prefix (`#INV-0287`).
+  - **Zero Mid-Sentence Disruption**:
+    - Verify running sentences containing words like `Invoice` or `#INV-` (e.g., `මේකට අපි කලින් Invoice #INV-0283 එකත් එවලා තියෙනවා.`) remain on a single unbroken line.
+  - **AI Formatter API Key Propagation**:
+    - Verify `generateCustomerReply` returns `apiKey` and passes it to `formatMessageWithAI` so secondary LLM formatting always executes with a valid key.
+- **TC-AI-11 (Manual Invoice Paid / Advance Status Grounding & Anti-Duplication Rule)**:
+  - **Context Status Badging**:
+    - Verify `fetchCustomerInvoicesContext` stamps explicit flags:
+      - `[PAID IN FULL - DO NOT RE-INVOICE OR RE-CHARGE FOR THESE ITEMS]` when `payment_status === 'paid'` or `advance_amount >= total_amount`.
+      - `[ADVANCE PAID - Advance: Rs. X Paid, Remaining Due: Rs. Y]` when `payment_status === 'advance_paid'`.
+      - `[UNPAID - Awaiting Payment]` when unpaid.
+    - Verify `fetchCustomerOrdersContext` stamps `[PAID IN FULL - ALREADY CONFIRMED]` and `[ADVANCE PAID - Rs. X]`.
+  - **System Prompt Rule 0.4 (Existing Invoices & Orders Grounding)**:
+    - Customer requests additional items after previous invoices are paid/advance paid (e.g. "Mata twa video dekak ona").
+    - Verify the AI treats new requests as completely separate, new orders/invoices.
+    - Verify the AI does NOT recalculate past paid items, does NOT merge past items into multi-item package discounts, and does NOT re-charge or deduct from past settled amounts.
+- **TC-AI-12 (Mandatory Bank Transfer Details & Fallback Safety Net)**:
+  - **Dynamic Bank Details Extraction**:
+    - Verify `extractBankDetails(companyOverview)` extracts Bank, Account Name, Account Number, and Branch accurately from business profile.
+  - **Stage B Prompt Ingestion**:
+    - Verify Stage B prompt includes the parsed bank details and explicitly instructs the model to include `*Bank Details:*` with Bank Name, Account Name, Account Number, and Branch in the invoice reply.
+  - **Action Execution Fallback Safety Net**:
+    - If the AI model generates an invoice creation action but fails to output the bank block in its text response, verify `executeCreateInvoice` in `ai-agent-actions.service.ts` automatically appends the bank details block and slip upload instructions before outbound delivery.
+- **TC-AI-13 (Sinhala Orthography & Zero-Width Joiner Preservation)**:
+  - **Zero-Width Joiner Preservation**:
+    - Verify `formatMessageSpacingAndLineBreaks` does NOT strip `\u200D` (Zero-Width Joiner) when stripping zero-width spaces/marks (`[\u200B\u200E\u200F\uFEFF]`), ensuring Sinhala Yansaya (`ශ්‍ය`) and Rakaransaya (`ක්‍ර`) ligatures remain intact.
+  - **Automatic Orthography Normalization**:
+    - Verify `fixSinhalaOrthography` automatically repairs `අවශ්ය` (without ZWJ) to `අවශ්‍ය` (with Yansaya).
+    - Verify missing ZWJs in Sha+Yansaya (`ශ් + ය` -> `ශ්‍ය`) and general Yansaya (`ක් + ය` -> `ක්‍ය`, `ව් + ය` -> `ව්‍ය`) and Rakaransaya (`ක් + ර` -> `ක්‍ර`, `ප් + ර` -> `ප්‍ර`) are converted to valid Unicode ligatures.
+  - **Prompt & AI Formatter Guidelines**:
+    - Verify `ai-prompt-builder.ts` instructs the LLM to write "අවශ්‍ය" and never "අවශ්ය".
+    - Verify `formatMessageWithAI` includes spelling rule 8 requiring correct Sinhala orthography with Yansaya.
+- **TC-AI-14 (DeepSeek-V3 Production Model, Token Ceiling Protection & Universal Fallback Safety Net)**:
+  - **Model Standardization (`deepseek-chat`)**:
+    - Verify that `callDeepSeekChat` and `formatMessageWithAI` use DeepSeek's official non-reasoning production chat model `deepseek-chat` (DeepSeek-V3) and reject or map any `deepseek-flash` alias.
+    - Verify conversational latency drops from 25+ seconds to ~1.4 seconds with zero hidden `reasoning_tokens` overhead.
+  - **Token Headroom (`max_tokens: 3500`)**:
+    - Verify `max_tokens` is configured with ample headroom (3500 tokens) so replies are never truncated or returned empty.
+  - **Auth Key Automatic System Fallback**:
+    - If an agent's individual `customApiKey` fails with an authentication error (HTTP 401/403), verify `callDeepSeekChat` automatically falls back to `process.env.DEEPSEEK_API_KEY` to complete the customer's request seamlessly.
+  - **Universal Stage-Aware Fallback Safety Net**:
+    - If DeepSeek API returns empty content or an error (rate limit, connection drop), verify `generateCustomerReply` provides a polite, language-tailored fallback response (Sinhala or English) acknowledging the customer's message so the conversation is NEVER left in silence.
+- **TC-AI-15 (Reliable Invoice Creation, Database Grounding, Affirmative Intent Recognition & PDF Dispatch)**:
+  - **Affirmative & Invoice Request Stage Detection**:
+    - Verify `detectConversationStage` classifies customer affirmatives (`Ha`, `Haa`, `ha danna`, `ow danna`, `okk`, `okey`, `හා`, `හ්ම්`, `හ්ම්ම්`) and invoice queries (`Ko invoice eka?`, `ko bill eka`, `where is the invoice?`, `send the invoice`, `කෝ ඉන්වොයිස්`, `කෝ බිල`) as `'confirmation'` stage.
+  - **Permission in Stage A (Inquiry)**:
+    - Verify that even if a conversation began in inquiry mode, when the customer explicitly agrees to proceed or asks for the bill, the model is permitted and instructed to generate the invoice and append `[ACTION:CREATE_INVOICE:...]`.
+  - **Robust Fallback Invoice Creation & Direct Line Item Parsing**:
+    - When the AI generates an invoice layout in text (e.g. `*Invoice:* #INV-0294` or `{{INVOICE_NUMBER}}`) without an action tag, verify `detectAndGenerateFallbackInvoice` automatically triggers and parses line items (`*Item:* [Name] (Qty: [N])`, `*Unit Price:* Rs. [Price]`, `*Total Amount:* Rs. [Total]`, or bullet points `• [Name] (Qty: [N]) - Rs. [Price]`) directly from `replyText`.
+    - Enriches items and prices by querying tenant tables `${agent.agent_prefix}_services` / `${agent.agent_prefix}_service_packages` or `${agent.agent_prefix}_inventory_items`.
+    - Inserts the real invoice into `${agent.agent_prefix}_orders_invoices` and items into `${agent.agent_prefix}_orders_items`.
+  - **Hallucinated Invoice Number Reconciliation**:
+    - Any hallucinated invoice number in text (e.g. `#INV-0294` or `INV0294`) is automatically reconciled with the actual database-generated invoice number (e.g. `#INV-0288`).
+  - **PDF Attachment Dispatch & "Ko invoice eka?" Re-dispatch**:
+    - Verify `dispatchCustomerInvoicePdf` dispatches the invoice PDF as an official WhatsApp document attachment whenever an invoice is created.
+    - When a customer asks "Ko invoice eka?" or the AI promises "PDF එක පහළින් එවා ඇත" / "දැන් එවන්නම්", if no new invoice was created, `ai-chatbot.service.ts` queries the customer's most recent valid invoice from `${agent.agent_prefix}_orders_invoices` and dispatches the PDF immediately.
+  - **Manual Verification Commands**:
+    ```bash
+    # Run test script for affirmative stage detection, fallback invoice generation, and number replacement
+    npx tsx "C:\Users\thame\.gemini\antigravity-ide\brain\5e25760f-0663-4eec-a748-8c3c3c2c7fa2\scratch\test-invoice-fix.ts"
+
+    # Typecheck backend
+    cd backend && npx tsc --noEmit
+    ```
+
+- **TC-AI-16 (Autonomous Appointment Creation, Multi-Turn Context Persistence, Schema Verification & Real-Time Socket Updates)**:
+  - **Multi-Turn Intent & Stage Detection**:
+    - Verify `detectConversationStage` accurately classifies direct appointment requests in English (*"Can I book a consultation?"*), Singlish (*"Mata meeting ekak daganna puluwanda?"*), and Sinhala (*"හෙට උදේ 10ට මීටින් එකක් දාන්න පුලුවන්ද?"*).
+    - Verify multi-turn conversational persistence: when the assistant asks for the customer's preferred date and time and the customer responds with temporal tokens (*"Tomorrow at 10 AM"*, *"Tuesday 3 PM"*, *"හෙට උදේ 10ට"*, *"heta ude 10ta"*), `detectConversationStage` maintains the `'appointment'` stage rather than falling back to `'inquiry'`.
+  - **Stage D Workflow Instructions**:
+    - Verify `buildStageWorkflowInstructions` serves dedicated `STAGE D: APPOINTMENT` instructions.
+    - If date/time is not yet specified, verify the agent warmly requests preferred date and time without emitting action tags.
+    - If date/time is specified, verify the agent confirms with `*Service:*`, `*Date:*`, and `*Time:*` and appends `[ACTION:CREATE_APPOINTMENT:{"title":"...","appointment_date":"...","duration_minutes":60,"notes":"..."}]`.
+    - Verify the model NEVER outputs invoice tags, bank details, or order confirmation prompts during appointment booking.
+  - **Table Schema Verification & Robust Colombo Timezone Date Parsing**:
+    - Verify `ensureAppointmentTableSchema` creates or validates `{agent_prefix}_appointments` with columns `(customer_id, title, appointment_date, duration_minutes, status, notes, created_at, updated_at)`.
+    - Verify `parseAppointmentDateTime` parses ISO strings, relative days (*"today"*, *"tomorrow"*, *"day after tomorrow"*, *"හෙට"*, *"අද"*, *"අනිද්දා"*, *"heta"*, *"ada"*), weekday names (*"monday"*–*"sunday"*, *"සඳුදා"*–*"ඉරිදා"*), and 12h/24h times anchored accurately to **Asia/Colombo (UTC+5:30)**.
+  - **Fallback Appointment Generation**:
+    - Verify `detectAndGenerateFallbackAppointment` automatically extracts details and inserts a record into `{agent_prefix}_appointments` if the LLM confirms the appointment in text but omits the action tag.
+  - **Real-Time UI Socket Updates**:
+    - Verify `emitAgentStatusUpdate` emits `appointment_created` to refresh the dashboard and appointment list in real time.
+  - **Manual Verification Commands**:
+    ```bash
+    # Typecheck backend
+    cd backend && npx tsc --noEmit
+    ```
+
+- **TC-AI-17 (Autonomous Invoice & Appointment Update, In-Place Record Mutation & PDF Regeneration)**:
+  - **Confirmation Before Creation & Update**:
+    - Verify that in Stage A (Inquiry), the AI confirms with the customer before generating an invoice or booking an appointment.
+    - Verify that when the customer asks to change/update their order or reschedule an appointment, the AI warmly confirms the new details.
+  - **In-Place Appointment Update (Zero Duplicates)**:
+    - When an appointment reschedule intent is detected (e.g. *"Can we change the appointment to Friday 3 PM?"*, *"welaawa wenas karanna puluwanda?"*), verify that `executeUpdateAppointment` / `executeCreateAppointment` updates the single existing record in `{agent_prefix}_appointments` with the new timestamp and status, rather than inserting duplicate appointment rows.
+  - **In-Place Invoice Update & PDF Regeneration**:
+    - When an order quantity or item modification is requested (e.g. *"Actually make that 2 boxes instead"*, *"quantity eka 2k karanna"*), verify that `executeCreateInvoice` / `UPDATE_INVOICE` identifies the customer's active unpaid invoice (`status IN ('generated', 'sent')`) and invokes `updateInvoiceWithPdfRegeneration`.
+    - Verify that line items in `{agent_prefix}_orders_items` are updated, the new total is stored in `{agent_prefix}_orders_invoices`, a fresh PDF is generated and uploaded to Cloudflare R2, and the previous obsolete PDF is removed from R2.
+
+- **TC-AI-18 (Web UI Invoice Edit & PDF Regeneration with R2 Replacement)**:
+  - **Edit Invoice Modal Launch**:
+    - In `/invoices`, verify that clicking the Edit (`Pencil`) icon on an invoice opens `GenerateInvoiceModal` with the title "Edit Invoice", the target customer locked/preselected, and items/pricing/notes populated.
+  - **Line Item Mutation & Total Recalculation**:
+    - Verify adding, deleting, or altering line item quantities and unit prices dynamically updates subtotal, discount, advance, and total amount.
+  - **Save & PDF Regeneration**:
+    - On clicking "Update & Save Invoice", verify that a `PUT /manage-invoices` or `POST /upload-invoice` request is submitted with `id: invoiceId`.
+    - Verify the backend updates `{agent_prefix}_orders_invoices` and line items, generates a new PDF, replaces `pdf_url`, and purges the old PDF key from Cloudflare R2.
+- **TC-AI-19 (Accurate Invoice PDF Discount, Subtotal & Net Total Math Verification)**:
+  - **Subtotal & Discount Derivation**:
+    - Verify that when `discountPercentage > 0`, the generated PDF calculates the discount from the gross item subtotal (`subtotal * discountPercentage / 100`) rather than multiplying against the post-discount net amount (`totalAmount`).
+    - Verify that both backend PDF generation (`backend/src/services/invoice-pdf.ts`) and frontend PDF generation (`frontend/src/components/agent/conversations/GenerateInvoiceModal/invoicePdfService.ts`) render an explicit `Subtotal:` line before the `Discount (-Rs. ...)` line.
+  - **Single-Record Integrity & AI Action Flow**:
+- **TC-AI-20 (Order Status Transition & Synchronization Verification)**:
+  - **Status Value Whitelist & Case Normalization**:
+    - Verify that `PUT /manage-orders` accepts all valid order workflow statuses: `pending`, `confirmed`, `processing`, `shipped`, `delivered`, `completed`, `cancelled`.
+    - Verify that statuses sent with whitespace or mixed casing (e.g. `"Completed"`, `" Completed "`) are trimmed and lowercased before validation and database persistence.
+  - **Orders Table & Details View Parity**:
+    - In the Orders Table (`OrdersPage.tsx`), Order Details (`OrderDetailsPage.tsx`), and Bulk Actions Bar (`OrderBulkActionsBar.tsx`), verify that selecting `"Completed"` or any other valid status updates the order status successfully without returning `"Invalid order status"`.

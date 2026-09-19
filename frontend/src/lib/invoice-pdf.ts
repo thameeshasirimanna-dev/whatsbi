@@ -291,13 +291,19 @@ export const generateInvoicePDF = async (
   // Totals section
   let totalsY = yPosition + 5;
 
-  doc.setFont("Poppins", "normal");
-  doc.setFontSize(9);
-  doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
-  doc.text(`-Rs. ${discountAmount.toFixed(2)}`, 190, totalsY, {
-    align: "right",
-  });
-  totalsY += 8;
+  if (discountPercentage > 0) {
+    doc.setFont("Poppins", "normal");
+    doc.setFontSize(9);
+    doc.text("Subtotal:", 120, totalsY);
+    doc.text(`Rs. ${subtotal.toFixed(2)}`, 190, totalsY, { align: "right" });
+    totalsY += 8;
+
+    doc.text(`Discount (${discountPercentage.toFixed(2)}%):`, 120, totalsY);
+    doc.text(`-Rs. ${discountAmount.toFixed(2)}`, 190, totalsY, {
+      align: "right",
+    });
+    totalsY += 8;
+  }
 
   doc.setFont("Poppins", "bold");
   doc.setFontSize(10);

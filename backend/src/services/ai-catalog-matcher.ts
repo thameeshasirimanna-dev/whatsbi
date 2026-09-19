@@ -89,7 +89,7 @@ export async function matchCatalogItems({
             items = matchedDistinct.map((row) => ({
               name: (row.package_name || row.service_name || 'Service Package').trim(),
               quantity: 1,
-              price: Number(row.price) || 5000,
+              price: Number(row.price) || 0,
             }));
           }
         }
@@ -159,7 +159,7 @@ export async function matchCatalogItems({
 
   // Recompute total amount as sum of all line item totals
   const reconciledSum = items.reduce((sum, it) => sum + ((it.quantity || 1) * (it.price || 0)), 0);
-  const totalAmount = reconciledSum > 0 ? reconciledSum : 5000;
+  const totalAmount = reconciledSum > 0 ? reconciledSum : (items[0]?.price ? items[0].price * (items[0].quantity || 1) : 0);
 
   // Multi-item invoice name
   let invoiceName = '';
@@ -194,17 +194,61 @@ export async function detectAndGenerateFallbackInvoice({
 }) {
   if (isPaymentSlipOrPaidMessage(incomingText, undefined, true)) return null;
 
-  const confirmationKeywords = /\b(confirm|confirmed|proceed|order|book|yes|sure|send (?:the )?(?:bill|invoice)|danna|gannawa|ow|hari|හරි|ඔව්|තහවුරු|ඕන|එවන්න|දාන්න|ගන්නම්|කරන්න)\b/i;
+  const replyOffersInvoice = /{{INVOICE_NUMBER}}|\*Invoice:\*|\*බිල්පත:\*|#INV-|\bINV-?\d{3,}\b|Invoice එක මෙන්න|ඔබගේ Invoice PDF|official\s*invoice/i.test(replyText);
+  const confirmationKeywords = /\b(confirm|confirmed|proceed|order|book|yes|sure|send (?:the )?(?:bill|invoice)|danna|gannawa|ow|hari|ha|haa|okk|okey|හරි|ඔව්|හා|හ්ම්|තහවුරු|ඕන|එවන්න|දාන්න|ගන්නම්|කරන්න|කෝ|ko)\b/i;
   const isOrderConfirmed = Boolean(incomingText && confirmationKeywords.test(incomingText));
-  const replyOffersInvoice = /{{INVOICE_NUMBER}}|\*Invoice:\*|\*බිල්පත:\*|official\s*invoice/i.test(replyText);
   const replyHasBankDetails = isBankDetailsMessage(replyText);
 
-  if (!isOrderConfirmed || (!replyOffersInvoice && !replyHasBankDetails)) {
+  // If the reply itself generated an invoice layout, OR customer confirmed and reply provided bank details:
+  if (!replyOffersInvoice && (!isOrderConfirmed || !replyHasBankDetails)) {
     return null;
   }
 
   let fallbackItems: Array<{ name: string; quantity: number; price: number }> = [];
 
+  // 1. First attempt: directly parse structured invoice line items from replyText
+  const itemLineMatch = replyText.match(/\*Item:\*\s*([^\r\n]+)/i);
+  if (itemLineMatch) {
+    let fullItemLine = itemLineMatch[1].trim();
+    let qty = 1;
+    const qtyMatch = fullItemLine.match(/\((?:Qty|Quantity):\s*(\d+)\)/i);
+    if (qtyMatch) {
+      qty = parseInt(qtyMatch[1], 10) || 1;
+      fullItemLine = fullItemLine.replace(/\((?:Qty|Quantity):\s*(\d+)\)/i, '').trim();
+    }
+    const itemName = fullItemLine || 'Order Item';
+    const unitPriceMatch = replyText.match(/\*Unit Price:\*\s*(?:Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)/i);
+    const totalAmountMatch = replyText.match(/\*Total Amount:\*\s*(?:Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)/i);
+    let price = unitPriceMatch ? parseFloat(unitPriceMatch[1].replace(/,/g, '')) : 0;
+    let total = totalAmountMatch ? parseFloat(totalAmountMatch[1].replace(/,/g, '')) : 0;
+    if (!price && total) price = total / qty;
+    if (!total && price) total = price * qty;
+    fallbackItems.push({ name: itemName, quantity: qty, price });
+  }
+
+  if (fallbackItems.length === 0) {
+    const multiItemLines = replyText.split('\n').filter((l) => /^[•\-\*]\s+/.test(l.trim()));
+    for (const rawLine of multiItemLines) {
+      const line = rawLine.trim().replace(/^[•\-\*]\s+/, '');
+      if (/^(item|invoice|bank|account|branch|customer|total)/i.test(line)) continue;
+      const priceMatch = line.match(/[-–—:]\s*(?:Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)\s*$/i);
+      if (priceMatch) {
+        const itPrice = parseFloat(priceMatch[1].replace(/,/g, '')) || 0;
+        let itName = line.slice(0, priceMatch.index).trim();
+        let itQty = 1;
+        const qtyMatch = itName.match(/\((?:Qty|Quantity):\s*(\d+)\)/i);
+        if (qtyMatch) {
+          itQty = parseInt(qtyMatch[1], 10) || 1;
+          itName = itName.replace(/\((?:Qty|Quantity):\s*(\d+)\)/i, '').trim();
+        }
+        if (itName) {
+          fallbackItems.push({ name: itName, quantity: itQty, price: itPrice });
+        }
+      }
+    }
+  }
+
+  // 2. Second attempt: match against database catalog (services/packages or inventory items)
   try {
     const fullContext = `${incomingText || ''} ${replyText}`.toLowerCase();
     if (agent.business_type === 'service') {
@@ -218,27 +262,42 @@ export async function detectAndGenerateFallbackInvoice({
         ORDER BY s.id ASC
       `);
       if (rows.length > 0) {
-        const matched = rows.filter((r: any) =>
-          (r.package_name && fullContext.includes(r.package_name.toLowerCase())) ||
-          (r.service_name && fullContext.includes(r.service_name.toLowerCase()))
-        );
-        if (matched.length > 0) {
-          const uniqueMap = new Map();
-          matched.forEach((m: any) => {
-            const key = (m.package_name || m.service_name).trim().toLowerCase();
-            if (!uniqueMap.has(key)) uniqueMap.set(key, m);
-          });
-          fallbackItems = Array.from(uniqueMap.values()).map((c: any) => ({
-            name: (c.package_name || c.service_name || 'Standard Package').trim(),
-            quantity: 1,
-            price: Number(c.price) || 5000,
-          }));
+        if (fallbackItems.length > 0) {
+          // Reconcile prices from DB if price was 0
+          for (const fb of fallbackItems) {
+            if (fb.price === 0) {
+              const matchedRow = rows.find((r: any) =>
+                (r.package_name && fb.name.toLowerCase().includes(r.package_name.toLowerCase())) ||
+                (r.service_name && fb.name.toLowerCase().includes(r.service_name.toLowerCase()))
+              );
+              if (matchedRow && matchedRow.price) {
+                fb.price = Number(matchedRow.price);
+              }
+            }
+          }
         } else {
-          fallbackItems = [{
-            name: rows[0].package_name || rows[0].service_name || 'Standard Package',
-            quantity: 1,
-            price: Number(rows[0].price) || 5000,
-          }];
+          const matched = rows.filter((r: any) =>
+            (r.package_name && fullContext.includes(r.package_name.toLowerCase())) ||
+            (r.service_name && fullContext.includes(r.service_name.toLowerCase()))
+          );
+          if (matched.length > 0) {
+            const uniqueMap = new Map();
+            matched.forEach((m: any) => {
+              const key = (m.package_name || m.service_name).trim().toLowerCase();
+              if (!uniqueMap.has(key)) uniqueMap.set(key, m);
+            });
+            fallbackItems = Array.from(uniqueMap.values()).map((c: any) => ({
+              name: (c.package_name || c.service_name || 'Standard Package').trim(),
+              quantity: 1,
+              price: Number(c.price) || 0,
+            }));
+          } else {
+            fallbackItems = [{
+              name: rows[0].package_name || rows[0].service_name || 'Standard Package',
+              quantity: 1,
+              price: Number(rows[0].price) || 0,
+            }];
+          }
         }
       }
     } else {
@@ -249,24 +308,35 @@ export async function detectAndGenerateFallbackInvoice({
         ORDER BY id ASC
       `);
       if (rows.length > 0) {
-        const matched = rows.filter((r: any) => r.name && fullContext.includes(r.name.toLowerCase()));
-        if (matched.length > 0) {
-          const uniqueMap = new Map();
-          matched.forEach((m: any) => {
-            const key = m.name.trim().toLowerCase();
-            if (!uniqueMap.has(key)) uniqueMap.set(key, m);
-          });
-          fallbackItems = Array.from(uniqueMap.values()).map((c: any) => ({
-            name: c.name.trim(),
-            quantity: 1,
-            price: Number(c.price) || 5000,
-          }));
+        if (fallbackItems.length > 0) {
+          for (const fb of fallbackItems) {
+            if (fb.price === 0) {
+              const matchedRow = rows.find((r: any) => r.name && fb.name.toLowerCase().includes(r.name.toLowerCase()));
+              if (matchedRow && matchedRow.price) {
+                fb.price = Number(matchedRow.price);
+              }
+            }
+          }
         } else {
-          fallbackItems = [{
-            name: rows[0].name.trim(),
-            quantity: 1,
-            price: Number(rows[0].price) || 5000,
-          }];
+          const matched = rows.filter((r: any) => r.name && fullContext.includes(r.name.toLowerCase()));
+          if (matched.length > 0) {
+            const uniqueMap = new Map();
+            matched.forEach((m: any) => {
+              const key = m.name.trim().toLowerCase();
+              if (!uniqueMap.has(key)) uniqueMap.set(key, m);
+            });
+            fallbackItems = Array.from(uniqueMap.values()).map((c: any) => ({
+              name: c.name.trim(),
+              quantity: 1,
+              price: Number(c.price) || 0,
+            }));
+          } else {
+            fallbackItems = [{
+              name: rows[0].name.trim(),
+              quantity: 1,
+              price: Number(rows[0].price) || 0,
+            }];
+          }
         }
       }
     }
@@ -275,7 +345,7 @@ export async function detectAndGenerateFallbackInvoice({
   }
 
   if (fallbackItems.length === 0) {
-    fallbackItems = [{ name: 'Service Package', quantity: 1, price: 5000 }];
+    fallbackItems = [{ name: 'Order Item', quantity: 1, price: 0 }];
   }
 
   if (fallbackItems.length === 1) {

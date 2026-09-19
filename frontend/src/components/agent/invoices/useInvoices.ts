@@ -87,6 +87,12 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
   });
   const [whatsappConfig, setWhatsappConfig] = useState<WhatsAppConfig | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceWithDetails | null>(null);
+
+  const handleEditInvoice = (inv: InvoiceWithDetails) => {
+    setEditingInvoice(inv);
+    setIsModalOpen(true);
+  };
 
   // Mark Paid & Create Order state
   const [payingInvoice, setPayingInvoice] = useState<InvoiceWithDetails | null>(null);
@@ -706,6 +712,9 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
     bulkProgress,
     isModalOpen,
     setIsModalOpen,
+    editingInvoice,
+    setEditingInvoice,
+    handleEditInvoice,
     fetchData,
     filteredInvoices,
     paginatedInvoices,

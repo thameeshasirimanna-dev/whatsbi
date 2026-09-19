@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 import { uploadMediaToR2 } from "../../utils/s3.js";
+import { updateInvoiceWithPdfRegeneration } from '../../services/invoice-edit.service.js';
 
 export default async function uploadInvoiceRoutes(
   fastify: FastifyInstance,
@@ -13,6 +14,8 @@ export default async function uploadInvoiceRoutes(
 
       const body = request.body as any;
       const {
+        id,
+        invoiceId,
         orderId,
         invoiceName,
         agentPrefix,
@@ -24,6 +27,34 @@ export default async function uploadInvoiceRoutes(
         items,
         pdfBase64,
       } = body;
+
+      const targetInvoiceId = invoiceId || id;
+      if (targetInvoiceId) {
+        const { rows: agentRows } = await pgClient.query(
+          "SELECT * FROM agents WHERE user_id = $1 OR id = (SELECT agent_id FROM users WHERE id = $1)",
+          [authenticatedUser.id]
+        );
+        if (agentRows.length > 0) {
+          const updateRes = await updateInvoiceWithPdfRegeneration({
+            agent: agentRows[0],
+            invoiceId: Number(targetInvoiceId),
+            invoiceName,
+            items: items || [],
+            discountPercentage,
+            advanceAmount,
+            totalAmount,
+            notes,
+            customerId,
+            pdfBase64,
+            pgClient,
+          });
+          return reply.code(200).send({
+            success: true,
+            publicUrl: updateRes.pdfUrl,
+            invoice: updateRes.invoice,
+          });
+        }
+      }
 
       if (
         !invoiceName ||

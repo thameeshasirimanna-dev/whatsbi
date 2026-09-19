@@ -4,6 +4,7 @@ import { CacheService } from '../../utils/cache.js';
 import {
   generateCustomerReply,
   sendWhatsAppTextMessage,
+  formatMessageWithAI,
   dispatchServiceSampleImages,
   dispatchCustomerInvoicePdf,
   parseJsonUrls,
@@ -42,7 +43,7 @@ export default async function triggerAiResponseRoutes(
       let agentRows;
       try {
         const res = await pgClient.query(
-          `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.ai_balance, a.company_overview, a.company_overview_path, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
+          `SELECT a.id, a.agent_prefix, u.name as business_name, a.business_type, a.credits, a.ai_balance, a.company_overview, a.company_overview_path, a.ai_instructions, a.user_id, a.business_email, a.contact_number, a.address, a.website, a.invoice_template_path
            FROM agents a
            LEFT JOIN users u ON a.user_id = u.id
            WHERE a.user_id = $1 OR a.id = (SELECT agent_id FROM users WHERE id = $1)`,
@@ -218,12 +219,17 @@ export default async function triggerAiResponseRoutes(
         });
       }
 
+      // Format the full message using AI for clean spacing, unbroken sentences, and WhatsApp markdown
+      const formattedReply = await formatMessageWithAI(cleanReply, {
+        apiKey: aiResult.apiKey || whatsappConfig.deepseek_api_key,
+      });
+
       // Dispatch to WhatsApp
       const sendResult = await sendWhatsAppTextMessage(
         whatsappConfig.phone_number_id,
         whatsappConfig.api_key,
         customer.phone,
-        cleanReply
+        formattedReply
       );
 
       if (!sendResult.success) {
@@ -238,7 +244,7 @@ export default async function triggerAiResponseRoutes(
       const { rows: insertedRows } = await pgClient.query(
         `INSERT INTO ${messagesTable} (customer_id, message, direction, timestamp, is_read, media_type, media_url, caption)
          VALUES ($1, $2, 'outbound', CURRENT_TIMESTAMP, true, 'none', NULL, NULL) RETURNING *`,
-        [customer.id, cleanReply]
+        [customer.id, formattedReply]
       );
 
       // Deduct 2.0x actual DeepSeek API cost from ai_balance
@@ -261,6 +267,13 @@ export default async function triggerAiResponseRoutes(
           ai_balance: newBalance,
           balance: newBalance,
         });
+        const createdAppt = actionsExecuted.find((a) => a.type === 'CREATE_APPOINTMENT' && a.success && a.data)?.data;
+        if (createdAppt) {
+          emitAgentStatusUpdate(agent.id, {
+            type: 'appointment_created',
+            appointment: createdAppt,
+          });
+        }
       }
 
       // Emit real-time Socket.IO event
@@ -305,23 +318,47 @@ export default async function triggerAiResponseRoutes(
         }
       }
 
-      // Dispatch invoice PDF document ONLY if an invoice was legitimately generated
-      const invoiceAction = actionsExecuted.find(
+      // Dispatch invoice PDF document if an invoice was generated, or if customer asked or AI promised
+      let invoiceToDispatch = actionsExecuted.find(
         (a) => a.type === 'CREATE_INVOICE' && a.success && a.data?.pdf_url && a.data?.is_generated
-      );
-      if (invoiceAction?.data) {
-        console.log(`[Trigger AI Response] Found generated invoice #${invoiceAction.data.id} (${invoiceAction.data.pdf_url}), triggering WhatsApp PDF document dispatch...`);
+      )?.data;
+
+      if (!invoiceToDispatch) {
+        const incomingText = (prompt || '').trim();
+        const isAskingInvoice = /ko\s*(?:mage\s*)?invoice|invoice\s*(?:eka\s*)?ko|where\s*(?:is\s*)?(?:my\s*)?invoice|send\s*(?:the\s*)?invoice|කෝ\s*(?:මගේ\s*)?ඉන්වොයිස්|කෝ\s*බිල|invoice\s*eka\s*ewanna/i.test(incomingText);
+        const isPromisingPdf = /PDF\s*එක\s*(?:පහළින්\s*)?එව(?:ා\s*ඇත|න්නම්)|sending\s*(?:the\s*)?(?:invoice\s*)?pdf|attached\s*below|Invoice\s*PDF\s*එක/i.test(cleanReply);
+
+        if (isAskingInvoice || isPromisingPdf) {
+          try {
+            const { rows: recentInvoices } = await pgClient.query(`
+              SELECT * FROM ${agent.agent_prefix}_orders_invoices
+              WHERE customer_id = $1 AND pdf_url IS NOT NULL AND is_generated = true
+              ORDER BY id DESC LIMIT 1
+            `, [customer.id]);
+
+            if (recentInvoices.length > 0 && recentInvoices[0].pdf_url?.startsWith('http') && !recentInvoices[0].pdf_url.endsWith('/invoices')) {
+              invoiceToDispatch = recentInvoices[0];
+              console.log(`[Trigger AI Response] Customer asked or AI promised invoice. Re-dispatching invoice #${invoiceToDispatch.id}...`);
+            }
+          } catch (invErr: any) {
+            console.warn('[Trigger AI Response] Notice: could not fetch recent invoice for PDF dispatch:', invErr.message);
+          }
+        }
+      }
+
+      if (invoiceToDispatch) {
+        console.log(`[Trigger AI Response] Found invoice #${invoiceToDispatch.id} (${invoiceToDispatch.pdf_url}), triggering WhatsApp PDF document dispatch...`);
         await dispatchCustomerInvoicePdf({
           agent,
           customer,
-          invoice: invoiceAction.data,
+          invoice: invoiceToDispatch,
           whatsappConfig,
           pgClient,
           emitNewMessage,
           cacheService,
         });
       } else {
-        console.log(`[Trigger AI Response] No invoice action executed to dispatch for customer ${customer.id}`);
+        console.log(`[Trigger AI Response] No invoice to dispatch for customer ${customer.id}`);
       }
 
       // If requested or if service has sample images and prompt/action indicates samples

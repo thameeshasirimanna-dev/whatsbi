@@ -142,6 +142,41 @@ export async function deleteCompanyOverviewApi(backendUrl: string, agentId: stri
   return response.json();
 }
 
+export async function saveAiInstructionsApi(
+  backendUrl: string,
+  agentId: string,
+  aiInstructions: string
+) {
+  const token = getToken();
+  if (!token) throw new Error('User not authenticated');
+  const response = await fetch(`${backendUrl}/update-ai-instructions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      agentId,
+      ai_instructions: aiInstructions,
+    }),
+  });
+  return response.json();
+}
+
+export async function deleteAiInstructionsApi(backendUrl: string, agentId: string) {
+  const token = getToken();
+  if (!token) throw new Error('User not authenticated');
+  const response = await fetch(`${backendUrl}/delete-ai-instructions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ agentId }),
+  });
+  return response.json();
+}
+
 export async function addTeamMemberApi(
   backendUrl: string,
   name: string,

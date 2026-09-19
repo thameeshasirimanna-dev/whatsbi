@@ -60,12 +60,14 @@ export async function sendWhatsAppTextMessage(
   const normalizedPhone = normalizeE164(recipientPhone);
   if (!normalizedPhone) return { success: false, error: `Invalid or missing phone: ${recipientPhone}` };
 
+  const formattedText = sanitizeWhatsAppFormatting(textMessage);
+
   return await postMetaGraphMessage(phoneNumberId, accessToken, {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to: normalizedPhone,
     type: 'text',
-    text: { body: textMessage },
+    text: { body: formattedText },
   });
 }
 
@@ -142,7 +144,7 @@ export async function dispatchServiceSampleImages({
   emitNewMessage?: (agentId: number, messageData: any) => void;
   cacheService?: CacheService;
 }): Promise<number> {
-  if (agent.business_type !== 'service') return 0;
+  const isProduct = agent.business_type === 'product';
   if (incomingText && !isSampleRequest(incomingText)) return 0;
 
   const messagesTable = `${agent.agent_prefix}_messages`;
@@ -150,18 +152,33 @@ export async function dispatchServiceSampleImages({
 
   try {
     let servicesList: any[] = [];
-    try {
-      const { rows } = await pgClient.query(
-        "SELECT * FROM get_agent_services($1, null, null, 'created_at', 'desc')",
-        [agent.id]
-      );
-      servicesList = rows || [];
-    } catch {
-      const servicesTable = `${agent.agent_prefix}_services`;
-      const { rows } = await pgClient.query(
-        `SELECT id, service_name, image_urls, service_links FROM ${servicesTable} WHERE is_active = true OR is_active IS NULL ORDER BY id ASC`
-      );
-      servicesList = rows || [];
+    if (isProduct) {
+      const itemsTable = `${agent.agent_prefix}_inventory_items`;
+      try {
+        const { rows } = await pgClient.query(
+          `SELECT id, name AS service_name, image_urls, image_url, description FROM ${itemsTable} WHERE is_active = true OR is_active IS NULL ORDER BY id ASC`
+        );
+        servicesList = (rows || []).map((r: any) => ({
+          ...r,
+          image_urls: r.image_urls || (r.image_url ? [r.image_url] : []),
+        }));
+      } catch {
+        servicesList = [];
+      }
+    } else {
+      try {
+        const { rows } = await pgClient.query(
+          "SELECT * FROM get_agent_services($1, null, null, 'created_at', 'desc')",
+          [agent.id]
+        );
+        servicesList = rows || [];
+      } catch {
+        const servicesTable = `${agent.agent_prefix}_services`;
+        const { rows } = await pgClient.query(
+          `SELECT id, service_name, image_urls, service_links FROM ${servicesTable} WHERE is_active = true OR is_active IS NULL ORDER BY id ASC`
+        );
+        servicesList = rows || [];
+      }
     }
 
     if (servicesList.length === 0) return 0;
@@ -295,7 +312,9 @@ export async function dispatchServiceSampleImages({
     // Dispatch up to 2 sample images
     const imagesToSend = sampleImages.slice(0, 2);
     for (const imgUrl of imagesToSend) {
-      const imgCaption = `*${targetService.service_name}* - Sample Work`;
+      const imgCaption = isProduct
+        ? `*${targetService.service_name}*`
+        : `*${targetService.service_name}* - Sample Work`;
       const imgSendResult = await sendWhatsAppImageMessage(
         whatsappConfig.phone_number_id,
         whatsappConfig.api_key,
@@ -371,7 +390,7 @@ export async function dispatchCustomerInvoicePdf({
 }: {
   agent: any;
   customer: any;
-  invoice?: { id: number; invoice_number?: string; name?: string; pdf_url?: string; is_generated?: boolean; total_amount?: number; status?: string };
+  invoice?: { id: number; invoice_number?: string; name?: string; pdf_url?: string; is_generated?: boolean; total_amount?: number; advance_amount?: number; status?: string };
   incomingText?: string;
   replyText?: string;
   caption?: string;
@@ -398,9 +417,9 @@ export async function dispatchCustomerInvoicePdf({
   const isPaid = !isPartial && ((targetInvoice.status || '').toLowerCase() === 'paid' || (advAmt >= totalAmt && totalAmt > 0));
   const filename = `Invoice-${cleanInvNum}${isPaid ? '-Paid' : (isPartial ? '-Advance' : '')}.pdf`;
   const defaultCaption = isPaid
-    ? `*Invoice ${rawNum}* - Paid in Full. Thank you! We have started the work. Our project manager will contact you soon for gathering requirements.`
+    ? `*Invoice ${rawNum}* - Paid in Full. Thank you for your payment! Your order/service has been confirmed and our team will proceed shortly.`
     : isPartial
-    ? `*Invoice ${rawNum}* - Advance Payment Received. We have started the work. Our project manager will contact you soon for gathering requirements.`
+    ? `*Invoice ${rawNum}* - Advance Payment Received. Thank you! Your order/service has been confirmed and our team will proceed shortly.`
     : `*Invoice ${rawNum}* - ${agent.business_name || 'Payment Request'}`;
   const caption = customCaption || defaultCaption;
 

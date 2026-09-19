@@ -139,8 +139,8 @@ export default async function chatbotReplyRoutes(
 
       // Prepare WhatsApp payload
       let whatsappPayload: any;
-      const effectiveMessage = message ? sanitizeWhatsAppFormatting(formatBankDetails(message)) : message;
-      const effectiveCaption = caption ? sanitizeWhatsAppFormatting(formatBankDetails(caption)) : caption;
+      const effectiveMessage = message ? sanitizeWhatsAppFormatting(message) : message;
+      const effectiveCaption = caption ? sanitizeWhatsAppFormatting(caption) : caption;
 
       if (type === 'text') {
         whatsappPayload = {

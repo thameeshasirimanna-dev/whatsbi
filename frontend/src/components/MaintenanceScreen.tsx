@@ -150,6 +150,7 @@ export const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
                 animation: 'beacon 2s infinite ease-in-out',
               }}
             />
+            <img src="/logo/icon-logo.svg" alt="Biz Agentz" style={{ width: 22, height: 22, objectFit: 'contain' }} />
             <span style={{ ...SYNE, fontSize: 13, fontWeight: 700, color: '#0c1a0e', letterSpacing: '0.02em' }}>
               Biz Agentz
             </span>

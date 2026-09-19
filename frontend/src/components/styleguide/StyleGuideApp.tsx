@@ -21,13 +21,8 @@ export const StyleGuideApp: React.FC = () => {
           </button>
           <div className="w-px h-4 bg-white/10 hidden sm:block" />
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-[#203628] border border-white/10 flex items-center justify-center">
-              <div className="grid grid-cols-2 gap-0.5 w-2.5 h-2.5">
-                <div className="w-1 h-1 rounded-full bg-[#9FE870]" />
-                <div className="w-1 h-1 rounded-full bg-[#9FE870]" />
-                <div className="w-1 h-1 rounded-full bg-[#9FE870]" />
-                <div className="w-1 h-1 rounded-full bg-[#9FE870]" />
-              </div>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-white/20 flex items-center justify-center p-1 shrink-0 shadow-sm">
+              <img src="/logo/icon-logo.svg" alt="Biz Agentz" className="w-full h-full object-contain" />
             </div>
             <span className="font-sans font-bold text-sm text-white">
               Biz Agentz Design System

@@ -38,5 +38,6 @@ export interface GenerateInvoiceModalProps {
   agentId: number | null;
   agentDetails: AgentDetails;
   invoiceTemplatePath: string | null;
+  editingInvoice?: any;
   onSuccess: () => void;
 }
