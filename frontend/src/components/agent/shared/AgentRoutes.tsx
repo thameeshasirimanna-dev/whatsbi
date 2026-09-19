@@ -25,16 +25,16 @@ const AgentRoutes: React.FC = () => {
         <Route index element={<AgentDashboard />} />
         <Route path="dashboard" element={<AgentDashboard />} />
         <Route path="conversations" element={<ConversationsPage />} />
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="customer-groups" element={<CustomerGroupsPage />} />
+        <Route path="invoices" element={<InvoicesPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/:id" element={<OrderDetailsPage />} />
         <Route path="appointments" element={<AppointmentsPage />} />
-        <Route path="inventory" element={<InventoryPage />} />
-        <Route path="invoices" element={<InvoicesPage />} />
-        <Route path="templates" element={<TemplatesPage />} />
         <Route path="services" element={<ServicesPage />} />
+        <Route path="inventory" element={<InventoryPage />} />
+        <Route path="customers" element={<CustomersPage />} />
+        <Route path="customer-groups" element={<CustomerGroupsPage />} />
         <Route path="broadcasts" element={<BroadcastsPage />} />
+        <Route path="templates" element={<TemplatesPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
