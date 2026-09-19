@@ -1,9 +1,12 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
+import { markCustomerAsPaidByTeam } from '../../services/ai-lead-stage.service.js';
 
 export default async function manageOrdersRoutes(
   fastify: FastifyInstance,
-  pgClient: any
+  pgClient: any,
+  cacheService?: any,
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void
 ) {
   fastify.all("/manage-orders", async (request, reply) => {
     try {
@@ -258,6 +261,17 @@ export default async function manageOrdersRoutes(
 
               await client.query("COMMIT");
 
+              if (createdOrder.payment_status === 'paid' && createdOrder.customer_id) {
+                await markCustomerAsPaidByTeam({
+                  agent,
+                  customerId: createdOrder.customer_id,
+                  orderId: createdOrder.id,
+                  pgClient,
+                  cacheService,
+                  emitAgentStatusUpdate,
+                }).catch((err: any) => console.warn('[Manage Orders] Could not sync customer paid stage:', err.message));
+              }
+
               return reply.code(201).send({
                 success: true,
                 message: "Order created from invoice successfully",
@@ -502,6 +516,17 @@ export default async function manageOrdersRoutes(
 
             await client.query("COMMIT");
 
+            if (order.payment_status === 'paid' && order.customer_id) {
+              await markCustomerAsPaidByTeam({
+                agent,
+                customerId: order.customer_id,
+                orderId: order.id,
+                pgClient,
+                cacheService,
+                emitAgentStatusUpdate,
+              }).catch((err: any) => console.warn('[Manage Orders] Could not sync customer paid stage:', err.message));
+            }
+
             return reply.code(201).send({
               success: true,
               message: "Order created successfully",
@@ -523,7 +548,7 @@ export default async function manageOrdersRoutes(
 
         case "PUT": {
           const body = parsedBody;
-          const { id, status, notes, shipping_address, total_amount, advance_amount, payment_status, estimated_delivery_date } =
+          const { id, status, notes, shipping_address, total_amount, advance_amount, payment_status, estimated_delivery_date, items, customer_name, customer_phone } =
             body || {};
 
           if (!id || typeof id !== "number") {
@@ -560,7 +585,20 @@ export default async function manageOrdersRoutes(
             updateData.shipping_address = shipping_address
               ? shipping_address.trim()
               : null;
-          const parsedTotalAmount = total_amount !== undefined ? Number(total_amount) : undefined;
+
+          let calculatedTotalFromItems: number | undefined = undefined;
+          if (Array.isArray(items)) {
+            calculatedTotalFromItems = items.reduce(
+              (sum: number, item: any) => sum + (Number(item.quantity) || 1) * (Number(item.price) || 0),
+              0
+            );
+          }
+
+          let parsedTotalAmount = total_amount !== undefined ? Number(total_amount) : undefined;
+          if (parsedTotalAmount === undefined && calculatedTotalFromItems !== undefined) {
+            parsedTotalAmount = calculatedTotalFromItems;
+          }
+
           const parsedAdvanceAmount = advance_amount !== undefined ? Number(advance_amount) : undefined;
 
           if (
@@ -645,10 +683,80 @@ export default async function manageOrdersRoutes(
 
           const order = orderRows[0];
 
+          // If items array is provided, atomically update order items
+          let updatedItemsList: any[] | null = null;
+          if (Array.isArray(items)) {
+            await pgClient.query(`DELETE FROM ${agentPrefix}_orders_items WHERE order_id = $1`, [id]);
+            if (items.length > 0) {
+              const orderItems = items.map((item: any) => ({
+                order_id: id,
+                name: String(item.name || '').trim(),
+                quantity: Number(item.quantity) || 1,
+                price: Number(item.price) || 0,
+              }));
+
+              const values = orderItems
+                .map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`)
+                .join(", ");
+              const itemParams = orderItems.flatMap((item) => [
+                item.order_id,
+                item.name,
+                item.quantity,
+                item.price,
+              ]);
+              await pgClient.query(
+                `INSERT INTO ${agentPrefix}_orders_items (order_id, name, quantity, price) VALUES ${values}`,
+                itemParams
+              );
+              updatedItemsList = orderItems.map((item) => ({
+                ...item,
+                total: item.quantity * item.price,
+              }));
+            } else {
+              updatedItemsList = [];
+            }
+          }
+
+          // If customer name or phone is provided, update customer record
+          if ((customer_name !== undefined || customer_phone !== undefined) && order.customer_id) {
+            const custSets = [];
+            const custParams: any[] = [order.customer_id];
+            let cIndex = 2;
+            if (customer_name !== undefined) {
+              custSets.push(`name = $${cIndex++}`);
+              custParams.push(String(customer_name).trim());
+            }
+            if (customer_phone !== undefined) {
+              custSets.push(`phone = $${cIndex++}`);
+              custParams.push(String(customer_phone).trim());
+            }
+            if (custSets.length > 0) {
+              custSets.push(`updated_at = NOW()`);
+              await pgClient.query(
+                `UPDATE ${agentPrefix}_customers SET ${custSets.join(", ")} WHERE id = $1`,
+                custParams
+              );
+            }
+          }
+
+          if (order.payment_status === 'paid' && order.customer_id) {
+            await markCustomerAsPaidByTeam({
+              agent,
+              customerId: order.customer_id,
+              orderId: order.id,
+              pgClient,
+              cacheService,
+              emitAgentStatusUpdate,
+            }).catch((err: any) => console.warn('[Manage Orders] Could not sync customer paid stage:', err.message));
+          }
+
           return reply.code(200).send({
             success: true,
             message: "Order updated successfully",
-            order,
+            order: {
+              ...order,
+              ...(updatedItemsList !== null ? { items: updatedItemsList } : {}),
+            },
           });
         }
 

@@ -9,6 +9,7 @@ import {
   Customer, ProfileImage, Metrics,
   detectCountryCode, getTimeRangeDates
 } from './CustomerTypes';
+import { useCustomerMutations } from './useCustomerMutations';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
@@ -28,6 +29,7 @@ export function useCustomers() {
   const [timeRange, setTimeRange] = useState<TimeRange>(emptyTimeRange);
   const [progressCategory, setProgressCategory] = useState<"all" | "lead" | "interest" | "conversion">("all");
   const [progressStage, setProgressStage] = useState<string>("");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(() => searchParams.get("groupId") || "all");
 
   const [rowsPerPage, setRowsPerPage] = useState<number>(() => {
     const param = searchParams.get("rows");
@@ -99,19 +101,68 @@ export function useCustomers() {
         sessionStorage.setItem("customers_page", String(validPage));
       }
     }
+    const groupFromUrl = searchParams.get("groupId");
+    if (groupFromUrl && groupFromUrl !== selectedGroupId) {
+      setSelectedGroupId(groupFromUrl);
+    }
   }, [searchParams]);
 
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" });
-  const [selectedEditCountryCode, setSelectedEditCountryCode] = useState("+94");
-  const [createForm, setCreateForm] = useState({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" });
-  const [selectedCountryCode, setSelectedCountryCode] = useState("+94");
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [profileImages, setProfileImages] = useState<ProfileImage[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getToken();
+      if (!token) { setError("User not authenticated"); setLoading(false); return; }
+
+      const agentResponse = await fetch(`${backendUrl}/get-agent-profile`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      if (!agentResponse.ok) { setError("Failed to fetch agent profile"); setLoading(false); return; }
+      const agentProfile = await agentResponse.json();
+      if (!agentProfile.success || !agentProfile.agent) { setError("Agent not found"); setLoading(false); return; }
+
+      const agentData = agentProfile.agent;
+      setAgentId(agentData.id);
+      setAgentPrefix(agentData.agent_prefix);
+      if (!agentData.agent_prefix) { setError("Agent prefix not found"); setLoading(false); return; }
+
+      const customersResponse = await fetch(`${backendUrl}/manage-customers`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      if (!customersResponse.ok) { setError("Failed to fetch customers"); setLoading(false); return; }
+      const customersData = await customersResponse.json();
+      if (!customersData.success) { setError("Failed to fetch customers"); setLoading(false); return; }
+
+      const customersWithOrderCounts: Customer[] = (customersData.customers || []).map((c: any) => ({
+        ...c,
+        order_count: Number(c.order_count) || 0
+      }));
+
+      const initialProfileImages: ProfileImage[] = customersWithOrderCounts.map(customer => ({
+        phone: customer.phone,
+        url: customer.profile_image_url || undefined,
+        loading: false,
+        error: !customer.profile_image_url,
+      }));
+      setProfileImages(initialProfileImages);
+      setCustomers(customersWithOrderCounts);
+      setCurrentUserId(agentData.user_id);
+    } catch (err) {
+      setError("Failed to load customers");
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mutations = useCustomerMutations({ onSuccess: fetchCustomers });
 
   const metrics: Metrics = useMemo(() => {
     const { start, end, label, prevStart, prevEnd, prevLabel } = getTimeRangeDates(timeRange);
@@ -165,183 +216,6 @@ export function useCustomers() {
     };
   }, [customers, timeRange]);
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (name === "name") setEditForm(prev => ({ ...prev, name: value }));
-    else if (name === "phone") setEditForm(prev => ({ ...prev, phone: value.replace(/\D/g, "") }));
-  };
-
-  const handleStageChange = (field: "lead_stage" | "interest_stage" | "conversion_stage", value: string) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-    if (field === "lead_stage" && value === "New Lead") {
-      setEditForm((prev) => ({ ...prev, interest_stage: "", conversion_stage: "" }));
-    }
-    if (field === "interest_stage" && !value) {
-      setEditForm((prev) => ({ ...prev, conversion_stage: "" }));
-    }
-  };
-
-  const handleEditCountryChange = (code: string) => {
-    setSelectedEditCountryCode(code);
-    if (editForm.phone.startsWith(code.replace("+", ""))) return;
-    setEditForm(prev => ({ ...prev, phone: "" }));
-  };
-
-  const handleCreateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (name === "name") setCreateForm(prev => ({ ...prev, name: value }));
-    else if (name === "phone") setCreateForm(prev => ({ ...prev, phone: value.replace(/\D/g, "") }));
-  };
-
-  const handleCreateCountryChange = (code: string) => {
-    setSelectedCountryCode(code);
-    if (createForm.phone.startsWith(code.replace("+", ""))) return;
-    setCreateForm(prev => ({ ...prev, phone: "" }));
-  };
-
-  const handleCreateStageChange = (field: "lead_stage" | "interest_stage" | "conversion_stage", value: string) => {
-    setCreateForm((prev) => ({ ...prev, [field]: value }));
-    if (field === "lead_stage" && value === "New Lead") {
-      setCreateForm((prev) => ({ ...prev, interest_stage: "", conversion_stage: "" }));
-    }
-    if (field === "interest_stage" && !value) {
-      setCreateForm((prev) => ({ ...prev, conversion_stage: "" }));
-    }
-  };
-
-  const handleCreateCustomer = async () => {
-    if (!createForm.name.trim() || !createForm.phone.trim()) return;
-    const fullPhone = `${selectedCountryCode}${createForm.phone}`.replace("+", "");
-    try {
-      const token = getToken();
-      if (!token) { setError("User not authenticated"); return; }
-      const response = await fetch(`${backendUrl}/manage-customers`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: createForm.name.trim(),
-          phone: fullPhone,
-          lead_stage: createForm.lead_stage || "New Lead",
-          interest_stage: createForm.interest_stage || null,
-          conversion_stage: createForm.conversion_stage || null
-        }),
-      });
-      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || "Failed to create customer"); }
-      const data = await response.json();
-      if (!data.success) throw new Error(data.message || "Failed to create customer");
-      setShowCreateModal(false);
-      setCreateForm({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" });
-      setSelectedCountryCode("+94");
-      fetchCustomers();
-      setError(null);
-    } catch (err: any) {
-      console.error("Create customer error:", err);
-      setError(err.message || "Failed to create customer");
-    }
-  };
-
-  const handleUpdateCustomer = async () => {
-    if (!editingCustomer || !editForm.name.trim() || !editForm.phone.trim()) return;
-    const fullPhone = `${selectedEditCountryCode}${editForm.phone}`.replace("+", "");
-    try {
-      const token = getToken();
-      if (!token) { setError("User not authenticated"); return; }
-      const response = await fetch(`${backendUrl}/manage-customers`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingCustomer.id,
-          name: editForm.name.trim(),
-          phone: fullPhone,
-          lead_stage: editForm.lead_stage || "New Lead",
-          interest_stage: editForm.interest_stage || null,
-          conversion_stage: editForm.conversion_stage || null
-        }),
-      });
-      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || "Failed to update customer"); }
-      const data = await response.json();
-      if (!data.success) throw new Error(data.message || "Failed to update customer");
-      setEditingCustomer(null);
-      setEditForm({ name: "", phone: "", lead_stage: "New Lead", interest_stage: "", conversion_stage: "" });
-      setSelectedEditCountryCode("+94");
-      fetchCustomers();
-      setError(null);
-    } catch (err: any) {
-      console.error("Update error:", err);
-      setError(err.message || "Failed to update customer");
-    }
-  };
-
-  const handleDeleteCustomer = async (id: number) => {
-    try {
-      const token = getToken();
-      if (!token) { setError("User not authenticated"); return; }
-      const response = await fetch(`${backendUrl}/manage-customers?id=${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || "Failed to delete customer"); }
-      const data = await response.json();
-      if (!data.success) throw new Error(data.message || "Failed to delete customer");
-      setDeletingCustomer(null);
-      fetchCustomers();
-      setError(null);
-    } catch (err: any) {
-      console.error("Delete error:", err);
-      setError(err.message || "Failed to delete customer");
-    }
-  };
-
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const token = getToken();
-      if (!token) { setError("User not authenticated"); setLoading(false); return; }
-
-      const agentResponse = await fetch(`${backendUrl}/get-agent-profile`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      if (!agentResponse.ok) { setError("Failed to fetch agent profile"); setLoading(false); return; }
-      const agentProfile = await agentResponse.json();
-      if (!agentProfile.success || !agentProfile.agent) { setError("Agent not found"); setLoading(false); return; }
-
-      const agentData = agentProfile.agent;
-      setAgentId(agentData.id);
-      setAgentPrefix(agentData.agent_prefix);
-      if (!agentData.agent_prefix) { setError("Agent prefix not found"); setLoading(false); return; }
-
-      const customersResponse = await fetch(`${backendUrl}/manage-customers`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      if (!customersResponse.ok) { setError("Failed to fetch customers"); setLoading(false); return; }
-      const customersData = await customersResponse.json();
-      if (!customersData.success) { setError("Failed to fetch customers"); setLoading(false); return; }
-
-      const customersWithOrderCounts: Customer[] = (customersData.customers || []).map((c: any) => ({
-        ...c,
-        order_count: Number(c.order_count) || 0
-      }));
-
-      const initialProfileImages: ProfileImage[] = customersWithOrderCounts.map(customer => ({
-        phone: customer.phone,
-        url: customer.profile_image_url || undefined,
-        loading: false,
-        error: !customer.profile_image_url,
-      }));
-      setProfileImages(initialProfileImages);
-      setCustomers(customersWithOrderCounts);
-      setCurrentUserId(agentData.user_id);
-    } catch (err) {
-      setError("Failed to load customers");
-      console.error("Fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => { fetchCustomers(); }, []);
 
   const fetchProfilePicture = async (phone: string) => {
@@ -388,8 +262,13 @@ export function useCustomers() {
         if (progressStage) matchesProgress = matchesProgress && customer.conversion_stage === progressStage;
       }
     }
+    const matchesGroup =
+      selectedGroupId === "all" || !selectedGroupId
+        ? true
+        : customer.groups && customer.groups.some(g => String(g.id) === String(selectedGroupId));
+
     const matchesTime = matchesTimeRange(customer.created_at, timeRange);
-    return matchesSearch && matchesProgress && matchesTime;
+    return matchesSearch && matchesProgress && matchesGroup && matchesTime;
   });
 
   const sortedCustomers = [...filteredCustomers].sort((a: Customer, b: Customer) => {
@@ -493,7 +372,7 @@ export function useCustomers() {
     startIndex,
     endIndex,
     loading,
-    error,
+    error: error || mutations.error,
     searchTerm,
     setSearchTerm,
     sortBy,
@@ -504,6 +383,8 @@ export function useCustomers() {
     setProgressCategory,
     progressStage,
     setProgressStage,
+    selectedGroupId,
+    setSelectedGroupId,
     rowsPerPage,
     handleRowsPerPageChange,
     handlePageChange,
@@ -518,34 +399,12 @@ export function useCustomers() {
     setProfileImages,
     fetchCustomers,
     fetchProfilePicture,
-    showCreateModal,
-    setShowCreateModal,
-    createForm,
-    setCreateForm,
-    selectedCountryCode,
-    setSelectedCountryCode,
-    handleCreateChange,
-    handleCreateCountryChange,
-    handleCreateStageChange,
-    handleCreateCustomer,
-    editingCustomer,
-    setEditingCustomer,
-    editForm,
-    setEditForm,
-    selectedEditCountryCode,
-    setSelectedEditCountryCode,
-    handleEditChange,
-    handleEditCountryChange,
-    handleStageChange,
-    handleUpdateCustomer,
-    deletingCustomer,
-    setDeletingCustomer,
-    handleDeleteCustomer,
     showOrderModal,
     setShowOrderModal,
     selectedCustomer,
     setSelectedCustomer,
     handleBulkDelete,
     handleBulkBroadcast,
+    ...mutations,
   };
 }

@@ -38,6 +38,8 @@ export const InvoiceBulkActionsBar: React.FC<InvoiceBulkActionsBarProps> = ({
         gap: 12,
         boxShadow: "0 8px 24px rgba(22,40,29,0.25)",
         border: "1px solid rgba(159,232,112,0.2)",
+        position: "relative",
+        zIndex: 20,
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >

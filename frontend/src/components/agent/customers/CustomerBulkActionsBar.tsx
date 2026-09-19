@@ -1,10 +1,11 @@
 import React from "react";
-import { Send, Trash2, X } from "lucide-react";
+import { Send, Trash2, X, Users } from "lucide-react";
 import { BulkProgressTracker, BulkProgress } from "../shared/BulkProgress";
 
 interface CustomerBulkActionsBarProps {
   selectedCount: number;
   onBulkBroadcast: () => void;
+  onBulkAddToGroup?: () => void;
   onBulkDelete: () => void;
   onClearSelection: () => void;
   isProcessing?: boolean;
@@ -14,6 +15,7 @@ interface CustomerBulkActionsBarProps {
 export const CustomerBulkActionsBar: React.FC<CustomerBulkActionsBarProps> = ({
   selectedCount,
   onBulkBroadcast,
+  onBulkAddToGroup,
   onBulkDelete,
   onClearSelection,
   isProcessing = false,
@@ -36,6 +38,8 @@ export const CustomerBulkActionsBar: React.FC<CustomerBulkActionsBarProps> = ({
         gap: 12,
         boxShadow: "0 12px 32px rgba(22,40,29,0.35)",
         border: "1px solid rgba(159,232,112,0.25)",
+        position: "relative",
+        zIndex: 20,
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
@@ -102,6 +106,46 @@ export const CustomerBulkActionsBar: React.FC<CustomerBulkActionsBarProps> = ({
           <Send size={13} />
           Send Broadcast
         </button>
+
+        {/* Bulk Add to Group */}
+        {onBulkAddToGroup && (
+          <button
+            onClick={onBulkAddToGroup}
+            disabled={isProcessing}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 16px",
+              borderRadius: 9999,
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.1)",
+              color: "#fff",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: isProcessing ? "not-allowed" : "pointer",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              if (!isProcessing) {
+                e.currentTarget.style.background = "rgba(159,232,112,0.15)";
+                e.currentTarget.style.color = "#9FE870";
+                e.currentTarget.style.borderColor = "#9FE870";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isProcessing) {
+                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                e.currentTarget.style.color = "#fff";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+              }
+            }}
+          >
+            <Users size={13} />
+            Add to Group
+          </button>
+        )}
 
         {/* Bulk Delete */}
         <button

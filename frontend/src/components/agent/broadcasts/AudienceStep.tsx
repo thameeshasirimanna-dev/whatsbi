@@ -2,12 +2,13 @@ import React from 'react';
 import { Search, Users } from 'lucide-react';
 import type { Customer } from '../../../lib/api';
 import CustomDropdown from '../shared/CustomDropdown';
+import { RoundCheckbox } from '../shared/RoundCheckbox';
 
 interface AudienceStepProps {
   campaignName: string;
   setCampaignName: (name: string) => void;
-  targetAudienceType: 'all' | 'filtered' | 'manual';
-  setTargetAudienceType: (type: 'all' | 'filtered' | 'manual') => void;
+  targetAudienceType: 'all' | 'filtered' | 'group' | 'manual';
+  setTargetAudienceType: (type: 'all' | 'filtered' | 'group' | 'manual') => void;
   filterLeadStage: string;
   setFilterLeadStage: (stage: string) => void;
   filterInterestStage: string;
@@ -16,6 +17,9 @@ interface AudienceStepProps {
   setFilterConversionStage: (stage: string) => void;
   filterLanguage: string;
   setFilterLanguage: (lang: string) => void;
+  selectedGroupId: string;
+  setSelectedGroupId: (id: string) => void;
+  customerGroups: { id: number; name: string; member_count?: number; color?: string }[];
   customers: Customer[];
   selectedCustomerIds: number[];
   customerSearch: string;
@@ -39,6 +43,9 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
   setFilterConversionStage,
   filterLanguage,
   setFilterLanguage,
+  selectedGroupId,
+  setSelectedGroupId,
+  customerGroups,
   customers,
   selectedCustomerIds,
   customerSearch,
@@ -49,7 +56,7 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
   targetRecipientsCount,
 }) => {
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 font-sans">
       <div>
         <label className="block text-xs font-semibold text-[#16281D] mb-1.5">
           Campaign Name
@@ -67,8 +74,8 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
         <label className="block text-xs font-semibold text-[#16281D] mb-2">
           Target Audience
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          {(['all', 'filtered', 'manual'] as const).map((type) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {(['all', 'group', 'filtered', 'manual'] as const).map((type) => (
             <button
               key={type}
               type="button"
@@ -81,6 +88,8 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
             >
               {type === 'all'
                 ? 'All Customers'
+                : type === 'group'
+                ? 'By Group'
                 : type === 'filtered'
                 ? 'By Segments'
                 : 'Manual Pick'}
@@ -88,6 +97,32 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
           ))}
         </div>
       </div>
+
+      {targetAudienceType === 'group' && (
+        <div className="p-4 bg-[#F4F7F4] rounded-2xl border border-[#EAEAEA] flex flex-col gap-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-[#71717A] mb-1.5">
+              Select Customer Group
+            </label>
+            {customerGroups.length === 0 ? (
+              <div className="p-3 bg-white rounded-xl border border-[#EAEAEA] text-xs text-[#71717A] text-center">
+                No customer groups available yet. Create groups from the Customer Groups page.
+              </div>
+            ) : (
+              <CustomDropdown
+                value={selectedGroupId}
+                onChange={(val) => setSelectedGroupId(val)}
+                options={customerGroups.map((g) => ({
+                  value: String(g.id),
+                  label: `${g.name} (${g.member_count ?? 0} members)`,
+                }))}
+                variant="white"
+                className="w-full"
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {targetAudienceType === 'filtered' && (
         <div className="p-4 bg-[#F4F7F4] rounded-2xl border border-[#EAEAEA] grid grid-cols-2 gap-3">
@@ -207,11 +242,10 @@ const AudienceStep: React.FC<AudienceStepProps> = ({
                   key={c.id}
                   className="flex items-center gap-2.5 px-3 py-2 hover:bg-[#F4F7F4] cursor-pointer transition-colors"
                 >
-                  <input
-                    type="checkbox"
+                  <RoundCheckbox
                     checked={selectedCustomerIds.includes(c.id)}
                     onChange={() => onToggleCustomerSelection(c.id)}
-                    className="rounded border-[#EAEAEA] text-[#16281D] focus:ring-[#9FE870] cursor-pointer"
+                    aria-label={`Select customer ${c.name}`}
                   />
                   <div className="flex-1 flex items-center justify-between">
                     <span className="text-xs font-medium text-[#16281D]">{c.name}</span>

@@ -55,6 +55,41 @@ export interface ProfileImage {
   error: boolean;
 }
 
+export interface CustomerGroupTag {
+  id: number;
+  name: string;
+  color: string;
+}
+
+export interface CustomerGroupMemberPreview {
+  id: number;
+  name: string;
+  phone: string;
+  profile_image_url?: string;
+}
+
+export interface CustomerGroup {
+  id: number;
+  name: string;
+  description?: string | null;
+  color: string;
+  is_default?: boolean;
+  created_at: string;
+  updated_at: string;
+  member_count: number;
+  preview_members?: CustomerGroupMemberPreview[];
+}
+
+export interface GroupMemberDetail {
+  id: number;
+  name: string;
+  phone: string;
+  lead_stage?: string;
+  profile_image_url?: string;
+  added_at: string;
+  order_count: number;
+}
+
 export interface Customer {
   id: number;
   name: string;
@@ -65,6 +100,7 @@ export interface Customer {
   conversion_stage?: string;
   order_count: number;
   profile_image_url?: string;
+  groups?: CustomerGroupTag[];
 }
 
 export interface Metrics {

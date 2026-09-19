@@ -18,6 +18,7 @@ import CustomDropdown from "../shared/CustomDropdown";
 import { DatePicker } from "../shared/DatePicker";
 import { SkeletonPage } from "../shared/Skeleton";
 import { useTableSelection } from "../shared/useTableSelection";
+import { RoundCheckbox } from "../shared/RoundCheckbox";
 import OrderBulkActionsBar from "./OrderBulkActionsBar";
 import { useBulkProgress, FloatingBulkProgress } from "../shared/BulkProgress";
 import { EmptyTableState } from "../shared/EmptyTableState";
@@ -911,7 +912,7 @@ const OrdersPage: React.FC = () => {
 
         {/* Table */}
         <div ref={tableRef}
-          style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflow: 'visible', scrollMarginTop: 20 }}
+          style={{ background: '#fff', borderRadius: 20, border: '1px solid #EAEAEA', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflow: 'visible', scrollMarginTop: 20, position: 'relative', zIndex: 0 }}
         >
           {orders.length === 0 ? (
             <EmptyTableState
@@ -958,17 +959,10 @@ const OrdersPage: React.FC = () => {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <input
-                              type="checkbox"
+                            <RoundCheckbox
                               checked={isSelected}
                               onChange={() => selection.toggleSelect(order.id)}
-                              style={{
-                                cursor: 'pointer',
-                                accentColor: '#16281D',
-                                width: 16,
-                                height: 16,
-                                flexShrink: 0,
-                              }}
+                              aria-label={`Select order #${order.id}`}
                             />
                             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#16281D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <span style={{ fontSize: 12, fontWeight: 700, color: '#9FE870' }}>
@@ -1022,6 +1016,9 @@ const OrdersPage: React.FC = () => {
                             <span style={{ fontSize: 11, color: '#71717a' }}>Placed on</span>
                             <span style={{ fontSize: 12, color: '#16281D', fontWeight: 500 }}>
                               {new Date(order.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                            </span>
+                            <span style={{ fontSize: 10.5, fontFamily: "'JetBrains Mono', monospace", color: '#71717a' }}>
+                              {new Date(order.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                             </span>
                             {order.estimated_delivery_date && (
                               <span style={{ fontSize: 10.5, color: '#15803D', fontWeight: 500, marginTop: 2 }}>
@@ -1108,20 +1105,13 @@ const OrdersPage: React.FC = () => {
                 <thead>
                   <tr>
                     <th style={{ ...thCell, width: '38px', textAlign: 'center', padding: '12px 6px' }}>
-                      <input
+                      <RoundCheckbox
                         ref={selectAllCheckboxRef}
-                        type="checkbox"
                         checked={isAllPageSelected}
+                        indeterminate={isPageIndeterminate}
                         onChange={() => selection.selectAll(pageIds)}
                         title="Select all on current page"
-                        style={{
-                          cursor: 'pointer',
-                          accentColor: '#16281D',
-                          width: 15,
-                          height: 15,
-                          margin: 0,
-                          verticalAlign: 'middle',
-                        }}
+                        aria-label="Select all orders on current page"
                       />
                     </th>
                     <th style={{ ...thCell, width: '10%' }}>Order ID</th>
@@ -1163,18 +1153,10 @@ const OrdersPage: React.FC = () => {
                       >
                         {/* Checkbox */}
                         <td style={{ textAlign: 'center', padding: '12px 6px', whiteSpace: 'nowrap' }}>
-                          <input
-                            type="checkbox"
+                          <RoundCheckbox
                             checked={isSelected}
                             onChange={() => selection.toggleSelect(order.id)}
-                            style={{
-                              cursor: 'pointer',
-                              accentColor: '#16281D',
-                              width: 15,
-                              height: 15,
-                              margin: 0,
-                              verticalAlign: 'middle',
-                            }}
+                            aria-label={`Select order #${order.id}`}
                           />
                         </td>
 
@@ -1207,18 +1189,40 @@ const OrdersPage: React.FC = () => {
                               {order.customer_name?.charAt(0).toUpperCase() || "?"}
                             </span>
                           </div>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#16281D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={order.customer_name}>{order.customer_name}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#16281D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={order.customer_name}>
+                              {order.customer_name}
+                            </span>
+                            {order.customer_phone && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  color: '#71717a',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={order.customer_phone}
+                              >
+                                {order.customer_phone}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
                       {/* Date */}
                       <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: 12, color: '#71717a' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: '#16281D' }}>
                             {new Date(order.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                           </span>
+                          <span style={{ fontSize: 10.5, fontFamily: "'JetBrains Mono', monospace", color: '#71717a' }}>
+                            {new Date(order.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                           {order.estimated_delivery_date && (
-                            <span style={{ fontSize: 10.5, color: '#15803D', fontWeight: 500 }} title="Estimated Delivery Date">
+                            <span style={{ fontSize: 10.5, color: '#15803D', fontWeight: 500, marginTop: 1 }} title="Estimated Delivery Date">
                               Est: {new Date(order.estimated_delivery_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                             </span>
                           )}

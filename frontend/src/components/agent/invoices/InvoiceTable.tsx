@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package, Pencil } from "lucide-react";
+import { RoundCheckbox } from "../shared/RoundCheckbox";
 import { InvoiceWithDetails } from "./types";
 import { getStatusStyle, getStatusDotColor, capitalizeFirst } from "./constants";
 
@@ -66,13 +67,13 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
         <thead>
           <tr>
             <th style={{ ...thCell, width: "38px", textAlign: "center", padding: "10px 6px" }}>
-              <input
+              <RoundCheckbox
                 ref={selectAllCheckboxRef}
-                type="checkbox"
                 checked={isAllSelected}
+                indeterminate={isIndeterminate}
                 onChange={() => onSelectAll(pageIds)}
                 title="Select all on current page"
-                className="cursor-pointer w-4 h-4 rounded accent-[#9FE870] m-0 align-middle"
+                aria-label="Select all invoices on current page"
               />
             </th>
             <th style={{ ...thCell, width: "11%" }}>Invoice #</th>
@@ -99,11 +100,10 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
               >
                 {/* Row Checkbox */}
                 <td className="text-center p-2.5 whitespace-nowrap">
-                  <input
-                    type="checkbox"
+                  <RoundCheckbox
                     checked={isSelected}
                     onChange={() => onToggleSelect(invoice.id)}
-                    className="cursor-pointer w-4 h-4 rounded accent-[#9FE870] m-0 align-middle"
+                    aria-label={`Select invoice ${invoice.invoice_number || invoice.id}`}
                   />
                 </td>
 
@@ -126,11 +126,21 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
 
                 {/* Customer */}
                 <td className="p-2.5 overflow-hidden">
-                  <div
-                    className="text-xs font-semibold text-[#52525B] truncate"
-                    title={invoice.customer_name}
-                  >
-                    {invoice.customer_name}
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-xs font-semibold text-[#16281D] truncate"
+                      title={invoice.customer_name}
+                    >
+                      {invoice.customer_name}
+                    </span>
+                    {invoice.customer_phone && (
+                      <span
+                        className="text-[11px] font-mono text-[#71717A] truncate"
+                        title={invoice.customer_phone}
+                      >
+                        {invoice.customer_phone}
+                      </span>
+                    )}
                   </div>
                 </td>
 
@@ -173,13 +183,21 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
 
                 {/* Date */}
                 <td className="p-2.5 whitespace-nowrap">
-                  <span className="text-[11px] font-medium text-[#71717A]">
-                    {new Date(invoice.generated_at).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] font-medium text-[#16281D]">
+                      {new Date(invoice.generated_at).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                    <span className="text-[10px] font-mono text-[#71717A]">
+                      {new Date(invoice.generated_at).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
                 </td>
 
                 {/* Actions */}

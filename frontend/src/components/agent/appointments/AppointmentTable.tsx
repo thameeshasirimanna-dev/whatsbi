@@ -4,11 +4,17 @@ import { Calendar, ChevronDown, Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import { Appointment } from '../../../types';
 import { useDialog } from '../shared/DialogProvider';
 import { EmptyTableState } from '../shared/EmptyTableState';
+import { RoundCheckbox } from '../shared/RoundCheckbox';
 
 interface AppointmentTableProps {
   appointments: Appointment[];
   totalCount: number;
   updatingAppointmentId: number | null;
+  selectedIds?: number[];
+  onToggleSelect?: (id: number) => void;
+  onSelectAll?: (ids: number[]) => void;
+  isAllSelected?: boolean;
+  isIndeterminate?: boolean;
   onUpdateStatus: (
     appointmentId: number,
     status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
@@ -53,6 +59,11 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
   appointments,
   totalCount,
   updatingAppointmentId,
+  selectedIds = [],
+  onToggleSelect,
+  onSelectAll,
+  isAllSelected = false,
+  isIndeterminate = false,
   onUpdateStatus,
   onView,
   onEdit,
@@ -86,6 +97,15 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-[#EAEAEA] bg-[#F4F7F4]/60">
+              <th className="w-10 px-3 py-3.5 text-center">
+                <RoundCheckbox
+                  checked={isAllSelected}
+                  indeterminate={isIndeterminate}
+                  onChange={() => onSelectAll?.(appointments.map((a) => a.id))}
+                  title="Select all on page"
+                  aria-label="Select all appointments on page"
+                />
+              </th>
               <th className="px-5 py-3.5 text-[11px] font-semibold text-[#71717A] uppercase tracking-wider">#</th>
               <th className="px-5 py-3.5 text-[11px] font-semibold text-[#71717A] uppercase tracking-wider">Customer</th>
               <th className="px-5 py-3.5 text-[11px] font-semibold text-[#71717A] uppercase tracking-wider">Title</th>
@@ -98,8 +118,16 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
           <tbody className="divide-y divide-[#EAEAEA]">
             {appointments.map((appointment) => {
               const statusBadge = getStatusBadge(appointment.status);
+              const isSelected = selectedIds.includes(appointment.id);
               return (
-                <tr key={appointment.id} className="hover:bg-[#F4F7F4]/40 transition-colors">
+                <tr key={appointment.id} className={`hover:bg-[#F4F7F4]/40 transition-colors ${isSelected ? 'bg-[#F0FDF4]' : ''}`}>
+                  <td className="w-10 px-3 py-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <RoundCheckbox
+                      checked={isSelected}
+                      onChange={() => onToggleSelect?.(appointment.id)}
+                      aria-label={`Select appointment #${appointment.id}`}
+                    />
+                  </td>
                   <td className="px-5 py-3.5 whitespace-nowrap">
                     <span className="font-mono text-xs font-semibold text-[#16281D]">
                       #{appointment.id.toString().padStart(4, '0')}
@@ -216,10 +244,18 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
       <div className="block lg:hidden divide-y divide-[#EAEAEA]">
         {appointments.map((appointment) => {
           const statusBadge = getStatusBadge(appointment.status);
+          const isSelected = selectedIds.includes(appointment.id);
           return (
-            <div key={appointment.id} className="p-4 space-y-3">
+            <div key={appointment.id} className={`p-4 space-y-3 transition-colors ${isSelected ? 'bg-[#F0FDF4]' : ''}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <RoundCheckbox
+                      checked={isSelected}
+                      onChange={() => onToggleSelect?.(appointment.id)}
+                      aria-label={`Select appointment #${appointment.id}`}
+                    />
+                  </div>
                   <div className="w-8 h-8 rounded-full bg-[#16281D] text-[#9FE870] flex items-center justify-center text-xs font-bold shrink-0">
                     {appointment.customer_name?.charAt(0).toUpperCase() || '?'}
                   </div>

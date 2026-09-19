@@ -233,16 +233,22 @@ Dropdown triggers in Biz Agentz are first-class interactive button triggers and 
 - **Floating Popover Menu**: `absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#EAEAEA] p-1.5 shadow-[0_12px_36px_rgba(20,40,24,0.14)] z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150` (dark surfaces: `bg-[#16281D] border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.35)]`).
 - **Pill Menu Selection Items**: Option buttons are capsule pill items: `px-3.5 py-2 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center justify-between border-0` (active: `bg-[#9FE870] text-[#16281D] shadow-xs`, inactive: `text-[#16281D] hover:bg-[#F4F7F4] bg-transparent`, with `Check size={13} strokeWidth={2.8}`). Dark options: active `bg-[#9FE870] text-[#16281D]`, inactive `text-[#E4E4E7] hover:bg-[#203628] hover:text-white`.
 
-### Toggle Switches & Checkboxes
+### Toggle Switches & Circular Checkboxes (`RoundCheckbox`)
 - **Toggle Switch**: Track `w-11 h-6 rounded-full transition-colors cursor-pointer p-0.5 border-0 flex items-center` (`bg-[#9FE870]` active, `bg-[#E4E4E7]` inactive) with thumb `w-5 h-5 rounded-full bg-white shadow-sm transition-transform` (`translate-x-5` active, `translate-x-0` inactive).
-- **Checkbox**: `w-5 h-5 rounded-md flex items-center justify-center transition-all border cursor-pointer` (`bg-[#9FE870] border-[#9FE870] text-[#16281D]` with `Check size={13} strokeWidth={3}` when checked, `bg-white border-[#D4D4D8]` when unchecked).
+- **Circular Checkbox (`RoundCheckbox`)**: Strictly circular (`rounded-full` / `border-radius: 9999px`), completely eliminating boxy, square, or semi-rounded checkboxes from table headers and rows:
+  - **Unchecked**: `w-[18px] h-[18px] rounded-full border border-[#D4D4D8] bg-white hover:border-[#16281D] hover:bg-[#F4F7F4] transition-all cursor-pointer`
+  - **Checked (Full Selection)**: `w-[18px] h-[18px] rounded-full bg-[#16281D] border border-[#16281D] text-[#9FE870] shadow-2xs flex items-center justify-center` with `<Check size={11} strokeWidth={3} />`
+  - **Indeterminate (Partial Bulk Selection)**: `w-[18px] h-[18px] rounded-full bg-[#16281D] border border-[#16281D] text-[#9FE870] shadow-2xs flex items-center justify-center` with `<Minus size={11} strokeWidth={3.5} />`
+  - **Accessibility**: Built with an underlying semantic `<input type="checkbox" className="sr-only" />` to preserve keyboard focus (`peer-focus-visible:ring-2 peer-focus-visible:ring-[#9FE870]`) and screen-reader accessibility.
 
 ---
 
 ## 11. Data Tables & Record Management
 
 - **Table Header**: `bg-[#F8FAF8] border-b border-[#EAEAEA]`, cells `px-4 py-3 text-[11px] font-bold text-[#52525B] uppercase tracking-wider text-left`.
+- **Bulk Selection Header Cell**: `w-[38px] text-center p-2.5` housing `<RoundCheckbox ref={selectAllCheckboxRef} checked={isAllSelected} indeterminate={isIndeterminate} onChange={...} />`.
 - **Table Rows**: Row padding `px-4 py-3 text-xs`, hover highlight `hover:bg-[#FAFFFE]`, selected highlight `bg-[#F0FDF4] transition-colors cursor-pointer`.
+- **Row Selection Cell**: `w-[38px] text-center p-2.5` housing `<RoundCheckbox checked={isSelected} onChange={...} />`.
 - **Tenant Cell**: Avatar `w-7 h-7 rounded-full bg-[#16281D] text-[#9FE870] flex items-center justify-center font-bold text-[11px]`.
 - **Action Link**: `inline-flex items-center gap-1 text-[11px] font-bold text-[#059669] hover:text-[#047857] transition-colors cursor-pointer bg-transparent border-0`.
 

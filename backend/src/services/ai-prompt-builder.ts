@@ -122,14 +122,15 @@ function buildStageWorkflowInstructions(
            : 'Thank you! Our team will verify your payment slip and update the status manually shortly. Once confirmed, our team will contact you to gather all the work requirements and start your project immediately!'}"`
        : isTamilCustomer
        ? `* Tamil: "${isProductBusiness
-           ? 'நன்றி! எங்கள் குழு உங்கள் கட்டண ரசீதை சரிபார்த்தු கூரியர் மூலம் உங்கள் ஆர்டரை அனுப்பும்.'
-           : 'நன்றி! எங்கள் குழு உங்கள் கட்டண ரசீதை சரிபார்த்தු விரைவில் நிலையை புதுப்பிக்கும். உறுதிப்படுத்தப்பட்டதும், எங்கள் குழு உங்களைத் தொடர்பு கொண்டு தேவையான அனைத்து விவரங்களையும் பெற்று வேலையை உடனடியாகத் தொடங்கும்!'}"`
+           ? 'நன்றி! எங்கள் குழு உங்கள் கட்டண ரசீதை சரிபார்த்து கூரியர் மூலம் உங்கள் ஆர்டரை அனுப்பும்.'
+           : 'நன்றி! எங்கள் குழு உங்கள் கட்டண ரசீதை சரிபார்த்து விரைவில் நிலையை புதுப்பிக்கும். உறுதிப்படுத்தப்பட்டதும், எங்கள் குழு உங்களைத் தொடர்பு கொண்டு தேவையான அனைத்து விவரங்களையும் பெற்று வேலையை உடனடியாகத் தொடங்கும்!'}"`
        : `* Natural spoken Sinhala (සිංහල අකුරෙන් පමණි): "${isProductBusiness
            ? 'ස්තූතියි! අපගේ team එක payment slip එක verify කරලා, ඇණවුම pack කර courier එකට භාර දෙන්න කටයුතු කරනවා.'
            : 'ස්තූතියි! අපගේ team එක payment slip එක verify කරලා බලලා, ඉක්මනින්ම manually update කරන්නම්. Payment එක confirm වුණු ගමන්ම අපගේ team එක ඔබව සම්බන්ධ කරගෙන වැඩේට අවශ්‍ය සියලුම requirements සහ විස්තර ලබාගෙන වහාම වැඩ ආරම්භ කරනවා.'}"`}
    - STRICT GUARDRAILS:
      * NEVER output Singlish or Latin-script Sinhala.
-     * NEVER output an [ACTION:CREATE_INVOICE] tag, bank details, or ask confirmation questions.`;
+     * NEVER output an [ACTION:CREATE_INVOICE] tag, bank details, or ask confirmation questions.
+     * NEVER set conversion stage to 'Paid' autonomously. The human team will manually verify the payment slip and mark as paid in the CRM.`;
   }
 
   if (stage === 'appointment') {
@@ -275,6 +276,8 @@ Customer Details:
 - Phone: ${customer.phone || 'N/A'}
 - Preferred Language: ${customerLanguage}
 - Pipeline Lead Stage: ${customer.lead_stage || 'New Lead'}
+- Interest Stage: ${customer.interest_stage || 'None'}
+- Conversion Stage: ${customer.conversion_stage || 'None'}${customer.conversion_stage === 'Paid' ? ' [OFFICIALLY CONVERTED / PAID IN FULL BY TEAM]' : ''}
 
 ${customerRecords}
 
@@ -285,6 +288,18 @@ Core Operating Rules:
 
 0.1. BUSINESS OWNER CUSTOM RULES (TOP OPERATIONAL PRIORITY):
    - Always prioritize Business Owner Custom Instructions & Rules above over default behavior.
+
+0.1.1. LEAD STAGE MANAGEMENT & AUTHENTIC CONVERSION BOUNDARY:
+   - You have the authority to update the customer's pipeline stage as the conversation progresses by appending an action tag at the end of your message:
+     [ACTION:UPDATE_LEAD_STAGE:{"lead_stage":"Contacted","interest_stage":"Interested"}]
+   - Valid Lead Stages: "New Lead", "Contacted", "Not Responding", "Follow-up Needed"
+   - Valid Interest Stages: "Interested", "Quotation Sent", "Asked for More Info"
+   - Valid Conversion Stages for AI: "Payment Pending"
+   - STRICT TEAM PAID CONVERSION RULE:
+     * You are STRICTLY FORBIDDEN from setting conversion stage to "Paid".
+     * When a customer sends a payment slip or claims they paid, keep/set the stage as "Payment Pending".
+     * The human team manually verifies bank records and marks the order/invoice as Paid in the CRM. That manual confirmation by the team is the ONLY authentic "Paid" lead stage.
+     * If the customer's Conversion Stage is already "Paid", this customer has already purchased and paid. Treat them with VIP care and NEVER downgrade or reset their conversion stage.
 ${salesAndWorkflowRules}${invoiceGroundingRules}
 1. Tone, Language & WhatsApp Formatting:
    - LANGUAGE POLICY (${customerLanguage.toUpperCase()}):

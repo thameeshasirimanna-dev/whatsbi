@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { DatePicker } from '../../agent/shared/DatePicker';
 import { TimePicker } from '../../agent/shared/TimePicker';
+import { RoundCheckbox } from '../../agent/shared/RoundCheckbox';
 
 export const FormsFeedbackPanel: React.FC = () => {
   const [toggleActive, setToggleActive] = useState(true);
@@ -130,21 +131,14 @@ export const FormsFeedbackPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Interactive Checkbox */}
+          {/* Interactive Circular Checkbox */}
           <div className="bg-white rounded-2xl p-5 border border-[#EAEAEA] flex flex-col justify-between gap-3">
-            <span className="text-xs font-bold text-[#16281D]">Checkbox</span>
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <button
-                type="button"
-                onClick={() => setCheckboxChecked(!checkboxChecked)}
-                className={`w-5 h-5 rounded-md flex items-center justify-center transition-all border cursor-pointer ${
-                  checkboxChecked
-                    ? 'bg-[#9FE870] border-[#9FE870] text-[#16281D]'
-                    : 'bg-white border-[#D4D4D8]'
-                }`}
-              >
-                {checkboxChecked && <Check size={13} strokeWidth={3} />}
-              </button>
+            <span className="text-xs font-bold text-[#16281D]">Circular Checkbox (RoundCheckbox)</span>
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <RoundCheckbox
+                checked={checkboxChecked}
+                onChange={(e) => setCheckboxChecked(e.target.checked)}
+              />
               <span className="text-xs text-[#16281D] font-medium">
                 Auto-sync WhatsApp contacts
               </span>
@@ -408,6 +402,13 @@ export const FormsFeedbackPanel: React.FC = () => {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-[#F8FAF8] border-b border-[#EAEAEA]">
+                  <th className="w-10 px-3 py-3 text-center">
+                    <RoundCheckbox
+                      checked={selectedRow !== null}
+                      onChange={() => setSelectedRow(selectedRow ? null : 1)}
+                      title="Select all"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-[11px] font-bold text-[#52525B] uppercase tracking-wider text-left">
                     Agent Tenant
                   </th>
@@ -442,6 +443,12 @@ export const FormsFeedbackPanel: React.FC = () => {
                         isSelected ? 'bg-[#F0FDF4]' : 'hover:bg-[#FAFFFE]'
                       }`}
                     >
+                      <td className="w-10 px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <RoundCheckbox
+                          checked={isSelected}
+                          onChange={() => setSelectedRow(isSelected ? null : row.id)}
+                        />
+                      </td>
                       <td className="px-4 py-3 text-xs">
                         <div className="flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-full bg-[#16281D] text-[#9FE870] flex items-center justify-center font-bold text-[11px]">

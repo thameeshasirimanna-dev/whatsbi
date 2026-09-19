@@ -257,10 +257,11 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         }
       );
+      let agentCustomers: any[] = [];
       if (customersResponse.ok) {
         const customersData = await customersResponse.json();
         if (customersData.success) {
-          const agentCustomers =
+          agentCustomers =
             customersData.customers.map((c: any) => ({
               id: c.id,
               name: c.name,
@@ -288,10 +289,20 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
         setLoading(false);
         return;
       }
+
+      const customerPhoneMap = new Map<number, string>();
+      agentCustomers.forEach((c: any) => {
+        if (c.id && c.phone) {
+          customerPhoneMap.set(c.id, c.phone);
+        }
+      });
+
       setInvoices(
         (invoicesData.invoices || []).map((inv: any) => ({
           ...inv,
           total: parseFloat(inv.total) || 0,
+          customer_phone:
+            inv.customer_phone || (inv.customer_id ? customerPhoneMap.get(inv.customer_id) : "") || "",
           invoice_number:
             inv.invoice_number || `#INV-${inv.id.toString().padStart(4, "0")}`,
         }))
@@ -320,6 +331,7 @@ export const useInvoices = (tableRef: React.RefObject<HTMLDivElement>) => {
       invNum.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.id.toString().includes(searchTerm) ||
       (invoice.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (invoice.customer_phone && invoice.customer_phone.includes(searchTerm)) ||
       (invoice.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       (invoice.status?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       (invoice.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);

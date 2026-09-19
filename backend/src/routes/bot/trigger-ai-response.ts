@@ -11,6 +11,7 @@ import {
   isSampleRequest,
 } from '../../services/ai-chatbot.service.js';
 import { parseAndExecuteAgentActions } from '../../services/ai-agent-actions.service.js';
+import { syncAutonomousLeadStage } from '../../services/ai-lead-stage.service.js';
 
 export default async function triggerAiResponseRoutes(
   fastify: FastifyInstance,
@@ -203,13 +204,27 @@ export default async function triggerAiResponseRoutes(
         });
       }
 
-      // Execute any agent actions (appointments, invoices) and obtain clean text
+      // Execute any agent actions (appointments, invoices, lead stage updates) and obtain clean text
       const { cleanReply, actionsExecuted } = await parseAndExecuteAgentActions({
         agent,
         customer,
         rawReply: replyText,
         incomingText: prompt || customPrompt,
         pgClient,
+        cacheService,
+        emitAgentStatusUpdate,
+      });
+
+      // Synchronize customer pipeline stage
+      await syncAutonomousLeadStage({
+        agent,
+        customer,
+        stage: aiResult.stage || 'inquiry',
+        incomingText: prompt || customPrompt,
+        actionsExecuted,
+        pgClient,
+        cacheService,
+        emitAgentStatusUpdate,
       });
 
       if (!cleanReply) {

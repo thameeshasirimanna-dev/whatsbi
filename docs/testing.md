@@ -328,3 +328,50 @@ and card/metric grids using `gap-3.5 sm:gap-4`.
     - Verify that statuses sent with whitespace or mixed casing (e.g. `"Completed"`, `" Completed "`) are trimmed and lowercased before validation and database persistence.
   - **Orders Table & Details View Parity**:
     - In the Orders Table (`OrdersPage.tsx`), Order Details (`OrderDetailsPage.tsx`), and Bulk Actions Bar (`OrderBulkActionsBar.tsx`), verify that selecting `"Completed"` or any other valid status updates the order status successfully without returning `"Invalid order status"`.
+
+- **TC-AI-21 (Customer Lead Stage Autonomous & Action-Driven Progression)**:
+  - **New Lead to Contacted**:
+    - For a customer with `lead_stage = 'New Lead'`, verify that when the AI agent responds to an inbound message or copilot trigger, `lead_stage` automatically transitions to `'Contacted'` in `{agent_prefix}_customers`.
+  - **Inquiry to Interested**:
+    - In Stage A (`inquiry`), verify that exploring packages or catalog items sets `interest_stage = 'Interested'`.
+  - **Invoice Creation to Quotation Sent & Payment Pending**:
+    - When `executeCreateInvoice` runs or `stage = 'confirmation'`, verify that `interest_stage` transitions to `'Quotation Sent'` and `conversion_stage` transitions to `'Payment Pending'` (unless already `'Paid'`).
+  - **Explicit Action Execution (`[ACTION:UPDATE_LEAD_STAGE]`)**:
+    - Verify that when the AI emits `[ACTION:UPDATE_LEAD_STAGE:{"lead_stage":"Contacted","interest_stage":"Interested"}]`, `parseAndExecuteAgentActions` validates the stages against database ENUMs and updates the database row.
+    - Verify that the tag is completely stripped from the customer-facing WhatsApp reply via `sanitizeLeakedActionArtifacts`.
+  - **Real-Time UI Socket Updates**:
+    - Verify that `executeLeadStageUpdate` emits `lead_stage_updated` via `emitAgentStatusUpdate` and that `ConversationsPage.tsx` immediately updates the conversation badge in the left sidebar and `MessageView.tsx` header without requiring a page reload.
+
+- **TC-AI-22 (Team Manual Verification & Authentic Paid Conversion Integrity Boundary)**:
+  - **AI Agent Paid Boundary**:
+    - In Stage C (`paid`), when a customer submits a payment slip image or claims they paid ("I paid", "salli damma"), verify that the AI agent acknowledges receipt and tells the customer that the team will verify manually shortly.
+    - Verify that the AI agent does NOT mark `conversion_stage = 'Paid'`. The stage remains `'Payment Pending'`.
+    - Verify that if the LLM attempts to output `[ACTION:UPDATE_LEAD_STAGE:{"conversion_stage":"Paid"}]`, `validateAndSanitizeLeadStageUpdate` intercepts and sanitizes it to `'Payment Pending'`.
+  - **Team Manual Mark as Paid Conversion**:
+    - In `OrdersPage.tsx` or `OrderDetailsPage.tsx`, click "Mark as fully paid" on an order.
+    - Verify that `manage-orders.ts` updates the customer in `{agent_prefix}_customers` to `conversion_stage = 'Paid'` and `lead_stage = 'Contacted'`.
+    - Verify that `ConversationsPage.tsx` badge turns green and displays "Paid" immediately.
+  - **Non-Degradation Guardrail**:
+- **TC-AI-23 (Customer Groups Management, Dynamic Retrieval & Broadcast Targeting)**:
+  - **Default Lead Stage Groups Auto-Seeding & Synchronization**:
+    - Verify that when an agent loads `/agent/customer-groups`, four default groups are automatically seeded: `New Lead` (`#3B82F6`), `Contacted` (`#8B5CF6`), `Follow-up Needed` (`#F59E0B`), and `Not Responding` (`#6B7280`), each tagged with `is_default = true` and displaying a `Lead Stage` badge.
+    - Verify that all existing customers in the agent's CRM are automatically synced as members of the group corresponding to their current `lead_stage`.
+    - Verify that creating a customer or updating a customer's `lead_stage` (via team edit or AI conversation progression) dynamically moves the customer to the new default group while preserving their custom group memberships.
+    - Verify that default lead stage groups cannot be deleted (`DELETE` returns 400 with explanation) and their names cannot be modified in `EditGroupModal`.
+  - **Group Creation & CRUD**:
+    - Navigate to `/agent/customer-groups`. Click `+ New Group`. Enter Name, Description, pick Color, and optionally pre-select members. Submit and verify the card appears in the grid with avatar stacks and correct member count.
+    - Edit group metadata (name, description, color) via `Edit` button and verify immediate updates.
+    - Delete group via `Delete` button with confirmation modal and verify group is removed without deleting the underlying customers.
+  - **Member Management Drawer**:
+    - Click `View Members` on any group card to open `GroupMembersDrawer`.
+    - Verify member search, individual removal (`Remove`), and adding existing customers via "+ Add Members".
+  - **1-Click Phone Retrieval & Copy**:
+    - Click `Copy Phones` on a group card. Verify all valid member phone numbers are formatted and copied to clipboard with toast notification.
+  - **Customers Page & Bulk Actions Integration**:
+    - In `/agent/customers`, verify the "Groups" button in toolbar Row 1 with group counter badge.
+    - Select multiple customers via round checkboxes; in `CustomerBulkActionsBar`, click "Add to Group" and select target group. Verify members are linked and colored group pills appear under customer names in both desktop table and mobile cards.
+    - In toolbar Row 2, filter by "All Groups" -> select a specific group. Verify table filters to only customers belonging to that group.
+  - **Broadcast Campaign Targeting Integration**:
+    - On `/agent/customer-groups`, click "Broadcast" on a group card. Verify navigation to `/agent/broadcasts` with `targetAudienceType = 'group'`, pre-selected group, and pre-populated campaign title.
+    - In `CreateBroadcastModal` -> `AudienceStep`, verify "By Group" tab shows group dropdown with live member counts.
+

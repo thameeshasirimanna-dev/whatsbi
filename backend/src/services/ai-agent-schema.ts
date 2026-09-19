@@ -287,7 +287,7 @@ export function sanitizeLeakedActionArtifacts(text: string): string {
   cleaned = cleaned.replace(/\[\s*ACTION\s*:[^\]]*$/gi, '');
 
   // 3. Remove orphaned JSON key-value pairs anywhere in text
-  cleaned = cleaned.replace(/,?\s*"(?:total_?amount|advance_?amount|notes|customer_?name|items|bank_?details|name|unit_?price|price|quantity|qty)"\s*:\s*(?:"[^"\n\r]*"?|'[^'\n\r]*'?|\d+[\d.]*|\[[^\]]*\]?|\{[^}]*\}?)/gi, '');
+  cleaned = cleaned.replace(/,?\s*"(?:total_?amount|advance_?amount|notes|customer_?name|items|bank_?details|name|unit_?price|price|quantity|qty|lead_?stage|interest_?stage|conversion_?stage|lead_?stage_?note)"\s*:\s*(?:"[^"\n\r]*"?|'[^'\n\r]*'?|\d+[\d.]*|\[[^\]]*\]?|\{[^}]*\}?)/gi, '');
 
   // 4. Remove any orphaned "notes": "..." multi-line or unclosed snippets anywhere in text
   cleaned = cleaned.replace(/,?\s*"notes"\s*:\s*(?:"[\s\S]*?(?:"|$)|'[\s\S]*?(?:'|$)|[^\n\r]+)/gi, '');

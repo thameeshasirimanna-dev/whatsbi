@@ -10,6 +10,7 @@ import {
   PJS, MONO
 } from './CustomerTypes';
 import { TableSelection } from '../shared/useTableSelection';
+import { RoundCheckbox } from '../shared/RoundCheckbox';
 import { EmptyTableState } from '../shared/EmptyTableState';
 
 interface CustomersTableProps {
@@ -70,6 +71,8 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
     return [1, '...', current - 1, current, current + 1, '...', total];
   };
 
+  const isPageIndeterminate = selection.isIndeterminate(pageIds);
+
   return (
     <div
       ref={tableRef}
@@ -124,18 +127,10 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <input
-                          type="checkbox"
+                        <RoundCheckbox
                           checked={isCardSelected}
                           onChange={() => selection.toggleSelect(customer.id)}
                           aria-label={`Select customer ${customer.name}`}
-                          style={{
-                            cursor: 'pointer',
-                            accentColor: '#16281D',
-                            width: 16,
-                            height: 16,
-                            flexShrink: 0,
-                          }}
                         />
                         <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
                           {profile?.loading ? (
@@ -163,6 +158,30 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                             <span style={{ fontSize: 13 }}>{getFlagEmoji(detectCountryCode(customer.phone))}</span>
                             <span style={{ ...MONO, fontSize: 12, color: '#71717A' }}>{customer.phone}</span>
                           </div>
+                          {customer.groups && customer.groups.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                              {customer.groups.map((group) => (
+                                <span
+                                  key={group.id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    padding: '1px 6px',
+                                    borderRadius: 9999,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    backgroundColor: `${group.color}15`,
+                                    color: group.color,
+                                    border: `1px solid ${group.color}35`,
+                                  }}
+                                >
+                                  <span style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: group.color }} />
+                                  {group.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -223,18 +242,13 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
               <thead>
                 <tr>
                   <th style={{ ...thCell, width: '38px', textAlign: 'center', padding: '10px 6px' }}>
-                    <input
+                    <RoundCheckbox
                       ref={selectAllCheckboxRef}
-                      type="checkbox"
                       checked={isAllPageSelected}
+                      indeterminate={isPageIndeterminate}
                       onChange={() => selection.selectAll(pageIds)}
+                      title="Select all on current page"
                       aria-label="Select all customers on page"
-                      style={{
-                        cursor: 'pointer',
-                        accentColor: '#16281D',
-                        width: 15,
-                        height: 15,
-                      }}
                     />
                   </th>
                   <th style={{ ...thCell, width: '26%' }}>Name</th>
@@ -268,17 +282,10 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                     >
                       {/* Checkbox */}
                       <td style={{ textAlign: 'center', padding: '12px 6px', whiteSpace: 'nowrap' }}>
-                        <input
-                          type="checkbox"
+                        <RoundCheckbox
                           checked={isRowSelected}
                           onChange={() => selection.toggleSelect(customer.id)}
                           aria-label={`Select customer ${customer.name}`}
-                          style={{
-                            cursor: 'pointer',
-                            accentColor: '#16281D',
-                            width: 15,
-                            height: 15,
-                          }}
                         />
                       </td>
 
@@ -306,9 +313,40 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                               </div>
                             )}
                           </div>
-                          <span style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#16281D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={customer.name}>
-                            {customer.name}
-                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ ...PJS, fontSize: 13, fontWeight: 600, color: '#16281D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={customer.name}>
+                              {customer.name}
+                            </span>
+                            {customer.groups && customer.groups.length > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, flexWrap: 'wrap' }}>
+                                {customer.groups.slice(0, 2).map((group) => (
+                                  <span
+                                    key={group.id}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3,
+                                      padding: '1px 6px',
+                                      borderRadius: 9999,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      backgroundColor: `${group.color}15`,
+                                      color: group.color,
+                                      border: `1px solid ${group.color}35`,
+                                    }}
+                                  >
+                                    <span style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: group.color }} />
+                                    {group.name}
+                                  </span>
+                                ))}
+                                {customer.groups.length > 2 && (
+                                  <span style={{ fontSize: 10, color: '#71717A', fontWeight: 600 }}>
+                                    +{customer.groups.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
 

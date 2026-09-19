@@ -413,7 +413,10 @@ Thank you!`;
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 11, color: '#71717a' }}>Date</span>
                     <span style={{ fontSize: 11, color: '#16281D' }}>
-                       {new Date(fullOrderDetails.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(fullOrderDetails.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#71717a', fontSize: 10 }}>
+                        {new Date(fullOrderDetails.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </span>
                   </div>
                   {fullOrderDetails.estimated_delivery_date && (

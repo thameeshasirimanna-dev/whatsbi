@@ -1,4 +1,5 @@
 import React from 'react';
+import { Receipt, Wallet, CreditCard, Layers, Hash } from 'lucide-react';
 import { OrderDetails, BusinessType } from './types';
 
 interface OrderSummaryStatsProps {
@@ -19,61 +20,77 @@ export const OrderSummaryStats: React.FC<OrderSummaryStatsProps> = ({
 
   const stats = [
     {
-      value: `Rs. ${totalAmount.toFixed(2)}`,
-      label: 'Total Amount',
-      color: '#16281D',
+      value: `Rs. ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      label: isService ? 'Total Service Fee' : 'Total Amount',
+      icon: Receipt,
+      iconColor: '#16281D',
+      iconBg: 'rgba(159,232,112,0.25)',
+      valueColor: '#16281D',
     },
     {
-      value: `Rs. ${advanceAmount.toFixed(2)}`,
-      label: order.payment_status === 'unpaid' ? 'Advance Amount' : 'Advance Paid',
-      color: '#1D4ED8',
+      value: `Rs. ${advanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      label: order.payment_status === 'unpaid' ? 'Advance Deposit' : 'Advance Paid',
+      icon: Wallet,
+      iconColor: '#059669',
+      iconBg: 'rgba(16,185,129,0.12)',
+      valueColor: '#059669',
     },
     {
-      value: `Rs. ${balanceDue.toFixed(2)}`,
-      label: 'Balance Due',
-      color: '#EF4444',
+      value: `Rs. ${balanceDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      label: balanceDue === 0 ? 'Balance Cleared' : 'Balance Remaining',
+      icon: CreditCard,
+      iconColor: balanceDue > 0 ? '#E11D48' : '#059669',
+      iconBg: balanceDue > 0 ? 'rgba(225,29,72,0.1)' : 'rgba(16,185,129,0.12)',
+      valueColor: balanceDue > 0 ? '#E11D48' : '#059669',
     },
     {
       value: String(lineItemsCount),
-      label: isService ? 'Services Count' : 'Line Items',
-      color: '#7C3AED',
+      label: isService ? 'Booked Services' : 'Line Items',
+      icon: Layers,
+      iconColor: '#4F46E5',
+      iconBg: 'rgba(79,70,229,0.1)',
+      valueColor: '#16281D',
     },
     {
       value: String(totalQty),
-      label: isService ? 'Booked Units' : 'Total Qty',
-      color: '#15803D',
+      label: isService ? 'Total Units' : 'Total Quantity',
+      icon: Hash,
+      iconColor: '#0D9488',
+      iconBg: 'rgba(13,148,136,0.1)',
+      valueColor: '#16281D',
     },
   ];
 
   return (
-    <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-xs overflow-hidden">
-      <div className="p-4 sm:px-5 border-b border-[#EAEAEA]">
-        <span className="text-sm font-bold text-[#16281D]">
-          {isService ? 'Service Order Summary' : 'Order Summary'}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 p-3 sm:p-5">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="col-span-1 last:col-span-2 md:last:col-span-1 bg-[#F4F7F4] rounded-xl p-2.5 sm:p-3 text-center min-w-0"
-          >
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3.5 w-full">
+      {stats.map(({ label, value, icon: Icon, iconColor, iconBg, valueColor }) => (
+        <div
+          key={label}
+          className="col-span-1 last:col-span-2 sm:last:col-span-1 bg-white rounded-[16px] sm:rounded-[20px] p-3 sm:p-4 border border-[#EAEAEA] shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between min-w-0"
+        >
+          <div className="flex items-center justify-between mb-2 sm:mb-2.5">
             <div
-              style={{ color: stat.color }}
-              className="font-mono text-sm font-bold leading-tight mb-1 truncate"
-              title={stat.value}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: iconBg }}
             >
-              {stat.value}
-            </div>
-            <div className="text-[11px] text-[#71717A] font-medium truncate" title={stat.label}>
-              {stat.label}
+              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: iconColor }} />
             </div>
           </div>
-        ))}
-      </div>
+          <div
+            className="font-mono text-sm sm:text-base lg:text-lg font-bold leading-tight mb-1 truncate"
+            style={{ color: valueColor }}
+            title={value}
+          >
+            {value}
+          </div>
+          <div className="text-[11px] sm:text-xs font-medium text-[#71717A] truncate" title={label}>
+            {label}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
 
 export default OrderSummaryStats;
+

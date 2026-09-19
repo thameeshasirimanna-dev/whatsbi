@@ -48,3 +48,35 @@ export const getPaymentStatusStyle = (paymentStatus: string): React.CSSPropertie
   if (s === 'unpaid') return { background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 9999 };
   return { background: '#F4F7F4', color: '#71717a', borderRadius: 9999 };
 };
+
+export interface OrderUpdatePayload {
+  status?: string;
+  payment_status?: string;
+  advance_amount?: number;
+  total_amount?: number;
+  estimated_delivery_date?: string | null;
+  shipping_address?: string;
+  notes?: string;
+  items?: OrderItem[];
+  customer_name?: string;
+  customer_phone?: string;
+}
+
+export const getStatusDotColor = (status: string): string => {
+  const s = status ? status.toLowerCase() : '';
+  if (s === 'pending') return '#F59E0B';
+  if (s === 'confirmed') return '#10B981';
+  if (s === 'processing' || s === 'in_progress') return '#3B82F6';
+  if (s === 'shipped') return '#7C3AED';
+  if (s === 'delivered' || s === 'completed') return '#22C55E';
+  if (s === 'cancelled') return '#EF4444';
+  return '#71717A';
+};
+
+export const getPaymentStatusDotColor = (paymentStatus: string): string => {
+  const s = paymentStatus?.toLowerCase() || 'unpaid';
+  if (s === 'paid') return '#22C55E';
+  if (s === 'partially_paid') return '#3B82F6';
+  if (s === 'unpaid') return '#EF4444';
+  return '#71717A';
+};

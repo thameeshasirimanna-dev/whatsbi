@@ -2,6 +2,7 @@ import { generateAndUploadInvoicePdf } from './invoice-pdf.js';
 import { dispatchCustomerInvoicePdf } from './whatsapp-outbound.service.js';
 import { deleteMediaFromR2, getS3KeyFromUrl } from '../utils/s3.js';
 import { CacheService } from '../utils/cache.js';
+import { markCustomerAsPaidByTeam, executeLeadStageUpdate } from './ai-lead-stage.service.js';
 
 export interface MarkPaidOptions {
   agent: { id: number; agent_prefix: string; user_id?: number; [key: string]: any };
@@ -11,6 +12,7 @@ export interface MarkPaidOptions {
   pgClient: any;
   emitNewMessage?: (agentId: number, messageData: any) => void;
   cacheService?: CacheService;
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void;
 }
 
 export interface MarkPaidResult {
@@ -35,6 +37,7 @@ export async function markInvoiceAsPaidAndRedispatch({
   pgClient,
   emitNewMessage,
   cacheService,
+  emitAgentStatusUpdate,
 }: MarkPaidOptions): Promise<MarkPaidResult> {
   const agentPrefix = agent.agent_prefix;
 
@@ -224,6 +227,33 @@ export async function markInvoiceAsPaidAndRedispatch({
     order_id: activeOrderId || invoice.order_id,
   };
   console.log(`[Invoice Lifecycle] Invoice #${invoice.id} successfully updated to '${newStatus}' with URL: ${finalPdfUrl}`);
+
+  // 9.1 Synchronize customer lead stage
+  if (isFullPaid && invoice.customer_id) {
+    await markCustomerAsPaidByTeam({
+      agent,
+      customerId: invoice.customer_id,
+      invoiceId: invoice.id,
+      orderId: activeOrderId,
+      pgClient,
+      cacheService,
+      emitAgentStatusUpdate,
+    }).catch((err: any) => console.warn('[Invoice Lifecycle] Could not sync customer paid stage:', err.message));
+  } else if (!isFullPaid && invoice.customer_id) {
+    await executeLeadStageUpdate({
+      agent,
+      customerId: invoice.customer_id,
+      updates: {
+        lead_stage: 'Contacted',
+        conversion_stage: 'Payment Pending',
+        lead_stage_note: `Advance payment received for Invoice #${invoice.id}`,
+      },
+      isTeamManual: false,
+      pgClient,
+      cacheService,
+      emitAgentStatusUpdate,
+    }).catch((err: any) => console.warn('[Invoice Lifecycle] Could not sync customer advance stage:', err.message));
+  }
 
   // 10. Re-dispatch the updated invoice PDF to the customer via WhatsApp
   let whatsappDispatched = false;

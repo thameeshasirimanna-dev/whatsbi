@@ -35,6 +35,7 @@ const COMMAND_ITEMS: CommandItem[] = [
   { id: 'p-dash', title: 'Dashboard', subtitle: 'Overview & telemetry', icon: LayoutDashboard, path: '/agent/dashboard', category: 'Pages', keywords: ['home', 'overview', 'metrics'] },
   { id: 'p-conv', title: 'Live Conversations', subtitle: 'Customer WhatsApp chats', icon: MessageSquare, path: '/agent/conversations', category: 'Pages', keywords: ['chat', 'messages', 'whatsapp', 'inbox'] },
   { id: 'p-cust', title: 'Customers', subtitle: 'Client profiles & history', icon: Users, path: '/agent/customers', category: 'Pages', keywords: ['clients', 'contacts', 'directory'] },
+  { id: 'p-cgroups', title: 'Customer Groups', subtitle: 'Segments & audience management', icon: Layers, path: '/agent/customer-groups', category: 'Pages', keywords: ['groups', 'segments', 'tags', 'audience'] },
   { id: 'p-ord', title: 'Orders', subtitle: 'Product orders & status', icon: ShoppingBag, path: '/agent/orders', category: 'Pages', keywords: ['sales', 'purchases', 'products'] },
   { id: 'p-inv', title: 'Invoices', subtitle: 'Billing & PDF invoices', icon: FileText, path: '/agent/invoices', category: 'Pages', keywords: ['bills', 'receipts', 'finance', 'payment'] },
   { id: 'p-app', title: 'Appointments', subtitle: 'Bookings & schedules', icon: Calendar, path: '/agent/appointments', category: 'Pages', keywords: ['booking', 'calendar', 'sessions'] },

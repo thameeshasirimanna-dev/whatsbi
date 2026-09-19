@@ -14,6 +14,9 @@ import DeleteAppointmentModal from "./DeleteAppointmentModal";
 import SelectCustomerModal from "./SelectCustomerModal";
 import AppointmentSummaryCards from "./AppointmentSummaryCards";
 import AppointmentTable from "./AppointmentTable";
+import AppointmentBulkActionsBar from "./AppointmentBulkActionsBar";
+import { useTableSelection } from "../shared/useTableSelection";
+import { useBulkProgress, FloatingBulkProgress } from "../shared/BulkProgress";
 
 const statusOptions = [
   { value: "", label: "All Statuses" },
@@ -33,7 +36,10 @@ const AppointmentsPage: React.FC = () => {
     updateAppointment,
     deleteAppointment,
   } = useAppointments();
-  const { toast } = useDialog();
+  const { toast, confirm: dlgConfirm } = useDialog();
+
+  const selection = useTableSelection<number>([]);
+  const { bulkProgress, isProcessing: isBulkProcessing, setBulkProgress } = useBulkProgress();
 
   const [agentPrefix, setAgentPrefix] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -143,6 +149,111 @@ const AppointmentsPage: React.FC = () => {
     const matchesTime = matchesTimeRange(a.appointment_date, timeRange);
     return matchesSearch && matchesCustomer && matchesStatus && matchesTime;
   });
+
+  const pageIds = filteredAppointments.map((a) => a.id);
+  const isAllPageSelected = selection.isAllSelected(pageIds);
+  const isPageIndeterminate = selection.isIndeterminate(pageIds);
+
+  const handleBulkUpdateStatus = async (newStatus: string) => {
+    const count = selection.selectedCount;
+    if (count === 0) return;
+    const label = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+    if (
+      !(await dlgConfirm(
+        `Update status of ${count} selected appointment${count > 1 ? "s" : ""} to "${label}"?`
+      ))
+    ) {
+      return;
+    }
+
+    const total = selection.selectedIds.length;
+    setBulkProgress({ actionLabel: `Updating status to "${label}"…`, current: 0, total });
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("User not authenticated", "error");
+        return;
+      }
+      let successCount = 0;
+      for (let i = 0; i < total; i++) {
+        const id = selection.selectedIds[i];
+        setBulkProgress({
+          actionLabel: `Updating appointment #${id}…`,
+          current: i + 1,
+          total,
+        });
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/manage-appointments`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id, status: newStatus }),
+        });
+        if (res.ok) successCount++;
+      }
+      toast(
+        `Updated ${successCount} appointment${successCount > 1 ? "s" : ""} to ${label}`,
+        "success"
+      );
+      selection.clearSelection();
+      await handleRefetch();
+    } catch (err: any) {
+      toast(`Bulk status update failed: ${err.message || "Unknown error"}`, "error");
+    } finally {
+      setBulkProgress(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selection.selectedCount;
+    if (count === 0) return;
+    if (
+      !(await dlgConfirm(
+        `Are you sure you want to delete ${count} selected appointment${count > 1 ? "s" : ""}? This action cannot be undone.`,
+        { danger: true }
+      ))
+    ) {
+      return;
+    }
+
+    const total = selection.selectedIds.length;
+    setBulkProgress({ actionLabel: "Deleting appointments…", current: 0, total });
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("User not authenticated", "error");
+        return;
+      }
+      let successCount = 0;
+      for (let i = 0; i < total; i++) {
+        const id = selection.selectedIds[i];
+        setBulkProgress({
+          actionLabel: `Deleting appointment #${id}…`,
+          current: i + 1,
+          total,
+        });
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/manage-appointments?id=${id}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (res.ok) successCount++;
+      }
+      toast(
+        `Deleted ${successCount} appointment${successCount > 1 ? "s" : ""}`,
+        "success"
+      );
+      selection.clearSelection();
+      await handleRefetch();
+    } catch (err: any) {
+      toast(`Bulk delete failed: ${err.message || "Unknown error"}`, "error");
+    } finally {
+      setBulkProgress(null);
+    }
+  };
 
   const totalAppointments = appointments.length;
   const pendingAppointments = appointments.filter((a) => a.status.toLowerCase() === "pending").length;
@@ -317,12 +428,30 @@ const AppointmentsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Actions Banner (appears when rows are selected) */}
+      <AppointmentBulkActionsBar
+        selectedCount={selection.selectedCount}
+        onBulkUpdateStatus={handleBulkUpdateStatus}
+        onBulkDelete={handleBulkDelete}
+        onClearSelection={selection.clearSelection}
+        isProcessing={isBulkProcessing}
+        bulkProgress={bulkProgress}
+      />
+
+      {/* Floating Viewport Progress Banner */}
+      <FloatingBulkProgress progress={bulkProgress} />
+
       {/* Appointments Table / Cards Container */}
-      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] overflow-hidden">
+      <div className="bg-white rounded-[24px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] overflow-hidden relative z-0">
         <AppointmentTable
           appointments={filteredAppointments}
           totalCount={appointments.length}
           updatingAppointmentId={updatingAppointmentId}
+          selectedIds={selection.selectedIds}
+          onToggleSelect={selection.toggleSelect}
+          onSelectAll={selection.selectAll}
+          isAllSelected={isAllPageSelected}
+          isIndeterminate={isPageIndeterminate}
           onUpdateStatus={handleUpdateStatus}
           onView={(appointment) => {
             setSelectedAppointmentForView(appointment);

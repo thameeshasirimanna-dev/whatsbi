@@ -9,7 +9,8 @@ export default async function manageInvoicesRoutes(
   fastify: FastifyInstance,
   pgClient: any,
   cacheService?: CacheService,
-  emitNewMessage?: (agentId: number, messageData: any) => void
+  emitNewMessage?: (agentId: number, messageData: any) => void,
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void
 ) {
   fastify.all("/manage-invoices", async (request, reply) => {
     try {
@@ -326,6 +327,7 @@ export default async function manageInvoicesRoutes(
                 pgClient,
                 emitNewMessage,
                 cacheService,
+                emitAgentStatusUpdate,
               });
               if (markResult?.invoice) {
                 finalInvoice = markResult.invoice;
@@ -402,6 +404,7 @@ export default async function manageInvoicesRoutes(
                 pgClient,
                 emitNewMessage,
                 cacheService,
+                emitAgentStatusUpdate,
               });
               const isPaidFull = markResult.invoice?.status === 'paid';
               return reply.code(200).send({

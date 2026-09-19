@@ -864,8 +864,22 @@ const ConversationsPage: React.FC = () => {
       });
 
       s.on("agent-status-update", (statusData: any) => {
-        // Handle agent status updates (e.g., credits changed)
-        // For now, just log - can be extended to update UI
+        if (statusData?.type === "lead_stage_updated" && statusData?.customerId) {
+          const targetCustId = Number(statusData.customerId);
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id === targetCustId || c.customerId === targetCustId) {
+                return {
+                  ...c,
+                  leadStage: statusData.leadStage !== undefined ? statusData.leadStage : c.leadStage,
+                  interestStage: statusData.interestStage !== undefined ? statusData.interestStage : c.interestStage,
+                  conversionStage: statusData.conversionStage !== undefined ? statusData.conversionStage : c.conversionStage,
+                };
+              }
+              return c;
+            })
+          );
+        }
       });
 
       s.on("disconnect", () => {

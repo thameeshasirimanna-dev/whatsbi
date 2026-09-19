@@ -25,6 +25,7 @@ import {
   matchCatalogItems,
   detectAndGenerateFallbackInvoice,
 } from './ai-catalog-matcher.js';
+import { executeLeadStageUpdate } from './ai-lead-stage.service.js';
 
 export interface AgentActionPayload {
   action: string;
@@ -219,6 +220,23 @@ export async function executeCreateInvoice({
     }
   }
 
+  // Synchronize customer lead stage to Quotation Sent & Payment Pending (if not already Paid)
+  try {
+    await executeLeadStageUpdate({
+      agent,
+      customerId: customer.id,
+      updates: {
+        lead_stage: 'Contacted',
+        interest_stage: 'Quotation Sent',
+        conversion_stage: 'Payment Pending',
+      },
+      isTeamManual: false,
+      pgClient,
+    });
+  } catch (stageErr: any) {
+    console.warn('[AI Agent Actions] Notice: Could not sync lead stage on invoice creation:', stageErr.message);
+  }
+
   return {
     ...invoice,
     invoice_number: invoiceNumber,
@@ -239,12 +257,16 @@ export async function parseAndExecuteAgentActions({
   rawReply,
   incomingText,
   pgClient,
+  cacheService,
+  emitAgentStatusUpdate,
 }: {
   agent: any;
   customer: any;
   rawReply: string;
   incomingText?: string;
   pgClient: any;
+  cacheService?: any;
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void;
 }): Promise<ActionResult> {
   if (!rawReply || typeof rawReply !== 'string') {
     return { cleanReply: '', actionsExecuted: [] };
@@ -337,6 +359,24 @@ export async function parseAndExecuteAgentActions({
         customer.language = normalizedLang;
         actionsExecuted.push({ type: 'UPDATE_LANGUAGE', success: true, data: { language: normalizedLang } });
         console.log(`[AI Agent Actions] Customer ${customer.id} language updated to '${normalizedLang}' in database.`);
+      } else if (actionType === 'UPDATE_LEAD_STAGE') {
+        const updatedCustomer = await executeLeadStageUpdate({
+          agent,
+          customerId: customer.id,
+          updates: payload,
+          isTeamManual: false,
+          pgClient,
+          cacheService,
+          emitAgentStatusUpdate,
+        });
+        if (updatedCustomer) {
+          customer.lead_stage = updatedCustomer.lead_stage;
+          customer.interest_stage = updatedCustomer.interest_stage;
+          customer.conversion_stage = updatedCustomer.conversion_stage;
+          customer.lead_stage_note = updatedCustomer.lead_stage_note;
+        }
+        actionsExecuted.push({ type: 'UPDATE_LEAD_STAGE', success: true, data: updatedCustomer });
+        console.log(`[AI Agent Actions] Customer ${customer.id} lead stage updated via action tag:`, payload);
       }
     } catch (err: any) {
       console.error(`[AI Agent Actions] Error executing ${actionType}:`, err.message || err);

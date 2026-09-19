@@ -188,6 +188,8 @@ When DeepSeek emits action tags, [parseAndExecuteAgentActions](file:///c:/Github
 [ACTION:UPDATE_APPOINTMENT:{"appointment_id":45,"title":"Consultation","appointment_date":"2026-09-21T15:00:00+05:30","duration_minutes":60,"notes":"Rescheduled"}]
 
 [ACTION:UPDATE_LANGUAGE:{"language":"english"}]
+
+[ACTION:UPDATE_LEAD_STAGE:{"lead_stage":"Contacted","interest_stage":"Interested","conversion_stage":"Payment Pending"}]
 ```
 
 ### 2. Invoice Creation & In-Place Update Pipeline (`executeCreateInvoice` & `updateInvoiceWithPdfRegeneration`)
@@ -198,7 +200,22 @@ When DeepSeek emits action tags, [parseAndExecuteAgentActions](file:///c:/Github
 5. **Placeholder Replacement**: Replaces `{{INVOICE_NUMBER}}` in message text with the real invoice code.
 6. **Action Strip**: Removes `[ACTION:...]` blocks and JSON tails via [sanitizeLeakedActionArtifacts](file:///c:/Github/whatsbi/backend/src/services/ai-agent-schema.ts).
 
-### 3. Appointment Booking & Rescheduling Pipeline (`executeCreateAppointment` & `executeUpdateAppointment`)
+### 3. Customer Lead Stage Progression & Authentic Paid Conversion Boundary (`ai-lead-stage.service.ts`)
+1. **Autonomous Progression**:
+   - Engagement: When an inbound message from a `'New Lead'` is answered by the AI agent, `lead_stage` automatically transitions to `'Contacted'`.
+   - Interest: When exploring catalog packages or products, `interest_stage` advances to `'Interested'`.
+   - Invoicing: Creating an invoice transitions `interest_stage` to `'Quotation Sent'` and `conversion_stage` to `'Payment Pending'` (unless already `'Paid'`).
+   - Payment Slip / Reported Paid: Acknowledges receipt and keeps/sets stage as `'Payment Pending'`.
+2. **Strict Authentic Paid Conversion Boundary**:
+   - The AI Agent is **strictly forbidden** from setting `conversion_stage` to `'Paid'`.
+   - Only a human team member manually verifying the bank transfer and marking the order or invoice as paid in the CRM establishes the definitive `'Paid'` lead stage.
+   - Once a customer is marked `'Paid'`, the AI Agent treats them as an officially converted paying client and **never downgrades or resets** their conversion stage.
+3. **Action Tag Execution (`UPDATE_LEAD_STAGE`)**:
+   - DeepSeek can explicitly emit `[ACTION:UPDATE_LEAD_STAGE:{"lead_stage":"Contacted","interest_stage":"Interested"}]`.
+   - All values are validated against database ENUMs (`lead_stage_enum`, `interest_stage_enum`, `conversion_stage_enum`).
+   - Database mutations are broadcast via Socket.IO (`lead_stage_updated`) to update connected agent inboxes in real time.
+
+### 4. Appointment Booking & Rescheduling Pipeline (`executeCreateAppointment` & `executeUpdateAppointment`)
 1. **Confirmation Guardrail**: If date/time is not provided, the agent asks for preferred times. When confirmed, an appointment is scheduled.
 2. **Existing Appointment Detection (No Duplicates)**: If the customer already has an active pending/confirmed appointment, or requests a reschedule (`UPDATE_APPOINTMENT`), [executeCreateAppointment](file:///c:/Github/whatsbi/backend/src/services/ai-agent-db.ts) delegates to `executeUpdateAppointment`, mutating the existing row rather than inserting duplicate appointments.
 3. **Resilient Date/Time Parsing**: [parseAppointmentDateTime](file:///c:/Github/whatsbi/backend/src/services/ai-agent-db.ts) resolves ISO formats, relative days ("today", "tomorrow", "day after tomorrow", Sinhala "අද"/"හෙට"/"අනිද්දා", Singlish "heta"/"ada"), weekday names, and 12h/24h timestamps anchored to **Asia/Colombo (UTC+5:30)**.
@@ -274,3 +291,5 @@ For manual verification procedures, refer to [test-cases.md](file:///c:/Github/w
 - **TC-AI-06**: AI Message Formatting & Strict Ban on Singlish/Emojis.
 - **TC-AI-07**: Customer Language Switching & Persistence (`UPDATE_LANGUAGE`).
 - **TC-AI-08**: Dual-Stage AI Formatting Pipeline & Sentence Preservation.
+- **TC-AI-09**: Customer Lead Stage Autonomous & Action-Driven Progression (`UPDATE_LEAD_STAGE`).
+- **TC-AI-10**: Team Manual Verification & Authentic Paid Conversion Integrity Boundary.

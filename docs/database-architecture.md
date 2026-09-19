@@ -24,6 +24,8 @@ Example for agent prefix `agt_a1b2`:
 - `agt_a1b2_service_packages`
 - `agt_a1b2_broadcasts`
 - `agt_a1b2_broadcast_recipients`
+- `agt_a1b2_customer_groups`
+- `agt_a1b2_customer_group_members`
 
 ### Benefits of the Dynamic Table Architecture
 1. **Strict Data Isolation**: Zero risk of inadvertent data leaks between businesses across CRM conversations and orders.
@@ -439,6 +441,36 @@ CREATE TABLE {prefix}_broadcast_recipients (
     message_id TEXT,
     error_message TEXT,
     sent_at TIMESTAMPTZ
+);
+```
+
+### 4.14. `{prefix}_customer_groups`
+Customer segmentation groups with color badges and default CRM lead stage groups (`New Lead`, `Contacted`, `Follow-up Needed`, `Not Responding`).
+
+```sql
+CREATE TABLE {prefix}_customer_groups (
+    id SERIAL PRIMARY KEY,
+    agent_id BIGINT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    color VARCHAR(20) DEFAULT '#22C55E',
+    is_default BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(agent_id, name)
+);
+```
+
+### 4.15. `{prefix}_customer_group_members`
+Many-to-many junction between customers and customer groups, automatically synchronized with `{prefix}_customers.lead_stage` via `trg_sync_lead_stage_{prefix}` PostgreSQL trigger.
+
+```sql
+CREATE TABLE {prefix}_customer_group_members (
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES {prefix}_customer_groups(id) ON DELETE CASCADE,
+    customer_id INTEGER NOT NULL REFERENCES {prefix}_customers(id) ON DELETE CASCADE,
+    added_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(group_id, customer_id)
 );
 ```
 

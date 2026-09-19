@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import { Menu, Transition } from "@headlessui/react";
 import { CheckCircle2, ChevronDown, Trash2, X, RefreshCw } from "lucide-react";
 import { BulkProgressTracker, BulkProgress } from "../shared/BulkProgress";
 
@@ -21,18 +22,16 @@ export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
   isProcessing = false,
   bulkProgress,
 }) => {
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-
   if (selectedCount === 0 && !bulkProgress) return null;
 
   const statusOptions = [
-    { label: "Pending", value: "pending" },
-    { label: "Confirmed", value: "confirmed" },
-    { label: "Processing", value: "processing" },
-    { label: "Shipped", value: "shipped" },
-    { label: "Delivered", value: "delivered" },
-    { label: "Completed", value: "completed" },
-    { label: "Cancelled", value: "cancelled" },
+    { label: "Pending", value: "pending", dotColor: "#F59E0B" },
+    { label: "Confirmed", value: "confirmed", dotColor: "#10B981" },
+    { label: "Processing", value: "processing", dotColor: "#3B82F6" },
+    { label: "Shipped", value: "shipped", dotColor: "#8B5CF6" },
+    { label: "Delivered", value: "delivered", dotColor: "#06B6D4" },
+    { label: "Completed", value: "completed", dotColor: "#22C55E" },
+    { label: "Cancelled", value: "cancelled", dotColor: "#EF4444" },
   ];
 
   return (
@@ -51,6 +50,7 @@ export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
         boxShadow: "0 8px 24px rgba(22,40,29,0.25)",
         border: "1px solid rgba(159,232,112,0.2)",
         position: "relative",
+        zIndex: 20,
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
@@ -105,82 +105,106 @@ export const OrderBulkActionsBar: React.FC<OrderBulkActionsBarProps> = ({
         </button>
 
         {/* Change Status Dropdown */}
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => setShowStatusDropdown((prev) => !prev)}
-            disabled={isProcessing}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 14px",
-              borderRadius: 9999,
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.1)",
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: isProcessing ? "not-allowed" : "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            <RefreshCw size={12} />
-            Change Status
-            <ChevronDown size={12} />
-          </button>
+        <Menu as="div" style={{ position: "relative", display: "inline-block" }}>
+          {({ open }) => (
+            <>
+              <Menu.Button
+                disabled={isProcessing}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 14px",
+                  borderRadius: 9999,
+                  border: open
+                    ? "1px solid rgba(159,232,112,0.5)"
+                    : "1px solid rgba(255,255,255,0.2)",
+                  background: open
+                    ? "rgba(159,232,112,0.15)"
+                    : "rgba(255,255,255,0.1)",
+                  color: open ? "#9FE870" : "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: isProcessing ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                <RefreshCw size={12} />
+                <span>Change Status</span>
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+                />
+              </Menu.Button>
 
-          {showStatusDropdown && (
-            <div
-              style={{
-                position: "absolute",
-                top: "calc(100% + 8px)",
-                right: 0,
-                background: "#16281D",
-                border: "1px solid rgba(159,232,112,0.2)",
-                borderRadius: 14,
-                boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
-                padding: 6,
-                zIndex: 40,
-                minWidth: 150,
-              }}
-            >
-              {statusOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => {
-                    setShowStatusDropdown(false);
-                    onBulkUpdateStatus(opt.value);
-                  }}
+              <Transition
+                as={React.Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <Menu.Items
                   style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: "transparent",
-                    color: "#F4F7F4",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    transition: "all 0.12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(159,232,112,0.15)";
-                    e.currentTarget.style.color = "#9FE870";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = "#F4F7F4";
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    background: "#16281D",
+                    border: "1px solid rgba(159,232,112,0.25)",
+                    borderRadius: 16,
+                    boxShadow: "0 12px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(159,232,112,0.1)",
+                    padding: 6,
+                    zIndex: 50,
+                    minWidth: 168,
+                    outline: "none",
                   }}
                 >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+                  {statusOptions.map((opt) => (
+                    <Menu.Item key={opt.value}>
+                      {({ active }) => (
+                        <button
+                          type="button"
+                          onClick={() => onBulkUpdateStatus(opt.value)}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 12px",
+                            borderRadius: 10,
+                            border: "none",
+                            background: active
+                              ? "rgba(159,232,112,0.15)"
+                              : "transparent",
+                            color: active ? "#9FE870" : "#F4F7F4",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            transition: "all 0.12s",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              backgroundColor: opt.dotColor,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span>{opt.label}</span>
+                        </button>
+                      )}
+                    </Menu.Item>
+                  ))}
+                </Menu.Items>
+              </Transition>
+            </>
           )}
-        </div>
+        </Menu>
 
         {/* Bulk Delete */}
         <button

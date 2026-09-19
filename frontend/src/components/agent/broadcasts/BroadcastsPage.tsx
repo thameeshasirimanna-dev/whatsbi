@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import { getCurrentAgent } from '../../../lib/agent';
 import { getToken } from '../../../lib/auth';
 import {
@@ -20,6 +19,7 @@ import BroadcastDetailsDrawer from './BroadcastDetailsDrawer';
 import CreateBroadcastModal from './CreateBroadcastModal';
 import type { WhatsAppConfig, MetaTemplate } from './types';
 import CustomDropdown from '../shared/CustomDropdown';
+import { useBroadcastWizard } from './useBroadcastWizard';
 
 const BroadcastsPage: React.FC = () => {
   const { confirm: dlgConfirm, toast } = useDialog();
@@ -38,49 +38,12 @@ const BroadcastsPage: React.FC = () => {
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Creator modal state
+  // Creator modal visibility state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [wizardStep, setWizardStep] = useState(1);
-  const [campaignName, setCampaignName] = useState('');
-  const [targetAudienceType, setTargetAudienceType] = useState<'all' | 'filtered' | 'manual'>('all');
 
-  // Audience Filters
-  const [filterLeadStage, setFilterLeadStage] = useState<string>('all');
-  const [filterInterestStage, setFilterInterestStage] = useState<string>('all');
-  const [filterConversionStage, setFilterConversionStage] = useState<string>('all');
-  const [filterLanguage, setFilterLanguage] = useState<string>('all');
-
-  // Manual Selection
-  const [selectedCustomerIds, setSelectedCustomerIds] = useState<number[]>([]);
-  const [customerSearch, setCustomerSearch] = useState('');
-
-  // Message body state
-  const [messageType, setMessageType] = useState<'text' | 'template'>('template');
-  const [textMessage, setTextMessage] = useState('');
-  const [selectedTemplateName, setSelectedTemplateName] = useState('');
-  const [templateParams, setTemplateParams] = useState<string[]>([]);
-  const [headerParam, setHeaderParam] = useState('');
-
-  const [submittingCampaign, setSubmittingCampaign] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-
-  const location = useLocation();
-
-  useEffect(() => {
-    const incomingIds = (location.state as any)?.selectedCustomerIds;
-    if (Array.isArray(incomingIds) && incomingIds.length > 0) {
-      setSelectedCustomerIds(incomingIds);
-      setTargetAudienceType('manual');
-      setShowCreateModal(true);
-      setWizardStep(1);
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const loadData = async () => {
     try {
@@ -148,6 +111,20 @@ const BroadcastsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const wizard = useBroadcastWizard({
+    customers,
+    agent,
+    metaTemplates,
+    onSuccess: loadData,
+    isOpen: showCreateModal,
+    onOpenModal: () => setShowCreateModal(true),
+    onCloseModal: () => setShowCreateModal(false),
+  });
 
   const handleRefresh = async () => {
     try {
@@ -247,186 +224,6 @@ const BroadcastsPage: React.FC = () => {
     }
   };
 
-  // Filtered customer list based on selection criteria
-  const getFilteredCustomers = (): Customer[] => {
-    if (targetAudienceType === 'all') {
-      return customers;
-    }
-
-    if (targetAudienceType === 'manual') {
-      return customers.filter(
-        (c) =>
-          selectedCustomerIds.includes(c.id) ||
-          c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-          c.phone.includes(customerSearch)
-      );
-    }
-
-    return customers.filter((c) => {
-      const leadMatch = filterLeadStage === 'all' || c.lead_stage === filterLeadStage;
-      const interestMatch = filterInterestStage === 'all' || c.interest_stage === filterInterestStage;
-      const conversionMatch =
-        filterConversionStage === 'all' || c.conversion_stage === filterConversionStage;
-      const langMatch = filterLanguage === 'all' || c.language === filterLanguage;
-      return leadMatch && interestMatch && conversionMatch && langMatch;
-    });
-  };
-
-  const getTargetRecipientsCount = (): number => {
-    if (targetAudienceType === 'all') return customers.length;
-    if (targetAudienceType === 'manual') return selectedCustomerIds.length;
-    return getFilteredCustomers().length;
-  };
-
-  const getSelectedTemplate = (): MetaTemplate | undefined => {
-    return metaTemplates.find((t) => t.name === selectedTemplateName);
-  };
-
-  // Watch template change and initialize parameter inputs
-  useEffect(() => {
-    const template = getSelectedTemplate();
-    if (template) {
-      const bodyComp = template.components.find((c) => c.type === 'BODY');
-      if (bodyComp?.text) {
-        const matches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
-        const uniqueCount = new Set(matches).size;
-        setTemplateParams(Array(uniqueCount).fill(''));
-      } else {
-        setTemplateParams([]);
-      }
-
-      const headerComp = template.components.find((c) => c.type === 'HEADER');
-      if (headerComp?.text && headerComp.text.includes('{{1}}')) {
-        setHeaderParam('');
-      } else {
-        setHeaderParam('');
-      }
-    } else {
-      setTemplateParams([]);
-      setHeaderParam('');
-    }
-  }, [selectedTemplateName]);
-
-  const handleTemplateParamChange = (index: number, val: string) => {
-    setTemplateParams((prev) => {
-      const updated = [...prev];
-      updated[index] = val;
-      return updated;
-    });
-  };
-
-  const handleToggleCustomerSelection = (id: number) => {
-    setSelectedCustomerIds((prev) =>
-      prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]
-    );
-  };
-
-  const handleSelectAllManualCustomers = () => {
-    const list = customers
-      .filter(
-        (c) =>
-          c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-          c.phone.includes(customerSearch)
-      )
-      .map((c) => c.id);
-    setSelectedCustomerIds(list);
-  };
-
-  const handleClearManualSelection = () => {
-    setSelectedCustomerIds([]);
-  };
-
-  const handleCreateCampaign = async () => {
-    const targetCount = getTargetRecipientsCount();
-    if (targetCount === 0) {
-      toast('No recipients selected!', 'warning');
-      return;
-    }
-
-    if (messageType === 'template' && !selectedTemplateName) {
-      toast('Please select a template!', 'warning');
-      return;
-    }
-
-    if (messageType === 'text' && !textMessage.trim()) {
-      toast('Please compose a message!', 'warning');
-      return;
-    }
-
-    if (messageType === 'template' && agent && agent.credits < targetCount * 0.01) {
-      toast('Insufficient credits for this broadcast. Please add credits first.', 'error');
-      return;
-    }
-
-    if (
-      !(await dlgConfirm(
-        `Are you sure you want to send this broadcast to ${targetCount} customers?`
-      ))
-    ) {
-      return;
-    }
-
-    setSubmittingCampaign(true);
-    try {
-      const recipients =
-        targetAudienceType === 'all'
-          ? customers.map((c) => c.id)
-          : targetAudienceType === 'manual'
-          ? selectedCustomerIds
-          : getFilteredCustomers().map((c) => c.id);
-
-      const payload: any = {
-        name: campaignName,
-        message_type: messageType,
-        recipient_ids: recipients,
-      };
-
-      if (messageType === 'text') {
-        payload.message = textMessage.trim();
-      } else {
-        payload.template_name = selectedTemplateName;
-        const selectedTemplate = getSelectedTemplate();
-        if (selectedTemplate) {
-          payload.template_language = selectedTemplate.language;
-        }
-        if (templateParams.length > 0) {
-          payload.template_params = templateParams.map((p) => ({
-            type: 'text',
-            text: p,
-          }));
-        }
-        if (headerParam) {
-          payload.header_params = [
-            {
-              type: 'text',
-              text: headerParam,
-            },
-          ];
-        }
-      }
-
-      const res = await createBroadcast(payload);
-      if (res.success) {
-        setShowCreateModal(false);
-        setCampaignName('');
-        setWizardStep(1);
-        setTargetAudienceType('all');
-        setSelectedCustomerIds([]);
-        setTextMessage('');
-        setSelectedTemplateName('');
-        setTemplateParams([]);
-        setHeaderParam('');
-
-        toast('Broadcast campaign launched successfully!', 'success');
-        loadData();
-      }
-    } catch (err: any) {
-      toast(err.message || 'Failed to launch campaign', 'error');
-    } finally {
-      setSubmittingCampaign(false);
-    }
-  };
-
   const filteredBroadcasts = broadcasts.filter((b) => {
     const matchesSearch = b.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || b.status.toLowerCase() === statusFilter;
@@ -449,20 +246,20 @@ const BroadcastsPage: React.FC = () => {
 
   return (
     <div className="w-full p-2.5 sm:p-3.5 md:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 animate-fade-in font-sans">
+      {/* Top Metrics Cards */}
+      <BroadcastSummaryCards broadcasts={broadcasts} />
+
+      {/* Error state */}
       {error && (
-        <div className="p-4 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-2xl text-xs text-[#EF4444]">
+        <div className="p-3 sm:p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-medium">
           {error}
         </div>
       )}
 
-      {/* Summary KPI Cards */}
-      <BroadcastSummaryCards broadcasts={broadcasts} />
-
-      {/* Toolbar */}
-      <div className="bg-white rounded-[20px] p-3 sm:p-4 border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] flex flex-col gap-2.5 sm:gap-3">
-        {/* Row 1: Search & Primary Actions (Full width) */}
+      {/* Responsive 2-Row Toolbar */}
+      <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+        {/* Row 1: Search and Primary Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
-          {/* Search */}
           <div className="relative flex-1 min-w-0 flex items-center">
             <Search
               size={14}
@@ -470,10 +267,10 @@ const BroadcastsPage: React.FC = () => {
             />
             <input
               type="text"
-              placeholder="Search campaigns by name or status..."
+              placeholder="Search campaigns..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 pl-9 pr-9 bg-white border border-[#EAEAEA] rounded-full text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
+              className="w-full h-9 sm:h-10 pl-9 pr-9 rounded-full bg-white border border-[#EAEAEA] text-xs font-sans text-[#16281D] placeholder-[#a1a1aa] outline-none transition-all duration-150 focus:border-[#9FE870] focus:ring-3 focus:ring-[#9FE870]/20"
             />
             {searchTerm && (
               <button
@@ -487,55 +284,54 @@ const BroadcastsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Refresh & Create Broadcast Buttons */}
           <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-end shrink-0">
             <button
               onClick={handleRefresh}
-              className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 px-4 py-2 min-h-[36px] rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-xs font-semibold text-[#16281D] transition-colors cursor-pointer border border-[#EAEAEA] shrink-0"
-              title="Refresh Broadcasts"
+              className="h-9 sm:h-10 px-3.5 sm:px-4 rounded-full bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] font-sans text-xs font-bold border border-[#EAEAEA] flex items-center gap-2 transition-colors cursor-pointer"
+              title="Refresh campaigns"
             >
-              <RefreshCw size={13} /> Refresh
+              <RefreshCw size={13} />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
 
             <button
               onClick={() => {
-                setWizardStep(1);
                 setShowCreateModal(true);
+                wizard.setWizardStep(1);
               }}
-              className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 px-5 py-2 min-h-[36px] rounded-full bg-[#9FE870] hover:bg-[#8CE05A] text-xs font-bold text-[#16281D] shadow-[0_4px_16px_rgba(159,232,112,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border-0 shrink-0"
+              className="flex-1 sm:flex-initial justify-center h-9 sm:h-10 rounded-full px-4 sm:px-5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-2 shrink-0 cursor-pointer border-0"
             >
-              <Plus size={14} /> Create Broadcast
+              <Plus size={14} /> New Campaign
             </button>
           </div>
         </div>
 
-        {/* Row 2: Filters Grid (Full fill 100% row width across all screen sizes) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full items-center">
-          {/* Status Dropdown */}
+        {/* Row 2: Filters Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 sm:gap-2.5 w-full">
           <div className="col-span-1 w-full min-w-0">
             <CustomDropdown
               value={statusFilter}
               onChange={(val) => setStatusFilter(val)}
               options={[
-                { value: "all", label: "All Statuses" },
-                { value: "pending", label: "Pending" },
-                { value: "processing", label: "Processing" },
-                { value: "completed", label: "Completed" },
-                { value: "failed", label: "Failed" },
+                { value: 'all', label: 'All Statuses' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'scheduled', label: 'Scheduled' },
+                { value: 'processing', label: 'Processing' },
+                { value: 'completed', label: 'Completed' },
+                { value: 'failed', label: 'Failed' },
               ]}
               className="w-full"
             />
           </div>
 
-          {/* Type Dropdown */}
           <div className="col-span-1 w-full min-w-0">
             <CustomDropdown
               value={typeFilter}
               onChange={(val) => setTypeFilter(val)}
               options={[
-                { value: "all", label: "All Types" },
-                { value: "text", label: "Text" },
-                { value: "template", label: "Template" },
+                { value: 'all', label: 'All Types' },
+                { value: 'template', label: 'Meta Template' },
+                { value: 'text', label: 'Direct Text' },
               ]}
               className="w-full"
             />
@@ -543,18 +339,18 @@ const BroadcastsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Campaigns Table */}
       <BroadcastTable
         broadcasts={filteredBroadcasts}
         onViewDetails={handleViewDetails}
         onResendFailed={handleResendFailed}
         onDelete={handleDeleteBroadcast}
-        onCreateClick={() => {
-          setWizardStep(1);
-          setShowCreateModal(true);
-        }}
-        onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
+        onClearFilters={handleClearFilters}
+        onCreateClick={() => {
+          setShowCreateModal(true);
+          wizard.setWizardStep(1);
+        }}
       />
 
       {/* Details slide-out drawer */}
@@ -574,41 +370,17 @@ const BroadcastsPage: React.FC = () => {
       <CreateBroadcastModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        wizardStep={wizardStep}
-        setWizardStep={setWizardStep}
-        campaignName={campaignName}
-        setCampaignName={setCampaignName}
-        targetAudienceType={targetAudienceType}
-        setTargetAudienceType={setTargetAudienceType}
-        filterLeadStage={filterLeadStage}
-        setFilterLeadStage={setFilterLeadStage}
-        filterInterestStage={filterInterestStage}
-        setFilterInterestStage={setFilterInterestStage}
-        filterConversionStage={filterConversionStage}
-        setFilterConversionStage={setFilterConversionStage}
-        filterLanguage={filterLanguage}
-        setFilterLanguage={setFilterLanguage}
         customers={customers}
-        selectedCustomerIds={selectedCustomerIds}
-        customerSearch={customerSearch}
-        setCustomerSearch={setCustomerSearch}
-        onToggleCustomerSelection={handleToggleCustomerSelection}
-        onSelectAllManualCustomers={handleSelectAllManualCustomers}
-        onClearManualSelection={handleClearManualSelection}
-        targetRecipientsCount={getTargetRecipientsCount()}
-        messageType={messageType}
-        setMessageType={setMessageType}
-        textMessage={textMessage}
-        setTextMessage={setTextMessage}
-        selectedTemplateName={selectedTemplateName}
-        setSelectedTemplateName={setSelectedTemplateName}
-        metaTemplates={metaTemplates}
-        selectedTemplate={getSelectedTemplate()}
-        templateParams={templateParams}
-        onTemplateParamChange={handleTemplateParamChange}
         agent={agent}
-        submittingCampaign={submittingCampaign}
-        onSubmit={handleCreateCampaign}
+        metaTemplates={metaTemplates}
+        selectedTemplate={wizard.getSelectedTemplate()}
+        onSubmit={wizard.handleCreateCampaign}
+        targetRecipientsCount={wizard.getTargetRecipientsCount()}
+        onToggleCustomerSelection={wizard.handleToggleCustomerSelection}
+        onSelectAllManualCustomers={wizard.handleSelectAllManualCustomers}
+        onClearManualSelection={wizard.handleClearManualSelection}
+        onTemplateParamChange={wizard.handleTemplateParamChange}
+        {...wizard}
       />
     </div>
   );

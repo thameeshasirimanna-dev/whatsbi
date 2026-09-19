@@ -1,11 +1,13 @@
 import { FastifyInstance } from 'fastify';
 import { verifyJWT } from '../../utils/helpers.js';
 import { CacheService } from "../../utils/cache.js";
+import { ensureCustomerGroupTables, syncCustomerLeadStageGroup } from "./manage-customer-groups.js";
 
 export default async function manageCustomersRoutes(
   fastify: FastifyInstance,
   pgClient: any,
-  cacheService?: CacheService
+  cacheService?: CacheService,
+  emitAgentStatusUpdate?: (agentId: number, statusData: any) => void
 ) {
   fastify.all("/manage-customers", async (request, reply) => {
     try {
@@ -29,6 +31,7 @@ export default async function manageCustomersRoutes(
       const agent = agentResult.rows[0];
 
       const agentPrefix = agent.agent_prefix;
+      await ensureCustomerGroupTables(pgClient, agentPrefix, Number(agent.id));
       const method = request.method;
       const url = new URL(request.url, `http://${request.headers.host}`);
       let parsedBody = null;
@@ -48,6 +51,7 @@ export default async function manageCustomersRoutes(
         case "GET": {
           const search = url.searchParams.get("search") || undefined;
           const phone = url.searchParams.get("phone") || undefined;
+          const groupId = url.searchParams.get("group_id") || undefined;
           const limitParam = url.searchParams.get("limit");
           const limit = limitParam ? parseInt(limitParam) : undefined;
           const offset = parseInt(url.searchParams.get("offset") || "0");
@@ -57,7 +61,16 @@ export default async function manageCustomersRoutes(
             const cleanPhone = phone.trim().replace(/\D/g, "");
             const customerQuery = `
               SELECT c.*,
-                     COALESCE(order_counts.order_count, 0) as order_count
+                     COALESCE(order_counts.order_count, 0) as order_count,
+                     COALESCE(
+                       (
+                         SELECT json_agg(json_build_object('id', g.id, 'name', g.name, 'color', g.color))
+                         FROM ${agentPrefix}_customer_group_members gm
+                         JOIN ${agentPrefix}_customer_groups g ON gm.group_id = g.id
+                         WHERE gm.customer_id = c.id
+                       ),
+                       '[]'::json
+                     ) AS groups
               FROM ${agentPrefix}_customers c
               LEFT JOIN (
                 SELECT customer_id, COUNT(*) as order_count
@@ -66,32 +79,44 @@ export default async function manageCustomersRoutes(
               ) order_counts ON c.id = order_counts.customer_id
               WHERE c.phone = $1
             `;
-            const { rows: customers } = await pgClient.query(customerQuery, [
-              cleanPhone,
-            ]);
-
-            return reply.code(200).send({
-              success: true,
-              customer: customers.length > 0 ? customers[0] : null,
-            });
+            const { rows: customers } = await pgClient.query(customerQuery, [cleanPhone]);
+            return reply.code(200).send({ success: true, customer: customers[0] || null });
           }
 
-          // Build the query with order count
+          // Build the query with order count and assigned customer groups
           let queryText = `
              SELECT c.*,
-                    COALESCE(order_counts.order_count, 0) as order_count
+                    COALESCE(order_counts.order_count, 0) as order_count,
+                    COALESCE((
+                      SELECT json_agg(json_build_object('id', g.id, 'name', g.name, 'color', g.color))
+                      FROM ${agentPrefix}_customer_group_members gm
+                      JOIN ${agentPrefix}_customer_groups g ON gm.group_id = g.id
+                      WHERE gm.customer_id = c.id
+                    ), '[]'::json) AS groups
              FROM ${agentPrefix}_customers c
              LEFT JOIN (
                SELECT customer_id, COUNT(*) as order_count
-               FROM ${agentPrefix}_orders
-               GROUP BY customer_id
+               FROM ${agentPrefix}_orders GROUP BY customer_id
              ) order_counts ON c.id = order_counts.customer_id
            `;
+          const whereClauses: string[] = [];
           const queryParams: any[] = [];
 
           if (search) {
-            queryText += ` WHERE (name ILIKE $1 OR phone ILIKE $1)`;
+            whereClauses.push(`(c.name ILIKE $${queryParams.length + 1} OR c.phone ILIKE $${queryParams.length + 1})`);
             queryParams.push(`%${search}%`);
+          }
+
+          if (groupId) {
+            const parsedGroupId = parseInt(groupId, 10);
+            if (!isNaN(parsedGroupId)) {
+              whereClauses.push(`c.id IN (SELECT customer_id FROM ${agentPrefix}_customer_group_members WHERE group_id = $${queryParams.length + 1})`);
+              queryParams.push(parsedGroupId);
+            }
+          }
+
+          if (whereClauses.length > 0) {
+            queryText += ` WHERE ` + whereClauses.join(" AND ");
           }
 
           queryText += ` ORDER BY c.created_at DESC`;
@@ -242,9 +267,9 @@ export default async function manageCustomersRoutes(
               .send({ success: false, message: "Failed to create customer" });
           }
 
-          // Invalidate chat list cache for the agent
-          if (cacheService) {
-            await cacheService.invalidateChatList(agent.id);
+          // Sync with default stage groups
+          if (customers[0]?.id) {
+            syncCustomerLeadStageGroup(pgClient, agentPrefix, Number(agent.id), customers[0].id, customers[0].lead_stage, customers[0].interest_stage, customers[0].conversion_stage).catch(() => {});
           }
 
           return reply.code(201).send({
@@ -392,6 +417,21 @@ export default async function manageCustomersRoutes(
           // Invalidate chat list cache for the agent
           if (cacheService) {
             await cacheService.invalidateChatList(agent.id);
+          }
+
+          if (emitAgentStatusUpdate && (lead_stage !== undefined || interest_stage !== undefined || conversion_stage !== undefined)) {
+            emitAgentStatusUpdate(agent.id, {
+              type: 'lead_stage_updated',
+              customerId: customers[0].id,
+              leadStage: customers[0].lead_stage,
+              interestStage: customers[0].interest_stage,
+              conversionStage: customers[0].conversion_stage,
+              leadStageNote: customers[0].lead_stage_note,
+            });
+          }
+
+          if ((lead_stage !== undefined || interest_stage !== undefined || conversion_stage !== undefined) && customers[0]?.id) {
+            syncCustomerLeadStageGroup(pgClient, agentPrefix, Number(agent.id), customers[0].id, customers[0].lead_stage, customers[0].interest_stage, customers[0].conversion_stage).catch(() => {});
           }
 
           return reply.code(200).send({

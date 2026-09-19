@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from "framer-motion";
-import { Search, Plus, X } from 'lucide-react';
+import { Search, Plus, X, Layers } from 'lucide-react';
 import CreateOrderModal from "./CreateOrderModal";
 import TimeRangeFilter from "../shared/TimeRangeFilter";
 import CustomDropdown from "../shared/CustomDropdown";
@@ -13,13 +14,18 @@ import EditCustomerModal from "./EditCustomerModal";
 import DeleteCustomerModal from "./DeleteCustomerModal";
 import CustomersTable from "./CustomersTable";
 import { useCustomers } from "./useCustomers";
+import { CustomerGroup } from "./CustomerTypes";
+import { fetchCustomerGroups } from "./groups/customerGroupsApi";
+import { AddToGroupModal } from "./groups/AddToGroupModal";
+import { CreateGroupModal } from "./groups/CreateGroupModal";
 import {
   leadStages, interestStages, conversionStages,
   detectCountryCode, extractLocalNumber,
-  inputStyle, selectStyle, onFocusG, onBlurG, PJS
+  PJS
 } from "./CustomerTypes";
 
 const CustomersPage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     tableRef,
     agentPrefix,
@@ -43,6 +49,8 @@ const CustomersPage: React.FC = () => {
     setProgressCategory,
     progressStage,
     setProgressStage,
+    selectedGroupId,
+    setSelectedGroupId,
     rowsPerPage,
     handleRowsPerPageChange,
     handlePageChange,
@@ -87,6 +95,23 @@ const CustomersPage: React.FC = () => {
     handleBulkDelete,
     handleBulkBroadcast,
   } = useCustomers();
+
+  const [customerGroups, setCustomerGroups] = useState<CustomerGroup[]>([]);
+  const [showAddToGroupModal, setShowAddToGroupModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+
+  const loadGroups = async () => {
+    try {
+      const res = await fetchCustomerGroups();
+      if (res.groups) setCustomerGroups(res.groups);
+    } catch (err) {
+      console.error('Failed to load customer groups', err);
+    }
+  };
+
+  useEffect(() => {
+    loadGroups();
+  }, []);
 
   const handleOrderSuccess = () => {
     fetchCustomers();
@@ -159,6 +184,33 @@ const CustomersPage: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Add To Group Modal */}
+      <AddToGroupModal
+        isOpen={showAddToGroupModal}
+        onClose={() => setShowAddToGroupModal(false)}
+        selectedCustomerIds={selection.selectedIds}
+        groups={customerGroups}
+        onAdded={() => {
+          fetchCustomers();
+          loadGroups();
+          selection.clearSelection();
+        }}
+        onCreateNewGroup={() => {
+          setShowAddToGroupModal(false);
+          setShowCreateGroupModal(true);
+        }}
+      />
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        onSaved={() => {
+          loadGroups();
+          setShowAddToGroupModal(true);
+        }}
+      />
+
       {/* Metric Cards */}
       <CustomerMetricsCards metrics={metrics} timeRange={timeRange} />
 
@@ -170,9 +222,7 @@ const CustomersPage: React.FC = () => {
       )}
 
       {/* Toolbar */}
-      <div
-        className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3"
-      >
+      <div className="bg-white rounded-[20px] border border-[#EAEAEA] shadow-[0_4px_20px_rgba(22,40,29,0.03)] p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
         {/* Row 1: Search & Primary Actions (Full width) */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
           {/* Search */}
@@ -206,8 +256,22 @@ const CustomersPage: React.FC = () => {
             )}
           </div>
 
-          {/* Rows Per Page & Add Customer Button */}
+          {/* Groups button, Rows Per Page & Add Customer */}
           <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-end shrink-0">
+            <button
+              onClick={() => navigate('/agent/customer-groups')}
+              className="rounded-full px-3.5 py-2 sm:py-2.5 bg-[#F4F7F4] hover:bg-[#EAEAEA] text-[#16281D] font-sans text-xs font-bold border border-[#EAEAEA] hover:border-[#16281D]/20 flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all cursor-pointer"
+              title="Manage Customer Groups"
+            >
+              <Layers size={13} className="text-[#16281D]" />
+              <span>Groups</span>
+              {customerGroups.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-[#16281D] text-[#9FE870] text-[10px] font-mono font-bold leading-none">
+                  {customerGroups.length}
+                </span>
+              )}
+            </button>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <span style={{ ...PJS, fontSize: 12, color: '#71717A', whiteSpace: 'nowrap', fontWeight: 600 }}>Rows:</span>
               <CustomDropdown
@@ -225,27 +289,36 @@ const CustomersPage: React.FC = () => {
 
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex-1 sm:flex-initial justify-center rounded-full px-5 py-2.5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-2 shrink-0 cursor-pointer border-0"
+              className="flex-1 sm:flex-initial justify-center rounded-full px-4 sm:px-5 py-2 sm:py-2.5 bg-[#9FE870] hover:bg-[#8CE05A] text-[#16281D] font-sans text-xs font-bold shadow-[0_4px_16px_rgba(159,232,112,0.35)] hover:shadow-[0_6px_20px_rgba(159,232,112,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-2 shrink-0 cursor-pointer border-0"
             >
               <Plus size={14} /> Add Customer
             </button>
           </div>
         </div>
 
-        {/* Row 2: Filters Grid (Full fill 100% row width across all screen sizes) */}
-        <div
-          className={`grid ${
-            timeRange.preset === "custom"
-              ? progressCategory !== "all"
-                ? "grid-cols-1 sm:grid-cols-3"
-                : "grid-cols-1 sm:grid-cols-2"
-              : progressCategory !== "all"
-              ? "grid-cols-2"
-              : "grid-cols-1 sm:grid-cols-3"
-          } lg:flex lg:items-center gap-2 sm:gap-2.5 w-full`}
-        >
+        {/* Row 2: Filters Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:flex lg:items-center gap-2 sm:gap-2.5 w-full">
+          {/* Customer Group Filter */}
+          <div className="col-span-1 w-full min-w-0 lg:flex-1">
+            <CustomDropdown
+              value={selectedGroupId}
+              onChange={(val) => {
+                setSelectedGroupId(val);
+                handlePageChange(1, false);
+              }}
+              options={[
+                { value: "all", label: "All Groups" },
+                ...customerGroups.map((g) => ({
+                  value: String(g.id),
+                  label: `${g.name} (${g.member_count})`,
+                })),
+              ]}
+              className="w-full"
+            />
+          </div>
+
           {/* Progress Category */}
-          <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? (progressCategory !== "all" ? "lg:w-36 xl:w-44 lg:shrink-0" : "lg:w-44 xl:w-52 lg:shrink-0") : "lg:flex-1"}`}>
+          <div className="col-span-1 w-full min-w-0 lg:flex-1">
             <CustomDropdown
               value={progressCategory}
               onChange={(val) => {
@@ -265,7 +338,7 @@ const CustomersPage: React.FC = () => {
 
           {/* Progress Stage (if filtered by category) */}
           {progressCategory !== "all" && (
-            <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? "lg:w-36 xl:w-44 lg:shrink-0" : "lg:flex-1"}`}>
+            <div className="col-span-1 w-full min-w-0 lg:flex-1">
               <CustomDropdown
                 value={progressStage}
                 onChange={(val) => {
@@ -296,7 +369,7 @@ const CustomersPage: React.FC = () => {
           )}
 
           {/* Sort Dropdown */}
-          <div className={`col-span-1 w-full min-w-0 ${timeRange.preset === "custom" ? (progressCategory !== "all" ? "lg:w-36 xl:w-44 lg:shrink-0" : "lg:w-44 xl:w-52 lg:shrink-0") : "lg:flex-1"}`}>
+          <div className="col-span-1 w-full min-w-0 lg:flex-1">
             <CustomDropdown
               value={sortBy}
               onChange={(val) => {
@@ -313,15 +386,7 @@ const CustomersPage: React.FC = () => {
           </div>
 
           {/* Time Range Filter */}
-          <div
-            className={`w-full min-w-0 ${
-              timeRange.preset === "custom"
-                ? progressCategory !== "all"
-                  ? "col-span-1 sm:col-span-3 lg:flex-1"
-                  : "col-span-1 sm:col-span-2 lg:flex-1"
-                : "col-span-1 lg:flex-1"
-            }`}
-          >
+          <div className="col-span-2 sm:col-span-2 lg:flex-1 w-full min-w-0">
             <TimeRangeFilter
               value={timeRange}
               onChange={range => {
@@ -338,6 +403,7 @@ const CustomersPage: React.FC = () => {
       <CustomerBulkActionsBar
         selectedCount={selection.selectedCount}
         onBulkBroadcast={handleBulkBroadcast}
+        onBulkAddToGroup={() => setShowAddToGroupModal(true)}
         onBulkDelete={handleBulkDelete}
         onClearSelection={selection.clearSelection}
         isProcessing={isBulkProcessing}

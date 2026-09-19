@@ -15,6 +15,7 @@ import {
 import { parseAndExecuteAgentActions } from './ai-agent-actions.service.js';
 import { calculateDeepSeekCost, estimateFallbackCost, DeepSeekCostResult } from './ai-cost.service.js';
 import { detectAndApplyCustomerLanguageChange } from './ai-language.service.js';
+import { syncAutonomousLeadStage } from './ai-lead-stage.service.js';
 
 export {
   stripEmojis, isBankDetailsMessage, formatBankDetails, sanitizeWhatsAppFormatting, formatMessageWithAI,
@@ -145,6 +146,7 @@ export async function generateCustomerReply({
   cost: DeepSeekCostResult;
   usage?: any;
   apiKey?: string;
+  stage?: ConversationStage;
 }> {
   // 1. Fetch chronological conversation history
   const messagesTable = `${agent.agent_prefix}_messages`;
@@ -278,7 +280,7 @@ export async function generateCustomerReply({
         : "ස්තූතියි අපව සම්බන්ධ කරගත්තාට! ඔබගේ පණිවිඩය අප වෙත ලැබුණා. අපගේ team එක විස්තර බලලා ඉතා ඉක්මනින්ම ඔබට අවශ්‍ය සියලු විස්තර ලබා දෙන්නම්.";
     }
   }
-  return { reply: finalReply, cost: chatResult.cost, usage: chatResult.usage, apiKey: activeApiKey };
+  return { reply: finalReply, cost: chatResult.cost, usage: chatResult.usage, apiKey: activeApiKey, stage };
 }
 
 /**
@@ -349,13 +351,27 @@ export async function handleInboundMessage({
     return;
   }
 
-  // 5. Parse and execute any agent actions (appointments, invoices) and obtain clean text
+  // 5. Parse and execute any agent actions (appointments, invoices, lead stage updates) and obtain clean text
   const { cleanReply, actionsExecuted } = await parseAndExecuteAgentActions({
     agent,
     customer,
     rawReply,
     incomingText: incomingMessage.message,
     pgClient,
+    cacheService,
+    emitAgentStatusUpdate,
+  });
+
+  // 5.1 Synchronize customer pipeline stage (advancing New Lead -> Contacted, Quotation Sent, Payment Pending on slips)
+  await syncAutonomousLeadStage({
+    agent,
+    customer,
+    stage: aiResult.stage || 'inquiry',
+    incomingText: incomingMessage.message,
+    actionsExecuted,
+    pgClient,
+    cacheService,
+    emitAgentStatusUpdate,
   });
 
   if (!cleanReply) {

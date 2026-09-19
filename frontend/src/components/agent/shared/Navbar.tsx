@@ -56,6 +56,7 @@ const Navbar: React.FC<NavbarProps> = ({ agent, onMenuClick, onLogout }) => {
     if (s === 'dashboard') return 'Dashboard';
     if (s === 'conversations') return 'Conversations';
     if (s === 'customers') return 'Customers';
+    if (s === 'customer-groups') return 'Customer Groups';
     if (s === 'orders') return segments.length > 2 ? 'Order Details' : 'Orders';
     if (s === 'appointments') return 'Appointments';
     if (s === 'services') return 'Services';

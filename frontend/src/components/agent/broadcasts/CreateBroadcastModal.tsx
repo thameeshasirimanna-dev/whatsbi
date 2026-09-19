@@ -13,8 +13,8 @@ interface CreateBroadcastModalProps {
   setWizardStep: React.Dispatch<React.SetStateAction<number>>;
   campaignName: string;
   setCampaignName: (name: string) => void;
-  targetAudienceType: 'all' | 'filtered' | 'manual';
-  setTargetAudienceType: (type: 'all' | 'filtered' | 'manual') => void;
+  targetAudienceType: 'all' | 'filtered' | 'group' | 'manual';
+  setTargetAudienceType: (type: 'all' | 'filtered' | 'group' | 'manual') => void;
   filterLeadStage: string;
   setFilterLeadStage: (stage: string) => void;
   filterInterestStage: string;
@@ -23,6 +23,9 @@ interface CreateBroadcastModalProps {
   setFilterConversionStage: (stage: string) => void;
   filterLanguage: string;
   setFilterLanguage: (lang: string) => void;
+  selectedGroupId: string;
+  setSelectedGroupId: (id: string) => void;
+  customerGroups: { id: number; name: string; member_count?: number; color?: string }[];
   customers: Customer[];
   selectedCustomerIds: number[];
   customerSearch: string;
@@ -63,6 +66,9 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
   setFilterConversionStage,
   filterLanguage,
   setFilterLanguage,
+  selectedGroupId,
+  setSelectedGroupId,
+  customerGroups,
   customers,
   selectedCustomerIds,
   customerSearch,
@@ -153,6 +159,9 @@ const CreateBroadcastModal: React.FC<CreateBroadcastModalProps> = ({
                 setFilterConversionStage={setFilterConversionStage}
                 filterLanguage={filterLanguage}
                 setFilterLanguage={setFilterLanguage}
+                selectedGroupId={selectedGroupId}
+                setSelectedGroupId={setSelectedGroupId}
+                customerGroups={customerGroups}
                 customers={customers}
                 selectedCustomerIds={selectedCustomerIds}
                 customerSearch={customerSearch}

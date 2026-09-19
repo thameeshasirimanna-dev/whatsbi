@@ -4,6 +4,7 @@ import AgentLayout from './AgentLayout';
 import AgentDashboard from '../dashboard/AgentDashboard';
 import ConversationsPage from '../conversations/ConversationsPage';
 import CustomersPage from '../customers/CustomersPage';
+import CustomerGroupsPage from '../customers/groups/CustomerGroupsPage';
 import OrdersPage from '../orders/OrdersPage';
 import OrderDetailsPage from '../orders/OrderDetailsPage';
 import InvoicesPage from '../invoices/InvoicesPage';
@@ -25,6 +26,7 @@ const AgentRoutes: React.FC = () => {
         <Route path="dashboard" element={<AgentDashboard />} />
         <Route path="conversations" element={<ConversationsPage />} />
         <Route path="customers" element={<CustomersPage />} />
+        <Route path="customer-groups" element={<CustomerGroupsPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/:id" element={<OrderDetailsPage />} />
         <Route path="appointments" element={<AppointmentsPage />} />

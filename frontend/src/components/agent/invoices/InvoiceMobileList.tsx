@@ -1,5 +1,6 @@
 import React from "react";
 import { Eye, Download, Send, CheckCircle, CheckCircle2, Trash2, Package, Pencil } from "lucide-react";
+import { RoundCheckbox } from "../shared/RoundCheckbox";
 import { InvoiceWithDetails } from "./types";
 import { getStatusStyle, getStatusDotColor, capitalizeFirst } from "./constants";
 
@@ -57,17 +58,10 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
                   {/* Selection Checkbox */}
-                  <input
-                    type="checkbox"
+                  <RoundCheckbox
                     checked={isSelected}
                     onChange={() => onToggleSelect(invoice.id)}
-                    style={{
-                      cursor: "pointer",
-                      accentColor: "#16281D",
-                      width: 16,
-                      height: 16,
-                      flexShrink: 0,
-                    }}
+                    aria-label={`Select invoice ${invoice.invoice_number || invoice.id}`}
                   />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -174,6 +168,20 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
                   >
                     {invoice.customer_name}
                   </span>
+                  {invoice.customer_phone && (
+                    <span
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 11,
+                        color: "#71717a",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {invoice.customer_phone}
+                    </span>
+                  )}
                 </div>
                 <div
                   style={{
@@ -199,13 +207,21 @@ export const InvoiceMobileList: React.FC<InvoiceMobileListProps> = ({
 
               {/* Date & Actions */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
-                <span style={{ fontSize: 11, color: "#71717a" }}>
-                  Generated:{" "}
-                  {new Date(invoice.generated_at).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
+                <span style={{ fontSize: 11, color: "#71717a", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span>
+                    Generated:{" "}
+                    {new Date(invoice.generated_at).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#A1A1AA" }}>
+                    {new Date(invoice.generated_at).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </span>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {/* View */}

@@ -35,6 +35,7 @@ export interface OrderForModal {
 
 export interface InvoiceWithDetails extends Invoice {
   customer_name: string;
+  customer_phone?: string;
   order_number?: string | null;
   invoice_number?: string | null;
   total: number;
